@@ -62,6 +62,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 - [`human-in-the-loop.md`](policies/human-in-the-loop.md) — the human decides when work is done. The orchestrator never auto-commits, never advances past unresolved gates, never claims subjective acceptance the human owes.
 - [`repo-relative-paths.md`](policies/repo-relative-paths.md) — no absolute `/Users/...` paths in committed files. Bash commands may use absolute paths.
 - [`project-isolation.md`](policies/project-isolation.md) — when the repo has one primary deliverable, isolate it under `project/`; nothing in there references anything above it. Makes the deliverable submodule-ready.
+- [`greenfield-until-released.md`](policies/greenfield-until-released.md) — a project is greenfield by default until first stable release. No backward-compatibility shims, legacy aliases, schema migrations, or transitional code paths. Replace old shapes directly.
 
 ## Universal repo layout
 
@@ -118,6 +119,7 @@ These are the universals every project derived from this template inherits. The 
 - **Repo-relative paths only** in any file committed to this repo. Bash invocations may use absolute paths.
 - **Cross-harness parity.** Skills and agent definitions have one canonical home (`.claude/` / repo-root `CLAUDE.md`) and harness-specific mirrors (`.codex/`, `AGENTS.md`). Edit the canonical; refresh the mirror in the same commit.
 - **Human decides done.** `/kickoff` never auto-commits. The human reviews each phase's END block and either accepts the work, asks for revisions, or commits.
+- **Greenfield until released.** No backward-compatibility shims, legacy aliases, or migration code paths are added unless the policy is explicitly amended. Wrong shapes get replaced directly. See [`policies/greenfield-until-released.md`](policies/greenfield-until-released.md).
 
 ### Activity log (`LOG.md`)
 

@@ -116,7 +116,8 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── log-discipline.md
 │   ├── human-in-the-loop.md
 │   ├── four-canonical-agents.md
-│   └── project-isolation.md        ← isolate deliverable under project/
+│   ├── project-isolation.md        ← isolate deliverable under project/
+│   └── greenfield-until-released.md ← no backward-compat shims pre-release
 ├── plan/                           ← phased execution plan
 │   ├── INDEX.md                    ←   phase ledger (status lives ONLY here)
 │   └── phase-1.md                  ←   first phase (a stub you replace)
