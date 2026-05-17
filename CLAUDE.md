@@ -2,17 +2,49 @@
 
 This file provides guidance to coding agents (Claude Code, Codex CLI, and others that read top-level instruction files) when working in this repository.
 
+This file has two zones. **Project Context** is everything specific to *this* repo — the project's thesis, the deliverable's surface, the language conventions, the project-specific briefs and skills. `/starter` rewrites this zone when stamping out a new project. **Methodology Contract** is everything universal to the agentic methodology — methodology briefs, every policy, the phase-work protocol, universal conventions, the glossary. `/starter` copies this zone verbatim. The two zones are demarcated by HTML comment markers; both humans and `/starter` use the markers to find the boundary.
+
+<!-- PROJECT_CONTEXT_START -->
+
+# Project Context
+
 ## This Repo is the Agentic Coding Starter Template
 
-A *master template* for projects built with AI coding agents under a structured planner → reviewer → coder → critic methodology. The entry-point brief is [`briefs/BRIEF.md`](briefs/BRIEF.md); the methodology itself is [`briefs/methodology.md`](briefs/methodology.md); the bootstrap procedure is [`briefs/agentic-bootstrap.md`](briefs/agentic-bootstrap.md).
+A *master template* for projects built with AI coding agents under a structured planner → reviewer → coder → critic methodology. The entry-point brief is [`briefs/BRIEF.md`](briefs/BRIEF.md).
 
 This repo is also a working project in its own right. Open it in any agent host and `/kickoff` will pick up Phase 1 from `plan/INDEX.md`.
 
-## Briefs catalog
+## Project briefs
 
-Every file under `briefs/`, indexed so agents see the catalog without an extra Read.
+In addition to the universal methodology briefs (see Methodology Contract below):
 
 - [`BRIEF.md`](briefs/BRIEF.md) — entry-point brief for *this* repo: thesis, what the template provides, when to use it, the two operating modes (template-stamp vs. self-build), and acceptance criteria.
+
+## Project surfaces
+
+- `project/` — the deliverable: package metadata, source, tests, lockfile. Self-contained per [`policies/project-isolation.md`](policies/project-isolation.md) — nothing inside `project/` references anything above it. Currently holds a minimal Python example (`project/example/`, `project/tests/`, `project/pyproject.toml`) so the build gates have a real target from the first session.
+
+## Project conventions
+
+- **Python 3.11+** for the example package and any Python the template ships. Type hints on all new public functions; idiomatic stdlib where the difference is small.
+- **`uv` with `pyproject.toml`** is the recommended Python package manager. The example project's gates assume `uv run ...`.
+- **Build gates run from inside `project/`** as `cd project && uv run <cmd>`. (See universal conventions for the rationale.)
+- **`project/pyproject.toml` is the single source of truth** for Python tooling configuration (ruff, pytest, mypy if used) in this repo.
+
+## Project-specific skills
+
+In addition to the universal `/kickoff`, `/methodology`, `/learn`, and `/teach` skills (carried into every derived project):
+
+- **`/starter`** — starter-template-only bootstrapping skill. Stamps out a new project from this repo. Not carried into derived projects. Source: `.claude/skills/starter/SKILL.md`; Codex wrapper: `.codex/prompts/starter.md`.
+
+<!-- PROJECT_CONTEXT_END -->
+
+<!-- METHODOLOGY_CONTRACT_START -->
+
+# Methodology Contract
+
+## Methodology briefs
+
 - [`methodology.md`](briefs/methodology.md) — the eleven-step pipeline: vague ideas → insights → brief → architecture → policies → phased plan → sub-phase decomposition → orchestrator-driven execution → acceptance → log → human evaluation → stay agile.
 - [`agentic-bootstrap.md`](briefs/agentic-bootstrap.md) — procedure for standing up a new project from this template: anatomy of the structure, what to transfer verbatim vs. rewrite vs. discard, step-by-step procedure, sanity-check protocol.
 
@@ -31,23 +63,24 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 - [`repo-relative-paths.md`](policies/repo-relative-paths.md) — no absolute `/Users/...` paths in committed files. Bash commands may use absolute paths.
 - [`project-isolation.md`](policies/project-isolation.md) — when the repo has one primary deliverable, isolate it under `project/`; nothing in there references anything above it. Makes the deliverable submodule-ready.
 
-## Repo layout
+## Universal repo layout
 
-- `briefs/` — durable design library. Entry point [`briefs/BRIEF.md`](briefs/BRIEF.md); full catalog above.
+- `briefs/` — durable design library. See "Methodology briefs" above for the universal briefs, and "Project briefs" in Project Context for this repo's specifics.
 - `policies/` — non-negotiable rules. Full catalog above.
 - `plan/` — phased execution plan. Entry point [`plan/INDEX.md`](plan/INDEX.md) (dependency graph, status table, cross-cutting concerns, critical-files map). Each `plan/phase-*.md` holds Goal / Deliverables / Acceptance / brief refs. **When `plan/` and a brief disagree, `plan/` wins.**
 - `LOG.md` — append-only activity log. `/kickoff` writes START on phase entry and END on phase completion. Do not hand-edit historical entries.
-- `project/` — the deliverable: package metadata, source, tests, lockfile. Self-contained per [`policies/project-isolation.md`](policies/project-isolation.md) — nothing inside `project/` references anything above it. Currently holds a minimal Python example (`project/example/`, `project/tests/`, `project/pyproject.toml`) so the build gates have a real target from the first session. Build gates run as `cd project && uv run ...` from the repo root.
 - `.claude/skills/` — slash-command surface for Claude Code.
   - `kickoff/SKILL.md` orchestrates one phase end-to-end.
   - `methodology/SKILL.md` exposes the eleven steps as a slash command.
-  - `learn/SKILL.md` — explores another repo for patterns worth absorbing INTO this one, produces a plan, applies on approval. Universal — `/starter` carries it into every derived project.
-  - `teach/SKILL.md` — applies patterns FROM this repo to another repo, produces a plan, applies on approval. Universal — `/starter` carries it into every derived project.
-  - `starter/SKILL.md` — starter-only meta-skill. Stamps out a new project from this template. Not carried into derived projects.
+  - `learn/SKILL.md` — explores another repo for patterns worth absorbing INTO this one, produces a plan, applies on approval.
+  - `teach/SKILL.md` — applies patterns FROM this repo to another repo, produces a plan, applies on approval.
+  - (Project-specific skills live here too; see Project Context.)
 - `.claude/agents/` — canonical role definitions invoked by `/kickoff`: `phase-planner.md`, `plan-reviewer.md`, `phase-coder.md`, `code-critic.md`. These are the four roles in the methodology's planner → reviewer → coder → critic loop; do not invoke them by hand for full-phase work unless deliberately bypassing orchestration.
 - `.codex/agents/` — Codex CLI mirrors of the four canonical roles (TOML).
-- `.codex/prompts/` — Codex slash-command entry points for `/kickoff` and `/starter`.
+- `.codex/prompts/` — Codex slash-command entry points for the universal skills (and any project-specific skills the project chooses to expose).
 - `AGENTS.md` — symlink → `CLAUDE.md`, so Codex/aider read the same source of truth.
+
+The deliverable's directory (whatever the project calls it — `project/` when project-isolation is enabled, or sibling deliverable directories at the repo root when not) is described in Project Context.
 
 ## Phase work and the `kickoff` skill
 
@@ -90,14 +123,11 @@ These are the universals every project derived from this template inherits. The 
 
 `/kickoff` appends a START block on `🚧` and an END block on `✅`. Format owned by `/kickoff`. Do not hand-edit historical entries. If a phase pauses mid-way, leave it at `🚧` and note the pause reason in an END block.
 
-## Conventions
+## Universal conventions
 
-- **Python 3.11+** for the example package and any Python the template ships. Type hints on all new public functions; idiomatic stdlib where the difference is small.
-- **`uv` with `pyproject.toml`** is the recommended Python package manager. The example project's gates assume `uv run ...`. Projects derived from this template may switch.
-- **Build gates run from inside `project/`.** Per [`policies/project-isolation.md`](policies/project-isolation.md), invoke as `cd project && uv run <cmd>` from the repo root. This shape is uniform across language ecosystems.
 - **Repo-relative paths only** in committed files (also load-bearing per the invariants).
 - **One executable command per fenced code block** when a code block is meant to be copy-pasted into a shell, so the user can copy individual commands one at a time without breaking on multi-line clipboards.
-- **`project/pyproject.toml` is the single source of truth** for Python tooling configuration (ruff, pytest, mypy if used) in this repo. A project that opts out of the `project/` convention puts it at the repo root.
+- **Build gates use the `cd <deliverable> && <command>` shape** when project-isolation is enabled. Uniform across language ecosystems — uv, npm, cargo, go all work the same way. Specific commands per language live in Project Context.
 
 ## Glossary
 
@@ -108,10 +138,11 @@ Terms used consistently across briefs, skills, policies, and code. Mismatched us
 - **Phase.** One unit of phased work. A phase file (`plan/phase-N.md`) holds Goal, Deliverables, Acceptance, and Brief refs. Status lives in `plan/INDEX.md`.
 - **Sub-phase.** A child of a major phase (`plan/phase-N.M.md`), produced by decomposing the parent at the moment the parent becomes the next phase to work.
 - **`/kickoff`.** The orchestrator skill. Runs one phase end-to-end through planner → reviewer → coder → critic. Writes START/END to `LOG.md`. Does not write code itself.
-- **`/starter`.** The starter-template-only bootstrapping skill. Stamps out a new project in a different directory using *this* repo as the master template.
 - **`/learn`.** Universal cross-repo skill. Explores a donor repo and proposes which of its patterns to absorb into the current repo. Plan-first; user approves; then applies. The donor stays read-only.
 - **`/teach`.** Universal cross-repo skill. Inverse of `/learn`. Proposes which of the current repo's patterns to apply to a target repo. Plan-first; user approves; then applies to the target. The current repo stays read-only during teaching.
 - **The four canonical agents.** `phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`. Their names are load-bearing — `/kickoff` invokes them by name. Their definitions live in `.claude/agents/` (canonical) and `.codex/agents/` (mirror).
 - **Build gate.** A shell command (or sequence) the orchestrator runs after the coder finishes, to confirm the code still builds, lints, types, and tests clean.
 - **Acceptance.** The empirical criteria the phase declares for being "done." May include shell-command checks and named manual checks. The human signs off.
 - **START / END block.** The two entries `/kickoff` appends to `LOG.md` per phase — one when the phase is taken up (`🚧`) and one when it is closed (`✅` or paused).
+
+<!-- METHODOLOGY_CONTRACT_END -->

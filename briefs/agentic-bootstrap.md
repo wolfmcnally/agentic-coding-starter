@@ -142,7 +142,7 @@ These files encode the methodology itself, not any particular product. Copy them
 These files have a stable shape and a project-specific body. Mirror the shape; write fresh content from the new project's brief.
 
 - `README.md` — keep the section structure (what the project is, why, how to use, repository layout, status markers, four canonical agents, briefs-vs-policies-vs-plan, first-time setup), but every line is project-specific.
-- `CLAUDE.md` — keep the section structure (this repo is, briefs catalog, policies catalog, repo layout, phase work, status markers, reading protocol, architectural invariants, activity log, conventions, glossary), but every line of content is rewritten for the new product.
+- `CLAUDE.md` — uses a two-zone structure delimited by HTML comment markers. The `Methodology Contract` zone (between `<!-- METHODOLOGY_CONTRACT_START -->` and `<!-- METHODOLOGY_CONTRACT_END -->`) is copied verbatim — methodology briefs catalog, policies catalog, universal repo layout, phase-work protocol, status markers, reading protocol, architectural invariants, activity-log contract, universal conventions, glossary. The `Project Context` zone (between `<!-- PROJECT_CONTEXT_START -->` and `<!-- PROJECT_CONTEXT_END -->`) is rewritten for the new project — the project's thesis, project-specific briefs list, project surfaces description, project conventions, and any project-specific skills.
 - `briefs/BRIEF.md` — the entry-point brief for the new project. Pick a shape:
   - **Thesis-stub.** One short paragraph plus a pointer to `../CLAUDE.md#briefs-catalog`. Use when the project will quickly grow many topic briefs.
   - **Full single-document brief.** Opens with thesis + a catalog pointer, then continues with the long-form spec under H2 sections. Use when the project's brief is comprehensive and fits in one document.
@@ -230,18 +230,16 @@ In this exact order (each feeds the next):
 
 1. **`briefs/BRIEF.md`** — the entry-point brief. Pick the thesis-stub or full-single-document shape from §2b. In both shapes, the catalog itself lives in `CLAUDE.md`, not here.
 
-2. **`CLAUDE.md`** — top-level guidance. Sections, in order:
-   - `# CLAUDE.md` preamble (one sentence; matches the template).
-   - `## This Repo is <Project>` — canonical spelling, one-sentence thesis, pointer to `briefs/BRIEF.md` and the catalog.
-   - `## Briefs catalog` — bulleted index of every file under `briefs/`.
-   - `## Policies catalog` — bulleted index of every file under `policies/`.
-   - `## Repo layout` — one-line description per top-level directory and load-bearing file.
-   - `## Canonical CLIs` — single-source-of-truth tools the agents call rather than re-implement. Skip if the project has none yet; add as they appear.
-   - `## Phase work and the kickoff skill` — copy from template verbatim, then replace any product references.
-   - `## Architectural invariants` — load-bearing rules. Always include the template's universals; add project-specific invariants as they emerge.
-   - `## Activity log (LOG.md)` — short pointer paragraph.
-   - `## Conventions` — language, tooling, file shapes.
-   - `## Glossary` — domain terms used consistently.
+2. **`CLAUDE.md`** — top-level guidance. The template's `CLAUDE.md` ships with a two-zone structure. Bootstrap consists of:
+   - Copying the template's `CLAUDE.md` as a whole, including the introductory paragraph that documents the two-zone contract.
+   - Leaving the **Methodology Contract** zone (between `<!-- METHODOLOGY_CONTRACT_START -->` and `<!-- METHODOLOGY_CONTRACT_END -->`) verbatim. This contains: methodology briefs list, full policies catalog, universal repo layout, phase work + kickoff skill section, status markers, reading protocol, architectural invariants, activity log contract, universal conventions, glossary.
+   - Rewriting the **Project Context** zone (between `<!-- PROJECT_CONTEXT_START -->` and `<!-- PROJECT_CONTEXT_END -->`) for the new project. The Project Context zone uses these sections:
+     - `# Project Context` header
+     - `## This Repo is <Project>` — canonical spelling, one-sentence thesis, pointer to `briefs/BRIEF.md`.
+     - `## Project briefs` — `briefs/` entries specific to this project (initially `BRIEF.md` only).
+     - `## Project surfaces` — the deliverable (location, language, seed code description).
+     - `## Project conventions` — language, tooling, build-gate command shape.
+     - `## Project-specific skills` — any beyond the universal four. Omit if none.
 
 3. **`AGENTS.md`** — symlink to `CLAUDE.md`:
    ```bash

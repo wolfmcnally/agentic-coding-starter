@@ -148,17 +148,17 @@ Author these afresh, using the gathered configuration:
 
 - **`<dest>/README.md`** — didactic top-level for human readers. Mirror the template's section structure (what this is, why, how to use, repository layout, status markers, four canonical agents, briefs-vs-policies-vs-plan, first-time setup). Every line is `<project_name>`-specific.
 
-- **`<dest>/CLAUDE.md`** — top-level agent guidance. Sections, in order:
-  - `# CLAUDE.md` preamble.
-  - `## This Repo is <project_name>` — canonical spelling, one-sentence thesis (from `description`), pointer to `briefs/BRIEF.md`.
-  - `## Briefs catalog` — bulleted index of every file under `briefs/`.
-  - `## Policies catalog` — bulleted index of every file under `policies/`.
-  - `## Repo layout` — one-line description per top-level directory.
-  - `## Phase work and the kickoff skill` — copy from this template's `CLAUDE.md`, adapted.
-  - `## Architectural invariants` — copy the template's universals, plus any project-specific invariants the description implies (e.g., "no proprietary dependencies in the runtime path" for a FOSS project).
-  - `## Activity log (LOG.md)` — short pointer.
-  - `## Conventions` — language, tooling, file shapes.
-  - `## Glossary` — domain terms from the description.
+- **`<dest>/CLAUDE.md`** — top-level agent guidance. The template's `CLAUDE.md` has two clearly-marked zones (HTML comments delimit them). The job:
+  - **Copy the file as a whole.**
+  - **Inside the `<!-- METHODOLOGY_CONTRACT_START --> ... <!-- METHODOLOGY_CONTRACT_END -->` markers**: leave verbatim. This is the universal methodology content; every derived project gets the same text.
+  - **Inside the `<!-- PROJECT_CONTEXT_START --> ... <!-- PROJECT_CONTEXT_END -->` markers**: rewrite from scratch for the new project. Sections to author:
+    - `# Project Context` header (unchanged).
+    - `## This Repo is <project_name>` — canonical spelling, one-sentence thesis (from `description`), pointer to `briefs/BRIEF.md`.
+    - `## Project briefs` — list of `briefs/*.md` files specific to this project (initially just `BRIEF.md`).
+    - `## Project surfaces` — describe the deliverable (path, what language, what the example or seed code is). When `project_isolation` is on, the surface is `project/`; when off, name the sibling deliverable directories.
+    - `## Project conventions` — language, tooling, build-gate command shape for this project.
+    - `## Project-specific skills` — if the new project carries any skills beyond the universal four (kickoff, methodology, learn, teach), list them here. For most fresh projects, this section is empty (or omitted).
+  - Preserve the introductory paragraph that explains the two-zone contract; it is informational and lives outside both markers.
 
 - **`<dest>/AGENTS.md`** — symlink to `CLAUDE.md`. Create with `ln -s CLAUDE.md AGENTS.md` in the destination.
 
