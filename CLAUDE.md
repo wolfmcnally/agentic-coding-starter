@@ -70,6 +70,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 - [`acceptance-empirical.md`](policies/acceptance-empirical.md) — every phase's Acceptance section lists verifiable shell commands or named manual checks. "It compiles" is not acceptance.
 - [`user-demo-protocols.md`](policies/user-demo-protocols.md) — when a phase touches a user-facing surface, Acceptance carries an interactive try-it-yourself protocol (entry point, suggested inputs, what to look for, variations). When there's nothing meaningful to demo, declare `User Demo: N/A` with a one-line reason instead. Silence is blocking; contrived demos are blocking.
 - [`log-discipline.md`](policies/log-discipline.md) — `LOG.md` is append-only and owned by `/kickoff`. Never hand-edit historical entries.
+- [`user-blockers.md`](policies/user-blockers.md) — `user-blockers.md` at the repo root is the live queue of human-only action items; stable two-word slug per item; closure in place. Read at session start; surface relevant items before doing dependent work.
 - [`human-in-the-loop.md`](policies/human-in-the-loop.md) — the human decides when work is done. The orchestrator never auto-commits, never advances past unresolved gates, never claims subjective acceptance the human owes.
 - [`repo-relative-paths.md`](policies/repo-relative-paths.md) — no absolute `/Users/...` paths in committed files. Bash commands may use absolute paths.
 - [`project-isolation.md`](policies/project-isolation.md) — when the repo has one primary deliverable, isolate it under `project/`; nothing in there references anything above it. Makes the deliverable submodule-ready.
@@ -81,6 +82,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 - `policies/` — non-negotiable rules. Full catalog above.
 - `plan/` — phased execution plan. Entry point [`plan/INDEX.md`](plan/INDEX.md) (dependency graph, status table, cross-cutting concerns, critical-files map). Each `plan/phase-*.md` holds Goal / Deliverables / Acceptance / brief refs. **When `plan/` and a brief disagree, `plan/` wins.**
 - `LOG.md` — append-only activity log. `/kickoff` writes START on phase entry and END on phase completion. Do not hand-edit historical entries.
+- `user-blockers.md` — live queue of human-only action items, parallel to `LOG.md`. Mutable by design; closed items stay strikethrough'd in place as an audit trail. Governed by [`policies/user-blockers.md`](policies/user-blockers.md).
 - `.claude/skills/` — slash-command surface for Claude Code.
   - `kickoff/SKILL.md` orchestrates one phase end-to-end.
   - `methodology/SKILL.md` exposes the eleven steps as a slash command.
@@ -135,6 +137,19 @@ These are the universals every project derived from this template inherits. The 
 ### Activity log (`LOG.md`)
 
 `/kickoff` appends a START block on `🚧` and an END block on `✅`. Format owned by `/kickoff`. Do not hand-edit historical entries. If a phase pauses mid-way, leave it at `🚧` and note the pause reason in an END block.
+
+### User blockers (`user-blockers.md`)
+
+[`user-blockers.md`](user-blockers.md) at the repo root is the live queue of action items only the human can perform — deploys, console / dashboard / GUI checks, manual reconciliations, third-party logins, pricing decisions, signups, anything outside an agent's reach. Every agent must:
+
+1. **Read `user-blockers.md` at session start.** Surface any pending item that affects the current task before doing dependent work. If a task depends on an unchecked blocker, flag and wait — don't proceed silently.
+2. **File new items as they arise.** Any time a session hits a human-only wall, write a new entry before the session ends.
+3. **Tag every new item with a unique two-word slug** for stable conversational reference (`close out warping-butterfly`). Recipe: `uv run --with coolname python -c "from coolname import generate_slug; print(generate_slug(2))"`. Grep live + closed sets to confirm uniqueness; never reuse.
+4. **Sort by dependency within each section.** Unblockers above unblocked.
+5. **Date-defer items that can't run yet** under a `## YYYY-MM-DD` heading. Always absolute dates; convert relative ("Thursday") at write time.
+6. **Close in place.** Strikethrough the title and append `✅ DONE` / `✅ CLOSED` / `✅ SUPERSEDED`, plus a `**Disposition:**` line when the resolution is non-obvious. Closed items stay in the file as a permanent audit trail.
+
+Checkoff discipline: an agent may check a box only when *it personally* did the underlying action (e.g., ran a smoke script clean, read CloudWatch logs directly). Console / dashboard / GUI / pricing / billing verification is **human-only checkoff**. Full contract: [`policies/user-blockers.md`](policies/user-blockers.md).
 
 ## Universal conventions
 
