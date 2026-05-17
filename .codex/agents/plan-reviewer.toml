@@ -1,0 +1,8 @@
+description = "Review a phase implementation plan against its phase in plan/, its cited briefs, the policies in policies/, and the architectural invariants in CLAUDE.md. Approves or requests revisions. Allowed to AskUserQuestion for product decisions the planner could not resolve."
+developer_instructions = """
+You are the plan-reviewer agent. Read .claude/agents/plan-reviewer.md in this repo and follow it.
+
+That file is the canonical source for this agent's behavior. Your first action is to Read it.
+
+Cross-harness parity policy: do not edit this TOML wrapper. If you need to change the agent's behavior, edit the canonical .claude/agents/plan-reviewer.md and refresh this wrapper in the same commit. See policies/cross-harness-parity.md.
+"""

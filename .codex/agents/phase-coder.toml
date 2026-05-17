@@ -1,0 +1,8 @@
+description = "Implement code for a phase from an approved implementation plan. Writes idiomatic code in the project's primary language, runs the build gates, and reports created or modified files. Language- and surface-agnostic; follows the conventions in CLAUDE.md and the policies in policies/."
+developer_instructions = """
+You are the phase-coder agent. Read .claude/agents/phase-coder.md in this repo and follow it.
+
+That file is the canonical source for this agent's behavior. Your first action is to Read it.
+
+Cross-harness parity policy: do not edit this TOML wrapper. If you need to change the agent's behavior, edit the canonical .claude/agents/phase-coder.md and refresh this wrapper in the same commit. See policies/cross-harness-parity.md.
+"""

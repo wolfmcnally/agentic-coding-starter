@@ -1,0 +1,35 @@
+[project]
+name = "agentic-coding-starter-template-example"
+version = "0.1.0"
+description = "Minimal example package shipped with the Agentic Coding Starter Template, so the build gates have a real target from the first session."
+requires-python = ">=3.11"
+license = { text = "MIT" }
+readme = "README.md"
+authors = [{ name = "Agentic Coding Starter Template" }]
+
+[project.scripts]
+example = "example.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["example"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
