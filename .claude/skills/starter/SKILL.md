@@ -115,6 +115,8 @@ Copy these files **from this template** into the new project, then run a name su
 
 - `.claude/skills/kickoff/SKILL.md`
 - `.claude/skills/methodology/SKILL.md`
+- `.claude/skills/learn/SKILL.md`
+- `.claude/skills/teach/SKILL.md`
 - `.claude/agents/phase-planner.md`
 - `.claude/agents/plan-reviewer.md`
 - `.claude/agents/phase-coder.md`
@@ -124,11 +126,14 @@ Copy these files **from this template** into the new project, then run a name su
 - `.codex/agents/phase-coder.toml`
 - `.codex/agents/code-critic.toml`
 - `.codex/prompts/kickoff.md`
+- `.codex/prompts/methodology.md`
+- `.codex/prompts/learn.md`
+- `.codex/prompts/teach.md`
 - Every file under `policies/`
 - `briefs/methodology.md` (verbatim — methodology is universal)
 - `briefs/agentic-bootstrap.md` (verbatim — so the next bootstrap from this project is possible)
 
-**Do not** copy `.claude/skills/starter/` (this skill itself) or `.codex/prompts/starter.md`. The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too.
+**Do not** copy `.claude/skills/starter/` (this skill itself) or `.codex/prompts/starter.md`. The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too. `/learn` and `/teach` *are* carried over — they are universal cross-repo skills that benefit every methodology-following project.
 
 ### Step 3 — Write the project-specific files
 

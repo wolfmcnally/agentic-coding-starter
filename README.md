@@ -15,7 +15,8 @@ The template ships with:
 - A **methodology** (eleven-step pipeline, see [`briefs/methodology.md`](briefs/methodology.md)) that takes you from idea to shipped code.
 - A **`/kickoff` skill** that orchestrates one phase of work end-to-end: plan → plan-review → code → code-review → build → log.
 - Four **canonical agent roles** (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`) defined once and mirrored to every supported harness.
-- A **`/starter` skill** for stamping out new repos from this one.
+- A **`/starter` skill** (starter-template-only) for stamping out new repos from this one.
+- **`/learn` and `/teach` skills** (universal — carried into every derived project) for moving patterns *between* methodology-following repos. `/learn` absorbs patterns from another repo into the current one; `/teach` sends patterns from the current repo out to a target. Both are plan-first: the user approves before any file changes.
 - A **`plan/` ledger** (status table, dependency graph, cross-cutting concerns) where work is tracked phase by phase.
 - A **`briefs/` library** for durable design decisions and methodology notes.
 - A **`policies/` library** for the rules every phase must respect.
@@ -117,8 +118,10 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 ├── .claude/                        ← Claude Code agent definitions
 │   ├── skills/
 │   │   ├── kickoff/SKILL.md        ←   phase orchestrator
-│   │   ├── starter/SKILL.md        ←   new-project bootstrapper
-│   │   └── methodology/SKILL.md    ←   the eleven steps (self-contained)
+│   │   ├── methodology/SKILL.md    ←   the eleven steps (self-contained)
+│   │   ├── learn/SKILL.md          ←   absorb patterns FROM another repo (universal)
+│   │   ├── teach/SKILL.md          ←   send patterns TO another repo (universal)
+│   │   └── starter/SKILL.md        ←   new-project bootstrapper (starter-only)
 │   └── agents/
 │       ├── phase-planner.md
 │       ├── plan-reviewer.md
@@ -132,6 +135,9 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
     │   └── code-critic.toml
     └── prompts/
         ├── kickoff.md              ← Codex slash-command entry point
+        ├── methodology.md
+        ├── learn.md
+        ├── teach.md
         └── starter.md
 ```
 
@@ -190,6 +196,17 @@ The same workflow runs in Claude Code, Codex CLI, and other agent hosts. The con
 See [`policies/cross-harness-parity.md`](policies/cross-harness-parity.md) for the rules and the onboarding procedure for adding a third harness.
 
 ---
+
+## Cross-repo knowledge transfer: `/learn` and `/teach`
+
+Once you have more than one methodology-following project, patterns evolve in one and stop in another. Two universal skills handle the round trip:
+
+- **`/learn <donor-dir> [<desc>]`** — Run from inside *this* repo. Explores `<donor-dir>` for patterns (skills, policies, briefs, agent refinements, build-gate idioms, even domain specializations) and proposes which to absorb. The donor stays read-only. You get a plan ranked by generality (methodology-level first, language specializations later, domain specializations last). Nothing is written here until you approve.
+- **`/teach <target-dir> [<desc>]`** — The inverse. Run from inside *this* repo. Proposes which of *this* repo's patterns to apply to `<target-dir>` — useful for upgrading a previously-stamped project that has fallen behind, or retrofitting an existing project with the methodology. This repo stays read-only. The target's custom skills, agents, briefs, and active phase work are preserved by default.
+
+Both skills are carried into every project `/starter` stamps out, so any methodology-following project can `/learn` from any other and `/teach` to any other.
+
+The `<desc>` argument narrows intent. Omit it for a broad assessment that defaults to general-purpose improvements; supply it to focus on a specific surface ("focus on the testing setup", "Unity specialization", "just the policies").
 
 ## First-time setup
 

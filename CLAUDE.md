@@ -41,8 +41,10 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 - `pyproject.toml` — project metadata; pinned tooling; entry points.
 - `.claude/skills/` — slash-command surface for Claude Code.
   - `kickoff/SKILL.md` orchestrates one phase end-to-end.
-  - `starter/SKILL.md` stamps out a new project from this template.
   - `methodology/SKILL.md` exposes the eleven steps as a slash command.
+  - `learn/SKILL.md` — explores another repo for patterns worth absorbing INTO this one, produces a plan, applies on approval. Universal — `/starter` carries it into every derived project.
+  - `teach/SKILL.md` — applies patterns FROM this repo to another repo, produces a plan, applies on approval. Universal — `/starter` carries it into every derived project.
+  - `starter/SKILL.md` — starter-only meta-skill. Stamps out a new project from this template. Not carried into derived projects.
 - `.claude/agents/` — canonical role definitions invoked by `/kickoff`: `phase-planner.md`, `plan-reviewer.md`, `phase-coder.md`, `code-critic.md`. These are the four roles in the methodology's planner → reviewer → coder → critic loop; do not invoke them by hand for full-phase work unless deliberately bypassing orchestration.
 - `.codex/agents/` — Codex CLI mirrors of the four canonical roles (TOML).
 - `.codex/prompts/` — Codex slash-command entry points for `/kickoff` and `/starter`.
@@ -106,7 +108,9 @@ Terms used consistently across briefs, skills, policies, and code. Mismatched us
 - **Phase.** One unit of phased work. A phase file (`plan/phase-N.md`) holds Goal, Deliverables, Acceptance, and Brief refs. Status lives in `plan/INDEX.md`.
 - **Sub-phase.** A child of a major phase (`plan/phase-N.M.md`), produced by decomposing the parent at the moment the parent becomes the next phase to work.
 - **`/kickoff`.** The orchestrator skill. Runs one phase end-to-end through planner → reviewer → coder → critic. Writes START/END to `LOG.md`. Does not write code itself.
-- **`/starter`.** The bootstrapping skill. Stamps out a new project in a different directory using *this* repo as the master template.
+- **`/starter`.** The starter-template-only bootstrapping skill. Stamps out a new project in a different directory using *this* repo as the master template.
+- **`/learn`.** Universal cross-repo skill. Explores a donor repo and proposes which of its patterns to absorb into the current repo. Plan-first; user approves; then applies. The donor stays read-only.
+- **`/teach`.** Universal cross-repo skill. Inverse of `/learn`. Proposes which of the current repo's patterns to apply to a target repo. Plan-first; user approves; then applies to the target. The current repo stays read-only during teaching.
 - **The four canonical agents.** `phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`. Their names are load-bearing — `/kickoff` invokes them by name. Their definitions live in `.claude/agents/` (canonical) and `.codex/agents/` (mirror).
 - **Build gate.** A shell command (or sequence) the orchestrator runs after the coder finishes, to confirm the code still builds, lints, types, and tests clean.
 - **Acceptance.** The empirical criteria the phase declares for being "done." May include shell-command checks and named manual checks. The human signs off.

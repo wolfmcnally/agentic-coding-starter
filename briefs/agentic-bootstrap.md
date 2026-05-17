@@ -52,6 +52,10 @@ A project derived from this template contains the following **portable structure
     skills/
       kickoff/SKILL.md     # Phase orchestrator
       methodology/SKILL.md # Self-contained methodology reference
+      learn/SKILL.md       # Universal cross-repo skill: absorb patterns into
+                           #   THIS repo from another
+      teach/SKILL.md       # Universal cross-repo skill: apply THIS repo's
+                           #   patterns to another
       # /starter is NOT carried over — the new project doesn't need to stamp
       # out more projects from itself by default
     agents/
@@ -68,6 +72,9 @@ A project derived from this template contains the following **portable structure
       code-critic.toml
     prompts/
       kickoff.md
+      methodology.md
+      learn.md
+      teach.md
 
   <language-skeleton>/     # A minimal working code surface for the project's
                            #   primary language; see "Per-project surface" below
@@ -102,12 +109,17 @@ These files encode the methodology itself, not any particular product. Copy them
 
 - `.claude/skills/kickoff/SKILL.md`
 - `.claude/skills/methodology/SKILL.md`
+- `.claude/skills/learn/SKILL.md` (universal cross-repo skill)
+- `.claude/skills/teach/SKILL.md` (universal cross-repo skill)
 - `.claude/agents/phase-planner.md`
 - `.claude/agents/plan-reviewer.md`
 - `.claude/agents/phase-coder.md`
 - `.claude/agents/code-critic.md`
 - `.codex/agents/*.toml`
 - `.codex/prompts/kickoff.md`
+- `.codex/prompts/methodology.md`
+- `.codex/prompts/learn.md`
+- `.codex/prompts/teach.md`
 - `AGENTS.md` symlink → `CLAUDE.md`
 - Every file under `policies/` (these are universal by design)
 - `briefs/methodology.md`
@@ -133,12 +145,12 @@ These files have a stable shape and a project-specific body. Mirror the shape; w
 
 ### 2c. Do not transfer (template-specific)
 
-- `.claude/skills/starter/SKILL.md` — the new project doesn't need to stamp out more projects from itself, unless it explicitly wants to be a template too.
+- `.claude/skills/starter/SKILL.md` — the new project doesn't need to stamp out more projects from itself, unless it explicitly wants to be a template too. (Note: `/learn` and `/teach` *are* carried over — they are universal cross-repo skills, not starter-specific.)
 - `.codex/prompts/starter.md` — same reason.
 - The starter template's own `plan/phase-1.md` (which is a placeholder for "decide what you're building") — replace it entirely with the new project's real Phase 1.
 - The starter template's `example/` Python package and `tests/test_cli.py` — replace with the new project's surface, in whatever language(s) the project uses.
 
-If in doubt, ask: "does this file describe the methodology, or does it describe the template itself?" Methodology files transfer; template-specific files don't.
+If in doubt, ask: "does this file describe the methodology or a universally useful agentic capability, or does it describe the template itself?" Methodology and universal-capability files transfer; template-specific files don't.
 
 ---
 
@@ -243,12 +255,17 @@ Copy verbatim, then adapt project names and surface-specific build-gate commands
 
 - `.claude/skills/kickoff/SKILL.md`
 - `.claude/skills/methodology/SKILL.md`
+- `.claude/skills/learn/SKILL.md`
+- `.claude/skills/teach/SKILL.md`
 - `.claude/agents/phase-planner.md`
 - `.claude/agents/plan-reviewer.md`
 - `.claude/agents/phase-coder.md`
 - `.claude/agents/code-critic.md`
 - `.codex/agents/*.toml`
 - `.codex/prompts/kickoff.md`
+- `.codex/prompts/methodology.md`
+- `.codex/prompts/learn.md`
+- `.codex/prompts/teach.md`
 
 Adaptations to make in each:
 
@@ -401,10 +418,13 @@ Bootstrap is complete when **all** of the following hold:
 [ ] .claude/skills/kickoff/SKILL.md exists, adapted for this project's
     surfaces and build gates
 [ ] .claude/skills/methodology/SKILL.md exists (verbatim from template)
+[ ] .claude/skills/learn/SKILL.md exists (verbatim from template)
+[ ] .claude/skills/teach/SKILL.md exists (verbatim from template)
+[ ] .claude/skills/starter/ does NOT exist (starter-only meta-skill)
 [ ] .claude/agents/{phase-planner,plan-reviewer,phase-coder,code-critic}.md
     exist, adapted for this project
 [ ] .codex/agents/*.toml mirrors exist
-[ ] .codex/prompts/kickoff.md exists
+[ ] .codex/prompts/{kickoff,methodology,learn,teach}.md exist
 [ ] Every file in policies/ from the template exists, with project-name
     references updated
 [ ] No template-specific skills, briefs, or example code remain in the new
