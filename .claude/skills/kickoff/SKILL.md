@@ -164,6 +164,9 @@ Build status:
 Manual checks for user:
 - <named check> | None
 
+User demo (per `policies/user-demo-protocols.md`):
+<If the approved plan carried a `User Demo:` block, paste it verbatim here, with the entry-point command on its own line so the user can copy it directly. If the plan declared `User Demo: N/A — <reason>`, restate that line.>
+
 Remaining:
 - <anything significant left incomplete, or "None">
 ```

@@ -56,6 +56,7 @@ Evaluate in priority order:
 - **Policies are the law.** Every applicable policy is honored. A policy violation in the plan is a blocking issue.
 - **Status lives in one place.** The plan does not propose adding `status:` to per-phase frontmatter or recording status anywhere outside `plan/INDEX.md`.
 - **Acceptance is empirical.** Manual checks are flagged as such; every other acceptance item maps to a Build Gate Sequence command.
+- **User demo protocols.** Per `policies/user-demo-protocols.md`, every phase addresses the policy explicitly: either with a `User Demo:` block (entry point, suggested inputs, what to look for, variations) when the phase touches a user-facing surface AND has something interactive to try, or with a `User Demo: N/A — <reason>` line otherwise. Silence is blocking. A contrived or trivially-deterministic "demo" is blocking — push back and recommend `N/A` instead.
 - **Repo-relative paths only.** No absolute paths in any committed file path the plan proposes.
 - **Cross-harness parity.** If the plan touches `.claude/`, it also touches the matching `.codex/` (or other harness) mirror, or explicitly relies on a symlink that exists.
 - **Human decides done.** The plan does not include auto-commits, silent gate skips, or claims of subjective acceptance.

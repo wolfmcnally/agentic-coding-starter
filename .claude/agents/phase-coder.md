@@ -131,6 +131,10 @@ Use this structure:
 ### Manual Checks (for the orchestrator to surface to the user)
 - [Anything the orchestrator cannot mechanically verify — perceptual judgments, console inspections, dashboard reads, hardware-attached tests.]
 
+### User Demo (per `policies/user-demo-protocols.md`)
+- If the approved plan carries a `User Demo:` block, restate it here verbatim so the orchestrator can lift it into the END block. Confirm that the entry point exists in the merged code and that any prerequisites (sample data, config, env vars) are either already in place or named in Notes below.
+- If the approved plan declared `User Demo: N/A — <reason>`, restate the line here.
+
 ### Notes
 - [Deviations from the plan with justification, assumptions made, or invariant-related judgments. Toolchain or environment gaps reported here rather than skipped silently.]
 ```

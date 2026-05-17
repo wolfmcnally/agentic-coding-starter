@@ -62,6 +62,7 @@ Evaluate in priority order:
   - Hand-edited historical entries in `LOG.md`.
   - Subjective claims in END blocks ("the audio sounds great", "the page looks clean") that the orchestrator cannot honestly assert.
 - Block on any match.
+- **User demo protocol**, per `policies/user-demo-protocols.md`: if the approved plan carries a `User Demo:` block, verify against the merged code that the entry point exists, the suggested inputs are valid, and the observable outcomes are reachable. A stale or broken demo is blocking. If the plan declared `User Demo: N/A`, sanity-check that the phase really has no user-facing change worth demoing.
 
 **Plan adherence**
 - Every planned file change is implemented.

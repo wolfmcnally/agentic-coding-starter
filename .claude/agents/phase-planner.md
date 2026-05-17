@@ -126,6 +126,7 @@ For each:
 - **Integration tests** (if applicable): [what and where]
 - **Smokes** (if applicable): [end-to-end commands]
 - **Manual checks**: [what a human will need to verify that the orchestrator cannot mechanize]
+- **User Demo**: a `User Demo:` block per `policies/user-demo-protocols.md` (entry point, suggested inputs, what to look for, variations to explore) when this phase touches a user-facing surface AND there is something meaningful to try interactively. Otherwise, a `User Demo: N/A — <reason>` line. Address the policy explicitly either way; do not fabricate a contrived demo to fill the slot.
 
 ## Build Gate Sequence
 List the exact shell commands the orchestrator should run after implementation, in order. These come from the project's CLAUDE.md (conventions) and the phase file's surface list. Typical Python project example:
