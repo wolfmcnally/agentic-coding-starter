@@ -187,7 +187,7 @@ Write a minimal-but-runnable code skeleton in the project's primary language. Th
 - `<slug>/__init__.py` with version export.
 - `<slug>/cli.py` with an argparse entry point that responds to `--help` and a stub subcommand.
 - `tests/test_cli.py` with one passing test (e.g., asserts `--help` exits 0).
-- Top-level `.gitignore` (at repo root, not under `project/`) with Python plus agentic runtime-state entries.
+- `.gitignore` listing Python build artifacts (`__pycache__/`, `*.py[cod]`, `*.egg-info/`, `build/`, `dist/`, `.venv/`, `.pytest_cache/`, `.ruff_cache/`, `.mypy_cache/`, `.coverage`).
 
 **TypeScript / Node (paths inside `project/`):**
 - `package.json` with `scripts: { lint, test, typecheck }`.
@@ -196,14 +196,14 @@ Write a minimal-but-runnable code skeleton in the project's primary language. Th
 - `src/index.ts` exporting a stub function.
 - `tests/index.test.ts` with one passing test.
 - ESLint and Prettier config files.
-- Top-level `.gitignore` with Node plus agentic runtime-state entries.
+- `.gitignore` listing Node build artifacts (`node_modules/`, `dist/`, `build/`, `coverage/`).
 
 **Rust (paths inside `project/`):**
 - `Cargo.toml` with `[package]` and one binary or one library entry.
 - Concise `README.md`.
 - `src/main.rs` (binary) or `src/lib.rs` (library) with a `--help`-handling entry point or a stub function.
 - `tests/smoke.rs` with one passing test.
-- Top-level `.gitignore` with `target/` plus agentic runtime-state entries.
+- `.gitignore` listing `target/`.
 
 **Go (paths inside `project/`):**
 - `go.mod` with the module path.
@@ -211,11 +211,13 @@ Write a minimal-but-runnable code skeleton in the project's primary language. Th
 - `cmd/<slug>/main.go` with a stub flag-parsing main.
 - `internal/<slug>/<slug>.go` with a stub exported function.
 - `internal/<slug>/<slug>_test.go` with one passing test.
-- Top-level `.gitignore` with Go plus agentic runtime-state entries.
+- `.gitignore` listing Go build artifacts.
 
-**Other languages:** apply the same pattern — package metadata, one source file with a stub entry, one passing test, a concise README.
+**Other languages:** apply the same pattern — package metadata, one source file with a stub entry, one passing test, a concise README, the language's `.gitignore` inside `project/`.
 
-The artifact's `README.md` is short and self-contained (no `..` references) per [`policies/project-isolation.md`](../../../policies/project-isolation.md). The repo's didactic top-level `README.md` describes the methodology and points at `project/` for the artifact.
+The artifact's `README.md` is short and self-contained (no `..` references) per [`policies/project-isolation.md`](../../../policies/project-isolation.md). The deliverable's `.gitignore` lives inside `project/` so submodule extraction carries it. The repo's top-level `.gitignore` lists only editor/OS files and the agentic harness runtime state. The repo's didactic top-level `README.md` describes the methodology and points at `project/` for the artifact.
+
+When `project_isolation` is disabled (polyglot), there is no `project/.gitignore`; all language entries live at the repo root in a single combined `.gitignore`.
 
 ### Step 5 — Customize the kickoff skill's build gates
 

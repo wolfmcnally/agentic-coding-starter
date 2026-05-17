@@ -30,6 +30,7 @@ Everything that is *the deliverable*:
 - Tests (the test directory)
 - Build outputs (gitignored)
 - The artifact's own configuration (`tsconfig.json`, `ruff.toml` if separate, etc.)
+- The deliverable's own `.gitignore` listing the language's build artifacts, virtual envs, tool caches. When `project/` is extracted as a submodule it carries these ignores with it.
 - An optional `README.md` for the artifact — usually concise; the repo's top-level `README.md` is the didactic one
 
 ## What stays at the repo root
@@ -43,6 +44,7 @@ Project *governance metadata* — the scaffolding that builds and supervises the
 - `CLAUDE.md` / `AGENTS.md` — top-level agent guidance
 - `.claude/` / `.codex/` — agent definitions, skills, harness mirrors
 - `README.md` — didactic top-level for human readers
+- `.gitignore` — editor/OS files and agentic harness runtime state only. The deliverable's language-specific build-artifact ignores live in `project/.gitignore`.
 
 These are *about* the project but not *part* of it. The plan describes the work; the work happens under `project/`. The LOG records what was done; the doing happened under `project/`.
 
