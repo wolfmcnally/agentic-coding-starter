@@ -72,6 +72,7 @@ These are the universals the template ships with. A project derived from this te
 | `phase-coder` agent (canonical)      | [`../.claude/agents/phase-coder.md`](../.claude/agents/phase-coder.md) |
 | `code-critic` agent (canonical)      | [`../.claude/agents/code-critic.md`](../.claude/agents/code-critic.md) |
 | Codex mirrors                        | `../.codex/agents/*.toml`, `../.codex/prompts/*.md`       |
-| Example Python project               | `../example/`                                             |
-| Example test suite                   | `../tests/`                                               |
-| Project metadata                     | [`../pyproject.toml`](../pyproject.toml)                  |
+| Deliverable artifact (self-contained)| `../project/` (per [`../policies/project-isolation.md`](../policies/project-isolation.md)) |
+| Example Python package               | `../project/example/`                                     |
+| Example test suite                   | `../project/tests/`                                       |
+| Project metadata                     | [`../project/pyproject.toml`](../project/pyproject.toml)  |

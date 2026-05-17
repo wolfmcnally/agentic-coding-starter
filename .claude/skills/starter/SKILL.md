@@ -57,8 +57,9 @@ The skill needs five pieces of information to customize the new project:
 | `project_name` | Brand name; appears in README, CLAUDE.md, BRIEF.md | Derive from the final path segment (camel-case it: `my-tool` → `MyTool`) |
 | `project_slug` | Lowercase-kebab; appears in package names, directory names | The final path segment |
 | `description` | One-line thesis | The `<description>` argument, or "(to be written)" |
-| `primary_language` | Drives the example surface and the build gate commands | Inferred from description heuristics; defaults to `python` |
+| `primary_language` | Drives the deliverable's code skeleton and build gate commands | Inferred from description heuristics; defaults to `python` |
 | `surfaces` | List of repo surfaces (e.g., `cli`, `library`, `web`, `service`) | Inferred; defaults to `[cli]` |
+| `project_isolation` | Whether to adopt the `project/` subdirectory convention per [`policies/project-isolation.md`](../../../policies/project-isolation.md) | Default *opt-in* for single-deliverable projects (`cli`, `library`, `service`, `book`); default *opt-out* for polyglot or multi-deliverable repos (`surfaces` length > 1 with siblings like `web`+`service`) |
 
 **Inference heuristics** (apply only when `<description>` is informative):
 
@@ -96,18 +97,24 @@ Follow [`briefs/agentic-bootstrap.md` §3](../../../briefs/agentic-bootstrap.md)
   plan/
   .claude/skills/kickoff/
   .claude/skills/methodology/
+  .claude/skills/learn/
+  .claude/skills/teach/
   .claude/agents/
   .codex/agents/
   .codex/prompts/
 ```
 
-Plus the language-specific directories:
+Plus the language-specific deliverable directories. When `project_isolation` is enabled (the default for single-deliverable projects), the deliverable goes under `project/`:
 
-- Python: `<slug>/`, `tests/`
-- TypeScript: `src/`, `tests/`
-- Rust: `src/`, `tests/`
-- Go: `cmd/<slug>/`, `internal/`
-- Other: appropriate convention
+- Python: `project/<slug>/`, `project/tests/`
+- TypeScript: `project/src/`, `project/tests/`
+- Rust: `project/src/`, `project/tests/`
+- Go: `project/cmd/<slug>/`, `project/internal/`
+- Other: appropriate convention, all under `project/`
+
+When `project_isolation` is disabled (polyglot or multi-deliverable repos), the deliverable directories live at the repo root as siblings, with no `project/` wrapper:
+
+- Polyglot example: `web/`, `lambda/<svc>/`, `cdk/`, etc. as top-level siblings.
 
 ### Step 2 — Copy verbatim, adapt names
 
@@ -172,39 +179,47 @@ Author these afresh, using the gathered configuration:
 
 Write a minimal-but-runnable code skeleton in the project's primary language. The intent is that the project's build gates can be run successfully on first clone — Phase 1 then fleshes out the real behavior.
 
-**Python:**
+**Path convention.** All paths below are written assuming `project_isolation` is enabled (the default for single-deliverable projects). Prefix every path with `project/` when laying files down. If `project_isolation` is disabled, drop the `project/` prefix and lay files at the repo root.
+
+**Python (paths inside `project/`):**
 - `pyproject.toml` with `[project]` metadata, `[tool.ruff]`, `[tool.pytest.ini_options]`, dev deps `ruff`, `pytest`.
+- A concise `README.md` for the artifact (the repo's didactic README is at the root).
 - `<slug>/__init__.py` with version export.
 - `<slug>/cli.py` with an argparse entry point that responds to `--help` and a stub subcommand.
 - `tests/test_cli.py` with one passing test (e.g., asserts `--help` exits 0).
-- `.gitignore` with Python plus agentic runtime-state entries.
+- Top-level `.gitignore` (at repo root, not under `project/`) with Python plus agentic runtime-state entries.
 
-**TypeScript / Node:**
+**TypeScript / Node (paths inside `project/`):**
 - `package.json` with `scripts: { lint, test, typecheck }`.
 - `tsconfig.json`.
+- Concise `README.md`.
 - `src/index.ts` exporting a stub function.
 - `tests/index.test.ts` with one passing test.
 - ESLint and Prettier config files.
-- `.gitignore` with Node plus agentic runtime-state entries.
+- Top-level `.gitignore` with Node plus agentic runtime-state entries.
 
-**Rust:**
+**Rust (paths inside `project/`):**
 - `Cargo.toml` with `[package]` and one binary or one library entry.
+- Concise `README.md`.
 - `src/main.rs` (binary) or `src/lib.rs` (library) with a `--help`-handling entry point or a stub function.
 - `tests/smoke.rs` with one passing test.
-- `.gitignore` with `target/` plus agentic runtime-state entries.
+- Top-level `.gitignore` with `target/` plus agentic runtime-state entries.
 
-**Go:**
+**Go (paths inside `project/`):**
 - `go.mod` with the module path.
+- Concise `README.md`.
 - `cmd/<slug>/main.go` with a stub flag-parsing main.
 - `internal/<slug>/<slug>.go` with a stub exported function.
 - `internal/<slug>/<slug>_test.go` with one passing test.
-- `.gitignore` with Go plus agentic runtime-state entries.
+- Top-level `.gitignore` with Go plus agentic runtime-state entries.
 
-**Other languages:** apply the same pattern — package metadata, one source file with a stub entry, one passing test.
+**Other languages:** apply the same pattern — package metadata, one source file with a stub entry, one passing test, a concise README.
+
+The artifact's `README.md` is short and self-contained (no `..` references) per [`policies/project-isolation.md`](../../../policies/project-isolation.md). The repo's didactic top-level `README.md` describes the methodology and points at `project/` for the artifact.
 
 ### Step 5 — Customize the kickoff skill's build gates
 
-Open `<dest>/.claude/skills/kickoff/SKILL.md` and replace the **Final build gate** example commands with the project's actual gates. The template's defaults reference the Python `example/` package; adapt to the project's primary language.
+Open `<dest>/.claude/skills/kickoff/SKILL.md` and replace the **Final build gate** example commands with the project's actual gates. The template's defaults reference the Python `project/example/` package; adapt to the project's primary language. Keep the `cd project && ...` prefix when `project_isolation` is enabled; drop it otherwise.
 
 ### Step 6 — Initialize git
 
@@ -231,15 +246,13 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - The new `CLAUDE.md`'s catalogs reference every file in `briefs/` and `policies/`.
 - The project's primary build gate runs clean on the seeded code.
 
-Run the language-specific gate to confirm. For example, for Python:
+Run the language-specific gate to confirm. For example, for Python with `project_isolation` enabled:
 
 ```
-cd <dest>
-uv sync   # if uv is used
-uv run ruff check <slug> tests
-uv run ruff format --check <slug> tests
-uv run pytest -q
+cd <dest>/project && uv sync && uv run ruff check <slug> tests && uv run ruff format --check <slug> tests && uv run pytest -q
 ```
+
+When `project_isolation` is disabled, drop the `/project` segment.
 
 If any step fails, surface the failure and let the user fix it before declaring the bootstrap complete.
 

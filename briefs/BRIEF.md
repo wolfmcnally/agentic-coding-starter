@@ -31,7 +31,7 @@ See [`CLAUDE.md` — Briefs catalog](../CLAUDE.md#briefs-catalog) for the index 
 - **A `briefs/` library.** Durable design decisions and methodology notes.
 - **A `policies/` library.** The non-negotiable rules every phase respects.
 - **A `LOG.md`.** Append-only activity log, owned by `/kickoff`.
-- **A minimal example project.** A tiny Python package (`example/`) so build gates have a real target to lint and test against from the first session.
+- **A minimal example project.** A tiny Python package under `project/example/` so build gates have a real target to lint and test against from the first session. The deliverable lives under `project/` per [`../policies/project-isolation.md`](../policies/project-isolation.md), making it submodule-ready once the project is real.
 
 ## 2. Two operating modes
 
@@ -53,7 +53,7 @@ The new project comes up ready to `/kickoff`. The old template repo is unchanged
 
 A secondary mode used to validate that the template actually works, and to give human readers a fully working example. If a user opens *this* repo in an agent host and types `/kickoff`, the orchestrator picks up Phase 1 from [`../plan/INDEX.md`](../plan/INDEX.md) and walks through the full plan → review → code → review → build → log cycle against the example Python project.
 
-In Mode B, the example project under `example/` is the build target. In Mode A, the example may be deleted or replaced as soon as the new project's real surface lands.
+In Mode B, the example project under `project/example/` is the build target. In Mode A, the example may be deleted or replaced as soon as the new project's real surface lands.
 
 ## 3. Who this is for
 
@@ -95,7 +95,7 @@ The template is acceptable when:
 
 - A user clones this repo, opens it in Claude Code (or Codex CLI), and types `/kickoff` — and the orchestrator picks up Phase 1, walks through plan → plan-review → code → code-review → build → log, and produces a START/END pair in `LOG.md` with a non-empty Files changed section.
 - A user types `/starter ~/some-new-dir "build a small CLI that fetches the time from an NTP server"` — and ends up with a populated new directory that itself satisfies the bullet above, with project-specific naming everywhere references appear.
-- The example Python project under `example/` exists and passes its build gates (`ruff check`, `ruff format --check`, `pytest -q`) on first clone.
+- The example Python project under `project/example/` exists and passes its build gates from inside `project/` (`cd project && uv run ruff check example tests && uv run ruff format --check example tests && uv run pytest -q`) on first clone.
 - No file in this repo references Wolf McNally, his email, his other projects, or any third-party PII. The template is distributable.
 - Every file under `briefs/` is listed in `CLAUDE.md`'s Briefs catalog, and every file in the catalog exists. No orphans either way.
 - Every file under `policies/` is listed in `CLAUDE.md`'s Policies catalog, and every file in the catalog exists. No orphans either way.

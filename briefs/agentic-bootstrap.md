@@ -76,8 +76,16 @@ A project derived from this template contains the following **portable structure
       learn.md
       teach.md
 
-  <language-skeleton>/     # A minimal working code surface for the project's
-                           #   primary language; see "Per-project surface" below
+  project/                 # When project-isolation is enabled (default for
+                           #   single-deliverable projects), the artifact lives
+                           #   here, self-contained per
+                           #   policies/project-isolation.md. Otherwise the
+                           #   <language-skeleton> directories live at the
+                           #   repo root as siblings.
+    pyproject.toml         # (or package.json / Cargo.toml / go.mod)
+    README.md              # concise, artifact-only
+    <slug>/                # package directory
+    tests/
 ```
 
 **Status legend** used in `plan/INDEX.md` and nowhere else:
@@ -324,16 +332,21 @@ Sub-phase files (`plan/phase-1.1.md`, etc.) follow the same frontmatter shape wi
 
 ### Step 9 — Lay down the project's primary code surface
 
-The template's example is Python. The new project may be Python, TypeScript, Rust, Go, Swift, Kotlin, a polyglot, or pure documentation. Lay down:
+The template's example is Python. The new project may be Python, TypeScript, Rust, Go, Swift, Kotlin, a polyglot, or pure documentation.
+
+**Decide first whether to adopt the `project/` convention** ([`../policies/project-isolation.md`](../policies/project-isolation.md)). The default for a single-deliverable project is opt-in: the artifact goes under `project/` and the build gates run as `cd project && <commands>`. The default for polyglot or multi-deliverable repos is opt-out: deliverable directories live at the repo root as siblings.
+
+Lay down (paths assume `project_isolation` enabled — prefix with `project/`; drop the prefix when disabled):
 
 - The package-manager file (`pyproject.toml`, `package.json`, `Cargo.toml`, `go.mod`, etc.) with pinned tooling and minimum dependencies.
+- A concise `README.md` for the artifact (self-contained, no `..` references).
 - The package directory with empty modules.
 - The test directory with one trivial test that passes (so the build gate has something to run on first kickoff).
-- A `.gitignore` clause for the language's build artifacts.
+- A `.gitignore` clause at the repo root for the language's build artifacts.
 
 Build gates the orchestrator should run are whatever the language ecosystem provides: lint (e.g., `ruff check` / `eslint` / `cargo clippy`), format check (e.g., `ruff format --check` / `prettier --check` / `cargo fmt --check`), test (e.g., `pytest -q` / `npm test` / `cargo test`).
 
-Adapt the `kickoff` skill's "Final build gate" section to call these commands for the surfaces this project actually has.
+Adapt the `kickoff` skill's "Final build gate" section to call these commands for the surfaces this project actually has. Use the `cd project && <cmd>` shape when `project_isolation` is enabled.
 
 ### Step 10 — Sanity-check the bootstrap
 

@@ -65,7 +65,7 @@ For Option B:
 
 - `head -1 ../briefs/BRIEF.md` shows the user's project title, not "Agentic Coding Starter Template".
 - `head -3 plan/phase-1.md` shows the user's real Phase 1 title in the frontmatter.
-- The example Python project's gates still pass (`uv run ruff check example tests && uv run ruff format --check example tests && uv run pytest -q`), unless the user has replaced it with a different surface — in which case the new surface's gates pass.
+- The example Python project's gates still pass (`cd project && uv run ruff check example tests && uv run ruff format --check example tests && uv run pytest -q`), unless the user has replaced it with a different surface — in which case the new surface's gates pass.
 - `/kickoff phase 1` invoked after the rewrite picks up the user's real Phase 1 and walks through plan → plan-review → code → code-review → build for it.
 
 ## Brief refs

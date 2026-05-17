@@ -107,15 +107,13 @@ Even though the coder ran the build commands, re-run them in the orchestrator co
 
 Identify "touched surfaces" by looking at the files the coder reported plus `git status`. Then run the gates declared in the plan's **Build Gate Sequence** section, in order.
 
-The project's primary build gates come from the project's actual tooling. For the **Agentic Coding Starter Template itself**, the example Python project has these gates:
+The project's primary build gates come from the project's actual tooling. For the **Agentic Coding Starter Template itself**, the example Python project lives under `project/` per [`policies/project-isolation.md`](../../../policies/project-isolation.md), so the gates are:
 
 ```
-uv run ruff check example tests
-uv run ruff format --check example tests
-uv run pytest -q
+cd project && uv run ruff check example tests && uv run ruff format --check example tests && uv run pytest -q
 ```
 
-A project derived from this template via `/starter` may have different gates — Node, Rust, Go, polyglot. The planner is responsible for listing them; the orchestrator runs whatever the planner listed.
+The `cd project && ...` pattern is the canonical shape (single executable line; uniform across language ecosystems). Projects that opt out of the `project/` convention put the metadata at the root and drop the `cd project &&` prefix. A project derived from this template via `/starter` may have different gates — Node, Rust, Go, polyglot. The planner is responsible for listing them; the orchestrator runs whatever the planner listed.
 
 If any build gate fails:
 

@@ -92,7 +92,16 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 ├── CLAUDE.md                       ← top-level guidance for agents
 ├── AGENTS.md                       ← symlink → CLAUDE.md (for Codex/aider)
 ├── LOG.md                          ← append-only activity log
-├── pyproject.toml                  ← Python example project metadata
+├── project/                        ← the deliverable (self-contained per
+│   │                                  policies/project-isolation.md)
+│   ├── pyproject.toml              ←   package metadata
+│   ├── uv.lock
+│   ├── example/                    ←   source code
+│   │   ├── __init__.py
+│   │   └── cli.py
+│   ├── tests/                      ←   pytest suite
+│   │   └── test_cli.py
+│   └── README.md                   ←   the artifact's own quickstart
 ├── briefs/                         ← durable design + methodology library
 │   ├── BRIEF.md                    ←   entry-point brief for *this* repo
 │   ├── methodology.md              ←   the eleven-step methodology
@@ -106,15 +115,11 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── repo-relative-paths.md
 │   ├── log-discipline.md
 │   ├── human-in-the-loop.md
-│   └── four-canonical-agents.md
+│   ├── four-canonical-agents.md
+│   └── project-isolation.md        ← isolate deliverable under project/
 ├── plan/                           ← phased execution plan
 │   ├── INDEX.md                    ←   phase ledger (status lives ONLY here)
 │   └── phase-1.md                  ←   first phase (a stub you replace)
-├── example/                        ← minimal Python example
-│   ├── __init__.py
-│   └── cli.py
-├── tests/                          ← pytest suite for the example
-│   └── test_cli.py
 ├── .claude/                        ← Claude Code agent definitions
 │   ├── skills/
 │   │   ├── kickoff/SKILL.md        ←   phase orchestrator

@@ -29,6 +29,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 - [`log-discipline.md`](policies/log-discipline.md) — `LOG.md` is append-only and owned by `/kickoff`. Never hand-edit historical entries.
 - [`human-in-the-loop.md`](policies/human-in-the-loop.md) — the human decides when work is done. The orchestrator never auto-commits, never advances past unresolved gates, never claims subjective acceptance the human owes.
 - [`repo-relative-paths.md`](policies/repo-relative-paths.md) — no absolute `/Users/...` paths in committed files. Bash commands may use absolute paths.
+- [`project-isolation.md`](policies/project-isolation.md) — when the repo has one primary deliverable, isolate it under `project/`; nothing in there references anything above it. Makes the deliverable submodule-ready.
 
 ## Repo layout
 
@@ -36,9 +37,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 - `policies/` — non-negotiable rules. Full catalog above.
 - `plan/` — phased execution plan. Entry point [`plan/INDEX.md`](plan/INDEX.md) (dependency graph, status table, cross-cutting concerns, critical-files map). Each `plan/phase-*.md` holds Goal / Deliverables / Acceptance / brief refs. **When `plan/` and a brief disagree, `plan/` wins.**
 - `LOG.md` — append-only activity log. `/kickoff` writes START on phase entry and END on phase completion. Do not hand-edit historical entries.
-- `example/` — a minimal Python package so the build gates have a real target to lint, type-check, and test against from the first session.
-- `tests/` — pytest suite for `example/`.
-- `pyproject.toml` — project metadata; pinned tooling; entry points.
+- `project/` — the deliverable: package metadata, source, tests, lockfile. Self-contained per [`policies/project-isolation.md`](policies/project-isolation.md) — nothing inside `project/` references anything above it. Currently holds a minimal Python example (`project/example/`, `project/tests/`, `project/pyproject.toml`) so the build gates have a real target from the first session. Build gates run as `cd project && uv run ...` from the repo root.
 - `.claude/skills/` — slash-command surface for Claude Code.
   - `kickoff/SKILL.md` orchestrates one phase end-to-end.
   - `methodology/SKILL.md` exposes the eleven steps as a slash command.
@@ -95,9 +94,10 @@ These are the universals every project derived from this template inherits. The 
 
 - **Python 3.11+** for the example package and any Python the template ships. Type hints on all new public functions; idiomatic stdlib where the difference is small.
 - **`uv` with `pyproject.toml`** is the recommended Python package manager. The example project's gates assume `uv run ...`. Projects derived from this template may switch.
+- **Build gates run from inside `project/`.** Per [`policies/project-isolation.md`](policies/project-isolation.md), invoke as `cd project && uv run <cmd>` from the repo root. This shape is uniform across language ecosystems.
 - **Repo-relative paths only** in committed files (also load-bearing per the invariants).
 - **One executable command per fenced code block** when a code block is meant to be copy-pasted into a shell, so the user can copy individual commands one at a time without breaking on multi-line clipboards.
-- **`pyproject.toml` is the single source of truth** for Python tooling configuration (ruff, pytest, mypy if used).
+- **`project/pyproject.toml` is the single source of truth** for Python tooling configuration (ruff, pytest, mypy if used) in this repo. A project that opts out of the `project/` convention puts it at the repo root.
 
 ## Glossary
 
