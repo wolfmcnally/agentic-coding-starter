@@ -2,7 +2,17 @@
 
 This file provides guidance to coding agents (Claude Code, Codex CLI, and others that read top-level instruction files) when working in this repository.
 
-This file has two zones. **Project Context** is everything specific to *this* repo — the project's thesis, the deliverable's surface, the language conventions, the project-specific briefs and skills. `/starter` rewrites this zone when stamping out a new project. **Methodology Contract** is everything universal to the agentic methodology — methodology briefs, every policy, the phase-work protocol, universal conventions, the glossary. `/starter` copies this zone verbatim. The two zones are demarcated by HTML comment markers; both humans and `/starter` use the markers to find the boundary.
+This file has two zones. **Project Context** is everything specific to *this* repo — the project's thesis, the deliverable's surface, the language conventions, the project-specific briefs and skills. `/starter` rewrites this zone when stamping out a new project. **Methodology Contract** is everything universal to the agentic methodology — methodology briefs, every policy, the phase-work protocol, universal conventions, the glossary. `/starter` copies this zone verbatim. The two zones are demarcated by HTML comment markers; both humans and `/starter` use the markers to find the boundary. Above both zones is a small **Hard rules** section that governs every action regardless of zone — these are too consequential to risk an agent missing them by reading top-down and stopping early.
+
+## Hard rules — read these before any action
+
+These rules govern every action in this repo. They are universal (apply to this template and to every project `/starter` derives from it) and prominently placed so an agent reads them before doing anything irreversible. The full policy text for each is in `policies/`; consult that before bending the rule.
+
+1. **The user initiates all commits and other destructive git operations.** Do not run `git commit`, `git push`, `git tag`, `git reset --hard`, `git branch -D`, `git rebase`, `git checkout --`, `git clean -fd`, or anything that rewrites history or affects shared state — unless the user *explicitly* asks in the current session. Approval from a prior session does not carry forward. When phase work is ready, report it (file list, build-gate status, manual checks) and wait. Full policy: [`policies/human-in-the-loop.md`](policies/human-in-the-loop.md).
+
+2. **Greenfield until released: no backward-compatibility code.** Do not write legacy aliases, `@deprecated` markers, schema migrations to read older formats, transitional code paths, version-conditional branches, or "compat" shims of any kind. When an earlier shape turns out wrong, replace it directly and update every call site, fixture, test, sample data file, brief, plan, and doc in the same phase. This rule ends only when the project ships a stable external release and explicitly amends the policy. Full policy: [`policies/greenfield-until-released.md`](policies/greenfield-until-released.md).
+
+If the user explicitly waives one of these rules for a named scope ("go ahead and commit Phase 1.1 since it's just scaffolding"; "keep the v1 reader for one week so I can re-render"), record the waiver verbatim in the phase's END block. Waivers are one-shot; the next phase reverts to the default.
 
 <!-- PROJECT_CONTEXT_START -->
 
