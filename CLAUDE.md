@@ -6,11 +6,13 @@ This file has two zones. **Project Context** is everything specific to *this* re
 
 ## Hard rules — read these before any action
 
-These rules govern every action in this repo. They are universal (apply to this template and to every project `/starter` derives from it) and prominently placed so an agent reads them before doing anything irreversible. The full policy text for each is in `policies/`; consult that before bending the rule.
+These rules govern every action in this repo. They are placed above both zones so an agent reads them before doing anything irreversible. The full policy text for each is in `policies/`; consult that before bending the rule. Rules 1 and 2 are universal (apply to this template and to every project `/starter` derives from it). Rule 3 is **starter-only** — it does not propagate to derived projects.
 
 1. **The user initiates all commits and other destructive git operations.** Do not run `git commit`, `git push`, `git tag`, `git reset --hard`, `git branch -D`, `git rebase`, `git checkout --`, `git clean -fd`, or anything that rewrites history or affects shared state — unless the user *explicitly* asks in the current session. Approval from a prior session does not carry forward. When phase work is ready, report it (file list, build-gate status, manual checks) and wait. Full policy: [`policies/human-in-the-loop.md`](policies/human-in-the-loop.md).
 
 2. **Greenfield until released: no backward-compatibility code.** Do not write legacy aliases, `@deprecated` markers, schema migrations to read older formats, transitional code paths, version-conditional branches, or "compat" shims of any kind. When an earlier shape turns out wrong, replace it directly and update every call site, fixture, test, sample data file, brief, plan, and doc in the same phase. This rule ends only when the project ships a stable external release and explicitly amends the policy. Full policy: [`policies/greenfield-until-released.md`](policies/greenfield-until-released.md).
+
+3. **Anonymize external-repo references in `LOG.md`. (Starter-only.)** This repo will be public. Every `LOG.md` entry that documents a cross-repo operation — `/learn` from a donor, `/teach` to a target, or any other skill that brings external-repo context into the log — must anonymize external project names, commit SHAs, daemon / CLI / MCP-tool names unique to the external repo, internal repo paths beyond what is structurally identical to this template, and proprietary identifiers, *before the entry is written*. Use `Donor A` / `Donor B` / … to distinguish multiple donors; use `the donor` / `the target` when there is one and no ambiguity. Do not commit unanonymized entries with the intent to fix later — once pushed, the data is leaked even after a later rewrite (SHA still resolves on forks and caches). This rule is starter-only because the asymmetry is driven by this repo's publicness, not by any methodology principle; derived projects' `LOG.md` files are their own business. Full policy: [`policies/anonymize-log-references.md`](policies/anonymize-log-references.md).
 
 If the user explicitly waives one of these rules for a named scope ("go ahead and commit Phase 1.1 since it's just scaffolding"; "keep the v1 reader for one week so I can re-render"), record the waiver verbatim in the phase's END block. Waivers are one-shot; the next phase reverts to the default.
 
@@ -75,6 +77,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 - [`repo-relative-paths.md`](policies/repo-relative-paths.md) — no absolute `/Users/...` paths in committed files. Bash commands may use absolute paths.
 - [`project-isolation.md`](policies/project-isolation.md) — when the repo has one primary deliverable, isolate it under `project/`; nothing in there references anything above it. Makes the deliverable submodule-ready.
 - [`greenfield-until-released.md`](policies/greenfield-until-released.md) — a project is greenfield by default until first stable release. No backward-compatibility shims, legacy aliases, schema migrations, or transitional code paths. Replace old shapes directly.
+- [`anonymize-log-references.md`](policies/anonymize-log-references.md) — **starter-only** (not inherited by derived projects). Every `LOG.md` entry that documents a cross-repo operation must anonymize external project names, commit SHAs, and proprietary identifiers, because this repo will be public.
 
 ## Universal repo layout
 

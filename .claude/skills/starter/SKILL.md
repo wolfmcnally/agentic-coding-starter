@@ -136,11 +136,11 @@ Copy these files **from this template** into the new project, then run a name su
 - `.codex/prompts/methodology.md`
 - `.codex/prompts/learn.md`
 - `.codex/prompts/teach.md`
-- Every file under `policies/`
+- Every file under `policies/` **except** any policy explicitly marked starter-only (currently `policies/anonymize-log-references.md` — the public-repo LOG anonymization rule; the asymmetry is driven by this template's publicness, not by methodology).
 - `briefs/methodology.md` (verbatim — methodology is universal)
 - `briefs/agentic-bootstrap.md` (verbatim — so the next bootstrap from this project is possible)
 
-**Do not** copy `.claude/skills/starter/` (this skill itself) or `.codex/prompts/starter.md`. The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too. `/learn` and `/teach` *are* carried over — they are universal cross-repo skills that benefit every methodology-following project.
+**Do not** copy `.claude/skills/starter/` (this skill itself), `.codex/prompts/starter.md`, or `policies/anonymize-log-references.md`. The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too, and the LOG-anonymization rule doesn't apply to private downstream projects. `/learn` and `/teach` *are* carried over — they are universal cross-repo skills that benefit every methodology-following project.
 
 ### Step 3 — Write the project-specific files
 
