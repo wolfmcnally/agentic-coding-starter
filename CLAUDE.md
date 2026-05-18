@@ -94,7 +94,8 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
   - (Project-specific skills live here too; see Project Context.)
 - `.claude/agents/` — canonical role definitions invoked by `/kickoff`: `phase-planner.md`, `plan-reviewer.md`, `phase-coder.md`, `code-critic.md`. These are the four roles in the methodology's planner → reviewer → coder → critic loop; do not invoke them by hand for full-phase work unless deliberately bypassing orchestration.
 - `.codex/agents/` — Codex CLI mirrors of the four canonical roles (TOML).
-- `.codex/prompts/` — Codex slash-command entry points for the universal skills (and any project-specific skills the project chooses to expose).
+- `.codex/prompts/` — Codex slash-command entry points for the universal skills (and any project-specific skills the project chooses to expose). Each entry is a symlink to the canonical `.claude/skills/<name>/SKILL.md`.
+- `.agents/skills/` — Codex CLI's native project-skill discovery path ([developers.openai.com/codex/skills](https://developers.openai.com/codex/skills)). Each `<name>` is a **directory** symlink to the canonical `.claude/skills/<name>` directory (Codex doesn't follow file-level symlinks inside a skill dir per [#11314](https://github.com/openai/codex/issues/11314), but does traverse a symlinked skill directory). The starter-only `/starter` skill is intentionally excluded so it does not propagate to derived projects.
 - `AGENTS.md` — symlink → `CLAUDE.md`, so Codex/aider read the same source of truth.
 
 The deliverable's directory (whatever the project calls it — `project/` when project-isolation is enabled, or sibling deliverable directories at the repo root when not) is described in Project Context.
@@ -134,7 +135,7 @@ These are the universals every project derived from this template inherits. The 
 - **Status lives in one place.** `plan/INDEX.md`'s phase table is the single source of truth for which phase is `⬅️ / 🚧 / ✅`. Per-phase frontmatter never carries `status`.
 - **Acceptance is empirical.** Every phase's Acceptance section lists shell commands with verifiable results, named manual checks, or analyzer outputs that pass a quality gate. "The code compiles" is not acceptance.
 - **Repo-relative paths only** in any file committed to this repo. Bash invocations may use absolute paths.
-- **Cross-harness parity.** Skills and agent definitions have one canonical home (`.claude/` / repo-root `CLAUDE.md`) and harness-specific mirrors (`.codex/`, `AGENTS.md`). Edit the canonical; refresh the mirror in the same commit.
+- **Cross-harness parity.** Skills and agent definitions have one canonical home (`.claude/` / repo-root `CLAUDE.md`) and harness-specific mirrors (`.codex/`, `.agents/`, `AGENTS.md`). Edit the canonical; refresh the mirror in the same commit.
 - **Human decides done.** `/kickoff` never auto-commits. The human reviews each phase's END block and either accepts the work, asks for revisions, or commits.
 - **Greenfield until released.** No backward-compatibility shims, legacy aliases, or migration code paths are added unless the policy is explicitly amended. Wrong shapes get replaced directly. See [`policies/greenfield-until-released.md`](policies/greenfield-until-released.md).
 

@@ -11,7 +11,7 @@ Every cross-harness capability has **one canonical source** and **N harness-spec
 | Surface | Canonical source | Harness mirrors |
 |---|---|---|
 | Project instructions | `CLAUDE.md` | `AGENTS.md` → symlink to `CLAUDE.md` |
-| Skills (slash commands) | `.claude/skills/<name>/SKILL.md` | `.codex/prompts/<name>.md` → symlink to `../../.claude/skills/<name>/SKILL.md` |
+| Skills (slash commands) | `.claude/skills/<name>/` (skill directory) | `.codex/prompts/<name>.md` → symlink to `../../.claude/skills/<name>/SKILL.md`; `.agents/skills/<name>` → **directory** symlink to `../../.claude/skills/<name>` |
 | Agent roles | `.claude/agents/<role>.md` | `.codex/agents/<role>.toml` (thin wrapper TOML — symlink not possible because formats differ) |
 | Static context (briefs, policies, plan) | The files themselves | (none — both harnesses read the same files directly) |
 
@@ -23,7 +23,9 @@ Surface choice is dictated by harness mechanics, and **the canonical form for ea
 
 The default is symlink. Drop to wrapper only when the symlink would feed the mirror's parser a file format it cannot read.
 
-This shape follows the harnesses' discovery contracts: Claude Code reads `CLAUDE.md`, `.claude/skills/`, and `.claude/agents/`; Codex reads `AGENTS.md`, `.codex/prompts/`, and `.codex/agents/`.
+This shape follows the harnesses' discovery contracts: Claude Code reads `CLAUDE.md`, `.claude/skills/`, and `.claude/agents/`; Codex reads `AGENTS.md`, `.codex/prompts/` (slash-command entry points), `.codex/agents/` (agent definitions), and `.agents/skills/` (native project-skill discovery, per [developers.openai.com/codex/skills](https://developers.openai.com/codex/skills)). The two Codex skill surfaces coexist: `.codex/prompts/` feeds the slash-command surface; `.agents/skills/` feeds the native skill loader. Both mirror the same canonical skill content.
+
+**Important: `.agents/skills/` uses *directory*-level symlinks, not file-level ones.** Codex's native skill loader does not follow symlinks for files inside a skill directory (see [openai/codex#11314](https://github.com/openai/codex/issues/11314)). It does follow a symlinked skill *directory*. So `.agents/skills/<name>` is a symlink whose target is the canonical skill directory `../../.claude/skills/<name>` — Codex then sees `SKILL.md` and any sidecar files as if they lived inside `.agents/skills/<name>` directly. Empirically validated in `~/DevProjects/bartley` (commit `bfe7e03e` "Restore Codex skill discovery").
 
 ## Rules
 
@@ -31,7 +33,7 @@ This shape follows the harnesses' discovery contracts: Claude Code reads `CLAUDE
    - Top-level instruction changes go in `CLAUDE.md`.
    - Skill changes go in `.claude/skills/<name>/SKILL.md`.
    - Agent role body changes go in `.claude/agents/<role>.md`.
-   - Never edit `AGENTS.md`, `.codex/prompts/<name>.md`, or any `.codex/agents/<role>.toml` body directly without making the corresponding canonical change in the same commit.
+   - Never edit `AGENTS.md`, `.codex/prompts/<name>.md`, the contents of any `.agents/skills/<name>/` (those files live in the canonical `.claude/skills/<name>/` and are reached through a directory symlink), or any `.codex/agents/<role>.toml` body directly without making the corresponding canonical change in the same commit.
 
 2. **Keep compatibility paths as symlinks where possible.**
    - `AGENTS.md` is a symlink to `CLAUDE.md`. Verify with `readlink AGENTS.md`.
@@ -43,10 +45,12 @@ This shape follows the harnesses' discovery contracts: Claude Code reads `CLAUDE
    - The TOML `tools` (when the harness honors it) mirrors the Markdown `tools:` frontmatter.
    - Update both in the same commit.
 
-4. **Codex prompts are symlinks to canonical skill content.**
-   - A `.codex/prompts/<name>.md` is a filesystem symlink whose target is `../../.claude/skills/<name>/SKILL.md`. Verify with `readlink .codex/prompts/<name>.md`.
-   - The symlink is the canonical form because formats match (both Markdown). Pointer-file wrappers ("Read X and follow it") and inline duplication of the body are both deprecated — replace them with symlinks on sight.
-   - Never write Codex-specific behavior into a `.codex/prompts/<name>.md` that the canonical SKILL doesn't also describe. (With a symlink in place this is impossible anyway, which is the point.)
+4. **Codex skill mirrors are symlinks to canonical skill content.**
+   - `.codex/prompts/<name>.md` is a *file* symlink whose target is `../../.claude/skills/<name>/SKILL.md`. Verify with `readlink .codex/prompts/<name>.md`.
+   - `.agents/skills/<name>` is a *directory* symlink whose target is `../../.claude/skills/<name>` (the canonical skill directory, not the SKILL.md file inside it). Verify with `readlink .agents/skills/<name>` and `test -L .agents/skills/<name> && test -d .agents/skills/<name>`. Codex's native skill loader does **not** follow file-level symlinks inside a skill directory (#11314), but does traverse a symlinked skill directory — so the directory-level shape is the only one that works for this surface.
+   - All symlinks because formats match (all Markdown with the same SKILL.md schema). Pointer-file wrappers ("Read X and follow it") and inline duplication of the body are both deprecated — replace them with symlinks on sight.
+   - Never write Codex-specific behavior into `.codex/prompts/<name>.md` or any file under `.agents/skills/<name>/` that the canonical SKILL doesn't also describe. (With a symlink in place this is impossible anyway, which is the point.)
+   - The starter-only `/starter` skill is excluded from `.agents/skills/` — it must not propagate to derived projects via Codex's native discovery. It still has a `.codex/prompts/starter.md` slash entry in this repo only.
 
 5. **No harness-specific rewrites in mirrored content.**
    - Write canonical skill and agent instructions in harness-neutral terms where practical. Reference tools by their canonical Claude Code name (e.g., "Read", "Edit", "Grep") and trust the Codex equivalent to be obvious; or reference both surfaces explicitly when ambiguity matters.
@@ -88,6 +92,19 @@ for d in .claude/skills/*/; do
   expected="../../.claude/skills/${skill}/SKILL.md"
   if [ ! -L "$link" ]; then echo "not a symlink: $link"
   elif [ "$(readlink "$link")" != "$expected" ]; then echo "wrong target: $link → $(readlink "$link") (expected $expected)"
+  fi
+done
+
+# Codex native skills: each .agents/skills/<name> is a DIRECTORY symlink to ../../.claude/skills/<name>
+# (skip the starter-only skill, which intentionally has no .agents/skills/ mirror)
+for d in .claude/skills/*/; do
+  skill=$(basename "$d")
+  [ "$skill" = "starter" ] && continue
+  link=".agents/skills/${skill}"
+  expected="../../.claude/skills/${skill}"
+  if [ ! -L "$link" ]; then echo "not a symlink: $link"
+  elif [ "$(readlink "$link")" != "$expected" ]; then echo "wrong target: $link → $(readlink "$link") (expected $expected)"
+  elif [ ! -d "$link" ]; then echo "symlink does not resolve to a directory: $link"
   fi
 done
 

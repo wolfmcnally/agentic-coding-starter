@@ -71,10 +71,19 @@ A project derived from this template contains the following **portable structure
       phase-coder.toml
       code-critic.toml
     prompts/
-      kickoff.md
+      kickoff.md           # Symlink → ../../.claude/skills/kickoff/SKILL.md
       methodology.md
       learn.md
       teach.md
+
+  .agents/                 # Codex CLI native skill discovery
+                           # (developers.openai.com/codex/skills)
+    skills/
+      kickoff              # Directory symlink → ../../.claude/skills/kickoff
+      methodology          # (Codex doesn't follow file-level symlinks inside
+      learn                #  a skill dir — issue #11314 — but does traverse
+      teach                #  a symlinked skill directory.)
+      # /starter is NOT mirrored here either — starter-only
 
   project/                 # When project-isolation is enabled (default for
                            #   single-deliverable projects), the artifact lives
@@ -124,10 +133,14 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.claude/agents/phase-coder.md`
 - `.claude/agents/code-critic.md`
 - `.codex/agents/*.toml`
-- `.codex/prompts/kickoff.md`
-- `.codex/prompts/methodology.md`
-- `.codex/prompts/learn.md`
-- `.codex/prompts/teach.md`
+- `.codex/prompts/kickoff.md` (symlink → `../../.claude/skills/kickoff/SKILL.md`)
+- `.codex/prompts/methodology.md` (symlink)
+- `.codex/prompts/learn.md` (symlink)
+- `.codex/prompts/teach.md` (symlink)
+- `.agents/skills/kickoff` (directory symlink → `../../.claude/skills/kickoff`)
+- `.agents/skills/methodology` (directory symlink → `../../.claude/skills/methodology`)
+- `.agents/skills/learn` (directory symlink → `../../.claude/skills/learn`)
+- `.agents/skills/teach` (directory symlink → `../../.claude/skills/teach`)
 - `AGENTS.md` symlink → `CLAUDE.md`
 - Every file under `policies/` (these are universal by design)
 - `briefs/methodology.md`
@@ -155,6 +168,7 @@ These files have a stable shape and a project-specific body. Mirror the shape; w
 
 - `.claude/skills/starter/SKILL.md` — the new project doesn't need to stamp out more projects from itself, unless it explicitly wants to be a template too. (Note: `/learn` and `/teach` *are* carried over — they are universal cross-repo skills, not starter-specific.)
 - `.codex/prompts/starter.md` — same reason.
+- `.agents/skills/starter` — same reason. The starter-only `/starter` skill is intentionally absent from Codex's native skill discovery in derived projects.
 - The starter template's own `plan/phase-1.md` (which is a placeholder for "decide what you're building") — replace it entirely with the new project's real Phase 1.
 - The starter template's `example/` Python package and `tests/test_cli.py` — replace with the new project's surface, in whatever language(s) the project uses.
 
@@ -217,6 +231,8 @@ Then create the empty directory shape:
 .claude/agents/
 .codex/agents/
 .codex/prompts/
+.agents/skills/        # (the four skill entries here are directory symlinks
+                       #  to ../../.claude/skills/<name>, created in Step 5)
 briefs/
 policies/
 plan/
@@ -268,10 +284,8 @@ Copy verbatim, then adapt project names and surface-specific build-gate commands
 - `.claude/agents/phase-coder.md`
 - `.claude/agents/code-critic.md`
 - `.codex/agents/*.toml`
-- `.codex/prompts/kickoff.md`
-- `.codex/prompts/methodology.md`
-- `.codex/prompts/learn.md`
-- `.codex/prompts/teach.md`
+- `.codex/prompts/{kickoff,methodology,learn,teach}.md` (file symlinks → `../../.claude/skills/<name>/SKILL.md`)
+- `.agents/skills/{kickoff,methodology,learn,teach}` (directory symlinks → `../../.claude/skills/<name>`)
 
 Adaptations to make in each:
 
@@ -435,7 +449,10 @@ Bootstrap is complete when **all** of the following hold:
 [ ] .claude/agents/{phase-planner,plan-reviewer,phase-coder,code-critic}.md
     exist, adapted for this project
 [ ] .codex/agents/*.toml mirrors exist
-[ ] .codex/prompts/{kickoff,methodology,learn,teach}.md exist
+[ ] .codex/prompts/{kickoff,methodology,learn,teach}.md exist (file symlinks)
+[ ] .agents/skills/{kickoff,methodology,learn,teach} exist as directory
+    symlinks to ../../.claude/skills/<name> (the canonical skill directory)
+[ ] .agents/skills/starter does NOT exist (starter-only, must not propagate)
 [ ] Every file in policies/ from the template exists, with project-name
     references updated
 [ ] No template-specific skills, briefs, or example code remain in the new

@@ -102,6 +102,8 @@ Follow [`briefs/agentic-bootstrap.md` §3](../../../briefs/agentic-bootstrap.md)
   .claude/agents/
   .codex/agents/
   .codex/prompts/
+  .agents/skills/         # (kickoff, methodology, learn, teach added as
+                          #  directory symlinks in Step 2)
 ```
 
 Plus the language-specific deliverable directories. When `project_isolation` is enabled (the default for single-deliverable projects), the deliverable goes under `project/`:
@@ -140,7 +142,22 @@ Copy these files **from this template** into the new project, then run a name su
 - `briefs/methodology.md` (verbatim — methodology is universal)
 - `briefs/agentic-bootstrap.md` (verbatim — so the next bootstrap from this project is possible)
 
-**Do not** copy `.claude/skills/starter/` (this skill itself), `.codex/prompts/starter.md`, or `policies/anonymize-log-references.md`. The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too, and the LOG-anonymization rule doesn't apply to private downstream projects. `/learn` and `/teach` *are* carried over — they are universal cross-repo skills that benefit every methodology-following project.
+Then create the `.agents/skills/` **directory symlinks** for Codex CLI's native skill discovery. Each is a relative symlink whose target is the canonical skill *directory* (not the SKILL.md file inside it — Codex doesn't follow file-level symlinks inside a skill dir per [openai/codex#11314](https://github.com/openai/codex/issues/11314), but does traverse a symlinked skill directory):
+
+```
+cd <dest>
+mkdir -p .agents/skills
+ln -s ../../.claude/skills/kickoff     .agents/skills/kickoff
+ln -s ../../.claude/skills/methodology .agents/skills/methodology
+ln -s ../../.claude/skills/learn       .agents/skills/learn
+ln -s ../../.claude/skills/teach       .agents/skills/teach
+```
+
+Verify each `readlink <dest>/.agents/skills/<name>` returns the expected target and `test -L <dest>/.agents/skills/<name> && test -d <dest>/.agents/skills/<name>` passes before moving on.
+
+The `.codex/prompts/<name>.md` files are *file* symlinks pointing at the SKILL.md inside the canonical skill dir (`../../.claude/skills/<name>/SKILL.md`); they feed Codex's slash-command surface. Both surfaces are symlink-based because formats match — see [`policies/cross-harness-parity.md`](../../../policies/cross-harness-parity.md).
+
+**Do not** copy `.claude/skills/starter/` (this skill itself), `.codex/prompts/starter.md`, create `.agents/skills/starter` in the destination, or copy `policies/anonymize-log-references.md`. The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too, and the LOG-anonymization rule doesn't apply to private downstream projects. `/learn` and `/teach` *are* carried over — they are universal cross-repo skills that benefit every methodology-following project.
 
 ### Step 3 — Write the project-specific files
 
@@ -245,6 +262,8 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - `ls <dest>/.claude/skills/kickoff/` contains `SKILL.md`.
 - `ls <dest>/.claude/skills/methodology/` contains `SKILL.md`.
 - `ls <dest>/.claude/skills/starter/` does **not** exist (we did not transfer it).
+- For each name in {kickoff, methodology, learn, teach}: `readlink <dest>/.agents/skills/<name>` returns `../../.claude/skills/<name>`, `test -L <dest>/.agents/skills/<name>` and `test -d <dest>/.agents/skills/<name>` both pass, and `<dest>/.agents/skills/<name>/SKILL.md` is reachable through the directory symlink.
+- `<dest>/.agents/skills/starter` does **not** exist (starter-only, must not propagate).
 - The new `CLAUDE.md`'s catalogs reference every file in `briefs/` and `policies/`.
 - The project's primary build gate runs clean on the seeded code.
 

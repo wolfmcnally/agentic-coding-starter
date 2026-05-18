@@ -2,7 +2,7 @@
 
 A repository template for building software with AI coding agents under a structured, multi-agent methodology. It encodes a workflow that turns a vague idea into shippable software through a planner → reviewer → coder → critic loop, with humans deciding what "done" means.
 
-This template is harness-agnostic. It works with [Claude Code](https://claude.com/claude-code), with [Codex CLI](https://github.com/openai/codex), and with any other agent host that reads project-level instructions and agent definitions from `.claude/`, `.codex/`, or `AGENTS.md`. The same files drive both — never edit a harness-specific mirror by hand.
+This template is harness-agnostic. It works with [Claude Code](https://claude.com/claude-code), with [Codex CLI](https://github.com/openai/codex), and with any other agent host that reads project-level instructions and agent definitions from `.claude/`, `.codex/`, `.agents/`, or `AGENTS.md`. The same files drive both — never edit a harness-specific mirror by hand.
 
 ---
 
@@ -133,18 +133,24 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │       ├── plan-reviewer.md
 │       ├── phase-coder.md
 │       └── code-critic.md
-└── .codex/                         ← Codex CLI mirrors
-    ├── agents/
-    │   ├── phase-planner.toml
-    │   ├── plan-reviewer.toml
-    │   ├── phase-coder.toml
-    │   └── code-critic.toml
-    └── prompts/
-        ├── kickoff.md              ← Codex slash-command entry point
-        ├── methodology.md
-        ├── learn.md
-        ├── teach.md
-        └── starter.md
+├── .codex/                         ← Codex CLI slash-command + agent mirrors
+│   ├── agents/
+│   │   ├── phase-planner.toml
+│   │   ├── plan-reviewer.toml
+│   │   ├── phase-coder.toml
+│   │   └── code-critic.toml
+│   └── prompts/
+│       ├── kickoff.md              ← Codex slash-command entry point (symlink → .claude/skills/<name>/SKILL.md)
+│       ├── methodology.md
+│       ├── learn.md
+│       ├── teach.md
+│       └── starter.md
+└── .agents/                        ← Codex CLI's native project-skill discovery
+    └── skills/                     ←   (developers.openai.com/codex/skills)
+        ├── kickoff                 ←   each is a directory symlink → ../../.claude/skills/<name>
+        ├── methodology             ←     (directory-level because Codex doesn't follow
+        ├── learn                   ←      file-level symlinks inside skill dirs — issue #11314)
+        └── teach                   ←   /starter is intentionally absent
 ```
 
 ---
@@ -196,7 +202,8 @@ See [`policies/briefs-and-policies.md`](policies/briefs-and-policies.md) for the
 The same workflow runs in Claude Code, Codex CLI, and other agent hosts. The contract:
 
 - **Canonical sources** live under `.claude/` (skills, agents) and at the repo root (`CLAUDE.md`).
-- **Harness mirrors** are either symlinks (`AGENTS.md` → `CLAUDE.md`) or thin wrapper files (`.codex/agents/*.toml`) that point at the canonical content.
+- **Harness mirrors** are either symlinks (`AGENTS.md` → `CLAUDE.md`; `.codex/prompts/<name>.md` → `.claude/skills/<name>/SKILL.md` as a *file* symlink; `.agents/skills/<name>` → `.claude/skills/<name>` as a *directory* symlink) or thin wrapper files (`.codex/agents/*.toml`) that point at the canonical content.
+- **`.codex/prompts/`** feeds Codex's slash-command surface; **`.agents/skills/`** feeds Codex's native skill loader ([documented contract](https://developers.openai.com/codex/skills)). Both mirror the same canonical skill content. The `.agents/skills/` mirror uses *directory* symlinks because Codex doesn't follow file-level symlinks inside a skill directory ([openai/codex#11314](https://github.com/openai/codex/issues/11314)), but does traverse a symlinked skill directory.
 - **Never edit a mirror by hand.** Update the canonical file; refresh the mirror.
 
 See [`policies/cross-harness-parity.md`](policies/cross-harness-parity.md) for the rules and the onboarding procedure for adding a third harness.

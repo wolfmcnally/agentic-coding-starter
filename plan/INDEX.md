@@ -71,7 +71,7 @@ These are the universals the template ships with. A project derived from this te
 | `plan-reviewer` agent (canonical)    | [`../.claude/agents/plan-reviewer.md`](../.claude/agents/plan-reviewer.md) |
 | `phase-coder` agent (canonical)      | [`../.claude/agents/phase-coder.md`](../.claude/agents/phase-coder.md) |
 | `code-critic` agent (canonical)      | [`../.claude/agents/code-critic.md`](../.claude/agents/code-critic.md) |
-| Codex mirrors                        | `../.codex/agents/*.toml`, `../.codex/prompts/*.md`       |
+| Codex mirrors                        | `../.codex/agents/*.toml`, `../.codex/prompts/*.md`, `../.agents/skills/*` (directory symlinks) |
 | Deliverable artifact (self-contained)| `../project/` (per [`../policies/project-isolation.md`](../policies/project-isolation.md)) |
 | Example Python package               | `../project/example/`                                     |
 | Example test suite                   | `../project/tests/`                                       |
