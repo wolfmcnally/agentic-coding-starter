@@ -2,6 +2,8 @@
 
 The three top-level documentation directories in this repo (`briefs/`, `policies/`, `plan/`) look similar at a glance. The distinction is load-bearing — confusing them produces drift between intent, rule, and execution.
 
+This policy covers the contract *between* the three directories. The brief-file lifecycle within `briefs/` itself (frontmatter schema, `draft` / `methodology` / `implemented` / `historical` status flow, when to write one, when to retire one) is governed by the companion policy [`briefs.md`](briefs.md).
+
 ## The three directories
 
 - **`briefs/`** — durable *descriptions*. What you're building, why, how, what was decided, what was rejected. A brief is a piece of design memory.

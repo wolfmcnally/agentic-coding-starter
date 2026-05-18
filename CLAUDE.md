@@ -65,6 +65,7 @@ In addition to the universal `/kickoff`, `/methodology`, `/learn`, and `/teach` 
 Every file under `policies/`, indexed so agents see the catalog without an extra Read. A policy is a non-negotiable rule every phase honors.
 
 - [`README.md`](policies/README.md) — what `policies/` is and how it differs from `briefs/`.
+- [`briefs.md`](policies/briefs.md) — the brief-file lifecycle: frontmatter schema (`title`, `date`, `status`, `scope`), four-value status flow (`draft` / `methodology` / `implemented` / `historical`), filename conventions, when to write one, when to retire one.
 - [`briefs-and-policies.md`](policies/briefs-and-policies.md) — the contract: briefs describe, policies prescribe, plan sequences.
 - [`cross-harness-parity.md`](policies/cross-harness-parity.md) — keep Claude Code, Codex CLI, and any other supported harness in lockstep; canonical files vs. mirrors; onboarding a new harness.
 - [`four-canonical-agents.md`](policies/four-canonical-agents.md) — the four roles `/kickoff` invokes by name; their tool stances; their verdict headers.
@@ -82,7 +83,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 
 ## Universal repo layout
 
-- `briefs/` — durable design library. See "Methodology briefs" above for the universal briefs, and "Project briefs" in Project Context for this repo's specifics.
+- `briefs/` — durable design library. Each brief is markdown with YAML frontmatter (`title`, `date`, `status`, `scope`); brief-file lifecycle is governed by [`policies/briefs.md`](policies/briefs.md). See "Methodology briefs" above for the universal briefs, and "Project briefs" in Project Context for this repo's specifics.
 - `policies/` — non-negotiable rules. Full catalog above.
 - `plan/` — phased execution plan. Entry point [`plan/INDEX.md`](plan/INDEX.md) (dependency graph, status table, cross-cutting concerns, critical-files map). Each `plan/phase-*.md` holds Goal / Deliverables / Acceptance / brief refs. **When `plan/` and a brief disagree, `plan/` wins.**
 - `LOG.md` — append-only activity log. `/kickoff` writes START on phase entry and END on phase completion. Do not hand-edit historical entries.
