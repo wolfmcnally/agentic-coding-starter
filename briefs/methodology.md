@@ -19,9 +19,9 @@ A methodology for writing software with AI coding agents in a way that scales be
 
 4. **Repo-level policies.** Put policies in place that enforce standards and practices. Examples: each completed phase must be incremental and testable; the repo tracks which phases are complete, in progress, up next, or yet to start; **the human, not the agent, decides when work is committed as "done."** Policies live under `policies/`. Every phase honors every policy.
 
-5. **Brief + architecture → phased plan.** Break the work down by phase. Each phase is independently testable, mostly independently deliverable, and has a clearly defined goal and acceptance criteria. Phases live under `plan/`; the spine is `plan/INDEX.md`.
+5. **Brief + architecture → phased plan.** Break the work down by phase. Each phase is independently testable, mostly independently deliverable, and has a clearly defined goal and acceptance criteria. Phases live under `plan/`; the spine is `plan/INDEX.md`. Major phases are written *after* the brief (step 2) and architecture (step 3) exist — without those, the phase plan is speculation. If you find yourself wanting to plan phases before there's a primary brief, go back to step 2.
 
-6. **Sub-phase breakdown at phase start.** At the start of every major phase, break it down into sub-phases. Resist decomposing future major phases at bootstrap — their shape is informed by the current phase's reality.
+6. **Sub-phase breakdown, just-in-time, one at a time.** At the start of a major phase, decompose only the **next sub-phase** in full — write `phase-N.1.md` with complete Goal / Deliverables / Acceptance / brief refs. Subsequent sub-phases (`phase-N.2`, `phase-N.3`, …) get drafted at *close* of the previous one, with the benefit of its outcomes. The same principle scales up: downstream major phases whose shape depends on earlier phases' outcomes belong as scope notes in `plan/INDEX.md`, not as fully-drafted `plan/phase-N.md` files. **Resist eager decomposition at every level** — pre-decomposed phases become stale, lock in premature assumptions, and resist the very revisions that doing the work earlier reveals.
 
 7. **Orchestrator-driven sub-phase execution.** Use a high-level orchestrator skill (`/kickoff`) that does **no coding itself**. It:
    - determines the current phase,

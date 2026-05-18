@@ -41,6 +41,19 @@ Read `plan/INDEX.md` (the authoritative phase ledger) and locate the phase to wo
 
 Tell the user which phase you are picking up and the path to its file (`plan/phase-<id>.md`).
 
+### Step 1a: Sub-phase decomposition (parent phases only — just-in-time, one at a time)
+
+If the target is a **parent phase** (`phase-N.md`, not `phase-N.M.md`) and no `plan/phase-N.*.md` sub-phase files exist for it yet, decide whether to decompose before planning:
+
+- If the phase's Deliverables list is small (≤ 3 distinct surfaces) and fits one focused session, proceed monolithically — skip to Step 2.
+- If the phase is large or multi-surface, **decompose just-in-time, one sub-phase at a time**:
+  1. Invoke `phase-planner` for a one-shot decomposition of `phase-N.1` *only* (full Goal / Deliverables / Acceptance / brief refs).
+  2. Write `phase-N.1.md`. Update `plan/INDEX.md`'s phase table to add the new row and adjust the dependency graph.
+  3. Mark the parent `🚧` and `phase-N.1` `⬅️`. Restart `/kickoff` against `phase-N.1`.
+  4. **Do not draft `phase-N.2`, `phase-N.3`, etc. yet.** Their shape benefits from `phase-N.1`'s outcomes. Subsequent sub-phases land at sub-phase close (see Step 9a). See [`briefs/methodology.md`](../../../briefs/methodology.md) §6.
+
+Surface the decomposition decision (or the choice to stay monolithic) to the user in the opening report.
+
 ### Step 2: Flip marker and open the log
 
 Update `plan/INDEX.md` so the target row's status cell is `🚧`. **Do not edit the target `plan/phase-<id>.md` file's frontmatter or body** — status is stored only in `INDEX.md` (see [`policies/phase-status.md`](../../../policies/phase-status.md)).
@@ -138,11 +151,29 @@ Per [`policies/acceptance-empirical.md`](../../../policies/acceptance-empirical.
 In `plan/INDEX.md`'s phase table (and only there):
 
 1. Flip the completed phase's status cell from `🚧` to `✅`.
-2. Find the next `⏳` row in the linear order implied by the phase dependency graph at the top of `INDEX.md` (honoring parallel opportunities). Change it to `⬅️`. Only one row is `⬅️` at a time.
+2. **If the closed phase was a sub-phase** (e.g., `phase-N.M.md`), go to Step 9a *before* advancing `⬅️`.
+3. **Otherwise** (closed phase was a major phase with no parent), find the next `⏳` row in the linear order implied by the phase dependency graph at the top of `INDEX.md` (honoring parallel opportunities). Change it to `⬅️`. Only one row is `⬅️` at a time.
 
 If the phase is only partially complete (the user paused mid-way), leave it `🚧` and do not advance `⬅️`.
 
 **Never edit the per-phase file's frontmatter or body to record status.** Per-phase frontmatter is `id` / `title` / `depends_on` / `informs` only.
+
+### Step 9a: Draft the next sub-phase (sub-phase close only)
+
+If the just-closed phase was a sub-phase `phase-N.M.md` and the parent `phase-N.md`'s Deliverables are **not yet fully addressed** by the closed sub-phases:
+
+1. Invoke `phase-planner` to draft `phase-N.(M+1).md` with the benefit of the closed sub-phases' outcomes. Pass it: the parent's full text, the list of closed sub-phases with their END summaries, and the parent's remaining un-addressed deliverables.
+2. Write `phase-N.(M+1).md`. Update `plan/INDEX.md` (new row, dependency graph if needed).
+3. Mark `phase-N.(M+1)` `⬅️`. Parent stays `🚧`.
+
+If the parent's Deliverables **are** fully addressed by the closed sub-phases:
+
+1. Mark the parent `✅`.
+2. Advance `⬅️` to the next `⏳` major phase per the dependency graph (as in Step 9.3).
+
+If the closed sub-phase reveals that the parent's Deliverables list needs revision (new deliverable surfaced, an existing one no longer applies), surface this to the user explicitly in Step 10's report rather than silently rewriting the parent. The parent edit is a Wolf decision.
+
+This step implements just-in-time, one-at-a-time sub-phase decomposition per [`briefs/methodology.md`](../../../briefs/methodology.md) §6 — `phase-N.(M+1)` is drafted *with* `phase-N.M`'s outcomes in hand, not in advance.
 
 ### Step 10: Close the log and report
 

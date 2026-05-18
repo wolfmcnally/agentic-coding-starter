@@ -76,6 +76,21 @@ Variations to explore:
 
 The same template adapts to GUIs ("click the new button, enter your own prompt, look for streaming output"), HTTP APIs ("hit the endpoint with `curl`, then with a malformed payload, then with a payload your own app would send"), etc.
 
+## Optional addendum: Hot-state checks for operational surfaces
+
+When a phase ships an **operational surface** — a daemon, a launchd plist or systemd unit, a long-running CLI, an MCP server, a background watcher — the demo protocol may include an optional `Hot-state checks:` subsection listing 2–5 short shell commands the user can paste *right now* to confirm the deployed state. Each line is a command followed by its expected output:
+
+```
+Hot-state checks:
+- `launchctl list | grep com.example.mydaemon` → one line with the PID, exit code 0.
+- `tail -5 ~/Library/Logs/mydaemon.log` → recent timestamped lines, no `ERROR` prefixes.
+- `curl -fsS localhost:9119/health` → `{"ok": true}`.
+```
+
+Hot-state checks are **additive**, not a substitute for the interactive `Suggested inputs / What to look for / Variations` block. They answer *"is the thing running right now?"* — a deterministic, no-thinking-required confirmation that the deployed state matches the plan's intent. The demo block proper still answers *"is the thing the right thing?"*, which requires the user to exercise judgment.
+
+Most phases do not need hot-state checks. Phases without an operational surface (a pure code change, a CLI subcommand the user only runs on demand, a doc edit) should omit the subsection entirely. Phases with an operational surface should keep the subsection short — three commands is plenty; ten is noise.
+
 ## When a phase has nothing meaningful to demo
 
 A phase can honestly declare `User Demo: N/A` in any of these cases:
