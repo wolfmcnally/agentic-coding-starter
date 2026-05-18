@@ -10,16 +10,18 @@ Every cross-harness capability has **one canonical source** and **N harness-spec
 
 | Surface | Canonical source | Harness mirrors |
 |---|---|---|
-| Project instructions | `CLAUDE.md` | `AGENTS.md` (symlink → `CLAUDE.md`) |
-| Skills (slash commands) | `.claude/skills/<name>/SKILL.md` | `.codex/prompts/<name>.md` (thin wrapper that points at the canonical instructions; or symlinked, depending on harness) |
-| Agent roles | `.claude/agents/<role>.md` | `.codex/agents/<role>.toml` (TOML thin wrapper carrying identical `developer_instructions`) |
+| Project instructions | `CLAUDE.md` | `AGENTS.md` → symlink to `CLAUDE.md` |
+| Skills (slash commands) | `.claude/skills/<name>/SKILL.md` | `.codex/prompts/<name>.md` → symlink to `../../.claude/skills/<name>/SKILL.md` |
+| Agent roles | `.claude/agents/<role>.md` | `.codex/agents/<role>.toml` (thin wrapper TOML — symlink not possible because formats differ) |
 | Static context (briefs, policies, plan) | The files themselves | (none — both harnesses read the same files directly) |
 
-Surface choice is dictated by harness mechanics:
+Surface choice is dictated by harness mechanics, and **the canonical form for each surface is the most drift-proof shape the formats permit**:
 
-- **Symlinked** when both harnesses accept the same file format (top-level instructions).
-- **Wrapped** when formats genuinely differ (agent roles — Claude Code wants Markdown with YAML frontmatter, Codex wants TOML). Wrappers are independently maintained but carry the same instructional body so any inspection reveals divergence at a glance.
-- **Shared verbatim** when the file is content rather than instruction (briefs, policies, plan files).
+- **Symlinked** whenever both harnesses accept the same file format. The mirror is a real filesystem symlink to the canonical, intra-repo, using a relative path. Symlinks cannot drift; there is nothing to maintain.
+- **Wrapped** only when formats genuinely differ (agent roles — Claude Code wants Markdown with YAML frontmatter, Codex wants TOML). The wrapper is a real file in the mirror's native format, kept as thin as possible — typically a `description` field and a `developer_instructions` body that just says *"Read the canonical .md and follow it."* Wrappers carry the format-specific shell so the harness's parser stays happy; they should never carry an inline copy of the instruction body.
+- **Shared verbatim** when the file is content rather than instruction (briefs, policies, plan files). Both harnesses read the same files directly.
+
+The default is symlink. Drop to wrapper only when the symlink would feed the mirror's parser a file format it cannot read.
 
 This shape follows the harnesses' discovery contracts: Claude Code reads `CLAUDE.md`, `.claude/skills/`, and `.claude/agents/`; Codex reads `AGENTS.md`, `.codex/prompts/`, and `.codex/agents/`.
 
@@ -41,9 +43,10 @@ This shape follows the harnesses' discovery contracts: Claude Code reads `CLAUDE
    - The TOML `tools` (when the harness honors it) mirrors the Markdown `tools:` frontmatter.
    - Update both in the same commit.
 
-4. **Codex prompts are thin wrappers around canonical skill content.**
-   - A `.codex/prompts/<name>.md` may point at `.claude/skills/<name>/SKILL.md` via a one-line directive ("Read `.claude/skills/<name>/SKILL.md` and follow it") or duplicate the body verbatim. The pointer form is preferred — it cannot drift.
-   - Never write Codex-specific behavior into a `.codex/prompts/<name>.md` that the canonical SKILL doesn't also describe.
+4. **Codex prompts are symlinks to canonical skill content.**
+   - A `.codex/prompts/<name>.md` is a filesystem symlink whose target is `../../.claude/skills/<name>/SKILL.md`. Verify with `readlink .codex/prompts/<name>.md`.
+   - The symlink is the canonical form because formats match (both Markdown). Pointer-file wrappers ("Read X and follow it") and inline duplication of the body are both deprecated — replace them with symlinks on sight.
+   - Never write Codex-specific behavior into a `.codex/prompts/<name>.md` that the canonical SKILL doesn't also describe. (With a symlink in place this is impossible anyway, which is the point.)
 
 5. **No harness-specific rewrites in mirrored content.**
    - Write canonical skill and agent instructions in harness-neutral terms where practical. Reference tools by their canonical Claude Code name (e.g., "Read", "Edit", "Grep") and trust the Codex equivalent to be obvious; or reference both surfaces explicitly when ambiguity matters.
@@ -75,19 +78,23 @@ When you discover drift between a canonical file and a mirror:
 A quick manual sweep, runnable in any shell from the repo root:
 
 ```bash
-# Symlink check
+# Top-level: AGENTS.md is a symlink to CLAUDE.md
 test -L AGENTS.md && [ "$(readlink AGENTS.md)" = "CLAUDE.md" ] && echo "AGENTS.md OK"
 
-# Agent role parity: each .claude/agents/*.md has a .codex/agents/*.toml peer
+# Skill prompts: each .codex/prompts/<name>.md is a symlink to ../../.claude/skills/<name>/SKILL.md
+for d in .claude/skills/*/; do
+  skill=$(basename "$d")
+  link=".codex/prompts/${skill}.md"
+  expected="../../.claude/skills/${skill}/SKILL.md"
+  if [ ! -L "$link" ]; then echo "not a symlink: $link"
+  elif [ "$(readlink "$link")" != "$expected" ]; then echo "wrong target: $link → $(readlink "$link") (expected $expected)"
+  fi
+done
+
+# Agent roles: each .claude/agents/<role>.md has a .codex/agents/<role>.toml peer (thin wrapper, not symlink)
 for f in .claude/agents/*.md; do
   role=$(basename "$f" .md)
   [ -f ".codex/agents/${role}.toml" ] || echo "missing .codex/agents/${role}.toml"
-done
-
-# Prompt parity: each .claude/skills/*/SKILL.md has a .codex/prompts/*.md peer
-for d in .claude/skills/*/; do
-  skill=$(basename "$d")
-  [ -f ".codex/prompts/${skill}.md" ] || echo "missing .codex/prompts/${skill}.md"
 done
 ```
 

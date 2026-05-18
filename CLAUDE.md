@@ -125,6 +125,7 @@ Phase statuses live **only** in [`plan/INDEX.md`](plan/INDEX.md)'s phase table:
 
 These are the universals every project derived from this template inherits. The project may add more invariants of its own; it may not silently drop these.
 
+- **Rules, not memory.** Anything that should bind future sessions — across harnesses (Claude Code, Codex, and others), across operators, across machines — belongs in this repo: in `CLAUDE.md`, in `briefs/`, in `policies/`, or in a `.claude/skills/<name>/SKILL.md`. Agent-side memory is local to one operator, one harness, one machine; it is the wrong place for engine knowledge. If a learning surfaces in a session, capture it in the repo, not in memory.
 - **Briefs are the contract.** Every phase points at files under `briefs/`. Phase files specify *how*, not *what*. Fix ambiguous briefs at the source. When `plan/` and a brief disagree, `plan/` wins.
 - **Policies are the law.** Every phase honors every file under `policies/`. A policy violation blocks acceptance.
 - **Status lives in one place.** `plan/INDEX.md`'s phase table is the single source of truth for which phase is `⬅️ / 🚧 / ✅`. Per-phase frontmatter never carries `status`.

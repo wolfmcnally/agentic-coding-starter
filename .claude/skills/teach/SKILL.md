@@ -17,6 +17,8 @@ This skill is **universal**. It runs inside any project that follows the agentic
 
 The pipeline is the same three-stage shape as `/learn` (structural analysis → semantic identification → translation), inverted: we read both repos but only write to the target. Updates use a Copier-style discipline — the target's customizations are preserved by default; files that exist verbatim in the target may be overwritten; conflicts are surfaced for the user.
 
+`/teach` is **improvement-only**. It never replaces target content with source content that is less elaborated, less specialized, or less capable than what the target already has. When the target has surpassed the source in some area — a richer skill body, a custom step in `/kickoff`, a more detailed policy — that area is surfaced as a candidate for a future `/learn` invocation in the reverse direction, not pulled backward. The bar for any proposed change is *strict improvement to the target*; everything else is preserved or noted as a reverse-direction `/learn` candidate.
+
 This repo is **read-only** for the entire skill. We never modify the teaching repo while teaching.
 
 ## When `/teach` makes sense versus `/starter`
@@ -72,12 +74,15 @@ For each file or pattern in *this* starter, evaluate against the target. Use the
 
 ### Transfer mode
 
-- **Verbatim** — copy from this starter into the target with name substitution (`Agentic Coding Starter Template` → target project name). Example: a policy file the target lacks.
-- **Shape-only** — bring the structure but write project-specific content. Example: `briefs/BRIEF.md` shape with the target's actual thesis (rare in `/teach`; `/starter` already does this for new projects).
-- **Update-in-place** — the target has an older or diverged version of a file this starter ships; bring it up to current. Example: an evolved policy whose latest version supersedes the target's copy.
-- **Inspiration** — surface in the plan as a written suggestion, not a file change. Example: a brief topic the target should consider authoring.
-- **Out of scope** — donor-specific (starter-specific meta-skills like `/learn`, `/teach`, `/starter` itself, and the template's `example/` Python project). Do not transfer.
-- **Conflicts** — would override target customizations; surfaces a choice for the user.
+For each candidate file or pattern, compare bidirectionally: starter → target *and* target → starter. The improvement-only rule means the source's version must be strictly better than the target's for any change to be proposed; otherwise the divergence either stays untouched or flips into the "Surface for `/learn`" bucket.
+
+- **Verbatim** — copy from this starter into the target with name substitution (`Agentic Coding Starter Template` → target project name). Use only when the target lacks the file entirely. Example: a policy file the target does not have.
+- **Shape-only** — bring the structure but write project-specific content. Use only when the target lacks the file entirely. Example: `briefs/BRIEF.md` shape with the target's actual thesis (rare in `/teach`; `/starter` already does this for new projects).
+- **Update-in-place** — propose only when the starter's version is **strictly an improvement** over the target's: it has every meaningful section, step, example, or rule the target's version has, plus genuine additions; no regressions; no loss of target-specific elaboration. If the target's version is more elaborated, more specialized, or has features the starter's lacks (extra steps, project-specific examples, richer error handling, deeper structure), do **not** propose an update; flip to "Surface for `/learn`" instead. When in doubt, prefer non-action.
+- **Surface for `/learn`** — the target has innovations the *source* lacks. Name them in the plan as candidates for a future `/learn` invocation against this target. No file change in either repo during `/teach`. Examples: a custom orchestrator step, a richer agent body, a policy this starter does not have.
+- **Inspiration** — surface in the plan as a written suggestion to the target's owner, not a file change. Different from "Surface for `/learn`": Inspiration is a nudge to the *target's* owner to consider doing something new; Surface for `/learn` is a nudge to the *source's* maintainer to consider adopting what the target has.
+- **Out of scope** — donor-specific (starter-specific meta-skills like `/starter` and the template's `example/` project). Do not transfer.
+- **Conflicts** — would override target customizations *and* the source's version isn't a strict improvement; surfaces a choice for the user. If the source's version were a strict improvement, it would be "Update-in-place" instead.
 
 ### Generality tier
 
@@ -95,8 +100,28 @@ Same as `/learn`:
 - **No `<desc>` given**: select from Tier 1, then Tier 2. Only offer Tier 3 if those have less than three actionable items.
 - **`<desc>` given**: use it to narrow.
 
+### Stale-in-light-of-teaching sweep
+
+Adding a new policy, brief, or skill to a target rarely lands in isolation. The teaching makes parts of the *existing* target stale — files that pre-dated the new content and used a shape, name, path, or convention the new content now supersedes. **Identifying and migrating those stale items is part of `/teach`'s acceptance, not a follow-up task.**
+
+For each proposed addition or update, ask:
+
+- **Catalog drift.** Does the target's `CLAUDE.md` carry a briefs catalog, policies catalog, or critical-files map? Every new brief, policy, or anchor file added by this teach pass must be indexed there. Missing catalogs (target lacks them entirely) → add the catalog as part of the apply, not as a follow-up.
+- **Convention drift.** Does the new content (typically a policy) establish a richer shape than the target's pre-existing files of the same kind? Common cases: a new `user-blockers.md` policy that formalizes a richer shape than the target's existing `user-blockers.md` file; a new `phase-status.md` policy that the target's existing `plan/INDEX.md` doesn't yet enforce. Migrate the target's file to the new shape *as part of the apply* when the migration is mechanical (header text, section structure, file format); surface for user decision when the migration would touch live content.
+- **Description drift.** Does the target's `CLAUDE.md` (or any other top-level doc) describe behavior the new policy now codifies more thoroughly? Augment the existing description to point at the new policy and pick up its richer conventions. Do not duplicate the policy body — link to it.
+- **Cross-reference drift.** Does the target's `plan/INDEX.md` "Critical-Files Map" (or equivalent) reference policies and briefs? Every new universal policy and brief added by this teach pass should appear there.
+- **Naming drift.** Does the target use a name or path the new content replaces? Update every call site.
+
+Each stale item gets one of three classifications:
+
+- **Auto-migrate**: mechanical change with no judgment call (catalog entry, link addition, header restructure). Apply as part of the same teach run.
+- **Surface for user decision**: touches live content (e.g., real entries in a queue file) or requires a project-specific value the skill cannot guess. List in the plan's "Stale-in-light-of-teaching" section; carry to the LOG entry as a manual follow-up.
+- **Defer with reason**: the migration depends on later phases (e.g., naming a thing Phase 0 hasn't decided yet). List with the deferral reason.
+
 ### Critical "do not stomp" rules during assessment
 
+- **Improvements only.** Never propose replacing target content with source content that is less elaborated, less specialized, or less capable. If a target file has extra sections, extra steps, custom examples, or richer structure compared to its starter counterpart, that file is a target specialization — leave it alone and surface it as a `/learn` candidate instead. The bar for any proposed file change is *strict improvement to the target*.
+- **Provenance can flip the classification.** A target file that looks like a specialization (extra sections, project-specific examples) may instead be a naive earlier copy from a *different* donor repo that the target's owner never refined — in which case the source's version *is* a strict improvement and update-in-place is correct. Content alone cannot distinguish the two cases. When a candidate update-in-place is blocked because the target's version *looks* more elaborated, surface it in the plan with both readings explicitly — *"target specialization, preserve"* AND *"earlier copy from another donor, update"* — and let the user disambiguate at approval time. Default to preserve when no provenance signal is available; only update when the user (or a clear repo signal — e.g., a `# Imported verbatim from <other-donor>` header) confirms naive-copy provenance.
 - **Never propose removing a target's custom skill, agent, brief, or policy.** Those are the target's specializations.
 - **Never propose modifying a file the target marks as `⬅️` or `🚧` in its plan.** Active phase work belongs to the target's `/kickoff`, not to a teaching pass.
 - **Skill-exclusion list during transfer.** `/starter` and the starter template's `example/` Python project are starter-only — they are never taught from anywhere. `/learn` and `/teach` themselves are universal — if the teaching repo has them and the target lacks them, they may be transferred like any other skill.
@@ -147,12 +172,29 @@ Produce a structured plan inline in the conversation. Use this exact format:
 - `<target-only file>` — <reason: target's custom skill | active phase | language-specific | proprietary content>
 - ...
 
+## Patterns to feed back via `/learn` (target → source)
+
+Areas where the target has surpassed this source. List each as a candidate for a future `/learn` invocation against the target. No file change in either repo from this `/teach` run; the goal is to make sure the source's maintainer sees what they could absorb. Empty section is fine — declare "None identified" rather than omit.
+
+- `<target path>` — <one-line description of what the target does better and why it generalizes>
+- ...
+
+## Stale-in-light-of-teaching (will be migrated or surfaced)
+
+Items in the *existing* target that go stale because of this teach pass's additions. **These are part of the apply, not follow-up work.** Each entry is classified:
+
+- **AUTO** `<target file>` — <one-line: what changes and why the new content makes it stale>. Mechanical; applied as part of this teach run.
+- **DECIDE** `<target file>` — <one-line: what would change>. Touches live content or requires a project-specific decision; surfaced here for user choice.
+- **DEFER** `<target file>` — <one-line: what would change once <condition> is met>. Migration depends on a later phase or external event.
+
+If nothing in the target goes stale because of this pass, declare "None identified" rather than omit the section.
+
 ## Conflicts requiring user decision
 
 - `<target file>`: target's version <describes-the-divergence>. Options:
-  - **Keep target's.** (default-safe)
-  - **Replace with this starter's.**
-  - **Merge** (skill produces a unified version preserving both).
+  - **Keep target's.** (default-safe; this is a target specialization)
+  - **Replace with this starter's.** (target's version is a naive earlier copy from another donor or a stale fork — update-in-place is the strict improvement)
+  - **Merge** (target has innovations on top of a stale base — graft target's additions onto this starter's current shape).
 
 ## Proposed write set (will only be applied after approval)
 
@@ -185,14 +227,18 @@ Once approved, apply the approved items to the target. Order:
 
 1. Add NEW files in the target (policies first, then briefs, then skills/agents/prompts, then plan files, then any other infrastructure).
 2. MODIFY existing target files (smallest diffs first; one logical change per Edit call).
-3. Resolve cross-harness parity in the target:
-   - If a `.claude/agents/<role>.md` is added or its body changed, add or refresh the matching `.codex/agents/<role>.toml` in the target.
-   - If a `.claude/skills/<name>/SKILL.md` is added, add the matching `.codex/prompts/<name>.md` pointer wrapper in the target.
-4. Update the target's `CLAUDE.md` catalogs (briefs catalog, policies catalog) so every new file is indexed.
+3. Resolve cross-harness parity in the target across **all three parity surfaces** (per `policies/cross-harness-parity.md`). Default to intra-repo symlinks whenever formats match; drop to a wrapper file only when the parser would reject the symlinked content:
+   - **Top-level instructions** — `CLAUDE.md` ↔ `AGENTS.md` (symlink — formats match). Edits to `CLAUDE.md` propagate automatically through the symlink. Verify: `test -L <target>/AGENTS.md && [ "$(readlink <target>/AGENTS.md)" = "CLAUDE.md" ]`. If the target's `AGENTS.md` is a file rather than a symlink, replace it: `rm <target>/AGENTS.md && ln -s CLAUDE.md <target>/AGENTS.md`.
+   - **Skills** — `.claude/skills/<name>/SKILL.md` ↔ `.codex/prompts/<name>.md` (symlink — formats match). For every skill added or modified, create or refresh the symlink: `ln -s ../../.claude/skills/<name>/SKILL.md <target>/.codex/prompts/<name>.md`. If a pointer file or inline-duplicated wrapper is already in place, replace it with the symlink — both are deprecated parity-violation shapes.
+   - **Agent roles** — `.claude/agents/<role>.md` ↔ `.codex/agents/<role>.toml` (thin wrapper TOML — symlink not possible because TOML ≠ Markdown). For every agent .md added or modified, add or refresh the .toml as a thin pointer: a `description` field plus a `developer_instructions` body that just says "Read .claude/agents/<role>.md and follow it." Full-body inline TOMLs are the parity-violation shape to repair on sight.
+   - After all edits, run the parity verification sweep from `policies/cross-harness-parity.md` §Verification against the target. A clean target prints `AGENTS.md OK` and nothing else. Any "not a symlink" / "wrong target" / "missing peer" line is a parity violation introduced (or left unrepaired) by this apply pass and must be fixed before reporting completion.
+4. Update the target's `CLAUDE.md` catalogs (briefs catalog, policies catalog, critical-files map) so every new file is indexed. Add the catalog as a new section when the target lacks it.
 5. Substitute names in transferred files: `Agentic Coding Starter Template` → target's project name; `agentic-coding-starter-template` → target's slug; references to this template's `example/` package → target's primary surface.
 6. **Adapt build-gate commands** in the target's `.claude/skills/kickoff/SKILL.md` (and the four canonical agents) to the target's primary language, replacing this template's Python defaults wherever they leaked through verbatim transfers.
-7. Run the target's own build gates (whatever the target's `pyproject.toml` / `package.json` / `Cargo.toml` declares) to confirm nothing regressed. If the target has no gates yet, skip — but flag in the report.
-8. Append the TAUGHT FROM TEMPLATE entry to the target's `LOG.md` (create the file with the standard header if it doesn't exist).
+7. **Apply the stale-in-light-of-teaching migrations.** Walk the "Stale-in-light-of-teaching" section of the approved plan and execute every AUTO item (catalog entries, link additions, header restructures, file-shape migrations to richer conventions established by newly-added policies). DECIDE items get listed in the LOG entry as a manual follow-up for the target's owner. DEFER items get listed with their deferral condition.
+8. Run the parity verification sweep (per step 3) **and** the stale-sweep check — i.e., re-confirm that every newly-added brief and policy is now indexed in the target's catalogs, and that every convention-drift item flagged in the plan has either been migrated or surfaced. A teach run is not "done" until the stale sweep is reported.
+9. Run the target's own build gates (whatever the target's `pyproject.toml` / `package.json` / `Cargo.toml` declares) to confirm nothing regressed. If the target has no gates yet, skip — but flag in the report.
+10. Append the TAUGHT FROM TEMPLATE entry to the target's `LOG.md` (create the file with the standard header if it doesn't exist). The entry lists the transferred items, the stale items migrated, the stale items surfaced for user decision, and the patterns to feed back via `/learn`.
 
 **Do not auto-commit in the target.** The target's owner owns commits. Report the file list, build-gate status, and any unresolved manual steps.
 
@@ -200,6 +246,8 @@ Once approved, apply the approved items to the target. Order:
 
 ## Rules
 
+- **Improvements only.** Every proposed change must be a strict improvement to the target. Never replace target content with source content that is less elaborated, less specialized, or less capable. When the target has surpassed the source, the right move is to surface it for a future `/learn`, not to drag the target backward.
+- **Stale sweep is acceptance, not follow-up.** A `/teach` run is not done when the new files have been copied in. It is done when every file in the target that went stale *because of* the apply has been migrated (AUTO), surfaced for a user decision (DECIDE), or named with a deferral reason (DEFER). Empty catalogs, orphan policies, and existing-file shapes that the new policies supersede are all stale-sweep targets.
 - **This repo is read-only.** Never write to this repository during `/teach`. The starter learns via `/learn`, not as a side effect of `/teach`.
 - **Generality first.** Default to Tier 1+2 transfers. Specialize only when those are exhausted or the user's `<desc>` requested it.
 - **Approval is mandatory.** No bytes change in the target before explicit approval.
