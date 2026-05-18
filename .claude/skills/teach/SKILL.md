@@ -54,6 +54,17 @@ If `<target-dir>` is missing or is an empty/non-existent directory, refuse with 
 
 4. **Target's harness compatibility.** Note which agent harnesses the target appears to use (`CLAUDE.md` / `AGENTS.md` at root; `.claude/` and/or `.codex/` directories). Some teachings only apply if a particular harness is in use.
 
+## Plan-mode lifecycle (Stages 1–4)
+
+Stages 1, 2, and 3 are read-only against both repos; Stage 4 surfaces the plan to the user; Stage 5 is the only stage that writes. This maps cleanly onto the harness's plan-mode contract — enter at the start of Stage 1, exit at Stage 4.
+
+- **If the current harness exposes an `EnterPlanMode`-like tool** (Claude Code does today; Codex does not yet — see [openai/codex#11180](https://github.com/openai/codex/issues/11180)), **call it now** before starting Stage 1. The harness then enforces no-write through Stages 1–3; the bespoke "do not write to the target" rule below becomes belt-and-braces.
+- **If the harness does not expose programmatic plan-mode entry**, proceed without calling anything — the bespoke read-only discipline through Stages 1–3 carries the contract. The user may have entered plan mode interactively (Codex CLI's `/plan`; the Codex desktop app's plan mode); that's fine and orthogonal to this skill.
+- **At Stage 4**, if you entered plan mode in Stage 1 (or detected the user did so interactively and the harness exposes `ExitPlanMode`), call `ExitPlanMode` with the Stage 3 plan body — that becomes the plan content the harness surfaces for approval. The user's accept / revise / reject from the plan-mode UI is the Stage 4 approval signal. If `ExitPlanMode` is not available, fall back to the free-text approval described in Stage 4.
+- **Stage 5 (Apply) always runs outside plan mode.** Either the harness has handed control back after `ExitPlanMode`, or no plan mode was entered. Either way, edits to the target are permitted only after the user has approved.
+
+The skill's bespoke Stage 3 plan template stays the canonical plan body in both paths. Plan mode is a harness affordance layered on top, not a replacement for the structured plan.
+
 ## Stage 1 — Explore (read-only)
 
 Build a structural map of the target. Mirror Stage 1 of `/learn`, but from the opposite vantage:
@@ -65,6 +76,15 @@ Build a structural map of the target. Mirror Stage 1 of `/learn`, but from the o
 5. **Phase plan shape.** If the target has a `plan/INDEX.md`, read it. Note which phase is `⬅️` (in-flight work the teaching must not stomp on).
 6. **Language & build gates.** Read the target's language metadata. The teaching's apply step will adapt build-gate commands to whatever the target's primary language is, not to Python defaults.
 7. **Active work signals.** Read the target's `LOG.md` if present. A phase in `🚧` is a clear "do not stomp" signal — the teaching apply step waits for that phase or limits itself to additive, non-conflicting changes.
+
+8. **Mechanical parity-heal scan.** Walk the target's cross-harness parity surfaces and detect every shape that has *one canonical correct form and no judgment call*. These are auto-healable independent of whatever else this teach pass is carrying. **Always run this scan, regardless of `<desc>` scope.** The catalog of mechanical violations is:
+
+   - **`AGENTS.md` not a symlink.** If `<target>/CLAUDE.md` exists and `<target>/AGENTS.md` is either absent or is a regular file (not a symlink to `CLAUDE.md`). Heal: `rm -f <target>/AGENTS.md && ln -s CLAUDE.md <target>/AGENTS.md`. Exception: if the regular `AGENTS.md` content differs meaningfully from `CLAUDE.md`, downgrade to DECIDE — the target may be intentionally splitting them.
+   - **`.codex/prompts/<name>.md` not a symlink (or wrong target).** For every `<target>/.claude/skills/<name>/SKILL.md`, the corresponding `<target>/.codex/prompts/<name>.md` must either be absent (target chose not to expose the skill via Codex slash commands — legitimate) or be a symlink whose target is `../../.claude/skills/<name>/SKILL.md`. A regular file (pointer wrapper or inline duplicate) is a violation. Heal: `rm -f <target>/.codex/prompts/<name>.md && ln -s ../../.claude/skills/<name>/SKILL.md <target>/.codex/prompts/<name>.md`.
+   - **`.agents/skills/<name>` in the broken file-symlink shape, or a non-symlink directory.** Codex's native skill loader does not follow file-level symlinks inside a skill dir ([openai/codex#11314](https://github.com/openai/codex/issues/11314)), so the file-level shape (`<target>/.agents/skills/<name>/SKILL.md` as a file symlink) is silently invisible to Codex. A non-symlink directory at `<target>/.agents/skills/<name>` is the buggy output of the Codex desktop "import settings" prompt — those mechanical search/replace bugs always need cleanup. The starter-only `/starter` skill must never appear here. Heal: for each universal skill that exists at `<target>/.claude/skills/<name>/`, `rm -rf <target>/.agents/skills/<name> && mkdir -p <target>/.agents/skills && ln -s ../../.claude/skills/<name> <target>/.agents/skills/<name>`. Also `rm -rf <target>/.agents/skills/starter` if present.
+   - **`.codex/agents/<role>.toml` missing.** For every `<target>/.claude/agents/<role>.md`, the `.toml` peer must exist as a thin wrapper (description + developer_instructions pointing back to the .md). Heal: generate the thin wrapper TOML when missing. Do **not** auto-overwrite an existing inline-full-body TOML — that's a parity violation but might encode target-specific overrides; surface as DECIDE.
+
+   For each detected violation, classify as **AUTO** (mechanical, one correct shape, heal it) or **DECIDE** (intent is ambiguous, surface to user). Capture both classifications for Stage 3.
 
 Output of Stage 1 is internal. The user sees Stage 3's plan.
 
@@ -89,7 +109,7 @@ For each candidate file or pattern, compare bidirectionally: starter → target 
 Same tiers as `/learn`:
 
 - **Tier 1 — Methodology-level.** The four canonical agents, the orchestrator skill, the briefs/policies/plan triplet, the LOG.md contract.
-- **Tier 2 — Universal template content.** Every file under `policies/`, `methodology.md`, `agentic-bootstrap.md`, the `AGENTS.md` symlink convention, the `.codex/prompts/<name>.md` file-symlink convention, and the `.agents/skills/<name>` directory-symlink convention (Codex CLI's native skill-discovery path, per [developers.openai.com/codex/skills](https://developers.openai.com/codex/skills); directory-symlink shape because of [openai/codex#11314](https://github.com/openai/codex/issues/11314)).
+- **Tier 2 — Universal template content.** Every file under `policies/` (including the recently-added `phase-ripple.md`, which codifies the AUTO/DECIDE ripple contract `/kickoff` Steps 9a/9b implement), `methodology.md`, `agentic-bootstrap.md`, the `AGENTS.md` symlink convention, the `.codex/prompts/<name>.md` file-symlink convention, and the `.agents/skills/<name>` directory-symlink convention (Codex CLI's native skill-discovery path, per [developers.openai.com/codex/skills](https://developers.openai.com/codex/skills); directory-symlink shape because of [openai/codex#11314](https://github.com/openai/codex/issues/11314)).
 - **Tier 3 — Language/platform specializations.** Build-gate command lists for the target's language.
 - **Tier 4 — Domain specializations.** Only if a domain-specific extension lives in this starter (uncommon; this template aims to stay general).
 
@@ -111,6 +131,8 @@ For each proposed addition or update, ask:
 - **Description drift.** Does the target's `CLAUDE.md` (or any other top-level doc) describe behavior the new policy now codifies more thoroughly? Augment the existing description to point at the new policy and pick up its richer conventions. Do not duplicate the policy body — link to it.
 - **Cross-reference drift.** Does the target's `plan/INDEX.md` "Critical-Files Map" (or equivalent) reference policies and briefs? Every new universal policy and brief added by this teach pass should appear there.
 - **Naming drift.** Does the target use a name or path the new content replaces? Update every call site.
+- **Phase-roadmap drift.** Does the target's `plan/INDEX.md` show every major phase the target's brief surfaces, each with a corresponding `plan/phase-N.md` sketch (per [`policies/phase-ripple.md`](../../../policies/phase-ripple.md) and [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md) §8)? If the target has only Phase 1 drafted while the brief surfaces more major phases, the gap is real but drafting them is a Wolf-level decision — surface as DECIDE with the list of missing sketches.
+- **Ripple-contract adoption.** Does the target's `/kickoff` SKILL.md have a Step 9a *and* Step 9b with the AUTO/DECIDE ripple sub-step? If only Step 9a exists (today's earlier teach), the target needs Step 9b added and Step 9a's ripple sub-step appended. Mechanical — surface as AUTO.
 
 Each stale item gets one of three classifications:
 
@@ -189,6 +211,15 @@ Items in the *existing* target that go stale because of this teach pass's additi
 
 If nothing in the target goes stale because of this pass, declare "None identified" rather than omit the section.
 
+## Mechanical parity heals (auto-apply on approval, independent of `<desc>` scope)
+
+Cross-harness parity surfaces the target has in a known-broken shape. These are repaired regardless of whether this teach pass is otherwise touching them — each has *one correct form* (per `policies/cross-harness-parity.md`) and no judgment call. Each entry is classified:
+
+- **AUTO** `<target path>` — <one-line: current shape → correct shape, and why the correct shape is mechanical>. Repaired as part of this teach run.
+- **DECIDE** `<target path>` — <one-line: current shape, what change would mean, why intent is ambiguous>. Surfaced for user choice; not auto-repaired.
+
+If the target's parity surfaces are all clean, declare "None identified" rather than omit the section.
+
 ## Conflicts requiring user decision
 
 - `<target file>`: target's version <describes-the-divergence>. Options:
@@ -207,6 +238,8 @@ If nothing in the target goes stale because of this pass, declare "None identifi
 ## <YYYY-MM-DD HH:MM> — TAUGHT FROM TEMPLATE
 Source: <this-repo-name> @ <sha or fp>
 Items applied: <count>, by tier T1=<n>/T2=<n>/T3=<n>/T4=<n>
+Parity heals applied: <count> (AUTO); <count> surfaced as DECIDE
+Stale-in-light-of-teaching migrations: <count> (AUTO); <count> DECIDE; <count> DEFER
 Files touched in target: <count>
 ```
 ```
@@ -215,31 +248,34 @@ End the plan with one line: **"Approve this plan to apply to the target, ask for
 
 ## Stage 4 — Approve (gate)
 
-Do not write a single byte to the target until the user clearly approves. Acceptable approval signals: "approved", "go ahead", "apply it", "yes", or specific opt-in like "apply items 1, 3, and 5 only."
+Do not write a single byte to the target until the user clearly approves.
 
-If the user asks for revisions, return to Stage 3 with the new constraints. If the user rejects, write nothing.
+**Two paths, by harness capability** (per the Plan-mode lifecycle section above):
 
-If the user partially approves, the apply step honors the subset exactly.
+- **Plan-mode path.** If you entered plan mode at Stage 1 (or the user did interactively), call `ExitPlanMode` with the Stage 3 plan body. The harness presents accept / revise / reject affordances; the user's choice is the approval signal. A plain accept maps to "approved (all items)"; revise routes back to Stage 3 with the user's constraints; reject means write nothing.
+- **Free-text path** (when plan mode is unavailable in the current harness). Wait for a clear approval signal in chat: "approved", "go ahead", "apply it", "yes", or specific opt-in like "apply items 1, 3, and 5 only." Revisions return to Stage 3; rejections mean write nothing.
+
+If the user partially approves (subset of items, whether via plan-mode revise-with-constraints or free-text opt-in), the apply step honors the subset exactly.
 
 ## Stage 5 — Apply
 
 Once approved, apply the approved items to the target. Order:
 
-1. Add NEW files in the target (policies first, then briefs, then skills/agents/prompts, then plan files, then any other infrastructure).
-2. MODIFY existing target files (smallest diffs first; one logical change per Edit call).
-3. Resolve cross-harness parity in the target across **all four parity surfaces** (per `policies/cross-harness-parity.md`). Default to intra-repo symlinks whenever formats match; drop to a wrapper file only when the parser would reject the symlinked content:
-   - **Top-level instructions** — `CLAUDE.md` ↔ `AGENTS.md` (symlink — formats match). Edits to `CLAUDE.md` propagate automatically through the symlink. Verify: `test -L <target>/AGENTS.md && [ "$(readlink <target>/AGENTS.md)" = "CLAUDE.md" ]`. If the target's `AGENTS.md` is a file rather than a symlink, replace it: `rm <target>/AGENTS.md && ln -s CLAUDE.md <target>/AGENTS.md`.
-   - **Skills — Codex slash-command surface** — `.claude/skills/<name>/SKILL.md` ↔ `.codex/prompts/<name>.md` (symlink — formats match). For every skill added or modified, create or refresh the symlink: `ln -s ../../.claude/skills/<name>/SKILL.md <target>/.codex/prompts/<name>.md`. If a pointer file or inline-duplicated wrapper is already in place, replace it with the symlink — both are deprecated parity-violation shapes.
-   - **Skills — Codex native skill-discovery surface** — `.claude/skills/<name>/` ↔ `.agents/skills/<name>` (*directory* symlink). For every universal skill added or modified (kickoff, methodology, learn, teach — *not* `/starter`, which is starter-only): `mkdir -p <target>/.agents/skills && ln -s ../../.claude/skills/<name> <target>/.agents/skills/<name>`. **Directory-level, not file-level** — Codex CLI does not follow file-level symlinks inside a skill directory ([openai/codex#11314](https://github.com/openai/codex/issues/11314)), but does traverse a symlinked skill directory. If the target has the old, broken file-level shape (`.agents/skills/<name>/SKILL.md` as a file symlink) or a non-symlink directory (likely from the Codex desktop "import settings" prompt, which produces buggy copies), `rm -rf <target>/.agents/skills/<name>` and replace with the directory-level symlink. Verify with `test -L <target>/.agents/skills/<name> && test -d <target>/.agents/skills/<name>` and `test -f <target>/.agents/skills/<name>/SKILL.md` (reaching SKILL.md through the symlink).
-   - **Agent roles** — `.claude/agents/<role>.md` ↔ `.codex/agents/<role>.toml` (thin wrapper TOML — symlink not possible because TOML ≠ Markdown). For every agent .md added or modified, add or refresh the .toml as a thin pointer: a `description` field plus a `developer_instructions` body that just says "Read .claude/agents/<role>.md and follow it." Full-body inline TOMLs are the parity-violation shape to repair on sight.
-   - After all edits, run the parity verification sweep from `policies/cross-harness-parity.md` §Verification against the target. A clean target prints `AGENTS.md OK` and nothing else. Any "not a symlink" / "wrong target" / "missing peer" line is a parity violation introduced (or left unrepaired) by this apply pass and must be fixed before reporting completion.
-4. Update the target's `CLAUDE.md` catalogs (briefs catalog, policies catalog, critical-files map) so every new file is indexed. Add the catalog as a new section when the target lacks it.
-5. Substitute names in transferred files: `Agentic Coding Starter Template` → target's project name; `agentic-coding-starter-template` → target's slug; references to this template's `example/` package → target's primary surface.
-6. **Adapt build-gate commands** in the target's `.claude/skills/kickoff/SKILL.md` (and the four canonical agents) to the target's primary language, replacing this template's Python defaults wherever they leaked through verbatim transfers.
-7. **Apply the stale-in-light-of-teaching migrations.** Walk the "Stale-in-light-of-teaching" section of the approved plan and execute every AUTO item (catalog entries, link additions, header restructures, file-shape migrations to richer conventions established by newly-added policies). DECIDE items get listed in the LOG entry as a manual follow-up for the target's owner. DEFER items get listed with their deferral condition.
-8. Run the parity verification sweep (per step 3) **and** the stale-sweep check — i.e., re-confirm that every newly-added brief and policy is now indexed in the target's catalogs, and that every convention-drift item flagged in the plan has either been migrated or surfaced. A teach run is not "done" until the stale sweep is reported.
-9. Run the target's own build gates (whatever the target's `pyproject.toml` / `package.json` / `Cargo.toml` declares) to confirm nothing regressed. If the target has no gates yet, skip — but flag in the report.
-10. Append the TAUGHT FROM TEMPLATE entry to the target's `LOG.md` (create the file with the standard header if it doesn't exist). The entry lists the transferred items, the stale items migrated, the stale items surfaced for user decision, and the patterns to feed back via `/learn`.
+1. **Execute approved mechanical parity heals first**, before any other change. Walk the "Mechanical parity heals" section of the approved plan and execute every AUTO entry. This runs *before* adding NEW files so the rest of Apply lands on a parity-clean substrate. Repairs include: `AGENTS.md` regular-file → symlink to `CLAUDE.md`; `.codex/prompts/<name>.md` pointer-wrapper-or-duplicate → file symlink to `../../.claude/skills/<name>/SKILL.md`; `.agents/skills/<name>` file-symlink-or-non-symlink-directory → directory symlink to `../../.claude/skills/<name>`; missing `.codex/agents/<role>.toml` → generate thin wrapper. DECIDE entries are *not* auto-executed; they stay listed in the LOG entry as manual follow-ups.
+2. Add NEW files in the target (policies first, then briefs, then skills/agents/prompts, then plan files, then any other infrastructure).
+3. MODIFY existing target files (smallest diffs first; one logical change per Edit call).
+4. Maintain cross-harness parity for any *newly added or modified* skills and agents — apply the same four-surface contract the parity heals enforce, but to whatever the teach pass just added:
+   - **Top-level instructions** — `CLAUDE.md` ↔ `AGENTS.md` symlink. If a fresh `CLAUDE.md` was created in step 2, also create the `AGENTS.md → CLAUDE.md` symlink (the parity-heal pass in step 1 only repairs existing-`CLAUDE.md` mismatches).
+   - **Skills — Codex slash-command surface** — `.claude/skills/<name>/SKILL.md` ↔ `.codex/prompts/<name>.md` (file symlink). For every skill added or modified in step 2/3, create or refresh the symlink: `ln -s ../../.claude/skills/<name>/SKILL.md <target>/.codex/prompts/<name>.md`.
+   - **Skills — Codex native skill-discovery surface** — `.claude/skills/<name>/` ↔ `.agents/skills/<name>` (directory symlink). For every universal skill added or modified (kickoff, methodology, learn, teach — *not* `/starter`): `mkdir -p <target>/.agents/skills && ln -s ../../.claude/skills/<name> <target>/.agents/skills/<name>`. Directory-level, not file-level — per [openai/codex#11314](https://github.com/openai/codex/issues/11314).
+   - **Agent roles** — `.claude/agents/<role>.md` ↔ `.codex/agents/<role>.toml` (thin wrapper TOML). For every agent .md added or modified, generate or refresh the .toml as a thin pointer: a `description` field plus a `developer_instructions` body that just says "Read .claude/agents/<role>.md and follow it."
+5. Update the target's `CLAUDE.md` catalogs (briefs catalog, policies catalog, critical-files map) so every new file is indexed. Add the catalog as a new section when the target lacks it.
+6. Substitute names in transferred files: `Agentic Coding Starter Template` → target's project name; `agentic-coding-starter-template` → target's slug; references to this template's `example/` package → target's primary surface.
+7. **Adapt build-gate commands** in the target's `.claude/skills/kickoff/SKILL.md` (and the four canonical agents) to the target's primary language, replacing this template's Python defaults wherever they leaked through verbatim transfers.
+8. **Apply the stale-in-light-of-teaching migrations.** Walk the "Stale-in-light-of-teaching" section of the approved plan and execute every AUTO item (catalog entries, link additions, header restructures, file-shape migrations to richer conventions established by newly-added policies). DECIDE items get listed in the LOG entry as a manual follow-up for the target's owner. DEFER items get listed with their deferral condition.
+9. Run the parity verification sweep from `policies/cross-harness-parity.md` §Verification against the target. **Expected outcome: clean** — only `AGENTS.md OK` printed, because parity heals ran first (step 1) and any new content was wired up correctly (step 4). Any remaining "not a symlink" / "wrong target" / "missing peer" line indicates either a heal that was downgraded to DECIDE and skipped, a violation discovered post-Apply that the scan in Stage 1 missed (file a learning to extend the heal catalog), or a regression in step 4. Re-confirm catalog and stale-sweep coverage at the same time.
+10. Run the target's own build gates (whatever the target's `pyproject.toml` / `package.json` / `Cargo.toml` declares) to confirm nothing regressed. If the target has no gates yet, skip — but flag in the report.
+11. Append the TAUGHT FROM TEMPLATE entry to the target's `LOG.md` (create the file with the standard header if it doesn't exist). The entry lists the transferred items, the **parity heals applied** (separately from transferred items), the stale items migrated, the parity-heal and stale-sweep items surfaced for user decision, and the patterns to feed back via `/learn`.
 
 **Do not auto-commit in the target.** The target's owner owns commits. Report the file list, build-gate status, and any unresolved manual steps.
 
@@ -249,6 +285,7 @@ Once approved, apply the approved items to the target. Order:
 
 - **Improvements only.** Every proposed change must be a strict improvement to the target. Never replace target content with source content that is less elaborated, less specialized, or less capable. When the target has surpassed the source, the right move is to surface it for a future `/learn`, not to drag the target backward.
 - **Stale sweep is acceptance, not follow-up.** A `/teach` run is not done when the new files have been copied in. It is done when every file in the target that went stale *because of* the apply has been migrated (AUTO), surfaced for a user decision (DECIDE), or named with a deferral reason (DEFER). Empty catalogs, orphan policies, and existing-file shapes that the new policies supersede are all stale-sweep targets.
+- **Mechanical parity heals always run, independent of `<desc>` scope.** Every `/teach` invocation scans the target's parity surfaces and surfaces known-broken shapes (per the catalog in Stage 1 step 8) for repair. Even a narrow `/teach` pass — "just bring policies up to date" — heals an `AGENTS.md`-as-file, a file-level `.agents/skills/<name>/SKILL.md`, or a stray `.agents/skills/starter` it finds along the way. This is what closes the gap where broken parity shapes lingered because the teach pass didn't otherwise touch them.
 - **This repo is read-only.** Never write to this repository during `/teach`. The starter learns via `/learn`, not as a side effect of `/teach`.
 - **Generality first.** Default to Tier 1+2 transfers. Specialize only when those are exhausted or the user's `<desc>` requested it.
 - **Approval is mandatory.** No bytes change in the target before explicit approval.

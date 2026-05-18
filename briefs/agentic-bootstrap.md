@@ -316,9 +316,9 @@ The spine. Lay it down before any phase files exist:
 - `## Cross-Cutting Concerns` — the project's invariants, mirrored from `CLAUDE.md`'s "Architectural invariants" section. Keep the two lists in sync.
 - `## Critical-Files Map` — table of "concern → location." Initially sparse; populated as the project takes shape.
 
-### Step 8 — Write Phase 1 (and only Phase 1)
+### Step 8 — Write Phase 1 in full; sketch Phase 2+ to general specificity
 
-Resist planning everything up front. The template ships a placeholder Phase 1 because *it* doesn't know what the user's project is yet; a derived project replaces that placeholder with a real first phase.
+Write Phase 1 in full, then sketch every other major phase the brief surfaces. Major phases are enumerated up front — that's the project's roadmap. Only their sub-phases are JIT (drafted at parent open via the orchestrator's Step 1a). See [`methodology.md`](methodology.md) §6.
 
 `plan/phase-1.md` frontmatter:
 
@@ -334,13 +334,23 @@ informs: []        # filled in as later phases are added
 Body sections, in order:
 
 - **Goal** — one paragraph. What the user can do or observe at the end of Phase 1 that they cannot do now.
-- **Decomposition** — the sub-phases this parent will break into. At bootstrap you may not know all of them; list the ones you do, and note that more will be added.
+- **Decomposition** — if Phase 1 warrants sub-phases (multi-surface, multi-session), list the ones you can see at bootstrap; sub-phases beyond `phase-1.1` are JIT. If Phase 1 fits one session, declare "Monolithic (no sub-phase decomposition)" and skip this section.
 - **Phase-level acceptance** — concrete, empirical, observable.
 - **Brief refs** — links to every brief under `briefs/` that this phase implements.
 
-Sub-phase files (`plan/phase-1.1.md`, etc.) follow the same frontmatter shape with `id: "1.1"` and `depends_on: ["1"]` (or sibling sub-phases). Bodies: Goal / Deliverables / Acceptance / Brief refs.
+Sub-phase files (`plan/phase-1.1.md`, etc.) follow the same frontmatter shape with `id: "1.1"` and `depends_on: ["1"]` (or sibling sub-phases). Bodies: Goal / Deliverables / Acceptance / Brief refs. **Only draft `phase-1.1.md` at bootstrap** if Phase 1 needs sub-phases at all; remaining sub-phases (`phase-1.2`, `phase-1.3`, …) get drafted at the close of their predecessor.
 
-**Do not** create `phase-2.md` and beyond at bootstrap. Methodology step 11 is "stay agile"; phases get added once Phase 1's reality informs their shape.
+**Phase 2+ at bootstrap.** For every major phase the brief surfaces beyond Phase 1, draft a sketched `plan/phase-N.md` at lower fidelity:
+
+- Frontmatter: same shape (`id`, `title`, `depends_on`, `informs`).
+- **Goal** — one paragraph from the brief.
+- **Deliverables** — a high-level list (the surfaces this phase will produce). May shift as upstream phases close and ripple changes downstream (per [`../policies/phase-ripple.md`](../policies/phase-ripple.md)).
+- **Acceptance** — scaffold-level criteria. Tighten at phase start via Step 1a; pinned values from upstream phases ripple in automatically.
+- **Brief refs** — links to the briefs this phase implements.
+
+**Do not draft sub-phases of Phase 2+ at bootstrap.** Sub-phase decomposition is JIT, one parent at a time. The sketched parent file is enough; its sub-phases appear when its row enters `⬅️`.
+
+If the brief surfaces only Phase 1 (a small, single-phase project), no sketches are required. The dependency graph in `plan/INDEX.md` then contains a single node.
 
 ### Step 9 — Lay down the project's primary code surface
 
@@ -432,14 +442,20 @@ Bootstrap is complete when **all** of the following hold:
 [ ] CLAUDE.md exists with all required sections (§3.4 above)
 [ ] AGENTS.md is a symlink to CLAUDE.md
 [ ] LOG.md exists and contains only `# Activity Log` and the contract paragraph
-[ ] plan/INDEX.md exists with: graph block, status legend, phase table
-    containing exactly one row whose status is ⬅️, cross-cutting concerns
-    (mirroring CLAUDE.md), critical-files map
-[ ] plan/phase-1.md exists, with frontmatter (id "1", depends_on []),
+[ ] plan/INDEX.md exists with: graph block (enumerating every major phase
+    the brief surfaces), status legend, phase table containing one row per
+    major phase with exactly one row whose status is ⬅️ (Phase 1), cross-
+    cutting concerns (mirroring CLAUDE.md), critical-files map
+[ ] plan/phase-1.md exists in full, with frontmatter (id "1", depends_on []),
     Goal / Decomposition / Acceptance / Brief refs sections
-[ ] All known plan/phase-1.<M>.md sub-phases of the current major phase exist
-    (per methodology step 6: "Sub-phase breakdown at phase start"). Future
-    major phases (2+) are NOT decomposed yet.
+[ ] plan/phase-N.md exists for every major phase N≥2 the brief surfaces,
+    sketched to general specificity (frontmatter + Goal + high-level
+    Deliverables + scaffold Acceptance + Brief refs). If the brief surfaces
+    only Phase 1, no sketches are required.
+[ ] Only the in-flight major phase has sub-phase files drafted, and only as
+    many as the orchestrator's Step 1a/9a have produced so far. At bootstrap
+    that's `plan/phase-1.1.md` only (when Phase 1 warrants sub-phases) — no
+    `phase-1.2.md`, no `phase-2.1.md`. Subsequent sub-phases are JIT.
 [ ] .claude/skills/kickoff/SKILL.md exists, adapted for this project's
     surfaces and build gates
 [ ] .claude/skills/methodology/SKILL.md exists (verbatim from template)

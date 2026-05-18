@@ -76,5 +76,5 @@ For Option B:
 
 ## Out of scope
 
-- Phases 2 and beyond. Methodology step 11 says decompose major phases at their start, not at bootstrap. Phase 2 belongs to the project that emerges from Phase 1, not to this placeholder phase.
+- Sub-phases of Phase 2 and beyond. Per [`../briefs/methodology.md`](../briefs/methodology.md) §6, major phases the brief surfaces *are* enumerated at bootstrap (sketched to general specificity); only their sub-phases are JIT, drafted at parent open via `/kickoff` Step 1a. Sketched Phase 2+ files belong in the project that emerges from Phase 1, not in this placeholder.
 - Customizing every brief/policy file individually for the new project. The template's policies are universal by design; they don't need rewriting. The briefs that need rewriting are `BRIEF.md` (always) and any topic-specific briefs the new project introduces.

@@ -43,7 +43,9 @@ Tell the user which phase you are picking up and the path to its file (`plan/pha
 
 ### Step 1a: Sub-phase decomposition (parent phases only — just-in-time, one at a time)
 
-If the target is a **parent phase** (`phase-N.md`, not `phase-N.M.md`) and no `plan/phase-N.*.md` sub-phase files exist for it yet, decide whether to decompose before planning:
+The parent `phase-N.md` was drafted at bootstrap (or by an earlier major-phase-close ripple — see Step 9b). Step 1a decides whether to decompose its sub-phases, not whether to draft the parent itself.
+
+If the target is a **parent phase** (`phase-N.md`, not `phase-N.M.md`) and no `plan/phase-N.*.md` sub-phase files exist for it yet:
 
 - If the phase's Deliverables list is small (≤ 3 distinct surfaces) and fits one focused session, proceed monolithically — skip to Step 2.
 - If the phase is large or multi-surface, **decompose just-in-time, one sub-phase at a time**:
@@ -53,6 +55,8 @@ If the target is a **parent phase** (`phase-N.md`, not `phase-N.M.md`) and no `p
   4. **Do not draft `phase-N.2`, `phase-N.3`, etc. yet.** Their shape benefits from `phase-N.1`'s outcomes. Subsequent sub-phases land at sub-phase close (see Step 9a). See [`briefs/methodology.md`](../../../briefs/methodology.md) §6.
 
 Surface the decomposition decision (or the choice to stay monolithic) to the user in the opening report.
+
+(Major-phase JIT does *not* happen here — every major phase the brief surfaces was sketched at bootstrap per [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md) §8. If a sketched `phase-N.md` is missing when `/kickoff` reaches Phase N, that is a bootstrap-completeness failure to surface to the user, not a Step 1a responsibility.)
 
 ### Step 2: Flip marker and open the log
 
@@ -151,8 +155,8 @@ Per [`policies/acceptance-empirical.md`](../../../policies/acceptance-empirical.
 In `plan/INDEX.md`'s phase table (and only there):
 
 1. Flip the completed phase's status cell from `🚧` to `✅`.
-2. **If the closed phase was a sub-phase** (e.g., `phase-N.M.md`), go to Step 9a *before* advancing `⬅️`.
-3. **Otherwise** (closed phase was a major phase with no parent), find the next `⏳` row in the linear order implied by the phase dependency graph at the top of `INDEX.md` (honoring parallel opportunities). Change it to `⬅️`. Only one row is `⬅️` at a time.
+2. **If the closed phase was a sub-phase** (`phase-N.M.md`), go to Step 9a. Step 9a owns next-sub-phase drafting, the ripple sub-step, and (if the parent rolled up) handing off to Step 9b.
+3. **Otherwise** (closed phase was a monolithic major phase with no sub-phases), go to Step 9b. Step 9b owns the major-phase ripple pass and advancing `⬅️`.
 
 If the phase is only partially complete (the user paused mid-way), leave it `🚧` and do not advance `⬅️`.
 
@@ -169,11 +173,32 @@ If the just-closed phase was a sub-phase `phase-N.M.md` and the parent `phase-N.
 If the parent's Deliverables **are** fully addressed by the closed sub-phases:
 
 1. Mark the parent `✅`.
-2. Advance `⬅️` to the next `⏳` major phase per the dependency graph (as in Step 9.3).
+2. Run Step 9b (below) to ripple into the next major phase and advance `⬅️`. (Step 9.2's normal "advance to next `⏳`" is subsumed by Step 9b.)
 
 If the closed sub-phase reveals that the parent's Deliverables list needs revision (new deliverable surfaced, an existing one no longer applies), surface this to the user explicitly in Step 10's report rather than silently rewriting the parent. The parent edit is a Wolf decision.
 
 This step implements just-in-time, one-at-a-time sub-phase decomposition per [`briefs/methodology.md`](../../../briefs/methodology.md) §6 — `phase-N.(M+1)` is drafted *with* `phase-N.M`'s outcomes in hand, not in advance.
+
+**Then run the ripple sub-step** before proceeding to Step 10. This applies whether the parent is still `🚧` (a new sub-phase was drafted in 1–3 above) or just rolled up to `✅` (Step 9b took over). The ripple sub-step exists per [`policies/phase-ripple.md`](../../../policies/phase-ripple.md):
+
+1. Read the closing sub-phase's `LOG.md` END block, the plan-reviewer's Observations, and the code-critic's verdict body.
+2. Identify candidate ripples: pinned values, renamed paths, added brief refs, tightened Acceptance criteria, surfaced concerns addressed to a later phase by name.
+3. For each candidate, walk the downstream drafted phase files — siblings (`phase-N.(M+1)`, `phase-N.(M+2)`, …, just-drafted or already drafted) plus downstream major phases (`phase-(N+1).md`, `phase-(N+2).md`, …, sketched at bootstrap). Classify each potential edit:
+   - **AUTO** (mechanical, one correct shape): apply the edit now. If the edit is more than one line (e.g., reshaping an Acceptance section to incorporate a now-pinned value), invoke `phase-planner` with the downstream file and the ripple description; otherwise edit directly.
+   - **DECIDE** (judgment-bearing): do *not* edit. Capture the item for the END block.
+4. AUTO edits land before Step 10 writes the END block; the END block lists every AUTO ripple applied and every DECIDE ripple surfaced.
+
+If no downstream drafted phase files exist (e.g., this is the project's only phase, or all later phases are already ✅), the ripple sub-step is a no-op — note `none — no downstream sketches` in the END block.
+
+### Step 9b: Major-phase close — ripple and advance ⬅️ (major-phase close only)
+
+Runs when a major phase's row was just flipped to `✅` — either by Step 9.3 directly (the closed phase was a monolithic major phase) or by Step 9a's parent-rollup branch (the closed phase was the last sub-phase under its parent).
+
+1. **Ripple pass** against the next drafted major phase (`phase-(N+1).md`) and any subsequent sketched phases. Procedure mirrors Step 9a's ripple sub-step (read END block + verdict bodies; classify each candidate AUTO/DECIDE; apply AUTO; capture DECIDE for the END block). The major-phase ripple is more likely to touch Goal and Deliverables (lower-fidelity sketches have more headroom) and Acceptance (sketched criteria need tightening once the upstream phase pins them).
+2. **Advance `⬅️`.** Find the next `⏳` row in the dependency graph order (honoring parallel opportunities). Change it to `⬅️`. Only one `⬅️` at a time.
+3. **Sketched-phase completeness check.** If the new `⬅️` row points at a `phase-N.md` that doesn't exist as a file (only a row in INDEX.md), this is a bootstrap-completeness failure — flag in the END block. Do not auto-draft it; per [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md) §8, every major phase the brief surfaces should have been sketched at bootstrap.
+
+If no downstream major phase exists (project complete), Step 9b's ripple is a no-op and `⬅️` advances to nothing — the project is done. Surface this to the user in the report.
 
 ### Step 10: Close the log and report
 
@@ -194,6 +219,11 @@ Build status:
 
 Manual checks for user:
 - <named check> | None
+
+Ripple (per `policies/phase-ripple.md`):
+- AUTO: <downstream phase file> — <one-line: what was pinned and how the file was updated> | None
+- DECIDE: <downstream phase file> — <one-line: candidate ripple, why it needs human judgment> | None
+<If no downstream drafted phase files exist, state "none — no downstream sketches".>
 
 User demo (per `policies/user-demo-protocols.md`):
 <If the approved plan carried a `User Demo:` block, paste it verbatim here, with the entry-point command on its own line so the user can copy it directly. If the plan declared `User Demo: N/A — <reason>`, restate that line.>
@@ -218,6 +248,7 @@ Then report to the user:
 
 - The four canonical role names (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`) are load-bearing. See [`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md).
 - The verdict header (`## Verdict: APPROVED` or `## Verdict: REVISE`) is parsed by string match. Mis-cased or rephrased verdicts break orchestration.
+- The ripple pass in Step 9a (sub-phase close) and Step 9b (major-phase close) is governed by [`policies/phase-ripple.md`](../../../policies/phase-ripple.md). AUTO ripples land in the same session; DECIDE ripples appear in the END block as named follow-ups.
 - Cross-harness: this same skill drives both Claude Code and Codex. The Codex slash-command entry point lives at `.codex/prompts/kickoff.md` (file symlink to this file); Codex's native skill-discovery surface reaches it through `.agents/skills/kickoff` (directory symlink to the parent `.claude/skills/kickoff/`). Edit this canonical skill, not the wrappers.
 - If your harness does not expose named subagents, perform the same role sequence locally by reading each `.claude/agents/<role>.md` directly and adopting that role's reading protocol and output format for the duration of the step.
 

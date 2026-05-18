@@ -188,9 +188,13 @@ Author these afresh, using the gathered configuration:
 
 - **`<dest>/briefs/BRIEF.md`** — entry-point brief for the new project. Use the thesis-stub shape: H1, italic tagline, `## Thesis` paragraph from `description`, `## Catalog` pointer to `../CLAUDE.md#briefs-catalog`. Mark `status: draft` in frontmatter so the user knows it needs to be fleshed out.
 
-- **`<dest>/plan/INDEX.md`** — copy this template's `plan/INDEX.md` structure, adapted: project name in the H1, a single Phase 1 in the dependency graph, a single `⬅️` row in the phase table.
+- **`<dest>/plan/INDEX.md`** — copy this template's `plan/INDEX.md` structure, adapted: project name in the H1; the dependency graph enumerates every major phase the brief surfaces (Phase 1 + sketched Phases 2+); the phase table has one row per major phase, with Phase 1 as `⬅️` and the rest as `⏳`. See [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md) §8.
 
-- **`<dest>/plan/phase-1.md`** — a real first phase for the new project. Use the description plus inferred surfaces to draft a plausible Goal, Deliverables, and Acceptance. Mark Open Questions where the description is genuinely insufficient. Phase 1 should aim to deliver the project's "first slice end-to-end" — for a CLI, that's `<name> --help` plus one working subcommand; for a web app, that's the dev server plus one read-only page; for a library, that's the public API surface plus one working function. **Do not pre-build Phase 2.** The methodology says decompose at start-time.
+- **`<dest>/plan/phase-1.md`** — a real first phase for the new project, drafted **in full**. Use the description plus inferred surfaces to draft Goal, Deliverables, and Acceptance. Mark Open Questions where the description is genuinely insufficient. Phase 1 should aim to deliver the project's "first slice end-to-end" — for a CLI, `<name> --help` plus one working subcommand; for a web app, the dev server plus one read-only page; for a library, the public API surface plus one working function.
+
+- **`<dest>/plan/phase-2.md`, `<dest>/plan/phase-3.md`, …** — sketched major phases at lower fidelity. For each major phase the brief surfaces beyond Phase 1, draft a `phase-N.md` with frontmatter (`id`, `title`, `depends_on`, `informs`) + one-paragraph Goal + high-level Deliverables list + scaffold Acceptance + Brief refs. These sketches will be tightened by ripple at each upstream phase's close (per [`policies/phase-ripple.md`](../../../policies/phase-ripple.md)) and elaborated when their row enters `⬅️` (per the kickoff Step 1a/9a/9b machinery). If the brief surfaces only a single phase, skip the sketches.
+
+- **Do NOT draft any sub-phase files at bootstrap** — no `phase-1.1.md`, no `phase-2.1.md`, none. Sub-phase decomposition is JIT, owned by `/kickoff` Step 1a at each major phase's open. The bootstrap leaves sub-phase shape to the orchestrator with each predecessor's outcomes in hand.
 
 ### Step 4 — Lay down the primary code surface
 
