@@ -14,7 +14,7 @@
 - A planning document. Plans live in `plan/` and per-session conversational planning context.
 - A commit message. Commits are written separately by the human.
 - A general-purpose changelog. (A `CHANGELOG.md` is a different artifact, owned by humans for end-user audiences.)
-- An action queue for the human. The live list of items only the user can resolve lives in [`../user-blockers.md`](../user-blockers.md), governed by [`user-blockers.md`](user-blockers.md). `LOG.md` records what happened; `user-blockers.md` records what's pending on the human.
+- An action queue for the human. The live set of items only the user can resolve lives in [`../user-actions/`](../user-actions/) (one file per action; closed in `../user-actions-archived/`), governed by [`user-actions.md`](user-actions.md). `LOG.md` records what happened; `user-actions/` records what's pending on the human.
 
 ## START block format
 

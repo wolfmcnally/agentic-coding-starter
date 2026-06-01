@@ -68,3 +68,22 @@ Closes the DECIDE follow-up surfaced in the donor's most recent TAUGHT FROM TEMP
 Skipped (out of scope for `<desc> = "briefs policy"`):
 - The donor's project-specific briefs (an infrastructure snapshot, a phased-build design rationale, an access-log BCP brief, a seed-script evaluation) — all four are durably tied to the donor's domain and not template content.
 - The donor's `.claude/skills/kickoff/SKILL.md` specializations (an `--force-out-of-order` flag, a separate user-testing-protocol step, a sub-phase-only terminology choice) — interesting future candidates for a separate scoped `/learn` invocation against the donor's kickoff specifically, not this run.
+
+## 2026-06-01 — TAUGHT FROM TEMPLATE (Donor E)
+Source: Donor E — a downstream project stamped from this template, now feeding its evolution of the user-actions pattern back upstream.
+Pattern: user blockers → single-file-per-user-action — `user-actions/<slug>.md` (open) + `user-actions-archived/<slug>.md` (closed), all metadata in YAML frontmatter, **no index**. Per-file removes the single-file contention point when multiple agents edit the queue concurrently; YAML frontmatter is machine-legible.
+Items applied: 2 (T2=2)
+- `policies/user-actions.md` — genericized rewrite, replacing `policies/user-blockers.md` (DELETE).
+- `user-actions/` + `user-actions-archived/` — directory structure replacing `user-blockers.md` (DELETE). `user-actions/.gitkeep` keeps the empty open queue tracked.
+Genericization vs. source: dropped Donor E's domain-specific "Relationship to engine blockers" section; `category` is a freeform short label (not a domain enum); kept the sub-domain "Extension pattern" adapted to per-`DOMAIN_ROOT`/`user-actions/`; verification greps switched to directory-glob form.
+Parity heals applied: 0 AUTO; 0 DECIDE (AGENTS.md symlink, `.codex/prompts/*` file-symlinks, `.agents/skills/*` directory-symlinks excluding `/starter`, and all four `.codex/agents/*.toml` already clean).
+Stale-in-light-of-teaching migrations: 4 AUTO; 0 DECIDE; 0 DEFER
+- `CLAUDE.md` — policies-catalog entry, universal-repo-layout bullet, and the `### User blockers` section rewritten to `### User actions (user-actions/)` with the per-file lifecycle.
+- `policies/log-discipline.md` — repointed to `user-actions/` + `policies/user-actions.md`.
+- `policies/anonymize-log-references.md` — illustrative phrase "a lightweight `user-blockers.md`" → "a lightweight `user-actions/` queue".
+- `.claude/skills/teach/SKILL.md` — convention-drift example updated to `user-actions.md`.
+Backfilled actions: 2 closed (`blazing-salmon`, `dancing-locust`) → `user-actions-archived/` with frontmatter (filed 2026-05-17, closed 2026-05-18 from git history), dispositions preserved verbatim. No open or deferred items existed.
+Build gates after apply (`project/`): `ruff check` All checks passed; `ruff format --check` 4 files already formatted; `pytest -q` 7 passed (markdown/policy only — zero code touched).
+Cross-harness parity: not affected (canonical `CLAUDE.md` + skill edits; `.codex/prompts/teach.md` and `.agents/skills/teach` are symlinks to the canonical, auto-updated).
+Patterns to feed back via `/learn`: none identified — starter is upstream of Donor E.
+Files touched in target: 11 (5 NEW incl. `.gitkeep`, 2 DELETE, 4 MODIFY).
