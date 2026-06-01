@@ -1,0 +1,20 @@
+# Local name denylist for scripts/check-anonymization.sh — EXAMPLE.
+#
+# Copy this file to scripts/anonymization-denylist.local (gitignored) and list
+# the private / external project names and proprietary identifiers that must
+# never appear verbatim in this public repo — one term per line. The scan
+# greps every tracked file (case-insensitively) for each term.
+#
+# Why local-only: the .local file is gitignored, so the private names it lists
+# are never themselves committed into this public repo. The .example you are
+# reading is safe to commit because it contains no real names.
+#
+# Tip: prefer DISTINCTIVE terms. A project codename that is also a common
+# English word will match unrelated prose and produce false positives; the
+# scan can't tell the codename from the dictionary word.
+#
+# Format: one term per line; blank lines and #-comments ignored; inline
+# "# comment" after a term is stripped.
+
+# my-downstream-repo      # a project stamped from this template
+# internal-daemon-name    # a private daemon/CLI not part of this template

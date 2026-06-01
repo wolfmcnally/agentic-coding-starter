@@ -57,6 +57,7 @@ Evaluate in priority order:
 - Every applicable policy from `policies/` is honored.
 - Specifically grep for the patterns common policy violations introduce:
   - Absolute paths in committed files (`/Users/`, `/home/`, `/var/`, `C:\\`).
+  - External / private-repo references in **any** committed file (not just `LOG.md`) — a real project name, a real commit SHA, a private daemon / CLI / path. Per `policies/anonymize-log-references.md` (starter-only), this repo is public; a sibling repo named in an archived disposition or a SHA cited in a policy example is a leak. The repo ships `scripts/check-anonymization.sh` as the mechanical gate for paths and SHAs; mirror its two patterns in your grep (real `~/<workspace>` or `/Users/<user>/` paths, and backtick-wrapped or `@ <sha>` commit hashes), and apply judgment for verbatim project names the patterns can't enumerate.
   - Hand-edited mirror files (e.g., `.codex/agents/*.toml` body whose content does not match the canonical `.claude/agents/*.md`).
   - `status:` fields in per-phase frontmatter.
   - Hand-edited historical entries in `LOG.md`.

@@ -157,7 +157,9 @@ Verify each `readlink <dest>/.agents/skills/<name>` returns the expected target 
 
 The `.codex/prompts/<name>.md` files are *file* symlinks pointing at the SKILL.md inside the canonical skill dir (`../../.claude/skills/<name>/SKILL.md`); they feed Codex's slash-command surface. Both surfaces are symlink-based because formats match — see [`policies/cross-harness-parity.md`](../../../policies/cross-harness-parity.md).
 
-**Do not** copy `.claude/skills/starter/` (this skill itself), `.codex/prompts/starter.md`, create `.agents/skills/starter` in the destination, or copy `policies/anonymize-log-references.md`. The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too, and the LOG-anonymization rule doesn't apply to private downstream projects. `/learn` and `/teach` *are* carried over — they are universal cross-repo skills that benefit every methodology-following project.
+**Do not** copy `.claude/skills/starter/` (this skill itself), `.codex/prompts/starter.md`, create `.agents/skills/starter` in the destination, or copy `policies/anonymize-log-references.md`, `scripts/check-anonymization.sh`, or `scripts/anonymization-denylist.local.example` (and drop the `scripts/anonymization-denylist.local` line from the copied `.gitignore`). The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too, and the anonymization rule (and its enforcement script) doesn't apply to private downstream projects. `/learn` and `/teach` *are* carried over — they are universal cross-repo skills that benefit every methodology-following project.
+
+Because the anonymization policy and its script are starter-only but `code-critic.md` is copied verbatim (above), the adaptation pass must **delete the "External / private-repo references" bullet** from the destination's `.claude/agents/code-critic.md` — it references `scripts/check-anonymization.sh` and `policies/anonymize-log-references.md`, neither of which the new project will have.
 
 ### Step 3 — Write the project-specific files
 
