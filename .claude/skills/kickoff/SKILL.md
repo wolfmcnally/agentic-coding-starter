@@ -31,6 +31,17 @@ Raw arguments: `!{ARGUMENTS}`
 
 ## Workflow
 
+### Step 0a: Resolve the review venue
+
+Resolve once per session, before phase work begins, per [`policies/cross-harness-review.md`](../../../policies/cross-harness-review.md):
+
+1. If the env var `KICKOFF_REVIEW_DEPTH` is set, the venue is **native** — this session is itself a delegated reviewer and must not delegate further (recursion guard). Skip the remaining checks.
+2. Read the `cross-harness-review:` token from `CLAUDE.md`'s Project Context. `disabled` or absent → **native**.
+3. Detect the invoking harness: `CLAUDECODE=1` in the environment means Claude Code (alternative CLI: `codex`); otherwise Codex (alternative CLI: `claude`).
+4. `command -v <alternative-cli>` — absent → **native** (silent; not an error; the END block notes `native (<cli> not on PATH)`). Present → the alternative CLI is the review venue.
+
+Remember the resolved venue (`native`, `codex`, or `claude`) for Steps 4 and 6 and for the Step 10 END block. Both review stages use the same venue; do not re-resolve between them.
+
 ### Step 1: Identify the phase
 
 Read `plan/INDEX.md` (the authoritative phase ledger) and locate the phase to work on. Status markers live in the `INDEX.md` phase table, not in the per-phase files (see [`policies/phase-status.md`](../../../policies/phase-status.md)).
@@ -88,15 +99,22 @@ Wait for the plan.
 
 ### Step 4: Review the plan
 
-Delegate the review stage to the `plan-reviewer` agent. Pass it:
+**Native venue** (per Step 0a): delegate the review stage to the `plan-reviewer` agent. Pass it:
 
 - The phase reference and heading.
 - The full phase text from `plan/phase-<id>.md`.
 - The full plan text from Step 3.
 
+**External venue** (`codex` or `claude`): run the same role in the other harness per [`policies/cross-harness-review.md`](../../../policies/cross-harness-review.md):
+
+1. Write the full phase text and the full plan text to temp files (e.g., `/tmp/kickoff-phase-<id>.md`, `/tmp/kickoff-plan-<id>.md`). Do not include the planner's own confidence statements or open-questions commentary beyond the plan text itself.
+2. Write a prompt file instructing the external agent to: read `.claude/agents/plan-reviewer.md` and adopt that role for this review; review the plan in `<plan temp file>` against the phase text in `<phase temp file>`; assume the planner was careful but missed something; end with the exact verdict header (`## Verdict: APPROVED` or `## Verdict: REVISE`). Note that `AskUserQuestion` is unavailable in this venue — an unresolved product decision becomes `REVISE` with the question stated.
+3. Invoke the policy's recipe for the venue (codex: `codex exec -s read-only -c 'approval_policy="never"' … --output-last-message`; claude: `env -u CLAUDECODE … claude -p … --output-format json`), with `KICKOFF_REVIEW_DEPTH=1` in the child environment and a 300 s wall-clock timeout. Capture the session id (codex session / claude `.session_id`) for revision rounds. A flag-parse error from a churned CLI version counts as an invocation failure (next item).
+4. Gate on the three-signal check: output artifact non-empty, exactly one `## Verdict:` header, returned within timeout. On failure: perform this stage with the native `plan-reviewer` instead, record `[fallback: <reason>]` for the END block, and keep all remaining rounds of this stage native.
+
 **If `APPROVED`**: proceed to Step 5. Show the user a brief summary plus any Minor Corrections (do not wait for explicit approval unless the user asked to review plans themselves).
 
-**If `REVISE`**: re-run `phase-planner` with the reviewer's feedback appended to the prompt, then re-run `plan-reviewer`. Allow up to 2 revision cycles. If still not approved after 2, present the plans and outstanding issues to the user for a manual decision.
+**If `REVISE`**: re-run `phase-planner` with the reviewer's feedback appended to the prompt, then re-review in the same venue — native re-runs `plan-reviewer`; external prefers session resume (`codex exec resume <sid>` / `claude --resume <sid> -p`), falling back to a fresh external call with the full updated plan re-passed. Allow up to 2 revision cycles. If still not approved after 2, present the plans and outstanding issues to the user for a manual decision.
 
 ### Step 5: Implement
 
@@ -108,15 +126,22 @@ Wait for the coder. Collect the list of files created or modified, the Build Sta
 
 ### Step 6: Review code
 
-Delegate code review to the `code-critic` agent. Pass it:
+**Native venue** (per Step 0a): delegate code review to the `code-critic` agent. Pass it:
 
 - The approved plan (full text).
 - Any Minor Corrections the plan-reviewer issued.
 - The list of files the coder created or modified.
 
+**External venue** (`codex` or `claude`): run the same role in the other harness per [`policies/cross-harness-review.md`](../../../policies/cross-harness-review.md):
+
+1. Write the approved plan, the file list, and the diff of the coder's changes to temp files. **Redact the coder's self-assessment** — no Build Status block, no Manual Checks narrative, no "tests pass" framing. Cold artifacts review 3–4× deeper (see [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md) §1).
+2. Write a prompt file instructing the external agent to: read `.claude/agents/code-critic.md` and adopt that role for this review; review the changed files against the plan in the temp file; assume the implementer was careful but missed something; end with the exact verdict header.
+3. Invoke the policy's recipe for the venue, with `KICKOFF_REVIEW_DEPTH=1` in the child environment and a 420 s wall-clock timeout. Capture the session id for revision rounds.
+4. Gate on the three-signal check (artifact non-empty; exactly one `## Verdict:` header; within timeout). On failure: perform this stage with the native `code-critic` instead, record `[fallback: <reason>]` for the END block, and keep all remaining rounds of this stage native.
+
 **If `APPROVED`**: proceed to Step 7.
 
-**If `REVISE`**: re-run `phase-coder` with the critic's feedback, then re-run `code-critic`. Allow up to 2 revision cycles. If still not approved, present the issues to the user.
+**If `REVISE`**: re-run `phase-coder` with the critic's feedback, then re-review in the same venue (resume preferred externally, as in Step 4). Allow up to 2 revision cycles. If still not approved, present the issues to the user.
 
 ### Step 7: Final build gate
 
@@ -139,7 +164,7 @@ If any build gate fails:
    - **Plan error** (wrong file path, missing module, architectural mismatch) → re-run `phase-planner` with the error, then `phase-coder` with the updated plan. Counts as one cycle.
    - **Environment error** (missing toolchain, missing system dependency, missing credential) → report to the user immediately; do not retry.
 2. Re-run the failing gate after the fix.
-3. On success, re-run `code-critic` on the files the coder touched during the fix. If `REVISE`, back to coder (counts against revision cycles).
+3. On success, re-run `code-critic` on the files the coder touched during the fix (same venue rules as Step 6). If `REVISE`, back to coder (counts against revision cycles).
 4. Allow up to 3 fix cycles. If still failing, present to the user.
 
 ### Step 8: Phase-specific acceptance gates
@@ -217,6 +242,10 @@ Build status:
 - <gate 2>: OK | N/A | failed (<short reason>)
 - ...
 
+Review venue (per `policies/cross-harness-review.md`):
+- Plan review: native | codex | claude <annotate "native (<cli> not on PATH)" when the other CLI was absent, or "[fallback: <reason>]" when a mid-stage fallback fired>
+- Code review: native | codex | claude <same annotations>
+
 Manual checks for user:
 - <named check> | None
 
@@ -248,6 +277,7 @@ Then report to the user:
 
 - The four canonical role names (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`) are load-bearing. See [`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md).
 - The verdict header (`## Verdict: APPROVED` or `## Verdict: REVISE`) is parsed by string match. Mis-cased or rephrased verdicts break orchestration.
+- When cross-harness review is enabled ([`policies/cross-harness-review.md`](../../../policies/cross-harness-review.md)), Steps 4 and 6 execute their roles in the other harness's CLI. The venue is resolved once in Step 0a; fallback to native is graceful, per-stage, and reported in the END block — never a phase failure.
 - The ripple pass in Step 9a (sub-phase close) and Step 9b (major-phase close) is governed by [`policies/phase-ripple.md`](../../../policies/phase-ripple.md). AUTO ripples land in the same session; DECIDE ripples appear in the END block as named follow-ups.
 - Cross-harness: this same skill drives both Claude Code and Codex. The Codex slash-command entry point lives at `.codex/prompts/kickoff.md` (file symlink to this file); Codex's native skill-discovery surface reaches it through `.agents/skills/kickoff` (directory symlink to the parent `.claude/skills/kickoff/`). Edit this canonical skill, not the wrappers.
 - If your harness does not expose named subagents, perform the same role sequence locally by reading each `.claude/agents/<role>.md` directly and adopting that role's reading protocol and output format for the duration of the step.

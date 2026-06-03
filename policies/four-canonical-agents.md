@@ -13,6 +13,10 @@ The methodology's orchestrator (`/kickoff`) delegates one phase of work to four 
 
 The Codex mirrors live at `.codex/agents/<role>.toml`. See [`cross-harness-parity.md`](cross-harness-parity.md) for the parity contract.
 
+## Execution venue
+
+The roles, names, tool stances, and verdict headers above are fixed. The **execution venue** of the two reviewer roles is not: when cross-harness review is enabled ([`cross-harness-review.md`](cross-harness-review.md)), `/kickoff` may run `plan-reviewer` and `code-critic` in the *other* harness's CLI (`codex` from Claude Code, `claude` from Codex). The external venue reads the same canonical `.claude/agents/<role>.md` file, honors the same tool stance, and emits the same verdict headers — only where the role executes changes. `phase-planner` and `phase-coder` always run in the invoking harness. Do not assume the reviewers run as in-harness subagents when reasoning about orchestration.
+
 ## What each role does
 
 - **`phase-planner`** — Reads the phase file, the briefs it references, the policies, and the existing repo, and produces a concrete file-level implementation plan. Does not write code. Output: a markdown plan with named files, named types/functions, an Implementation Order, a Build Gate Sequence, and an Open Questions section.

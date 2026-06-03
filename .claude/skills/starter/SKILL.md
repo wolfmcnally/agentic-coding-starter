@@ -141,6 +141,7 @@ Copy these files **from this template** into the new project, then run a name su
 - Every file under `policies/` **except** any policy explicitly marked starter-only (currently `policies/anonymize-log-references.md` — the public-repo LOG anonymization rule; the asymmetry is driven by this template's publicness, not by methodology).
 - `briefs/methodology.md` (verbatim — methodology is universal)
 - `briefs/agentic-bootstrap.md` (verbatim — so the next bootstrap from this project is possible)
+- `briefs/cross-agent-invocation.md` (verbatim — the cross-CLI invocation BCPs that `policies/cross-harness-review.md` cites are universal)
 
 Then create the `.agents/skills/` **directory symlinks** for Codex CLI's native skill discovery. Each is a relative symlink whose target is the canonical skill *directory* (not the SKILL.md file inside it — Codex doesn't follow file-level symlinks inside a skill dir per [openai/codex#11314](https://github.com/openai/codex/issues/11314), but does traverse a symlinked skill directory):
 
@@ -176,6 +177,7 @@ Author these afresh, using the gathered configuration:
     - `## Project briefs` — list of `briefs/*.md` files specific to this project (initially just `BRIEF.md`).
     - `## Project surfaces` — describe the deliverable (path, what language, what the example or seed code is). When `project_isolation` is on, the surface is `project/`; when off, name the sibling deliverable directories.
     - `## Project conventions` — language, tooling, build-gate command shape for this project.
+    - `## Cross-harness review` — the one-paragraph description plus the activation token, mirroring the template's own subsection. Default `cross-harness-review: enabled` (it self-disables when the other CLI isn't installed, so the default is harmless); note the seeded default in the final report so the owner knows the bit exists. Governed by `policies/cross-harness-review.md`.
     - `## Project-specific skills` — if the new project carries any skills beyond the universal four (kickoff, methodology, learn, teach), list them here. For most fresh projects, this section is empty (or omitted).
   - Preserve the introductory paragraph that explains the two-zone contract; it is informational and lives outside both markers.
 
@@ -271,6 +273,7 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - For each name in {kickoff, methodology, learn, teach}: `readlink <dest>/.agents/skills/<name>` returns `../../.claude/skills/<name>`, `test -L <dest>/.agents/skills/<name>` and `test -d <dest>/.agents/skills/<name>` both pass, and `<dest>/.agents/skills/<name>/SKILL.md` is reachable through the directory symlink.
 - `<dest>/.agents/skills/starter` does **not** exist (starter-only, must not propagate).
 - The new `CLAUDE.md`'s catalogs reference every file in `briefs/` and `policies/`.
+- `grep -cE 'cross-harness-review: (enabled|disabled)' <dest>/CLAUDE.md` returns 1 (the activation token was seeded in Project Context), and `<dest>/policies/cross-harness-review.md` and `<dest>/briefs/cross-agent-invocation.md` both exist.
 - The project's primary build gate runs clean on the seeded code.
 
 Run the language-specific gate to confirm. For example, for Python with `project_isolation` enabled:
@@ -289,6 +292,7 @@ When the bootstrap finishes cleanly, report to the user:
 
 - The destination path.
 - The project name, slug, primary language, and inferred surfaces.
+- That cross-harness review was seeded `enabled` (per `policies/cross-harness-review.md`) and where to flip the token (`CLAUDE.md` Project Context) if unwanted.
 - The path to the new project's `BRIEF.md` (which the user should flesh out next) and `plan/phase-1.md` (which the user should review before `/kickoff`'ing).
 - The recommended next steps:
   1. `cd <dest>`

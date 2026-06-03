@@ -1,0 +1,98 @@
+---
+title: "Cross-Agent CLI Invocation — Best Current Practices"
+date: 2026-06-03
+status: methodology
+scope: BCPs for invoking one coding-agent CLI from inside another (Claude Code ↔ Codex CLI), and the design rationale for the config-gated cross-harness review feature.
+---
+
+# Cross-Agent CLI Invocation — Best Current Practices
+
+This brief pins the researched best current practices (as of mid-2026) for invoking OpenAI's `codex` CLI from inside Claude Code and Anthropic's `claude` CLI from inside Codex, so future work cites a stable position instead of re-deriving it. It also records the design rationale for the **cross-harness review** feature governed by [`policies/cross-harness-review.md`](../policies/cross-harness-review.md).
+
+Both vendors sanction this interop: OpenAI ships an official Claude Code plugin that delegates to the local Codex CLI, and both CLIs document headless scripting modes. Every mature published pattern is **subprocess-first** — shelling out to the other CLI — rather than MCP-bridged. MCP wrappers exist but add a moving part without changing the fundamentals; for bounded, one-shot delegations the subprocess is the de-facto standard.
+
+## 1. Why cross-harness review
+
+- **Cross-vendor review catches more.** A model reviewing its own output misses the failure classes it generates. The strongest published experience report (Orr, May 2026) found the bigger lever is *framing*: handing the reviewer a cold artifact (raw diff + requirements, no implementer narrative) produced ~9.4 mean findings vs 2.4–4.0 when the implementer's self-assessment was included — a 3–4× difference — and critical-severity tagging roughly halved with even mild framing.
+- **Review roles are read-only by construction.** Our `plan-reviewer` and `code-critic` tool stances (Read, Grep, Glob) map directly onto the external CLIs' sandboxed read-only modes. The external reviewer physically cannot contend for the working tree.
+- **The verdict contract already fits.** The methodology's `## Verdict: APPROVED` / `## Verdict: REVISE` string-match contract is exactly the sentinel-string loop-control pattern the ecosystem converged on independently.
+- **Instruction parity is automatic.** Codex auto-ingests `AGENTS.md` (→ `CLAUDE.md` via symlink); `claude` auto-loads `CLAUDE.md`. An external reviewer invoked from the repo root is bound by the same policies, invariants, and verdict contract as a native subagent, with no extra plumbing.
+
+## 2. Claude Code → `codex` (headless)
+
+Canonical invocation shape (review roles):
+
+```
+codex exec -s read-only -c 'approval_policy="never"' -C "$(pwd)" --output-last-message "$MSGFILE" "$(cat "$PROMPTFILE")" 2>/dev/null
+```
+
+Flag-by-flag rationale:
+
+- **`codex exec`** is the non-interactive entry point (alias `codex e`). Prompt as argument, or `-` to read stdin.
+- **Approvals must be pinned off.** Any approval prompt in a no-TTY context can block indefinitely; there are verified field reports of approval-state races freezing a session for ~10 minutes *while holding the git index lock*. A headless call must never be able to prompt. Use the **`-c 'approval_policy="never"'` config override** rather than the `-a/--ask-for-approval` flag: `exec` flag surfaces churn across versions (codex-cli 0.136.0's `exec` rejects `-a` outright — empirically verified on this template's first smoke test — while `-c` dotted-path overrides parse everywhere). When a flag-parse error occurs anyway, `codex exec --help` is the in-environment truth.
+- **`-s read-only` (`--sandbox read-only`)** matches the reviewer tool stance and makes working-tree contention impossible. Use `workspace-write` only when the external agent must edit (not the case for review). `--full-auto` is deprecated; `--dangerously-bypass-approvals-and-sandbox` (`--yolo`) is for already-isolated containers only — it exposes the user's `~/.codex/auth.json` to anything in the repo.
+- **`--output-last-message <file>` (`-o`) is the capture contract.** Codex streams progress to stderr and the final message to stdout, but the file artifact is the robust way to capture the answer; gate on it rather than scraping stdout. Suppress stderr noise with `2>/dev/null`.
+- **`-C "$(pwd)"`** pins the working directory explicitly.
+- **Pass large context via files, not inline.** Write the plan text or `git diff` output to a temp file and reference its path in the prompt. Every published skill does this.
+- **Do not hardcode `-m <model>`.** Model names churn rapidly and overloaded models silently reroute; let codex use its configured default.
+- **Exit codes are not a documented contract** for `codex exec`. Gate success on three signals together: the `-o` artifact exists and is non-empty, it contains the expected verdict header, and the call returned within a wall-clock timeout.
+- **Revision rounds: `codex exec resume <session-id> ...`** preserves the reviewer's context across rounds. If no session id was captured or resume fails, fall back to a fresh call with the full updated context (correctness over efficiency).
+- **`--json`** (NDJSON event stream: `turn.completed` / `turn.failed`, token usage) is available when telemetry matters; `--output-schema <schema.json>` constrains the final message to a JSON Schema when a parseable struct beats prose.
+- **Auth is free on a developer machine.** An interactive ChatGPT-plan login persists in `~/.codex/auth.json` with token auto-refresh; subprocess calls reuse it. CI uses `OPENAI_API_KEY` + `codex login --api-key`.
+- **AGENTS.md ingestion.** Codex walks repo root → cwd loading `AGENTS.md` (no flag disables this as of mid-2026). For cross-harness review this is desirable — the reviewer inherits the repo's policies. To *avoid* it (scoped consultations unrelated to the repo), run with `-C` pointed at a scratch directory and pass context via temp files.
+
+## 3. Codex → `claude` (headless)
+
+Canonical invocation shape (review roles):
+
+```
+env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT claude -p "$(cat "$PROMPTFILE")" --permission-mode dontAsk --allowedTools "Read,Grep,Glob" --output-format json --max-turns 12
+```
+
+Flag-by-flag rationale:
+
+- **`claude -p` (`--print`)** is headless mode: run the agent loop, print, exit.
+- **`--permission-mode dontAsk` is the correct headless mode — never `--dangerously-skip-permissions`.** The "dangerous" bypass still parks on a one-time *interactive* consent dialog with no pre-accept flag; with no TTY it hangs forever (anthropics/claude-code#52506). `dontAsk` is fully non-interactive: pre-approved tools run, everything else is *denied* rather than prompted, and protected paths (`.git`, `.claude`, shell rc files) are never auto-approved — exactly the posture a delegated reviewer should have.
+- **`--allowedTools "Read,Grep,Glob"`** mirrors the canonical reviewer tool stance. (`AskUserQuestion` is omitted: escalation cannot reach the human through a nested CLI — an unresolved product question becomes a `REVISE` verdict stating the question, which the orchestrator surfaces.)
+- **Scrub `CLAUDECODE` and `CLAUDE_CODE_ENTRYPOINT` from the child environment.** Claude Code sets `CLAUDECODE=1` in every child process and a `claude` launch that sees it refuses to start — even in `-p` mode. Codex itself doesn't set it, but a claude → codex → claude chain inherits it through codex, so the bridge always scrubs.
+- **`--output-format json`** returns a structured envelope: `.result` (the text), `.session_id` (for `--resume` in revision rounds), `.total_cost_usd`. `stream-json` additionally requires `--verbose`.
+- **`--max-turns N`** (and optionally `--max-budget-usd`) are the circuit breakers — print-mode only; use them.
+- **Codex's sandbox blocks subprocess network by default.** A codex-spawned `claude` must reach the Anthropic API; `workspace-write` denies that unless `[sandbox_workspace_write] network_access = true` is set in `~/.codex/config.toml` — and on macOS, Seatbelt has been reported to silently ignore that setting in some versions (openai/codex#10390), requiring a full-access session. **Treat a network failure here as a fallback trigger; do not attempt to repair the sandbox mid-session.**
+- **Auth precedence trap.** A set `ANTHROPIC_API_KEY` silently overrides subscription login. Verified empirically on this template: Claude Code injects a *session-scoped* `ANTHROPIC_API_KEY` into its child processes, so a `claude` spawned from inside a Claude Code session inherits a key that fails direct API auth — the JSON envelope comes back `is_error: true`, `api_error_status: 401`, `"Invalid API key"`. Scrub `ANTHROPIC_API_KEY` alongside `CLAUDECODE` whenever the chain began in Claude Code; leave it alone under a genuine Codex parent where the user set it deliberately. For subscription-backed automation without a browser, `claude setup-token` mints a long-lived OAuth token (`CLAUDE_CODE_OAUTH_TOKEN`). Note `--bare` mode skips OAuth/keychain reads entirely and requires an API key.
+- **CLAUDE.md auto-loading.** A `claude -p` run inside a repo loads the repo's `CLAUDE.md`, hooks, skills, and MCP servers like an interactive session would — desirable for cross-harness review (policy parity), avoidable with `--bare` when a context-free consult is wanted.
+
+## 4. General patterns (direction-independent)
+
+- **Redact the implementer's self-assessment** from review handoffs. Pass the raw artifact (plan text; diff + file list) and the requirements, adversarially framed ("assume the implementer was careful but missed something"). Never include "all tests pass" or the coder's build-status narrative — it measurably degrades review depth (§1).
+- **Verdict sentinel.** Require the reviewer to end with the exact verdict header; parse by string match; treat a missing/malformed verdict as a failed invocation, not a lenient pass.
+- **Cap revision rounds.** Unbounded agent-to-agent loops burn quota and don't converge; surface to the human past the cap. (Ours: 2, per [`policies/four-canonical-agents.md`](../policies/four-canonical-agents.md).)
+- **Recursion depth guard.** Claude's `CLAUDECODE` guard only stops claude→claude nesting. Cross-vendor chains need an explicit guard: set a depth-marker env var (ours: `KICKOFF_REVIEW_DEPTH=1`) in the child environment and refuse external delegation when it is already set.
+- **Reviewer is read-only; never two writers on one tree.** If an external agent must write, serialize or isolate; for review there is no reason to allow writes at all.
+- **Wall-clock timeouts on every external call.** Neither CLI's exit codes are a sufficient contract; a hung subprocess must not hang the orchestrator.
+- **Cost awareness.** Each external call is a full agent loop on the user's other-vendor quota. Bounded calls (capped turns, capped rounds) only; never unbounded polling loops.
+
+## 5. How this maps onto our methodology
+
+The cross-harness review feature applies these BCPs at exactly two points in the `/kickoff` pipeline — Step 4 (plan review) and Step 6 (code critique) — where the role is read-only and the verdict contract already exists. Orchestration, planning, and coding never leave the invoking harness. The external CLI is told to read the *same canonical role file* (`.claude/agents/plan-reviewer.md` / `.claude/agents/code-critic.md`) the native subagent uses: one role definition, two execution venues. Activation, fallback, and reporting are prescribed by [`policies/cross-harness-review.md`](../policies/cross-harness-review.md).
+
+## 6. Sources
+
+Authoritative documentation:
+
+- Codex non-interactive mode — developers.openai.com/codex/noninteractive
+- Codex CLI reference — developers.openai.com/codex/cli/reference
+- Codex sandboxing & approvals — developers.openai.com/codex/concepts/sandboxing, developers.openai.com/codex/agent-approvals-security
+- Codex auth — developers.openai.com/codex/auth
+- Codex AGENTS.md discovery — developers.openai.com/codex/guides/agents-md
+- Claude Code headless mode — code.claude.com/docs/en/headless
+- Claude Code CLI reference — code.claude.com/docs/en/cli-reference
+- Claude Code permission modes — code.claude.com/docs/en/permission-modes
+
+Issues and reports underpinning specific claims:
+
+- `--dangerously-skip-permissions` hangs headless on its consent dialog — anthropics/claude-code#52506 (also #52501)
+- Nested-session refusal on inherited `CLAUDECODE` — anthropics/claude-code#32618 (also #25803)
+- macOS Seatbelt ignoring `network_access = true` — openai/codex#10390
+- No flag to disable AGENTS.md ingestion — openai/codex#5983, openai/codex#10067
+- Self-assessment redaction finding — Todd Orr, "What I Found When Claude Reviewed Codex's Work," May 2026
+- Official OpenAI Codex plugin for Claude Code (subprocess-based) — github.com/openai/codex-plugin-cc

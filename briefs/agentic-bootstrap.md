@@ -30,12 +30,14 @@ A project derived from this template contains the following **portable structure
     BRIEF.md               # Entry-point brief, project-specific
     methodology.md         # The eleven steps (copied verbatim)
     agentic-bootstrap.md   # This brief (copied verbatim, for the next bootstrap)
+    cross-agent-invocation.md  # Cross-CLI invocation BCPs (copied verbatim)
     <topic>.md             # Project-specific topic briefs as they appear
 
   policies/
     README.md
     briefs-and-policies.md
     cross-harness-parity.md
+    cross-harness-review.md
     four-canonical-agents.md
     phase-status.md
     acceptance-empirical.md
@@ -145,6 +147,7 @@ These files encode the methodology itself, not any particular product. Copy them
 - Every file under `policies/` (these are universal by design)
 - `briefs/methodology.md`
 - `briefs/agentic-bootstrap.md` (this file, so the next bootstrap is possible)
+- `briefs/cross-agent-invocation.md` (the cross-CLI invocation BCPs cited by `policies/cross-harness-review.md`)
 - The skeletal headings/structure of `plan/INDEX.md`
 - The skeletal frontmatter shape for `plan/phase-*.md` (`id`, `title`, `depends_on`, `informs`)
 - The START/END block format for `LOG.md`
@@ -401,6 +404,7 @@ The bootstrap is the same shape every time. The variation is in:
 | **Deployment story**          | AWS / Cloudflare / Vercel / app stores / static / none        |
 | **Per-project invariants**    | Cost ceilings; license policy; privacy boundaries; FOSS-only  |
 | **Per-project skills**        | Domain-specific workflows on top of `/kickoff`                |
+| **Cross-harness review**      | `cross-harness-review: enabled` (default) or `disabled` in `CLAUDE.md` Project Context, per `../policies/cross-harness-review.md` |
 
 When adapting, edit these files (and only these) to reflect those choices:
 
