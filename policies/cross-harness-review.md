@@ -48,20 +48,20 @@ The orchestrator passes the **phase-specific inputs** the role file declares (ph
 Claude Code → codex:
 
 ```
-codex exec -s read-only -c 'approval_policy="never"' -C "$(pwd)" --output-last-message "$MSGFILE" "$(cat "$PROMPTFILE")" 2>/dev/null
+env -u OPENAI_API_KEY -u CODEX_API_KEY codex exec -s read-only -c 'approval_policy="never"' -C "$(pwd)" --output-last-message "$MSGFILE" "$(cat "$PROMPTFILE")" 2>/dev/null
 ```
 
-Non-negotiable: approvals pinned off via the `-c 'approval_policy="never"'` config override (an approval prompt with no TTY can hang the call and has held git index locks; the override is used because `codex exec` flag surfaces churn — e.g., codex-cli 0.136.0 rejects the older `-a/--ask-for-approval` flag on `exec` — while `-c` overrides parse across versions); `-s read-only` (reviewer tool stance; no tree contention); capture from the `--output-last-message` artifact, not stdout (stderr is progress noise); no hardcoded `-m` model (names churn); run with `KICKOFF_REVIEW_DEPTH=1` in the child environment. If the invocation fails with a flag-parse error, consult `codex exec --help` and adapt — or treat it as a fallback trigger like any other. Revision rounds prefer `codex exec resume <session-id>`.
+Non-negotiable: approvals pinned off via the `-c 'approval_policy="never"'` config override (an approval prompt with no TTY can hang the call and has held git index locks; the override is used because `codex exec` flag surfaces churn — e.g., codex-cli 0.136.0 rejects the older `-a/--ask-for-approval` flag on `exec` — while `-c` overrides parse across versions); `-s read-only` (reviewer tool stance; no tree contention); capture from the `--output-last-message` artifact, not stdout (stderr is progress noise); no hardcoded `-m` model (names churn); scrub `OPENAI_API_KEY` / `CODEX_API_KEY` from the child environment (a set `OPENAI_API_KEY` silently flips codex from ChatGPT-plan auth to API-key billing — or 401s on a stale key — while `codex /status` still reports the plan login; brief §2); run with `KICKOFF_REVIEW_DEPTH=1` in the child environment. If the invocation fails with a flag-parse error, consult `codex exec --help` and adapt — or treat it as a fallback trigger like any other. Revision rounds prefer `codex exec resume <session-id>`.
 
 Codex → claude:
 
 ```
-env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT KICKOFF_REVIEW_DEPTH=1 claude -p "$(cat "$PROMPTFILE")" --permission-mode dontAsk --allowedTools "Read,Grep,Glob" --output-format json --max-turns 12
+env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT -u ANTHROPIC_API_KEY KICKOFF_REVIEW_DEPTH=1 claude -p "$(cat "$PROMPTFILE")" --permission-mode dontAsk --allowedTools "Read,Grep,Glob" --output-format json --max-turns 50
 ```
 
-Non-negotiable: `--permission-mode dontAsk`, never `--dangerously-skip-permissions` (its one-time interactive consent dialog hangs without a TTY); `--allowedTools` mirrors the reviewer tool stance (`AskUserQuestion` omitted — a nested CLI cannot reach the human; an unresolved product question becomes a `REVISE` verdict stating the question); scrub `CLAUDECODE` / `CLAUDE_CODE_ENTRYPOINT` from the child environment (an inherited `CLAUDECODE=1` makes the inner `claude` refuse to launch); parse `.result` and `.session_id` from the JSON envelope, and treat an envelope with `is_error: true` as a failed call regardless of content. Revision rounds prefer `claude --resume <session-id> -p`.
+Non-negotiable: `--permission-mode dontAsk`, never `--dangerously-skip-permissions` (its one-time interactive consent dialog hangs without a TTY); `--allowedTools` mirrors the reviewer tool stance (`AskUserQuestion` omitted — a nested CLI cannot reach the human; an unresolved product question becomes a `REVISE` verdict stating the question); scrub `CLAUDECODE` / `CLAUDE_CODE_ENTRYPOINT` / `ANTHROPIC_API_KEY` from the child environment (an inherited `CLAUDECODE=1` makes the inner `claude` refuse to launch; an inherited `ANTHROPIC_API_KEY` silently outranks subscription auth — next paragraph); parse `.result` and `.session_id` from the JSON envelope, and treat an envelope with `is_error: true` as a failed call regardless of content. Revision rounds prefer `claude --resume <session-id> -p`.
 
-When the chain *began* in a Claude Code session (testing this recipe from inside Claude Code, or any claude → codex → claude chain), also scrub `ANTHROPIC_API_KEY`: Claude Code injects a session-scoped key into child processes that silently outranks subscription auth in the inner `claude` and fails with `api_error_status: 401` ("Invalid API key") — verified empirically. In a genuine Codex parent, leave a deliberately-set `ANTHROPIC_API_KEY` alone; it is the intended auth.
+`ANTHROPIC_API_KEY` is scrubbed **unconditionally** because the methodology's assumed auth model is OAuth subscription login for both CLIs (`claude` via its interactive login, `codex` via `~/.codex/auth.json`). Under that model an environment API key is never the intended auth — it is contamination: Claude Code injects a session-scoped key into every child process, and a stale key can ride into even a genuine Codex parent through its inherited environment with no key in any shell rc. A set key silently outranks subscription auth — by *documented, intentional* credential precedence, not by bug — and a stale one fails with `is_error: true`, `api_error_status: 401`, `"Invalid API key · Fix external API key"`; verified empirically, including in a derived project's first live Codex → claude plan review. The scrub costs nothing when no key is present, and every login-based auth path (keychain OAuth, `CLAUDE_CODE_OAUTH_TOKEN`, `apiKeyHelper`) survives it by construction — none depend on the env var. A project that genuinely authenticates `claude` with an API key (e.g., API-key CI) amends this recipe to re-export the key explicitly into the child environment rather than relying on ambient inheritance. Precedence chains, the symmetric codex-side trap, and hard backstops: [`briefs/cross-agent-invocation.md`](../briefs/cross-agent-invocation.md) §§2–4.
 
 Full flag-by-flag rationale, auth notes, and the macOS sandbox-network caveat: [`briefs/cross-agent-invocation.md`](../briefs/cross-agent-invocation.md) §§2–3.
 
@@ -71,7 +71,7 @@ Success of an external review call is gated on **three signals together**:
 
 1. The output artifact (codex `--output-last-message` file / claude JSON `.result`) exists and is non-empty.
 2. It contains exactly one `## Verdict: APPROVED` or `## Verdict: REVISE` header.
-3. The call returned within a wall-clock timeout — 300 s for plan review, 420 s for code critique.
+3. The call returned within a wall-clock timeout — 600 s for plan review, 900 s for code critique. The timeout is a **hang guard, not a performance target**: its only job is to keep a stalled subprocess (approval prompt, consent dialog, network stall) from hanging the orchestrator. It is generous by design — a working external review takes as long as it takes, and timing one out discards real work and burns quota for nothing. Tune upward freely for large phases; tighten only with evidence.
 
 Any signal failing means the call failed. Triggers and handling:
 
@@ -80,10 +80,12 @@ Any signal failing means the call failed. Triggers and handling:
 | Alternative CLI not on PATH | Step 0a | Venue is `native` for the whole session. Silent; venue report reads `native (<cli> not on PATH)`. |
 | Recursion guard (`KICKOFF_REVIEW_DEPTH` set) | Step 0a | Venue is `native`. Silent. |
 | Non-zero exit, timeout, or network failure | During an external call | This **stage** finishes natively: read the canonical role file and perform the role in-harness. Record `[fallback: <reason>]` in the END block. |
+| Turn cap exhausted (claude envelope `subtype: "error_max_turns"`, `is_error: true`, no verdict) | After an external call | The investigation is done but unreported and the session id is live — **resume once** (`claude --resume <sid> -p "Conclude your review now: emit the exact verdict header and your essential findings only. Do not investigate further."`) before giving up. If the resume also fails the gate, fall back native: `[fallback: max-turns exhausted]`. |
 | Artifact missing/empty or verdict header missing/malformed | After an external call | Same as above — `[fallback: malformed verdict]`. |
 
 Rules:
 
+- The `--max-turns` cap is a **runaway-loop guard, not a review-depth budget** — the wall-clock timeout is the binding guard. Calibrate generously (we use 50): a real code critique reads the role file, plan, file list, diff, sources, and tests, and field use showed a 12-turn cap killing two genuine critiques mid-investigation in one evening. Same philosophy as the timeouts above.
 - Fallback is **per stage**. A Step 4 fallback does not force Step 6 native; Step 6 retries the external venue unless the failure was clearly sticky (binary gone, auth dead).
 - Once a stage falls back mid-way, **all remaining revision rounds of that stage run natively** — no venue thrashing inside a stage.
 - Fallback is never an error condition. The phase proceeds; the END block tells the human what happened.

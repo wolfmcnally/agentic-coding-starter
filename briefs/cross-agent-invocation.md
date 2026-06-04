@@ -23,7 +23,7 @@ Both vendors sanction this interop: OpenAI ships an official Claude Code plugin 
 Canonical invocation shape (review roles):
 
 ```
-codex exec -s read-only -c 'approval_policy="never"' -C "$(pwd)" --output-last-message "$MSGFILE" "$(cat "$PROMPTFILE")" 2>/dev/null
+env -u OPENAI_API_KEY -u CODEX_API_KEY codex exec -s read-only -c 'approval_policy="never"' -C "$(pwd)" --output-last-message "$MSGFILE" "$(cat "$PROMPTFILE")" 2>/dev/null
 ```
 
 Flag-by-flag rationale:
@@ -38,7 +38,7 @@ Flag-by-flag rationale:
 - **Exit codes are not a documented contract** for `codex exec`. Gate success on three signals together: the `-o` artifact exists and is non-empty, it contains the expected verdict header, and the call returned within a wall-clock timeout.
 - **Revision rounds: `codex exec resume <session-id> ...`** preserves the reviewer's context across rounds. If no session id was captured or resume fails, fall back to a fresh call with the full updated context (correctness over efficiency).
 - **`--json`** (NDJSON event stream: `turn.completed` / `turn.failed`, token usage) is available when telemetry matters; `--output-schema <schema.json>` constrains the final message to a JSON Schema when a parseable struct beats prose.
-- **Auth is free on a developer machine.** An interactive ChatGPT-plan login persists in `~/.codex/auth.json` with token auto-refresh; subprocess calls reuse it. CI uses `OPENAI_API_KEY` + `codex login --api-key`.
+- **Auth precedence trap (mirror of §3's).** An interactive ChatGPT-plan login persists in `~/.codex/auth.json` with token auto-refresh, and subprocess calls reuse it — but a set `OPENAI_API_KEY` silently outranks it, flipping the call to API-key billing (or a 401 on a stale key) while `codex /status` still reports the plan login (openai/codex#2341, #3367, #20099). Hence the recipe's `env -u OPENAI_API_KEY -u CODEX_API_KEY` scrub — free when no key is present, never harms the `auth.json` login. The supported hard backstop is `forced_login_method = "chatgpt"` in `~/.codex/config.toml` (`preferred_auth_method` is a user-invented knob that does nothing). For CI on API auth, pass `CODEX_API_KEY` inline to a single `codex exec` — never a job-level export beside repo-controlled code; for CI on the plan, seed a `codex login`-generated `auth.json` onto the runner and keep the env keys unset.
 - **AGENTS.md ingestion.** Codex walks repo root → cwd loading `AGENTS.md` (no flag disables this as of mid-2026). For cross-harness review this is desirable — the reviewer inherits the repo's policies. To *avoid* it (scoped consultations unrelated to the repo), run with `-C` pointed at a scratch directory and pass context via temp files.
 
 ## 3. Codex → `claude` (headless)
@@ -46,7 +46,7 @@ Flag-by-flag rationale:
 Canonical invocation shape (review roles):
 
 ```
-env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT claude -p "$(cat "$PROMPTFILE")" --permission-mode dontAsk --allowedTools "Read,Grep,Glob" --output-format json --max-turns 12
+env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT -u ANTHROPIC_API_KEY claude -p "$(cat "$PROMPTFILE")" --permission-mode dontAsk --allowedTools "Read,Grep,Glob" --output-format json --max-turns 50
 ```
 
 Flag-by-flag rationale:
@@ -56,9 +56,9 @@ Flag-by-flag rationale:
 - **`--allowedTools "Read,Grep,Glob"`** mirrors the canonical reviewer tool stance. (`AskUserQuestion` is omitted: escalation cannot reach the human through a nested CLI — an unresolved product question becomes a `REVISE` verdict stating the question, which the orchestrator surfaces.)
 - **Scrub `CLAUDECODE` and `CLAUDE_CODE_ENTRYPOINT` from the child environment.** Claude Code sets `CLAUDECODE=1` in every child process and a `claude` launch that sees it refuses to start — even in `-p` mode. Codex itself doesn't set it, but a claude → codex → claude chain inherits it through codex, so the bridge always scrubs.
 - **`--output-format json`** returns a structured envelope: `.result` (the text), `.session_id` (for `--resume` in revision rounds), `.total_cost_usd`. `stream-json` additionally requires `--verbose`.
-- **`--max-turns N`** (and optionally `--max-budget-usd`) are the circuit breakers — print-mode only; use them.
+- **`--max-turns N`** (and optionally `--max-budget-usd`) are the circuit breakers — print-mode only; use them, but calibrate as runaway guards, not review-depth budgets. A genuine code critique (role file + plan + file list + diff + sources + tests) exceeds 12 turns routinely: field use saw a 12-turn cap kill two real critiques mid-investigation in one evening (`subtype: "error_max_turns"`, `is_error: true`, `stop_reason: "tool_use"`, no verdict emitted). We use 50 — the wall-clock timeout remains the binding guard. On a max-turns death the JSON envelope still carries `session_id` and the investigation is already paid for: `claude --resume <sid> -p "Conclude your review now …"` rescues it in one cheap turn; prefer that over discarding the work into a native re-review.
 - **Codex's sandbox blocks subprocess network by default.** A codex-spawned `claude` must reach the Anthropic API; `workspace-write` denies that unless `[sandbox_workspace_write] network_access = true` is set in `~/.codex/config.toml` — and on macOS, Seatbelt has been reported to silently ignore that setting in some versions (openai/codex#10390), requiring a full-access session. **Treat a network failure here as a fallback trigger; do not attempt to repair the sandbox mid-session.**
-- **Auth precedence trap.** A set `ANTHROPIC_API_KEY` silently overrides subscription login. Verified empirically on this template: Claude Code injects a *session-scoped* `ANTHROPIC_API_KEY` into its child processes, so a `claude` spawned from inside a Claude Code session inherits a key that fails direct API auth — the JSON envelope comes back `is_error: true`, `api_error_status: 401`, `"Invalid API key"`. Scrub `ANTHROPIC_API_KEY` alongside `CLAUDECODE` whenever the chain began in Claude Code; leave it alone under a genuine Codex parent where the user set it deliberately. For subscription-backed automation without a browser, `claude setup-token` mints a long-lived OAuth token (`CLAUDE_CODE_OAUTH_TOKEN`). Note `--bare` mode skips OAuth/keychain reads entirely and requires an API key.
+- **Auth precedence trap.** The documented credential order (code.claude.com/docs/en/authentication) ranks an env `ANTHROPIC_API_KEY` *above* `apiKeyHelper`, `CLAUDE_CODE_OAUTH_TOKEN`, and subscription OAuth — intentionally, per Anthropic's support guidance — and *set does not mean valid*. Claude Code injects a *session-scoped* `ANTHROPIC_API_KEY` into its child processes, so any chain that began in a Claude Code session carries a key that fails direct API auth — the JSON envelope comes back `is_error: true`, `api_error_status: 401`, `"Invalid API key"` — and a stale key can reach even a genuine Codex parent through its inherited environment (field-verified: a derived project's first live Codex → claude plan review failed 401 with no key in any shell rc). Under the subscription auth model an env key is never the intended credential, so the recipe scrubs it unconditionally; the scrub is provably harmless to `apiKeyHelper`, keychain OAuth, and `CLAUDE_CODE_OAUTH_TOKEN` — none of them depend on the env var. For subscription-backed automation without a browser, `claude setup-token` mints a long-lived OAuth token (`CLAUDE_CODE_OAUTH_TOKEN`). Note `--bare` mode skips OAuth/keychain reads entirely and requires an API key; API-key-CI projects re-export the key deliberately in the child env instead of relying on inheritance.
 - **CLAUDE.md auto-loading.** A `claude -p` run inside a repo loads the repo's `CLAUDE.md`, hooks, skills, and MCP servers like an interactive session would — desirable for cross-harness review (policy parity), avoidable with `--bare` when a context-free consult is wanted.
 
 ## 4. General patterns (direction-independent)
@@ -67,6 +67,7 @@ Flag-by-flag rationale:
 - **Verdict sentinel.** Require the reviewer to end with the exact verdict header; parse by string match; treat a missing/malformed verdict as a failed invocation, not a lenient pass.
 - **Cap revision rounds.** Unbounded agent-to-agent loops burn quota and don't converge; surface to the human past the cap. (Ours: 2, per [`policies/four-canonical-agents.md`](../policies/four-canonical-agents.md).)
 - **Recursion depth guard.** Claude's `CLAUDECODE` guard only stops claude→claude nesting. Cross-vendor chains need an explicit guard: set a depth-marker env var (ours: `KICKOFF_REVIEW_DEPTH=1`) in the child environment and refuse external delegation when it is already set.
+- **Scrub API-key env vars at every cross-CLI call site (subscription auth model).** Both CLIs rank an environment API key above their subscription OAuth, so an inherited stray key silently flips auth (and billing) or fails 401 — and the CLIs' own status displays don't reliably reveal which credential is live. `env -u <KEY>` at the call site costs nothing when no key is present and never breaks login-based auth. Do not rely on the parent's hygiene: Codex's default `shell_environment_policy` strips `*KEY*`/`*SECRET*`/`*TOKEN*` from the environment it hands its children, but Claude Code forwards the full environment *and adds* its own session `ANTHROPIC_API_KEY` — scrub at your own spawn point regardless of who launched you.
 - **Reviewer is read-only; never two writers on one tree.** If an external agent must write, serialize or isolate; for review there is no reason to allow writes at all.
 - **Wall-clock timeouts on every external call.** Neither CLI's exit codes are a sufficient contract; a hung subprocess must not hang the orchestrator.
 - **Cost awareness.** Each external call is a full agent loop on the user's other-vendor quota. Bounded calls (capped turns, capped rounds) only; never unbounded polling loops.
@@ -82,9 +83,11 @@ Authoritative documentation:
 - Codex non-interactive mode — developers.openai.com/codex/noninteractive
 - Codex CLI reference — developers.openai.com/codex/cli/reference
 - Codex sandboxing & approvals — developers.openai.com/codex/concepts/sandboxing, developers.openai.com/codex/agent-approvals-security
-- Codex auth — developers.openai.com/codex/auth
+- Codex auth — developers.openai.com/codex/auth (CI variants: …/codex/auth/ci-cd-auth)
+- Codex config (`forced_login_method`, `shell_environment_policy` default credential filter) — developers.openai.com/codex/config-reference, …/codex/config-advanced
 - Codex AGENTS.md discovery — developers.openai.com/codex/guides/agents-md
 - Claude Code headless mode — code.claude.com/docs/en/headless
+- Claude Code credential precedence — code.claude.com/docs/en/authentication; env key over subscription is intentional — support.claude.com/en/articles/12304248
 - Claude Code CLI reference — code.claude.com/docs/en/cli-reference
 - Claude Code permission modes — code.claude.com/docs/en/permission-modes
 
@@ -93,6 +96,7 @@ Issues and reports underpinning specific claims:
 - `--dangerously-skip-permissions` hangs headless on its consent dialog — anthropics/claude-code#52506 (also #52501)
 - Nested-session refusal on inherited `CLAUDECODE` — anthropics/claude-code#32618 (also #25803)
 - macOS Seatbelt ignoring `network_access = true` — openai/codex#10390
+- `OPENAI_API_KEY` silently shadowing ChatGPT-plan auth (billing flips / 401, `/status` misleading) — openai/codex#2341, #3367, #20099
 - No flag to disable AGENTS.md ingestion — openai/codex#5983, openai/codex#10067
 - Self-assessment redaction finding — Todd Orr, "What I Found When Claude Reviewed Codex's Work," May 2026
 - Official OpenAI Codex plugin for Claude Code (subprocess-based) — github.com/openai/codex-plugin-cc
