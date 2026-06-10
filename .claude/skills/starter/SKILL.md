@@ -142,6 +142,7 @@ Copy these files **from this template** into the new project, then run a name su
 - `briefs/methodology.md` (verbatim — methodology is universal)
 - `briefs/agentic-bootstrap.md` (verbatim — so the next bootstrap from this project is possible)
 - `briefs/cross-agent-invocation.md` (verbatim — the cross-CLI invocation BCPs that `policies/cross-harness-review.md` cites are universal)
+- `briefs/deterministic-orchestration.md` (verbatim — universal draft brief: decision criteria for a deterministic kickoff loop once every supported harness has a parity workflow primitive)
 
 Then create the `.agents/skills/` **directory symlinks** for Codex CLI's native skill discovery. Each is a relative symlink whose target is the canonical skill *directory* (not the SKILL.md file inside it — Codex doesn't follow file-level symlinks inside a skill dir per [openai/codex#11314](https://github.com/openai/codex/issues/11314), but does traverse a symlinked skill directory):
 
@@ -196,7 +197,7 @@ Author these afresh, using the gathered configuration:
 
 - **`<dest>/plan/phase-1.md`** — a real first phase for the new project, drafted **in full**. Use the description plus inferred surfaces to draft Goal, Deliverables, and Acceptance. Mark Open Questions where the description is genuinely insufficient. Phase 1 should aim to deliver the project's "first slice end-to-end" — for a CLI, `<name> --help` plus one working subcommand; for a web app, the dev server plus one read-only page; for a library, the public API surface plus one working function.
 
-- **`<dest>/plan/phase-2.md`, `<dest>/plan/phase-3.md`, …** — sketched major phases at lower fidelity. For each major phase the brief surfaces beyond Phase 1, draft a `phase-N.md` with frontmatter (`id`, `title`, `depends_on`, `informs`) + one-paragraph Goal + high-level Deliverables list + scaffold Acceptance + Brief refs. These sketches will be tightened by ripple at each upstream phase's close (per [`policies/phase-ripple.md`](../../../policies/phase-ripple.md)) and elaborated when their row enters `⬅️` (per the kickoff Step 1a/9a/9b machinery). If the brief surfaces only a single phase, skip the sketches.
+- **`<dest>/plan/phase-2.md`, `<dest>/plan/phase-3.md`, …** — sketched major phases at lower fidelity. For each major phase the brief surfaces beyond Phase 1, draft a `phase-N.md` with frontmatter (`id`, `title`, `depends_on`, `informs`, plus `review_lane: light` only when the phase is mechanical per `policies/review-lanes.md` — omit otherwise) + one-paragraph Goal + high-level Deliverables list + scaffold Acceptance + Brief refs. These sketches will be tightened by ripple at each upstream phase's close (per [`policies/phase-ripple.md`](../../../policies/phase-ripple.md)) and elaborated when their row enters `⬅️` (per the kickoff Step 1a/9a/9b machinery). If the brief surfaces only a single phase, skip the sketches.
 
 - **Do NOT draft any sub-phase files at bootstrap** — no `phase-1.1.md`, no `phase-2.1.md`, none. Sub-phase decomposition is JIT, owned by `/kickoff` Step 1a at each major phase's open. The bootstrap leaves sub-phase shape to the orchestrator with each predecessor's outcomes in hand.
 

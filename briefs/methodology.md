@@ -1,6 +1,6 @@
 ---
 title: "The Agentic Coding Methodology — Eleven Steps"
-date: 2026-05-17
+date: 2026-06-09
 status: methodology
 scope: The canonical statement of the methodology this template implements. Authoritative reference for every skill, agent, and policy in the repo.
 ---
@@ -25,6 +25,7 @@ A methodology for writing software with AI coding agents in a way that scales be
 
    - **Major phases are drafted up front** to *general specificity* from the brief and architecture. Same shape as a full phase file (frontmatter + Goal + Deliverables + Acceptance + brief refs), at lower fidelity than the in-flight phase. The dependency graph in `plan/INDEX.md` enumerates them from the start. Some major phases stay monolithic — small phases that fit one session never need sub-phase decomposition.
    - **Sub-phases are JIT, one at a time.** At the start of a major phase, decompose only `phase-N.1` in full. Subsequent sub-phases (`phase-N.2`, `phase-N.3`, …) get drafted at *close* of the previous one, with the benefit of its outcomes. Pre-decomposed sub-phases lock in premature assumptions and resist the very revisions that doing the work earlier reveals.
+   - **Bite size is capability-indexed.** Size sub-phases to the executing coder model's demonstrated coherence, not to a fixed calendar. Acceptance criteria, not session length, define a bite. The signal to coarsen: a model class that routinely closes phases of the current size with first-cycle approvals and green gates can safely take bigger bites — fewer, larger sub-phases, more major phases left monolithic. The signal to split finer: revision loops hitting their caps, build-gate fix cycles recurring. Per-phase ceremony (planning, review, logging) is a fixed cost; over-fine decomposition under a strong coder pays that cost more often than the work needs.
    - **Ripple propagation at every phase close.** When a phase (sub or major) closes, pinned decisions and surfaced concerns from its END block — plan-reviewer Observations, code-critic findings, deliberate scope changes — are propagated into downstream drafted phase files. Mechanical edits (renaming a path the closing phase pinned; adding a brief ref it introduced; tightening an Acceptance criterion to a now-pinned value) land automatically (AUTO). Judgment-level changes (a downstream Goal needs revision; a Deliverable becomes obsolete; the dependency graph shifts) surface to the user as named follow-ups (DECIDE). The contract lives in [`policies/phase-ripple.md`](../policies/phase-ripple.md); the orchestrator executes it at each phase close.
 
    Net effect: the major-phase roadmap is visible at bootstrap; the orchestrator works one sub-phase at a time with each predecessor's outcomes baked in; the downstream sketches stay fresh as work proceeds rather than diverging from reality.
@@ -38,6 +39,8 @@ A methodology for writing software with AI coding agents in a way that scales be
    - on any critic's complaint, sends the work back to the relevant agent for revision (with bounded loops).
 
    *One step, a lot happening. Each of those four roles is a specialist with its own tool stance, reading protocol, and verdict format.*
+
+   Review intensity is risk-adaptive: a phase may declare a **review lane** ([`../policies/review-lanes.md`](../policies/review-lanes.md)). The default `full` lane runs all four roles; a `light` lane — mechanical phases only — skips plan review while always keeping the code critic, who also guards the lane and escalates back to `full` when the work exceeded mechanical scope.
 
 8. **Acceptance check.** The orchestrator runs the tests and the build gates that the sub-phase declares. If anything fails, the orchestrator classifies the failure (coder error, plan error, environment error) and routes back through the appropriate revision loop, with a cap on iterations before surfacing to the human.
 
@@ -74,6 +77,7 @@ The orchestrator (`/kickoff`) is the fifth participant. It does no coding either
 ## Non-negotiables
 
 - **Every completed phase is incremental and testable** (step 4).
+- **Every phase passes the code critic**, whichever review lane it declares (step 7).
 - **The human decides when work is "done"**; the orchestrator does not (step 4, step 10).
 - **The orchestrator never writes code itself** (step 7).
 - **Closing a phase requires recorded evidence**, not just a green test run (step 9).

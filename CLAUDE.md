@@ -66,6 +66,7 @@ In addition to the universal `/kickoff`, `/methodology`, `/learn`, and `/teach` 
 - [`methodology.md`](briefs/methodology.md) — the eleven-step pipeline: vague ideas → insights → brief → architecture → policies → phased plan → sub-phase decomposition → orchestrator-driven execution → acceptance → log → human evaluation → stay agile.
 - [`agentic-bootstrap.md`](briefs/agentic-bootstrap.md) — procedure for standing up a new project from this template: anatomy of the structure, what to transfer verbatim vs. rewrite vs. discard, step-by-step procedure, sanity-check protocol.
 - [`cross-agent-invocation.md`](briefs/cross-agent-invocation.md) — best current practices for invoking one coding-agent CLI from inside another (Claude Code ↔ Codex): headless flags, sandbox/permission posture, capture contracts, failure modes; rationale for cross-harness review.
+- [`deterministic-orchestration.md`](briefs/deterministic-orchestration.md) — **draft.** Design and decision criteria for encoding `/kickoff`'s delegate → verdict → route-back loop as a deterministic workflow program. Deferred until every supported harness ships a parity workflow primitive; the prose loop in `kickoff/SKILL.md` remains canonical until then.
 
 ## Policies catalog
 
@@ -77,6 +78,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 - [`cross-harness-parity.md`](policies/cross-harness-parity.md) — keep Claude Code, Codex CLI, and any other supported harness in lockstep; canonical files vs. mirrors; onboarding a new harness.
 - [`cross-harness-review.md`](policies/cross-harness-review.md) — config-gated delegation of `/kickoff`'s plan-review and code-critique stages to the *other* harness's CLI (`codex` from Claude Code, `claude` from Codex); activation token in Project Context; graceful per-stage fallback to the native subagents.
 - [`four-canonical-agents.md`](policies/four-canonical-agents.md) — the four roles `/kickoff` invokes by name; their tool stances; their verdict headers.
+- [`review-lanes.md`](policies/review-lanes.md) — risk-adaptive review intensity. A phase declares `review_lane: full` (default; all four roles) or `light` (mechanical work only; plan review skipped). The code critic runs in every lane, guards the lane, and escalates back to full when the work exceeded mechanical scope.
 - [`phase-status.md`](policies/phase-status.md) — status markers live only in `plan/INDEX.md`; no `status:` field in per-phase frontmatter; `/kickoff` owns transitions.
 - [`phase-ripple.md`](policies/phase-ripple.md) — at phase close, pinned decisions from the closing phase propagate into downstream drafted phase files. AUTO ripples (mechanical) land in the same session; DECIDE ripples (judgment) surface as named follow-ups in the END block.
 - [`acceptance-empirical.md`](policies/acceptance-empirical.md) — every phase's Acceptance section lists verifiable shell commands or named manual checks. "It compiles" is not acceptance.
@@ -112,7 +114,7 @@ The deliverable's directory (whatever the project calls it — `project/` when p
 
 ## Phase work and the `kickoff` skill
 
-Work proceeds phase by phase under [`plan/`](plan/INDEX.md). `/kickoff` orchestrates one phase per session through plan → plan-review → code → code-review → build. Canonical role definitions live in `.claude/agents/*.md` (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`); don't invoke them by hand for full-phase work unless deliberately bypassing the orchestration.
+Work proceeds phase by phase under [`plan/`](plan/INDEX.md). `/kickoff` orchestrates one phase per session through plan → plan-review → code → code-review → build (plan review is skipped for phases declaring the `light` review lane — [`policies/review-lanes.md`](policies/review-lanes.md); the code critic runs in every lane). Canonical role definitions live in `.claude/agents/*.md` (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`); don't invoke them by hand for full-phase work unless deliberately bypassing the orchestration.
 
 ### Status markers
 
@@ -186,6 +188,7 @@ Terms used consistently across briefs, skills, policies, and code. Mismatched us
 - **The four canonical agents.** `phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`. Their names are load-bearing — `/kickoff` invokes them by name. Their definitions live in `.claude/agents/` (canonical) and `.codex/agents/` (mirror).
 - **Build gate.** A shell command (or sequence) the orchestrator runs after the coder finishes, to confirm the code still builds, lints, types, and tests clean.
 - **Cross-harness review.** Config-gated execution of the `plan-reviewer` and `code-critic` roles in the *other* harness's CLI (`codex` from Claude Code, `claude` from Codex). Enabled by the `cross-harness-review:` token in CLAUDE.md's Project Context; falls back gracefully to native subagents. Governed by `policies/cross-harness-review.md`.
+- **Review lane.** A phase's declared review intensity: `full` (default — all four roles) or `light` (mechanical phases only — plan review skipped; the code critic still runs, guards the lane, and can escalate back to full). Declared as optional `review_lane:` frontmatter in the phase file. Governed by `policies/review-lanes.md`.
 - **Acceptance.** The empirical criteria the phase declares for being "done." May include shell-command checks and named manual checks. The human signs off.
 - **START / END block.** The two entries `/kickoff` appends to `LOG.md` per phase — one when the phase is taken up (`🚧`) and one when it is closed (`✅` or paused).
 

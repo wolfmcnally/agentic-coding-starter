@@ -28,14 +28,14 @@ The authoritative source is [`briefs/methodology.md`](../../../briefs/methodolog
 
 5. **Brief + architecture → phased plan.** Break the work down by phase. Each phase is independently testable and has a clearly defined goal and acceptance criteria. Lives under `plan/`; the spine is `plan/INDEX.md`.
 
-6. **Sub-phase breakdown at phase start.** At the start of every major phase, break it down into sub-phases. Resist decomposing future major phases at bootstrap.
+6. **Sub-phase breakdown at phase start.** At the start of every major phase, break it down into sub-phases. Resist decomposing future major phases at bootstrap. Bite size is capability-indexed: a coder model that routinely closes phases with first-cycle approvals can take bigger bites — see `briefs/methodology.md` §6.
 
 7. **Orchestrator-driven sub-phase execution.** Use a high-level orchestrator skill (`/kickoff`) that does **no coding itself**. It:
    - determines the current phase,
    - invokes a **planner agent**,
-   - hands the plan to a **plan reviewer**,
+   - hands the plan to a **plan reviewer** (skipped when the phase declares the `light` review lane per `policies/review-lanes.md`),
    - hands the approved plan to a **coding agent**,
-   - hands the result to a **code critic**,
+   - hands the result to a **code critic** (runs in every lane; in `light`, it also guards the lane and can escalate back to `full`),
    - on any critic's complaint, sends the work back to the relevant agent for revision (bounded loops).
 
 8. **Acceptance check.** The orchestrator runs the tests and gates. Failures are classified (coder error, plan error, environment error) and routed back through the appropriate revision loop, with a cap before surfacing to the human.
@@ -69,6 +69,7 @@ The orchestrator delegates to four specialist roles. Their names are load-bearin
 ## Non-negotiables
 
 - **Every completed phase is incremental and testable.**
+- **Every phase passes the code critic, whichever review lane it declares.**
 - **The human decides when work is "done."**
 - **The orchestrator never writes code itself.**
 - **Closing a phase requires recorded evidence.**

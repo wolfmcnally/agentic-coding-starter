@@ -105,7 +105,8 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 ├── briefs/                         ← durable design + methodology library
 │   ├── BRIEF.md                    ←   entry-point brief for *this* repo
 │   ├── methodology.md              ←   the eleven-step methodology
-│   └── agentic-bootstrap.md        ←   how to stand up a new project
+│   ├── agentic-bootstrap.md        ←   how to stand up a new project
+│   └── deterministic-orchestration.md ← draft: deterministic kickoff loop
 ├── policies/                       ← non-negotiable rules every phase honors
 │   ├── README.md
 │   ├── briefs-and-policies.md
@@ -116,6 +117,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── log-discipline.md
 │   ├── human-in-the-loop.md
 │   ├── four-canonical-agents.md
+│   ├── review-lanes.md             ← risk-adaptive review intensity
 │   ├── project-isolation.md        ← isolate deliverable under project/
 │   └── greenfield-until-released.md ← no backward-compat shims pre-release
 ├── plan/                           ← phased execution plan
@@ -164,7 +166,7 @@ Phase status lives in **`plan/INDEX.md`** and nowhere else. The legend is:
 - 🚧 In Progress
 - ✅ Completed
 
-`/kickoff` flips `⬅️` → `🚧` on start, `🚧` → `✅` on completion, and advances the next `⏳` row to `⬅️`. Status does not live in per-phase frontmatter; `id`, `title`, `depends_on`, and `informs` are the only frontmatter fields.
+`/kickoff` flips `⬅️` → `🚧` on start, `🚧` → `✅` on completion, and advances the next `⏳` row to `⬅️`. Status does not live in per-phase frontmatter; `id`, `title`, `depends_on`, `informs`, and the optional `review_lane` (see `policies/review-lanes.md`) are the only frontmatter fields.
 
 ---
 

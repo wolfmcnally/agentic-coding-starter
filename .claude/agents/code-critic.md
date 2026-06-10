@@ -19,6 +19,7 @@ You will receive via your task prompt:
 - The approved implementation plan.
 - Any minor corrections from the plan reviewer.
 - The list of files the implementer created or modified.
+- The phase's review lane, when it is `light` (per `policies/review-lanes.md`).
 
 ## Procedure
 
@@ -87,6 +88,10 @@ Evaluate in priority order:
 **Simplicity**
 - No new abstractions, generics, base classes, or helpers introduced without need.
 - No speculative future-facing structure (e.g., a `BackendBase` abstract class with one concrete subclass and no second use-case in sight).
+
+**Lane fit (light-lane phases only)**
+- When the prompt declares `review_lane: light`, additionally judge whether the diff stayed within the mechanical scope `policies/review-lanes.md` defines (docs, renames, catalogs, mirrors, ripple application, gate-green dependency bumps, pattern-following config). This phase skipped plan review on the strength of that declaration.
+- If the work exceeded mechanical scope — any new/changed public API, schema or persisted-state change, concurrency, security-sensitive surface, architectural decision, or non-wording behavior change — the verdict is `REVISE` and the **first** Required Change is exactly: `Escalate: full lane — <one-line reason>`. List any other findings after it as usual.
 
 ### 4. Issue the verdict
 

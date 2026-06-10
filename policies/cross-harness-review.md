@@ -2,6 +2,15 @@
 
 When enabled, `/kickoff` delegates its two **review** stages — plan review (Step 4) and code critique (Step 6) — to the *other* harness's CLI: `codex` when `/kickoff` runs in Claude Code, `claude` when it runs in Codex. Orchestration, planning, and coding always stay in the invoking harness. A model reviewing another vendor's model catches failure classes same-model review misses; the research and flag-level rationale live in [`briefs/cross-agent-invocation.md`](../briefs/cross-agent-invocation.md).
 
+## Review diversity scales with coder capability
+
+A reviewer from the *same* model family shares the coder's blind spots, and its marginal catches shrink as the coder's baseline quality rises. Cross-model review's value is decorrelation, and decorrelation does not shrink: whatever class of error a frontier coder still makes is precisely the class it is least able to see in its own family's review. Two consequences:
+
+- **The stronger the coding model, the stronger the case for this policy.** Same-family subagent review depreciates with coder capability; cross-harness review is the review mechanism whose value survives it. Do not read a strong coder's streak of clean first-cycle reviews as a reason to disable delegation — read it as same-family review running out of things only a different family would catch.
+- **Projects that pin models per role should route the reviewer roles to a different model family from the coder.** A per-role model-routing table (a policy file mapping role → model) is an established pattern in derived projects; where one exists, `plan-reviewer` and `code-critic` belong on the other family. Where the harness offers only one frontier family natively, this policy's CLI delegation *is* the mechanism that supplies the second family.
+
+Interaction with review lanes ([`review-lanes.md`](review-lanes.md)): in a `light` lane the code critique is the only review that runs, which makes its venue diversity matter more, not less. Light-lane phases use the resolved venue like any other phase.
+
 ## Activation contract
 
 The switch is a single token in `CLAUDE.md`'s **Project Context** zone, in the `## Cross-harness review` subsection:

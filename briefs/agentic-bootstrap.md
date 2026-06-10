@@ -31,6 +31,7 @@ A project derived from this template contains the following **portable structure
     methodology.md         # The eleven steps (copied verbatim)
     agentic-bootstrap.md   # This brief (copied verbatim, for the next bootstrap)
     cross-agent-invocation.md  # Cross-CLI invocation BCPs (copied verbatim)
+    deterministic-orchestration.md  # Draft: deterministic kickoff loop (copied verbatim)
     <topic>.md             # Project-specific topic briefs as they appear
 
   policies/
@@ -39,6 +40,7 @@ A project derived from this template contains the following **portable structure
     cross-harness-parity.md
     cross-harness-review.md
     four-canonical-agents.md
+    review-lanes.md
     phase-status.md
     acceptance-empirical.md
     log-discipline.md
@@ -148,8 +150,9 @@ These files encode the methodology itself, not any particular product. Copy them
 - `briefs/methodology.md`
 - `briefs/agentic-bootstrap.md` (this file, so the next bootstrap is possible)
 - `briefs/cross-agent-invocation.md` (the cross-CLI invocation BCPs cited by `policies/cross-harness-review.md`)
+- `briefs/deterministic-orchestration.md` (draft universal brief: decision criteria for a deterministic kickoff loop, so the derived project can act when its harnesses gain parity workflow primitives)
 - The skeletal headings/structure of `plan/INDEX.md`
-- The skeletal frontmatter shape for `plan/phase-*.md` (`id`, `title`, `depends_on`, `informs`)
+- The skeletal frontmatter shape for `plan/phase-*.md` (`id`, `title`, `depends_on`, `informs`, optional `review_lane` per `policies/review-lanes.md`)
 - The START/END block format for `LOG.md`
 - The status-marker convention (⏳ ⬅️ 🚧 ✅)
 

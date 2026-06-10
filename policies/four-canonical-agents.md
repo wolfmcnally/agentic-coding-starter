@@ -17,6 +17,10 @@ The Codex mirrors live at `.codex/agents/<role>.toml`. See [`cross-harness-parit
 
 The roles, names, tool stances, and verdict headers above are fixed. The **execution venue** of the two reviewer roles is not: when cross-harness review is enabled ([`cross-harness-review.md`](cross-harness-review.md)), `/kickoff` may run `plan-reviewer` and `code-critic` in the *other* harness's CLI (`codex` from Claude Code, `claude` from Codex). The external venue reads the same canonical `.claude/agents/<role>.md` file, honors the same tool stance, and emits the same verdict headers — only where the role executes changes. `phase-planner` and `phase-coder` always run in the invoking harness. Do not assume the reviewers run as in-harness subagents when reasoning about orchestration.
 
+## Execution cadence: review lanes
+
+Whether *both* reviewer roles run on a given phase is governed by [`review-lanes.md`](review-lanes.md). The default `full` lane runs all four roles; a `light` lane (mechanical phases only, declared in the phase file's frontmatter) skips the `plan-reviewer` invocation and gives `code-critic` one additional duty — judging whether the work actually stayed mechanical, with an `Escalate: full lane — <reason>` Required Change when it did not. The role definitions, tool stances, and verdict headers are identical in both lanes. The code critic is never skipped in any lane.
+
 ## What each role does
 
 - **`phase-planner`** — Reads the phase file, the briefs it references, the policies, and the existing repo, and produces a concrete file-level implementation plan. Does not write code. Output: a markdown plan with named files, named types/functions, an Implementation Order, a Build Gate Sequence, and an Open Questions section.

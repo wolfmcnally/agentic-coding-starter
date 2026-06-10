@@ -50,7 +50,9 @@ Read `plan/INDEX.md` (the authoritative phase ledger) and locate the phase to wo
 - **`phase N` / `phase N.M`**: find the row whose link is `[Phase <id>](phase-<id>.md)`.
 - **Free text**: resolve to a phase row or ask the user.
 
-Tell the user which phase you are picking up and the path to its file (`plan/phase-<id>.md`).
+Then resolve the **review lane** per [`policies/review-lanes.md`](../../../policies/review-lanes.md): read `review_lane:` from the target phase file's frontmatter. Absent or `full` → **full** lane. `light` → **light** lane: Step 4 (plan review) will be skipped; the code critic still runs and guards the lane. You may upgrade a declared `light` to `full` when the phase's actual deliverables look non-mechanical — note the upgrade and why. Never downgrade `full` to `light` on your own.
+
+Tell the user which phase you are picking up, the path to its file (`plan/phase-<id>.md`), and the resolved review lane.
 
 ### Step 1a: Sub-phase decomposition (parent phases only — just-in-time, one at a time)
 
@@ -59,8 +61,8 @@ The parent `phase-N.md` was drafted at bootstrap (or by an earlier major-phase-c
 If the target is a **parent phase** (`phase-N.md`, not `phase-N.M.md`) and no `plan/phase-N.*.md` sub-phase files exist for it yet:
 
 - If the phase's Deliverables list is small (≤ 3 distinct surfaces) and fits one focused session, proceed monolithically — skip to Step 2.
-- If the phase is large or multi-surface, **decompose just-in-time, one sub-phase at a time**:
-  1. Invoke `phase-planner` for a one-shot decomposition of `phase-N.1` *only* (full Goal / Deliverables / Acceptance / brief refs).
+- If the phase is large or multi-surface, **decompose just-in-time, one sub-phase at a time**. Size the bite to the executing coder model's demonstrated coherence, not to a fixed calendar (see [`briefs/methodology.md`](../../../briefs/methodology.md) §6): when recent phases of the current size have been closing with first-cycle approvals and green gates, prefer fewer, larger sub-phases; split finer only when revision loops or build-gate fix cycles have been saying so.
+  1. Invoke `phase-planner` for a one-shot decomposition of `phase-N.1` *only* (full Goal / Deliverables / Acceptance / brief refs, plus a `review_lane:` frontmatter assignment per [`policies/review-lanes.md`](../../../policies/review-lanes.md) eligibility — default `full`).
   2. Write `phase-N.1.md`. Update `plan/INDEX.md`'s phase table to add the new row and adjust the dependency graph.
   3. Mark the parent `🚧` and `phase-N.1` `⬅️`. Restart `/kickoff` against `phase-N.1`.
   4. **Do not draft `phase-N.2`, `phase-N.3`, etc. yet.** Their shape benefits from `phase-N.1`'s outcomes. Subsequent sub-phases land at sub-phase close (see Step 9a). See [`briefs/methodology.md`](../../../briefs/methodology.md) §6.
@@ -99,6 +101,8 @@ Wait for the plan.
 
 ### Step 4: Review the plan
 
+**Light lane** (per Step 1's lane resolution): skip this step entirely. Record `Plan review: skipped (light lane)` for the END block and proceed to Step 5. Everything below applies to the full lane only.
+
 **Native venue** (per Step 0a): delegate the review stage to the `plan-reviewer` agent. Pass it:
 
 - The phase reference and heading.
@@ -131,6 +135,7 @@ Wait for the coder. Collect the list of files created or modified, the Build Sta
 - The approved plan (full text).
 - Any Minor Corrections the plan-reviewer issued.
 - The list of files the coder created or modified.
+- **Light lane only:** the lane declaration, with the instruction to additionally judge lane fit per [`policies/review-lanes.md`](../../../policies/review-lanes.md) — did the diff stay within mechanical scope?
 
 **External venue** (`codex` or `claude`): run the same role in the other harness per [`policies/cross-harness-review.md`](../../../policies/cross-harness-review.md):
 
@@ -142,6 +147,8 @@ Wait for the coder. Collect the list of files created or modified, the Build Sta
 **If `APPROVED`**: proceed to Step 7.
 
 **If `REVISE`**: re-run `phase-coder` with the critic's feedback, then re-review in the same venue (resume preferred externally, as in Step 4). Allow up to 2 revision cycles. If still not approved, present the issues to the user.
+
+**If `REVISE` opens with `Escalate: full lane — <reason>`** (light lane only): the work exceeded mechanical scope. Run the skipped Step 4 plan review now, against the plan as-built (same venue rules), route its outcome through the normal revision loops, and finish the phase in the full lane. Record `light → full (escalated: <reason>)` for the END block. The escalation itself does not count against the code-review revision cycles; the critic's other Required Changes do.
 
 ### Step 7: Final build gate
 
@@ -185,13 +192,13 @@ In `plan/INDEX.md`'s phase table (and only there):
 
 If the phase is only partially complete (the user paused mid-way), leave it `🚧` and do not advance `⬅️`.
 
-**Never edit the per-phase file's frontmatter or body to record status.** Per-phase frontmatter is `id` / `title` / `depends_on` / `informs` only.
+**Never edit the per-phase file's frontmatter or body to record status.** Per-phase frontmatter is `id` / `title` / `depends_on` / `informs` plus optional `review_lane` ([`policies/review-lanes.md`](../../../policies/review-lanes.md)) only.
 
 ### Step 9a: Draft the next sub-phase (sub-phase close only)
 
 If the just-closed phase was a sub-phase `phase-N.M.md` and the parent `phase-N.md`'s Deliverables are **not yet fully addressed** by the closed sub-phases:
 
-1. Invoke `phase-planner` to draft `phase-N.(M+1).md` with the benefit of the closed sub-phases' outcomes. Pass it: the parent's full text, the list of closed sub-phases with their END summaries, and the parent's remaining un-addressed deliverables.
+1. Invoke `phase-planner` to draft `phase-N.(M+1).md` with the benefit of the closed sub-phases' outcomes. Pass it: the parent's full text, the list of closed sub-phases with their END summaries, and the parent's remaining un-addressed deliverables. The draft includes a `review_lane:` frontmatter assignment per [`policies/review-lanes.md`](../../../policies/review-lanes.md) eligibility (default `full`), and is sized per the capability-indexed guidance in Step 1a.
 2. Write `phase-N.(M+1).md`. Update `plan/INDEX.md` (new row, dependency graph if needed).
 3. Mark `phase-N.(M+1)` `⬅️`. Parent stays `🚧`.
 
@@ -242,8 +249,11 @@ Build status:
 - <gate 2>: OK | N/A | failed (<short reason>)
 - ...
 
+Review lane (per `policies/review-lanes.md`):
+- full | light | light → full (escalated: <reason>) | light → full (orchestrator upgrade: <reason>)
+
 Review venue (per `policies/cross-harness-review.md`):
-- Plan review: native | codex | claude <annotate "native (<cli> not on PATH)" when the other CLI was absent, or "[fallback: <reason>]" when a mid-stage fallback fired>
+- Plan review: native | codex | claude | skipped (light lane) <annotate "native (<cli> not on PATH)" when the other CLI was absent, or "[fallback: <reason>]" when a mid-stage fallback fired>
 - Code review: native | codex | claude <same annotations>
 
 Manual checks for user:
@@ -278,6 +288,7 @@ Then report to the user:
 - The four canonical role names (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`) are load-bearing. See [`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md).
 - The verdict header (`## Verdict: APPROVED` or `## Verdict: REVISE`) is parsed by string match. Mis-cased or rephrased verdicts break orchestration.
 - When cross-harness review is enabled ([`policies/cross-harness-review.md`](../../../policies/cross-harness-review.md)), Steps 4 and 6 execute their roles in the other harness's CLI. The venue is resolved once in Step 0a; fallback to native is graceful, per-stage, and reported in the END block — never a phase failure.
+- Review lanes ([`policies/review-lanes.md`](../../../policies/review-lanes.md)): a phase's `review_lane: light` frontmatter skips Step 4 for mechanical work. The code critic always runs in every lane, guards the lane, and can escalate a light phase back to full; the END block records the lane. Lane and venue are orthogonal.
 - The ripple pass in Step 9a (sub-phase close) and Step 9b (major-phase close) is governed by [`policies/phase-ripple.md`](../../../policies/phase-ripple.md). AUTO ripples land in the same session; DECIDE ripples appear in the END block as named follow-ups.
 - Cross-harness: this same skill drives both Claude Code and Codex. The Codex slash-command entry point lives at `.codex/prompts/kickoff.md` (file symlink to this file); Codex's native skill-discovery surface reaches it through `.agents/skills/kickoff` (directory symlink to the parent `.claude/skills/kickoff/`). Edit this canonical skill, not the wrappers.
 - If your harness does not expose named subagents, perform the same role sequence locally by reading each `.claude/agents/<role>.md` directly and adopting that role's reading protocol and output format for the duration of the step.

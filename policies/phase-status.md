@@ -14,7 +14,7 @@ Phase status lives in **`plan/INDEX.md`** and nowhere else. This is a hard rule,
 ## Where status lives
 
 - **`plan/INDEX.md`'s phase table.** The phase table is the *single source of truth*. Each row carries one status emoji in its rightmost column.
-- **Nowhere else.** Per-phase files (`plan/phase-*.md`) do *not* carry a `status` field in their frontmatter. Their frontmatter is `id`, `title`, `depends_on`, `informs` — no more.
+- **Nowhere else.** Per-phase files (`plan/phase-*.md`) do *not* carry a `status` field in their frontmatter. Their frontmatter is `id`, `title`, `depends_on`, `informs`, and optionally `review_lane` (a phase property, not a status — see [`review-lanes.md`](review-lanes.md)) — no more.
 
 ## Why one place
 
