@@ -50,7 +50,7 @@ This shape follows the harnesses' discovery contracts: Claude Code reads `CLAUDE
    - `.agents/skills/<name>` is a *directory* symlink whose target is `../../.claude/skills/<name>` (the canonical skill directory, not the SKILL.md file inside it). Verify with `readlink .agents/skills/<name>` and `test -L .agents/skills/<name> && test -d .agents/skills/<name>`. Codex's native skill loader does **not** follow file-level symlinks inside a skill directory (#11314), but does traverse a symlinked skill directory — so the directory-level shape is the only one that works for this surface.
    - All symlinks because formats match (all Markdown with the same SKILL.md schema). Pointer-file wrappers ("Read X and follow it") and inline duplication of the body are both deprecated — replace them with symlinks on sight.
    - Never write Codex-specific behavior into `.codex/prompts/<name>.md` or any file under `.agents/skills/<name>/` that the canonical SKILL doesn't also describe. (With a symlink in place this is impossible anyway, which is the point.)
-   - The starter-only `/starter` skill is excluded from `.agents/skills/` — it must not propagate to derived projects via Codex's native discovery. It still has a `.codex/prompts/starter.md` slash entry in this repo only.
+   - Template-only skills such as `/starter` are mirrored in this starter repo because the template itself must expose them in every supported harness. `/starter` is omitted only when stamping ordinary derived projects, unless the destination is explicitly intended to be a template too.
 
 5. **No harness-specific rewrites in mirrored content.**
    - Write canonical skill and agent instructions in harness-neutral terms where practical. Reference tools by their canonical Claude Code name (e.g., "Read", "Edit", "Grep") and trust the Codex equivalent to be obvious; or reference both surfaces explicitly when ambiguity matters.
@@ -96,10 +96,8 @@ for d in .claude/skills/*/; do
 done
 
 # Codex native skills: each .agents/skills/<name> is a DIRECTORY symlink to ../../.claude/skills/<name>
-# (skip the starter-only skill, which intentionally has no .agents/skills/ mirror)
 for d in .claude/skills/*/; do
   skill=$(basename "$d")
-  [ "$skill" = "starter" ] && continue
   link=".agents/skills/${skill}"
   expected="../../.claude/skills/${skill}"
   if [ ! -L "$link" ]; then echo "not a symlink: $link"

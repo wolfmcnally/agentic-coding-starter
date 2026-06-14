@@ -152,7 +152,8 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
         ├── kickoff                 ←   each is a directory symlink → ../../.claude/skills/<name>
         ├── methodology             ←     (directory-level because Codex doesn't follow
         ├── learn                   ←      file-level symlinks inside skill dirs — issue #11314)
-        └── teach                   ←   /starter is intentionally absent
+        ├── teach
+        └── starter                 ←   present only in this template repo
 ```
 
 ---
