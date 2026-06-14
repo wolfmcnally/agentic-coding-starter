@@ -35,20 +35,20 @@ Wherever a committed file documents a cross-repo operation or references externa
 A mechanical pre-publish gate ships with the repo:
 
 ```bash
-scripts/check-anonymization.sh
+bin/check-anonymization.sh
 ```
 
-It scans every tracked file for the two *mechanizable* leak classes — real absolute / home paths and commit-SHA-like tokens — and exits non-zero on any finding. It optionally reads a gitignored local name denylist (`scripts/anonymization-denylist.local`, seeded from the committed `.example`) and greps for those private project names too; because the denylist is gitignored, the names it lists are never themselves committed. Run it before any push, and wire it into CI when the repo gains a CI config. The script catches paths and SHAs deterministically; **verbatim project names framed in prose remain a `code-critic` / human judgment call** — grep can't enumerate "names that happen to be private."
+It scans every tracked file for the two *mechanizable* leak classes — real absolute / home paths and commit-SHA-like tokens — and exits non-zero on any finding. It optionally reads a gitignored local name denylist (`bin/anonymization-denylist.local`, seeded from the committed `.example`) and greps for those private project names too; because the denylist is gitignored, the names it lists are never themselves committed. Run it before any push, and wire it into CI when the repo gains a CI config. The script catches paths and SHAs deterministically; **verbatim project names framed in prose remain a `code-critic` / human judgment call** — grep can't enumerate "names that happen to be private."
 
 ## Plan-reviewer / code-critic enforcement
 
 - Any change to `LOG.md` **or any other committed file** in a phase under review is read against this policy. A reviewer that spots a verbatim external project name, SHA, or proprietary identifier returns `REVISE` with a one-line note ("Anonymize the reference to `<X>` per `policies/anonymize-log-references.md`").
-- `code-critic` runs (or mirrors, via its grep checklist) `scripts/check-anonymization.sh` on the files a phase touched, and blocks on any hit.
+- `code-critic` runs (or mirrors, via its grep checklist) `bin/check-anonymization.sh` on the files a phase touched, and blocks on any hit.
 - The orchestrator (`/kickoff`, `/learn`, `/teach`) writes `LOG.md` entries and archived dispositions already anonymized — no rely-on-the-reviewer-to-catch-it pattern.
 
 ## Backfill rule
 
-When this policy is first adopted (or revised to broaden), any pre-existing committed files that violate it — `LOG.md` entries, archived dispositions, policy examples, briefs — are retroactively anonymized in the working tree before the next push. Run `scripts/check-anonymization.sh` to surface the mechanizable violations. Backfill is a single commit titled along the lines of "Anonymize cross-repo references per policy."
+When this policy is first adopted (or revised to broaden), any pre-existing committed files that violate it — `LOG.md` entries, archived dispositions, policy examples, briefs — are retroactively anonymized in the working tree before the next push. Run `bin/check-anonymization.sh` to surface the mechanizable violations. Backfill is a single commit titled along the lines of "Anonymize cross-repo references per policy."
 
 ## Why this isn't a methodology-universal policy
 

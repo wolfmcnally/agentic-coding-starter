@@ -87,3 +87,28 @@ Build gates after apply (`project/`): `ruff check` All checks passed; `ruff form
 Cross-harness parity: not affected (canonical `CLAUDE.md` + skill edits; `.codex/prompts/teach.md` and `.agents/skills/teach` are symlinks to the canonical, auto-updated).
 Patterns to feed back via `/learn`: none identified — starter is upstream of Donor E.
 Files touched in target: 11 (5 NEW incl. `.gitkeep`, 2 DELETE, 4 MODIFY).
+
+## 2026-06-14 — LEARN
+
+Source: `/learn <donor-dir>` — Donor A, a large multi-domain content/MCP knowledge engine in a sibling workspace. Donor name, path, and SHA withheld (this repo is public; `bin/check-anonymization.sh` flags the path and SHA classes).
+Desc: "how projects use the `bin/` directory; carry forward the principle — mechanistic code where consistency/determinism/repeatability are paramount, intelligence where synthesis/creativity/generativity are paramount; always triage."
+
+Donor A routes all deterministic, repeatable mechanics through a documented `bin/` of plain executables and reserves model/agent work for synthesis and judgment. Its post-fan-out reconciler is described in its own briefs as "a script, not a subagent — pure mechanics, no prose model, deterministic and harness-portable" — the triage principle in one line. The template already had the raw material (a `scripts/` dir, one enforcement script) but no named home convention, no operator README, and no codified triage rule.
+
+Items absorbed: 3 (T1 = 2, T2 = 1, T3 = 0, T4 = 0).
+
+User decisions (AskUserQuestion): adopt `bin/` and migrate `scripts/` into it; codify the triage as policy **plus** a CLAUDE.md architectural invariant.
+
+Files touched:
+- `policies/mechanistic-vs-intelligence.md` — NEW (T1). The triage law: route each repeatable task to a deterministic script in `bin/` or to intelligence; three corollaries (don't burn a model on mechanics; don't script judgment; split mixed tasks at the seam); ties to cross-harness-parity, acceptance-empirical, and the deterministic-orchestration brief; acceptance hook for reviewers/critics.
+- `bin/README.md` — NEW (T2). Operator index for the deterministic-script home: convention preamble (universal, propagates) + a starter-only `check-anonymization.sh` entry that `/starter` drops downstream.
+- `bin/check-anonymization.sh`, `bin/anonymization-denylist.local.example` — RENAMED from `scripts/` via `git mv`; internal `SELF`/`DENYLIST`/usage-comment paths and the example header repointed to `bin/`.
+- `CLAUDE.md` — MODIFY (T1). New architectural invariant ("Mechanistic vs. intelligence"); `bin/` entry in Universal repo layout; policies-catalog line for the new policy; two glossary entries ("Mechanistic vs. intelligence triage", "`bin/`"); the two hard-rule/catalog `scripts/check-anonymization.sh` refs repointed to `bin/`.
+- `policies/anonymize-log-references.md` (4 path edits), `.claude/agents/code-critic.md` (1), `.claude/skills/starter/SKILL.md` (exclusion list + new bin/README-adaptation note), `.claude/skills/teach/SKILL.md` (1), `.gitignore` (1) — all `scripts/` → `bin/`.
+
+Skipped (out of scope): Donor A's actual `bin/` scripts (deploy, render, MCP serve/bundle/deploy, slug/section sweeps, generators) — domain-specific to a content engine; only the convention and the principle generalize. Donor README operator detail (refusal rules, port pairs, pipelines) — shape borrowed, content not. Donor pre-commit hook wiring — inspiration only, noted in the policy's "ties".
+
+Verification: `bin/check-anonymization.sh` exits 0 (dog-food: the relocated gate scans clean); no `scripts/` references remain (`grep` clean across CLAUDE.md, policies/, .claude/, .gitignore, bin/); every `policies/*.md` indexed in CLAUDE.md's catalog.
+Build gates (`project/`): `ruff check` All checks passed; `ruff format --check` 4 files already formatted; `pytest -q` 7 passed (markdown/policy + script-rename only — zero deliverable code touched).
+Cross-harness parity: `.codex/agents/code-critic.toml` unchanged (thin pointer, no anonymization bullet to update); `AGENTS.md`, `.codex/prompts/*`, `.agents/skills/*` symlinks intact and auto-propagate the canonical edits.
+Manual checks for user: review the new policy's voice against the rest of `policies/`; confirm `bin/` (vs. `scripts/`) is the name you want every derived project to inherit; the exec bit on `bin/check-anonymization.sh` survived the rename.

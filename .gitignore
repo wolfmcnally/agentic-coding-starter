@@ -12,4 +12,4 @@
 .codex/cache/
 
 # Local-only anonymization denylist (private names must never be committed)
-scripts/anonymization-denylist.local
+bin/anonymization-denylist.local

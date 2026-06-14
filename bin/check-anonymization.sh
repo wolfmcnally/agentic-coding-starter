@@ -11,12 +11,12 @@
 # part the patterns cannot catch (verbatim external project names framed in
 # prose) stays a code-critic / human review call.
 #
-#   scripts/check-anonymization.sh          scan; exit 1 on findings
-#   scripts/check-anonymization.sh --help   this text
+#   bin/check-anonymization.sh          scan; exit 1 on findings
+#   bin/check-anonymization.sh --help   this text
 #
 # Local name denylist (optional, never committed): copy
-# scripts/anonymization-denylist.local.example to
-# scripts/anonymization-denylist.local and add one private project name or
+# bin/anonymization-denylist.local.example to
+# bin/anonymization-denylist.local and add one private project name or
 # identifier per line. The .local file is gitignored so the names it lists
 # are never themselves leaked into this public repo.
 #
@@ -32,8 +32,8 @@ fi
 
 cd "$(git rev-parse --show-toplevel)"
 
-SELF='scripts/check-anonymization.sh'
-DENYLIST='scripts/anonymization-denylist.local'
+SELF='bin/check-anonymization.sh'
+DENYLIST='bin/anonymization-denylist.local'
 status=0
 
 report() {

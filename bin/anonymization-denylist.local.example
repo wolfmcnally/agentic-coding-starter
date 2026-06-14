@@ -1,6 +1,6 @@
-# Local name denylist for scripts/check-anonymization.sh — EXAMPLE.
+# Local name denylist for bin/check-anonymization.sh — EXAMPLE.
 #
-# Copy this file to scripts/anonymization-denylist.local (gitignored) and list
+# Copy this file to bin/anonymization-denylist.local (gitignored) and list
 # the private / external project names and proprietary identifiers that must
 # never appear verbatim in this public repo — one term per line. The scan
 # greps every tracked file (case-insensitively) for each term.
