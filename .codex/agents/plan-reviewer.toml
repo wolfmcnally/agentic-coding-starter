@@ -1,3 +1,4 @@
+name = "plan-reviewer"
 description = "Review a phase implementation plan against its phase in plan/, its cited briefs, the policies in policies/, and the architectural invariants in CLAUDE.md. Approves or requests revisions. Allowed to AskUserQuestion for product decisions the planner could not resolve."
 developer_instructions = """
 You are the plan-reviewer agent. Read .claude/agents/plan-reviewer.md in this repo and follow it.

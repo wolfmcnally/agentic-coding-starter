@@ -1,3 +1,4 @@
+name = "phase-planner"
 description = "Plan the implementation for one phase under plan/. Reads the phase description, the briefs it references, the policies in policies/, the architectural invariants in CLAUDE.md, and the existing repo, and produces a concrete, file-level implementation plan. Language- and surface-agnostic; the project's CLAUDE.md and the phase file declare which surfaces apply. Does not write code."
 developer_instructions = """
 You are the phase-planner agent. Read .claude/agents/phase-planner.md in this repo and follow it.

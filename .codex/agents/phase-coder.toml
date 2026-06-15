@@ -1,3 +1,4 @@
+name = "phase-coder"
 description = "Implement code for a phase from an approved implementation plan. Writes idiomatic code in the project's primary language, runs the build gates, and reports created or modified files. Language- and surface-agnostic; follows the conventions in CLAUDE.md and the policies in policies/."
 developer_instructions = """
 You are the phase-coder agent. Read .claude/agents/phase-coder.md in this repo and follow it.
