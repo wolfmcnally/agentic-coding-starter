@@ -1,0 +1,1 @@
+../../.claude/skills/stamp/SKILL.md

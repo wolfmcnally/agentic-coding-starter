@@ -96,5 +96,5 @@ What you get in exchange: each phase leaves a reviewable artifact pair (END bloc
 ## Related skills
 
 - **`/kickoff`** — runs steps 7–9 for one sub-phase, end-to-end.
-- **`/starter`** — runs the bootstrap procedure described in [`agentic-bootstrap.md`](agentic-bootstrap.md) to stand up a new repo under this methodology.
+- **`/stamp`** — runs the bootstrap procedure described in [`agentic-bootstrap.md`](agentic-bootstrap.md) to stand up a new repo under this methodology.
 - **`/methodology`** — re-states this brief as a slash-command, for sessions that need a reminder of the steps without reading the whole file.

@@ -30,7 +30,7 @@ graph TD
     P1[Phase 1<br/>Adopt the template for your project]
 ```
 
-The graph contains a single placeholder phase because starter's own deliverable is "the template itself" — a one-phase project. **Derived projects** stamped from this template via `/starter` enumerate every major phase the brief surfaces at bootstrap (each as a sketched `plan/phase-N.md` file at lower fidelity), per [`../briefs/methodology.md`](../briefs/methodology.md) §6 and [`../briefs/agentic-bootstrap.md`](../briefs/agentic-bootstrap.md) §8. Sub-phases stay JIT (drafted at parent open via `/kickoff` Step 1a) and ripple at every phase close per [`../policies/phase-ripple.md`](../policies/phase-ripple.md).
+The graph contains a single placeholder phase because starter's own deliverable is "the template itself" — a one-phase project. **Derived projects** stamped from this template via `/stamp` enumerate every major phase the brief surfaces at bootstrap (each as a sketched `plan/phase-N.md` file at lower fidelity), per [`../briefs/methodology.md`](../briefs/methodology.md) §6 and [`../briefs/agentic-bootstrap.md`](../briefs/agentic-bootstrap.md) §8. Sub-phases stay JIT (drafted at parent open via `/kickoff` Step 1a) and ripple at every phase close per [`../policies/phase-ripple.md`](../policies/phase-ripple.md).
 
 ## Phase Table
 
@@ -65,7 +65,7 @@ These are the universals the template ships with. A project derived from this te
 | Top-level agent guidance             | [`../CLAUDE.md`](../CLAUDE.md)                            |
 | Activity log                         | [`../LOG.md`](../LOG.md)                                  |
 | Phase orchestrator                   | [`../.claude/skills/kickoff/SKILL.md`](../.claude/skills/kickoff/SKILL.md) |
-| New-project bootstrapper             | [`../.claude/skills/starter/SKILL.md`](../.claude/skills/starter/SKILL.md) |
+| New-project bootstrapper             | [`../.claude/skills/stamp/SKILL.md`](../.claude/skills/stamp/SKILL.md) |
 | Methodology slash-command            | [`../.claude/skills/methodology/SKILL.md`](../.claude/skills/methodology/SKILL.md) |
 | `phase-planner` agent (canonical)    | [`../.claude/agents/phase-planner.md`](../.claude/agents/phase-planner.md) |
 | `plan-reviewer` agent (canonical)    | [`../.claude/agents/plan-reviewer.md`](../.claude/agents/plan-reviewer.md) |

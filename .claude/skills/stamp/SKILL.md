@@ -1,16 +1,16 @@
 ---
-name: starter
+name: stamp
 description: >-
   Stamp out a new project at <directory>, using this repository as the
   master template. Asks a small number of configuration questions only when
   the optional <description> doesn't make the answers obvious. Adapts
   CLAUDE.md, README.md, briefs/BRIEF.md, the kickoff skill's build gates,
   and the four canonical agents for the new project's name and primary
-  language. Invoke as /starter <directory> [<description>].
+  language. Invoke as /stamp <directory> [<description>].
 argument-hint: "<directory> [<description>]"
 ---
 
-# /starter — Bootstrap a new agentic-coding project
+# /stamp — Bootstrap a new agentic-coding project
 
 Use **this** repository as a master template to stand up a new project at `<directory>`. The new project ends up with everything needed to immediately `/kickoff` its first phase: a brief, a phased plan, policies, the four canonical agents, the kickoff skill, the methodology skill, harness mirrors, and a minimal code surface in the project's primary language.
 
@@ -25,7 +25,7 @@ The arguments are a positional `<directory>` followed by an optional `<descripti
 - `<directory>` — the destination path. May be absolute (`~/projects/foo`, `/Users/me/foo`) or relative to the current working directory. Tilde is expanded.
 - `<description>` (optional) — a one-line description of what the new project is for. When provided and informative, it answers most of the configuration questions automatically.
 
-If `<directory>` is missing, refuse with: `Usage: /starter <directory> [<description>]` and exit.
+If `<directory>` is missing, refuse with: `Usage: /stamp <directory> [<description>]` and exit.
 
 ## Pre-flight checks
 
@@ -159,7 +159,7 @@ Verify each `readlink <dest>/.agents/skills/<name>` returns the expected target 
 
 The `.codex/prompts/<name>.md` files are *file* symlinks pointing at the SKILL.md inside the canonical skill dir (`../../.claude/skills/<name>/SKILL.md`); they feed Codex's slash-command surface. Both surfaces are symlink-based because formats match — see [`policies/cross-harness-parity.md`](../../../policies/cross-harness-parity.md).
 
-**Do not** copy `.claude/skills/starter/` (this skill itself), `.codex/prompts/starter.md`, create `.agents/skills/starter` in the destination, or copy `policies/anonymize-log-references.md`, `bin/check-anonymization.sh`, or `bin/anonymization-denylist.local.example` (and drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`). The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too, and the anonymization rule (and its enforcement script) doesn't apply to private downstream projects. `/learn` and `/teach` *are* carried over — they are universal cross-repo skills that benefit every methodology-following project.
+**Do not** copy `.claude/skills/stamp/` (this skill itself), `.codex/prompts/stamp.md`, create `.agents/skills/stamp` in the destination, or copy `policies/anonymize-log-references.md`, `bin/check-anonymization.sh`, or `bin/anonymization-denylist.local.example` (and drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`). The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too, and the anonymization rule (and its enforcement script) doesn't apply to private downstream projects. `/learn` and `/teach` *are* carried over — they are universal cross-repo skills that benefit every methodology-following project.
 
 The `bin/` directory, its `bin/README.md` convention preamble, and `policies/mechanistic-vs-intelligence.md` **are** carried over — the deterministic-script home and the mechanistic-vs-intelligence triage are universal methodology. But because `check-anonymization.sh` is starter-only (excluded above), the adaptation pass must **delete the starter-only `### check-anonymization.sh` entry** from the destination's `bin/README.md`, leaving the convention preamble and an empty (or project-seeded) Scripts section.
 
@@ -272,9 +272,9 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - `ls <dest>/.claude/agents/` lists exactly the four canonical role files.
 - `ls <dest>/.claude/skills/kickoff/` contains `SKILL.md`.
 - `ls <dest>/.claude/skills/methodology/` contains `SKILL.md`.
-- `ls <dest>/.claude/skills/starter/` does **not** exist (we did not transfer it).
+- `ls <dest>/.claude/skills/stamp/` does **not** exist (we did not transfer it).
 - For each name in {kickoff, methodology, learn, teach}: `readlink <dest>/.agents/skills/<name>` returns `../../.claude/skills/<name>`, `test -L <dest>/.agents/skills/<name>` and `test -d <dest>/.agents/skills/<name>` both pass, and `<dest>/.agents/skills/<name>/SKILL.md` is reachable through the directory symlink.
-- `<dest>/.agents/skills/starter` does **not** exist (starter-only, must not propagate).
+- `<dest>/.agents/skills/stamp` does **not** exist (starter-only, must not propagate).
 - The new `CLAUDE.md`'s catalogs reference every file in `briefs/` and `policies/`.
 - `grep -cE 'cross-harness-review: (enabled|disabled)' <dest>/CLAUDE.md` returns 1 (the activation token was seeded in Project Context), and `<dest>/policies/cross-harness-review.md` and `<dest>/briefs/cross-agent-invocation.md` both exist.
 - The project's primary build gate runs clean on the seeded code.
@@ -307,7 +307,7 @@ When the bootstrap finishes cleanly, report to the user:
 
 ## Rules
 
-- The destination repo's content is the user's. Never mirror Wolf McNally, his projects, his email, or any third-party PII. The starter skill itself ships in a distributable repo; the new repo is even more so.
+- The destination repo's content is the user's. Never mirror Wolf McNally, his projects, his email, or any third-party PII. The stamp skill itself ships in a distributable repo; the new repo is even more so.
 - Ask only the questions inference cannot answer. A clear description shortens the bootstrap to seconds.
 - When in doubt about a name, file path, or convention, prefer this template's choice — that's why it exists.
 - Surface every assumption you made (inferred language, inferred surfaces, derived project name) in the final report so the user can correct anything before kickoff.

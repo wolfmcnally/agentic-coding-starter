@@ -2,11 +2,11 @@
 
 This file provides guidance to coding agents (Claude Code, Codex CLI, and others that read top-level instruction files) when working in this repository.
 
-This file has two zones. **Project Context** is everything specific to *this* repo — the project's thesis, the deliverable's surface, the language conventions, the project-specific briefs and skills. `/starter` rewrites this zone when stamping out a new project. **Methodology Contract** is everything universal to the agentic methodology — methodology briefs, every policy, the phase-work protocol, universal conventions, the glossary. `/starter` copies this zone verbatim. The two zones are demarcated by HTML comment markers; both humans and `/starter` use the markers to find the boundary. Above both zones is a small **Hard rules** section that governs every action regardless of zone — these are too consequential to risk an agent missing them by reading top-down and stopping early.
+This file has two zones. **Project Context** is everything specific to *this* repo — the project's thesis, the deliverable's surface, the language conventions, the project-specific briefs and skills. `/stamp` rewrites this zone when stamping out a new project. **Methodology Contract** is everything universal to the agentic methodology — methodology briefs, every policy, the phase-work protocol, universal conventions, the glossary. `/stamp` copies this zone verbatim. The two zones are demarcated by HTML comment markers; both humans and `/stamp` use the markers to find the boundary. Above both zones is a small **Hard rules** section that governs every action regardless of zone — these are too consequential to risk an agent missing them by reading top-down and stopping early.
 
 ## Hard rules — read these before any action
 
-These rules govern every action in this repo. They are placed above both zones so an agent reads them before doing anything irreversible. The full policy text for each is in `policies/`; consult that before bending the rule. Rules 1 and 2 are universal (apply to this template and to every project `/starter` derives from it). Rule 3 is **starter-only** — it does not propagate to derived projects.
+These rules govern every action in this repo. They are placed above both zones so an agent reads them before doing anything irreversible. The full policy text for each is in `policies/`; consult that before bending the rule. Rules 1 and 2 are universal (apply to this template and to every project `/stamp` derives from it). Rule 3 is **starter-only** — it does not propagate to derived projects.
 
 1. **The user initiates all commits and other destructive git operations.** Do not run `git commit`, `git push`, `git tag`, `git reset --hard`, `git branch -D`, `git rebase`, `git checkout --`, `git clean -fd`, or anything that rewrites history or affects shared state — unless the user *explicitly* asks in the current session. Approval from a prior session does not carry forward. When phase work is ready, report it (file list, build-gate status, manual checks) and wait. Full policy: [`policies/human-in-the-loop.md`](policies/human-in-the-loop.md).
 
@@ -53,7 +53,7 @@ When enabled and the alternative harness CLI is on PATH, `/kickoff` delegates **
 
 In addition to the universal `/kickoff`, `/methodology`, `/learn`, and `/teach` skills (carried into every derived project):
 
-- **`/starter`** — starter-template-only bootstrapping skill. Stamps out a new project from this repo. Registered for Codex in this template repo only; not carried into derived projects. Source: `.claude/skills/starter/SKILL.md`; Codex native skill: `.agents/skills/starter`; Codex prompt wrapper: `.codex/prompts/starter.md`.
+- **`/stamp`** — starter-template-only bootstrapping skill. Stamps out a new project from this repo. Registered for Codex in this template repo only; not carried into derived projects. Source: `.claude/skills/stamp/SKILL.md`; Codex native skill: `.agents/skills/stamp`; Codex prompt wrapper: `.codex/prompts/stamp.md`.
 
 <!-- PROJECT_CONTEXT_END -->
 
@@ -109,7 +109,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 - `.claude/agents/` — canonical role definitions invoked by `/kickoff`: `phase-planner.md`, `plan-reviewer.md`, `phase-coder.md`, `code-critic.md`. These are the four roles in the methodology's planner → reviewer → coder → critic loop; do not invoke them by hand for full-phase work unless deliberately bypassing orchestration.
 - `.codex/agents/` — Codex CLI mirrors of the four canonical roles (TOML).
 - `.codex/prompts/` — Codex slash-command entry points for the universal skills (and any project-specific skills the project chooses to expose). Each entry is a symlink to the canonical `.claude/skills/<name>/SKILL.md`.
-- `.agents/skills/` — Codex CLI's native project-skill discovery path ([developers.openai.com/codex/skills](https://developers.openai.com/codex/skills)). Each `<name>` is a **directory** symlink to the canonical `.claude/skills/<name>` directory (Codex doesn't follow file-level symlinks inside a skill dir per [#11314](https://github.com/openai/codex/issues/11314), but does traverse a symlinked skill directory). Template-only skills such as `/starter` are registered here only in repos that are themselves templates; ordinary derived projects omit them so template-bootstrapping commands do not propagate.
+- `.agents/skills/` — Codex CLI's native project-skill discovery path ([developers.openai.com/codex/skills](https://developers.openai.com/codex/skills)). Each `<name>` is a **directory** symlink to the canonical `.claude/skills/<name>` directory (Codex doesn't follow file-level symlinks inside a skill dir per [#11314](https://github.com/openai/codex/issues/11314), but does traverse a symlinked skill directory). Template-only skills such as `/stamp` are registered here only in repos that are themselves templates; ordinary derived projects omit them so template-bootstrapping commands do not propagate.
 - `AGENTS.md` — symlink → `CLAUDE.md`, so Codex/aider read the same source of truth.
 
 The deliverable's directory (whatever the project calls it — `project/` when project-isolation is enabled, or sibling deliverable directories at the repo root when not) is described in Project Context.

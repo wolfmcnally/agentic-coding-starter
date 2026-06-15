@@ -26,7 +26,7 @@ The orchestrator reads the token by string match. Precedence:
 | `enabled` | yes | The other harness's CLI. |
 | `enabled` | no | Native subagents — **silently**. Not an error, not a fallback; just the venue report `native (<cli> not on PATH)`. |
 
-Default for this template and for projects stamped by `/starter`: **enabled**. The token is per-project: it lives in Project Context, which `/starter` rewrites per project and `/teach` never touches.
+Default for this template and for projects stamped by `/stamp`: **enabled**. The token is per-project: it lives in Project Context, which `/stamp` rewrites per project and `/teach` never touches.
 
 ## What is delegated — and what is not
 

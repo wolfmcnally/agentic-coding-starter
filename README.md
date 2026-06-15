@@ -8,14 +8,14 @@ This template is harness-agnostic. It works with [Claude Code](https://claude.co
 
 ## What this is
 
-A starter template — a *master template* — for projects that use agent-driven development. Clone it, run `/starter` to spin up a new project from it, or open it directly and run `/kickoff` to start building.
+A starter template — a *master template* — for projects that use agent-driven development. Clone it, run `/stamp` to spin up a new project from it, or open it directly and run `/kickoff` to start building.
 
 The template ships with:
 
 - A **methodology** (eleven-step pipeline, see [`briefs/methodology.md`](briefs/methodology.md)) that takes you from idea to shipped code.
 - A **`/kickoff` skill** that orchestrates one phase of work end-to-end: plan → plan-review → code → code-review → build → log.
 - Four **canonical agent roles** (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`) defined once and mirrored to every supported harness.
-- A **`/starter` skill** (starter-template-only) for stamping out new repos from this one.
+- A **`/stamp` skill** (starter-template-only) for stamping out new repos from this one.
 - **`/learn` and `/teach` skills** (universal — carried into every derived project) for moving patterns *between* methodology-following repos. `/learn` absorbs patterns from another repo into the current one; `/teach` sends patterns from the current repo out to a target. Both are plan-first: the user approves before any file changes.
 - A **`plan/` ledger** (status table, dependency graph, cross-cutting concerns) where work is tracked phase by phase.
 - A **`briefs/` library** for durable design decisions and methodology notes.
@@ -49,10 +49,10 @@ There are two ways to start.
 From inside this repo, in your agent host of choice:
 
 ```
-/starter ~/path/to/new-project "one-line description of what to build"
+/stamp ~/path/to/new-project "one-line description of what to build"
 ```
 
-The `/starter` skill copies this repo's structural files into the new directory, asks a few configuration questions (project name, primary language, build commands) when the description doesn't make them obvious, and leaves you with a ready-to-`/kickoff` project.
+The `/stamp` skill copies this repo's structural files into the new directory, asks a few configuration questions (project name, primary language, build commands) when the description doesn't make them obvious, and leaves you with a ready-to-`/kickoff` project.
 
 ### Option B — Use this repo directly
 
@@ -129,7 +129,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   │   ├── methodology/SKILL.md    ←   the eleven steps (self-contained)
 │   │   ├── learn/SKILL.md          ←   absorb patterns FROM another repo (universal)
 │   │   ├── teach/SKILL.md          ←   send patterns TO another repo (universal)
-│   │   └── starter/SKILL.md        ←   new-project bootstrapper (starter-only)
+│   │   └── stamp/SKILL.md          ←   new-project bootstrapper (starter-only)
 │   └── agents/
 │       ├── phase-planner.md
 │       ├── plan-reviewer.md
@@ -146,14 +146,14 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │       ├── methodology.md
 │       ├── learn.md
 │       ├── teach.md
-│       └── starter.md
+│       └── stamp.md
 └── .agents/                        ← Codex CLI's native project-skill discovery
     └── skills/                     ←   (developers.openai.com/codex/skills)
         ├── kickoff                 ←   each is a directory symlink → ../../.claude/skills/<name>
         ├── methodology             ←     (directory-level because Codex doesn't follow
         ├── learn                   ←      file-level symlinks inside skill dirs — issue #11314)
         ├── teach
-        └── starter                 ←   present only in this template repo
+        └── stamp                   ←   present only in this template repo
 ```
 
 ---
@@ -220,7 +220,7 @@ Once you have more than one methodology-following project, patterns evolve in on
 - **`/learn <donor-dir> [<desc>]`** — Run from inside *this* repo. Explores `<donor-dir>` for patterns (skills, policies, briefs, agent refinements, build-gate idioms, even domain specializations) and proposes which to absorb. The donor stays read-only. You get a plan ranked by generality (methodology-level first, language specializations later, domain specializations last). Nothing is written here until you approve.
 - **`/teach <target-dir> [<desc>]`** — The inverse. Run from inside *this* repo. Proposes which of *this* repo's patterns to apply to `<target-dir>` — useful for upgrading a previously-stamped project that has fallen behind, or retrofitting an existing project with the methodology. This repo stays read-only. The target's custom skills, agents, briefs, and active phase work are preserved by default.
 
-Both skills are carried into every project `/starter` stamps out, so any methodology-following project can `/learn` from any other and `/teach` to any other.
+Both skills are carried into every project `/stamp` stamps out, so any methodology-following project can `/learn` from any other and `/teach` to any other.
 
 The `<desc>` argument narrows intent. Omit it for a broad assessment that defaults to general-purpose improvements; supply it to focus on a specific surface ("focus on the testing setup", "Unity specialization", "just the policies").
 
@@ -232,7 +232,7 @@ The `<desc>` argument narrows intent. Omit it for a broad assessment that defaul
 2. Read [`briefs/BRIEF.md`](briefs/BRIEF.md), [`briefs/methodology.md`](briefs/methodology.md), and [`plan/INDEX.md`](plan/INDEX.md) to ground yourself in what this repo expects.
 3. Either:
    - Use this repo directly: type `/kickoff` and let the orchestrator drive the placeholder Phase 1.
-   - Stamp out a new project: type `/starter ~/path/to/new-project "what you want to build"`.
+   - Stamp out a new project: type `/stamp ~/path/to/new-project "what you want to build"`.
 
 ---
 

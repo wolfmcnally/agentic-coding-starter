@@ -1,6 +1,6 @@
 # Policy: Anonymize External-Repo References (starter-only)
 
-**This policy applies only to this repository** — the agentic-coding-starter-template. Projects derived from this template via `/starter`, and projects retrofitted via `/teach`, do **not** inherit this policy. Their `LOG.md` files and other documents are their own business; their references to external work are theirs to disclose or not.
+**This policy applies only to this repository** — the agentic-coding-starter-template. Projects derived from this template via `/stamp`, and projects retrofitted via `/teach`, do **not** inherit this policy. Their `LOG.md` files and other documents are their own business; their references to external work are theirs to disclose or not.
 
 The reason for the asymmetry: **this repository is intended to be public**. Every commit, every `LOG.md` entry, and every committed file will be readable by anyone with the repo URL. A public template must not leak the private context of the projects it absorbs patterns from (via `/learn`) or teaches them to (via `/teach`).
 
@@ -54,4 +54,4 @@ When this policy is first adopted (or revised to broaden), any pre-existing comm
 
 Private projects have no incentive to anonymize their own `LOG.md` — the audit trail is more valuable when it names what was learned from where. A private repo's `LOG.md` referencing its own donors by name is *exactly* what those private logs should do. The asymmetry is driven by the publicness of *this* repo, not by any methodology principle.
 
-`/teach` and `/starter` exclude this policy from transfer to derived projects. See the Out-of-scope list in `.claude/skills/teach/SKILL.md` and the "Do not copy" carve-outs in `.claude/skills/starter/SKILL.md`.
+`/teach` and `/stamp` exclude this policy from transfer to derived projects. See the Out-of-scope list in `.claude/skills/teach/SKILL.md` and the "Do not copy" carve-outs in `.claude/skills/stamp/SKILL.md`.

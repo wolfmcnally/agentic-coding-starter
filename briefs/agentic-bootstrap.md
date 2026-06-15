@@ -2,12 +2,12 @@
 title: "Standing Up a New Project From This Template"
 date: 2026-05-17
 status: methodology
-scope: Procedure for using this repository as a master template to stand up a new project under the agentic coding methodology. Authoritative reference for the `/starter` skill.
+scope: Procedure for using this repository as a master template to stand up a new project under the agentic coding methodology. Authoritative reference for the `/stamp` skill.
 ---
 
 # Standing Up a New Project From This Template
 
-How to use this repository as a *master template* to bootstrap a new project that follows the same agentic coding methodology. This brief is the contract `/starter` implements; read it before customizing the skill or running the procedure by hand.
+How to use this repository as a *master template* to bootstrap a new project that follows the same agentic coding methodology. This brief is the contract `/stamp` implements; read it before customizing the skill or running the procedure by hand.
 
 This brief assumes you already have (or are about to write) a high-level brief for the new project. If you don't yet have one, do the methodology's steps 1–3 first ([`methodology.md`](methodology.md)) — turn the idea into insights, write a brief, decide an architecture.
 
@@ -60,7 +60,7 @@ A project derived from this template contains the following **portable structure
                            #   THIS repo from another
       teach/SKILL.md       # Universal cross-repo skill: apply THIS repo's
                            #   patterns to another
-      # /starter is NOT carried over — the new project doesn't need to stamp
+      # /stamp is NOT carried over — the new project doesn't need to stamp
       # out more projects from itself by default
     agents/
       phase-planner.md
@@ -87,7 +87,7 @@ A project derived from this template contains the following **portable structure
       methodology          # (Codex doesn't follow file-level symlinks inside
       learn                #  a skill dir — issue #11314 — but does traverse
       teach                #  a symlinked skill directory.)
-      # /starter is NOT mirrored here either — starter-only
+      # /stamp is NOT mirrored here either — starter-only
 
   project/                 # When project-isolation is enabled (default for
                            #   single-deliverable projects), the artifact lives
@@ -172,9 +172,9 @@ These files have a stable shape and a project-specific body. Mirror the shape; w
 
 ### 2c. Do not transfer (template-specific)
 
-- `.claude/skills/starter/SKILL.md` — the new project doesn't need to stamp out more projects from itself, unless it explicitly wants to be a template too. (Note: `/learn` and `/teach` *are* carried over — they are universal cross-repo skills, not starter-specific.)
-- `.codex/prompts/starter.md` — same reason.
-- `.agents/skills/starter` — same reason. The starter-only `/starter` skill is intentionally absent from Codex's native skill discovery in derived projects.
+- `.claude/skills/stamp/SKILL.md` — the new project doesn't need to stamp out more projects from itself, unless it explicitly wants to be a template too. (Note: `/learn` and `/teach` *are* carried over — they are universal cross-repo skills, not starter-specific.)
+- `.codex/prompts/stamp.md` — same reason.
+- `.agents/skills/stamp` — same reason. The starter-only `/stamp` skill is intentionally absent from Codex's native skill discovery in derived projects.
 - The starter template's own `plan/phase-1.md` (which is a placeholder for "decide what you're building") — replace it entirely with the new project's real Phase 1.
 - The starter template's `example/` Python package and `tests/test_cli.py` — replace with the new project's surface, in whatever language(s) the project uses.
 
@@ -468,18 +468,18 @@ Bootstrap is complete when **all** of the following hold:
 [ ] .claude/skills/methodology/SKILL.md exists (verbatim from template)
 [ ] .claude/skills/learn/SKILL.md exists (verbatim from template)
 [ ] .claude/skills/teach/SKILL.md exists (verbatim from template)
-[ ] .claude/skills/starter/ does NOT exist (starter-only meta-skill)
+[ ] .claude/skills/stamp/ does NOT exist (starter-only meta-skill)
 [ ] .claude/agents/{phase-planner,plan-reviewer,phase-coder,code-critic}.md
     exist, adapted for this project
 [ ] .codex/agents/*.toml mirrors exist
 [ ] .codex/prompts/{kickoff,methodology,learn,teach}.md exist (file symlinks)
 [ ] .agents/skills/{kickoff,methodology,learn,teach} exist as directory
     symlinks to ../../.claude/skills/<name> (the canonical skill directory)
-[ ] .agents/skills/starter does NOT exist (starter-only, must not propagate)
+[ ] .agents/skills/stamp does NOT exist (starter-only, must not propagate)
 [ ] Every file in policies/ from the template exists, with project-name
     references updated
 [ ] No template-specific skills, briefs, or example code remain in the new
-    repo (no example/, no .claude/skills/starter/)
+    repo (no example/, no .claude/skills/stamp/)
 [ ] The project's primary build gate runs clean on the seeded code
 [ ] First `/kickoff` invocation successfully picks up Phase 1's ⬅️ row,
     flips it to 🚧, and appends a START block to LOG.md

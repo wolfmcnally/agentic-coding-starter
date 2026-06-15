@@ -15,13 +15,13 @@ You have two options for this phase:
 
 ## Option A — You're using this repo as a template for a new project
 
-The right tool is the `/starter` skill, not `/kickoff`. Type:
+The right tool is the `/stamp` skill, not `/kickoff`. Type:
 
 ```
-/starter ~/path/to/new-project "one-line description of what to build"
+/stamp ~/path/to/new-project "one-line description of what to build"
 ```
 
-`/starter` will create the new directory, transfer the template's structural files, customize them for your project, and leave you with a project ready to `/kickoff` from a real Phase 1. You can return here to this repo afterward and either close out Phase 1 (`✅ Completed` — "adoption happened via /starter") or leave it `⬅️ Next` for the next user.
+`/stamp` will create the new directory, transfer the template's structural files, customize them for your project, and leave you with a project ready to `/kickoff` from a real Phase 1. You can return here to this repo afterward and either close out Phase 1 (`✅ Completed` — "adoption happened via /stamp") or leave it `⬅️ Next` for the next user.
 
 ## Option B — You're using this repo directly to build something here
 
@@ -44,7 +44,7 @@ This phase is small enough that it does not need sub-phases. If you discover it 
 
 For Option A:
 
-- A new project directory at the location given to `/starter`, satisfying every checkbox in [`../briefs/agentic-bootstrap.md` §6 "Acceptance"](../briefs/agentic-bootstrap.md).
+- A new project directory at the location given to `/stamp`, satisfying every checkbox in [`../briefs/agentic-bootstrap.md` §6 "Acceptance"](../briefs/agentic-bootstrap.md).
 
 For Option B:
 
@@ -72,7 +72,7 @@ For Option B:
 
 - [`../briefs/BRIEF.md`](../briefs/BRIEF.md) — overall product brief for this template (will be rewritten in Option B).
 - [`../briefs/methodology.md`](../briefs/methodology.md) — the eleven-step methodology this phase ultimately serves.
-- [`../briefs/agentic-bootstrap.md`](../briefs/agentic-bootstrap.md) — required reading for Option A; describes what `/starter` does.
+- [`../briefs/agentic-bootstrap.md`](../briefs/agentic-bootstrap.md) — required reading for Option A; describes what `/stamp` does.
 
 ## Out of scope
 
