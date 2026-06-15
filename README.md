@@ -238,4 +238,4 @@ The `<desc>` argument narrows intent. Omit it for a broad assessment that defaul
 
 ## License
 
-The contents of this template are released under the terms in `LICENSE` (provide your own; this template makes no claim on what you build with it).
+Released under the MIT License. See [`LICENSE`](LICENSE).
