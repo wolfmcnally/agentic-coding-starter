@@ -118,7 +118,7 @@ Wait for the plan.
 
 **If `APPROVED`**: proceed to Step 5. Show the user a brief summary plus any Minor Corrections (do not wait for explicit approval unless the user asked to review plans themselves).
 
-**If `REVISE`**: re-run `phase-planner` with the reviewer's feedback appended to the prompt, then re-review in the same venue — native re-runs `plan-reviewer`; external prefers session resume (`codex exec resume <sid>` / `claude --resume <sid> -p`), falling back to a fresh external call with the full updated plan re-passed. Allow up to 2 revision cycles. If still not approved after 2, present the plans and outstanding issues to the user for a manual decision.
+**If `REVISE`**: re-run `phase-planner` with the reviewer's feedback appended to the prompt, then re-review in the same venue — native re-runs `plan-reviewer`; external prefers session resume (`codex exec resume <sid>` / `claude --resume <sid> -p`), falling back to a fresh external call with the full updated plan re-passed. Keep iterating only while the reviewer's objections are **converging on approval** (shrinking in count and severity, no finding re-raised, no equal-or-worse new findings); the moment the loop stalls or diverges — same objection recurring, whack-a-mole, or an unresolvable product/architecture disagreement — present the plans and the sticking point to the user for a manual decision. A 5-cycle runaway backstop applies per [`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md): never iterate past it without surfacing to the user.
 
 ### Step 5: Implement
 
@@ -146,9 +146,9 @@ Wait for the coder. Collect the list of files created or modified, the Build Sta
 
 **If `APPROVED`**: proceed to Step 7.
 
-**If `REVISE`**: re-run `phase-coder` with the critic's feedback, then re-review in the same venue (resume preferred externally, as in Step 4). Allow up to 2 revision cycles. If still not approved, present the issues to the user.
+**If `REVISE`**: re-run `phase-coder` with the critic's feedback, then re-review in the same venue (resume preferred externally, as in Step 4). Keep iterating only while the critic's findings are **converging on approval** (shrinking in count and severity, no finding re-raised, no equal-or-worse new findings); the moment the loop stalls or diverges — same finding recurring, whack-a-mole, or an unresolvable disagreement — present the issues to the user. A 5-cycle runaway backstop applies per [`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md): never iterate past it without surfacing to the user.
 
-**If `REVISE` opens with `Escalate: full lane — <reason>`** (light lane only): the work exceeded mechanical scope. Run the skipped Step 4 plan review now, against the plan as-built (same venue rules), route its outcome through the normal revision loops, and finish the phase in the full lane. Record `light → full (escalated: <reason>)` for the END block. The escalation itself does not count against the code-review revision cycles; the critic's other Required Changes do.
+**If `REVISE` opens with `Escalate: full lane — <reason>`** (light lane only): the work exceeded mechanical scope. Run the skipped Step 4 plan review now, against the plan as-built (same venue rules), route its outcome through the normal revision loops, and finish the phase in the full lane. Record `light → full (escalated: <reason>)` for the END block. The lane escalation itself is not a stall signal and does not count toward the runaway backstop; the critic's other Required Changes do feed the convergence judgment.
 
 ### Step 7: Final build gate
 
@@ -171,8 +171,8 @@ If any build gate fails:
    - **Plan error** (wrong file path, missing module, architectural mismatch) → re-run `phase-planner` with the error, then `phase-coder` with the updated plan. Counts as one cycle.
    - **Environment error** (missing toolchain, missing system dependency, missing credential) → report to the user immediately; do not retry.
 2. Re-run the failing gate after the fix.
-3. On success, re-run `code-critic` on the files the coder touched during the fix (same venue rules as Step 6). If `REVISE`, back to coder (counts against revision cycles).
-4. Allow up to 3 fix cycles. If still failing, present to the user.
+3. On success, re-run `code-critic` on the files the coder touched during the fix (same venue rules as Step 6). If `REVISE`, back to coder (feeds the code-review convergence judgment).
+4. Keep iterating only while the build gate is **converging** — each fix knocks down failures and the error surface shrinks. Escalate the moment it stalls: the same failure recurs, or each fix trades one break for another (oscillation). A 5-cycle runaway backstop applies per [`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md); environment errors escalate immediately (step 1) regardless.
 
 ### Step 8: Phase-specific acceptance gates
 

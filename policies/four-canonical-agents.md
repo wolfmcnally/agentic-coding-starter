@@ -51,13 +51,20 @@ Followed in the `REVISE` case by a `### Required Changes` section listing specif
 
 ## Revision loops
 
-`/kickoff` enforces a bound on revision cycles:
+`/kickoff` keeps iterating a review or fix loop only while it is **converging on approval**, and escalates to the human the moment it stalls or diverges — rather than counting to a fixed cap. After each cycle the orchestrator compares the new verdict against the prior one and judges the trend:
 
-- **Plan review**: up to 2 revision cycles (planner → reviewer → planner → reviewer → planner). Beyond that, surface to the human.
-- **Code review**: up to 2 revision cycles. Beyond that, surface to the human.
-- **Build-gate failure**: up to 3 fix cycles. Beyond that, surface to the human.
+- **Converging — continue.** The set of Required Changes is shrinking, their severity is trending down (blocking → minor → nit), each round resolves prior findings without raising equal-or-worse new ones, and the reviewer's verdict is moving toward approval.
+- **Stalled or diverging — escalate.** The same finding recurs across rounds (the fix didn't take, or the reviewer keeps re-raising it); new findings of equal or greater severity keep appearing (whack-a-mole); the loop oscillates (fixing A re-breaks B); or a finding rests on a product or architecture disagreement the agents cannot resolve among themselves. Surface the cycle history and the sticking point to the human.
 
-These bounds are deliberate. The methodology assumes a human in the loop ([`human-in-the-loop.md`](human-in-the-loop.md)); when the agents can't converge in a small number of attempts, the right answer is to ask the human, not to keep iterating.
+The same judgment governs all three loops:
+
+- **Plan review** (planner → reviewer): continue while the reviewer's objections are narrowing; escalate when they stall.
+- **Code review** (coder → critic): continue while findings shrink in count and severity; escalate on recurrence or whack-a-mole.
+- **Build-gate failure** (coder → gate): converging means each fix knocks down failures and the error surface shrinks; stalled means the same failure recurs or each fix trades one break for another.
+
+**Runaway backstop.** Independent of the convergence read, no single loop runs past **5 cycles** without surfacing to the human. This is a runaway guard, not a budget — the same philosophy as the `--max-turns` cap in [`cross-harness-review.md`](cross-harness-review.md): a healthy converging loop almost never reaches it, and a loop that does has by definition failed to converge. When the backstop trips, escalate exactly as for a stall.
+
+These bounds are deliberate. The methodology assumes a human in the loop ([`human-in-the-loop.md`](human-in-the-loop.md)); the goal is to spend revision cycles only while they are buying convergence, and to hand a genuinely stuck decision to the human rather than grind identical objections — or burn the whole backstop — against a wall.
 
 ## Adding a fifth agent
 

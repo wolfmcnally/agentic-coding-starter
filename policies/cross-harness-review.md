@@ -101,7 +101,7 @@ Rules:
 
 ## Revision cycles across harnesses
 
-The 2-cycle cap from [`four-canonical-agents.md`](four-canonical-agents.md) is unchanged. For external rounds, prefer session resume (`codex exec resume <sid>` / `claude --resume <sid> -p`) so the reviewer retains its prior findings; if no session id was captured or resume fails, issue a fresh external call with the full updated plan/diff re-passed. A failed resume that also fails fresh trips the fallback row above.
+The convergence-based loop from [`four-canonical-agents.md`](four-canonical-agents.md) governs external rounds unchanged — iterate while the reviewer's objections are narrowing, escalate the moment they stall or diverge, under the same 5-cycle runaway backstop. For external rounds, prefer session resume (`codex exec resume <sid>` / `claude --resume <sid> -p`) so the reviewer retains its prior findings; if no session id was captured or resume fails, issue a fresh external call with the full updated plan/diff re-passed. A failed resume that also fails fresh trips the fallback row above.
 
 ## Handoff hygiene
 
