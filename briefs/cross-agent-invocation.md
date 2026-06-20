@@ -23,7 +23,7 @@ Both vendors sanction this interop: OpenAI ships an official Claude Code plugin 
 Canonical invocation shape (review roles):
 
 ```
-env -u OPENAI_API_KEY -u CODEX_API_KEY codex exec --json -s read-only -c 'approval_policy="never"' -C "$(pwd)" --output-last-message "$MSGFILE" "$(cat "$PROMPTFILE")" >"$EVENTS" 2>/dev/null
+env -u OPENAI_API_KEY -u CODEX_API_KEY codex exec --json -s read-only -c 'approval_policy="never"' -C "$(pwd)" --output-last-message "$MSGFILE" "$(cat "$PROMPTFILE")" >"$EVENTS" 2>/dev/null </dev/null
 ```
 
 Capture the session id for revision rounds from the first event on stdout (the human-readable mode prints it *only* to stderr, which the recipe discards — without `--json` the id is unrecoverable):
@@ -37,6 +37,7 @@ The verdict is still read from `$MSGFILE` (the `--output-last-message` artifact 
 Flag-by-flag rationale:
 
 - **`codex exec`** is the non-interactive entry point (alias `codex e`). Prompt as argument, or `-` to read stdin.
+- **Redirect stdin from `/dev/null` (`</dev/null`) — mandatory for any non-interactive or backgrounded parent.** Even with the prompt passed as an argument, `codex exec` *also* reads stdin (it appends piped stdin to the prompt) and, when stdin is an open non-TTY pipe that never sees EOF, blocks on `Reading additional input from stdin...` until the wall-clock timeout kills it — discarding the whole call. A foreground interactive shell closes stdin so the bug stays hidden; a backgrounded call (a harness that detaches a long-running command) leaves stdin open and hangs deterministically. `</dev/null` gives an immediate EOF so codex proceeds. Empirically verified: a backgrounded code-review call hung on that exact stderr line and was killed at the 900 s guard; the identical recipe run in the foreground had succeeded, which is why the trap survived several rounds before being caught. The redirect is free and correct in every context, so it is unconditional.
 - **Approvals must be pinned off.** Any approval prompt in a no-TTY context can block indefinitely; there are verified field reports of approval-state races freezing a session for ~10 minutes *while holding the git index lock*. A headless call must never be able to prompt. Use the **`-c 'approval_policy="never"'` config override** rather than the `-a/--ask-for-approval` flag: `exec` flag surfaces churn across versions (codex-cli 0.136.0's `exec` rejects `-a` outright — empirically verified on this template's first smoke test — while `-c` dotted-path overrides parse everywhere). When a flag-parse error occurs anyway, `codex exec --help` is the in-environment truth.
 - **`-s read-only` (`--sandbox read-only`)** matches the reviewer tool stance and makes working-tree contention impossible. Use `workspace-write` only when the external agent must edit (not the case for review). `--full-auto` is deprecated; `--dangerously-bypass-approvals-and-sandbox` (`--yolo`) is for already-isolated containers only — it exposes the user's `~/.codex/auth.json` to anything in the repo.
 - **`--output-last-message <file>` (`-o`) is the verdict-capture contract.** The file artifact is the robust way to capture the final agent message; gate on it. Under `--json` (which the recipe requires for session-id capture, below) stdout carries the JSONL event stream rather than the bare final message, so it is redirected to a separate `$EVENTS` file; the verdict still comes from the `-o` artifact, not from stdout. Suppress stderr noise with `2>/dev/null`.
@@ -48,8 +49,10 @@ Flag-by-flag rationale:
 - **Revision rounds: `codex exec resume <session-id> ...`** preserves the reviewer's context across rounds. **The `resume` subcommand has a different flag surface than `exec` — `-s/--sandbox` and `-C/--cd` do not exist on it** (codex-cli 0.136.0 rejects `-s` with `error: unexpected argument '-s' found`, exit 2 — empirically verified). Set the sandbox through a config override instead, and `cd` into the repo rather than passing `-C` (resume filters recorded sessions by cwd):
 
   ```
-  ( cd "$REPO" && env -u OPENAI_API_KEY -u CODEX_API_KEY codex exec resume "$TID" --json -c 'approval_policy="never"' -c 'sandbox_mode="read-only"' --output-last-message "$MSGFILE" "$(cat "$PROMPTFILE")" >"$EVENTS" 2>/dev/null )
+  ( cd "$REPO" && env -u OPENAI_API_KEY -u CODEX_API_KEY codex exec resume "$TID" --json -c 'approval_policy="never"' -c 'sandbox_mode="read-only"' --output-last-message "$MSGFILE" "$(cat "$PROMPTFILE")" >"$EVENTS" 2>/dev/null </dev/null )
   ```
+
+  (`resume` reads stdin exactly as `exec` does, so it carries the same `</dev/null` redirect — the stdin-hang bullet above applies to both subcommands.)
 
   A naive resume that simply re-uses the original `exec` flags flag-parse-fails and trips the fallback, so a project that captured the id correctly but copied the `exec` flags still lands in a fresh context — the two defects compound. If no session id was captured or resume fails, fall back to a fresh call with the full updated context (correctness over efficiency).
 - **Auth precedence trap (mirror of §3's).** An interactive ChatGPT-plan login persists in `~/.codex/auth.json` with token auto-refresh, and subprocess calls reuse it — but a set `OPENAI_API_KEY` silently outranks it, flipping the call to API-key billing (or a 401 on a stale key) while `codex /status` still reports the plan login (openai/codex#2341, #3367, #20099). Hence the recipe's `env -u OPENAI_API_KEY -u CODEX_API_KEY` scrub — free when no key is present, never harms the `auth.json` login. The supported hard backstop is `forced_login_method = "chatgpt"` in `~/.codex/config.toml` (`preferred_auth_method` is a user-invented knob that does nothing). For CI on API auth, pass `CODEX_API_KEY` inline to a single `codex exec` — never a job-level export beside repo-controlled code; for CI on the plan, seed a `codex login`-generated `auth.json` onto the runner and keep the env keys unset.
@@ -60,12 +63,13 @@ Flag-by-flag rationale:
 Canonical invocation shape (review roles):
 
 ```
-env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT -u ANTHROPIC_API_KEY claude -p "$(cat "$PROMPTFILE")" --permission-mode dontAsk --allowedTools "Read,Grep,Glob" --output-format json --max-turns 50
+env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT -u ANTHROPIC_API_KEY claude -p "$(cat "$PROMPTFILE")" --permission-mode dontAsk --allowedTools "Read,Grep,Glob" --output-format json --max-turns 50 </dev/null
 ```
 
 Flag-by-flag rationale:
 
 - **`claude -p` (`--print`)** is headless mode: run the agent loop, print, exit.
+- **Redirect stdin from `/dev/null` (`</dev/null`).** Like `codex exec`, `claude -p` can treat a piped stdin as additional prompt input; with the prompt already supplied as the `-p` argument, an open non-TTY stdin from a backgrounded parent is at best useless and at worst a hang. Close it unconditionally — the same trap and the same one-token fix as the codex side (§2).
 - **`--permission-mode dontAsk` is the correct headless mode — never `--dangerously-skip-permissions`.** The "dangerous" bypass still parks on a one-time *interactive* consent dialog with no pre-accept flag; with no TTY it hangs forever (anthropics/claude-code#52506). `dontAsk` is fully non-interactive: pre-approved tools run, everything else is *denied* rather than prompted, and protected paths (`.git`, `.claude`, shell rc files) are never auto-approved — exactly the posture a delegated reviewer should have.
 - **`--allowedTools "Read,Grep,Glob"`** mirrors the canonical reviewer tool stance. (`AskUserQuestion` is omitted: escalation cannot reach the human through a nested CLI — an unresolved product question becomes a `REVISE` verdict stating the question, which the orchestrator surfaces.)
 - **Scrub `CLAUDECODE` and `CLAUDE_CODE_ENTRYPOINT` from the child environment.** Claude Code sets `CLAUDECODE=1` in every child process and a `claude` launch that sees it refuses to start — even in `-p` mode. Codex itself doesn't set it, but a claude → codex → claude chain inherits it through codex, so the bridge always scrubs.
