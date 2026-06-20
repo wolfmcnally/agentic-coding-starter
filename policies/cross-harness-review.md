@@ -57,10 +57,10 @@ The orchestrator passes the **phase-specific inputs** the role file declares (ph
 Claude Code → codex:
 
 ```
-env -u OPENAI_API_KEY -u CODEX_API_KEY codex exec -s read-only -c 'approval_policy="never"' -C "$(pwd)" --output-last-message "$MSGFILE" "$(cat "$PROMPTFILE")" 2>/dev/null
+env -u OPENAI_API_KEY -u CODEX_API_KEY codex exec --json -s read-only -c 'approval_policy="never"' -C "$(pwd)" --output-last-message "$MSGFILE" "$(cat "$PROMPTFILE")" >"$EVENTS" 2>/dev/null
 ```
 
-Non-negotiable: approvals pinned off via the `-c 'approval_policy="never"'` config override (an approval prompt with no TTY can hang the call and has held git index locks; the override is used because `codex exec` flag surfaces churn — e.g., codex-cli 0.136.0 rejects the older `-a/--ask-for-approval` flag on `exec` — while `-c` overrides parse across versions); `-s read-only` (reviewer tool stance; no tree contention); capture from the `--output-last-message` artifact, not stdout (stderr is progress noise); no hardcoded `-m` model (names churn); scrub `OPENAI_API_KEY` / `CODEX_API_KEY` from the child environment (a set `OPENAI_API_KEY` silently flips codex from ChatGPT-plan auth to API-key billing — or 401s on a stale key — while `codex /status` still reports the plan login; brief §2); run with `KICKOFF_REVIEW_DEPTH=1` in the child environment. If the invocation fails with a flag-parse error, consult `codex exec --help` and adapt — or treat it as a fallback trigger like any other. Revision rounds prefer `codex exec resume <session-id>`.
+Non-negotiable: approvals pinned off via the `-c 'approval_policy="never"'` config override (an approval prompt with no TTY can hang the call and has held git index locks; the override is used because `codex exec` flag surfaces churn — e.g., codex-cli 0.136.0 rejects the older `-a/--ask-for-approval` flag on `exec` — while `-c` overrides parse across versions); `-s read-only` (reviewer tool stance; no tree contention); capture the **verdict** from the `--output-last-message` artifact (it populates normally under `--json`); `--json` so stdout carries the JSONL event stream and the **session id** can be captured for revision rounds (`TID=$(grep -m1 '"thread.started"' "$EVENTS" | grep -ioE '[0-9a-f-]{36}')`) — without `--json` the session id reaches *only* stderr, which the recipe discards, making it unrecoverable and forcing a fresh cold context every revision round (brief §2); no hardcoded `-m` model (names churn); scrub `OPENAI_API_KEY` / `CODEX_API_KEY` from the child environment (a set `OPENAI_API_KEY` silently flips codex from ChatGPT-plan auth to API-key billing — or 401s on a stale key — while `codex /status` still reports the plan login; brief §2); run with `KICKOFF_REVIEW_DEPTH=1` in the child environment. If the invocation fails with a flag-parse error, consult `codex exec --help` and adapt — or treat it as a fallback trigger like any other. Revision rounds prefer `codex exec resume <session-id>` — but note the `resume` subcommand rejects `-s/--sandbox` and `-C/--cd`; see "Revision cycles across harnesses" below for the corrected resume recipe.
 
 Codex → claude:
 
@@ -101,7 +101,21 @@ Rules:
 
 ## Revision cycles across harnesses
 
-The convergence-based loop from [`four-canonical-agents.md`](four-canonical-agents.md) governs external rounds unchanged — iterate while the reviewer's objections are narrowing, escalate the moment they stall or diverge, under the same 5-cycle runaway backstop. For external rounds, prefer session resume (`codex exec resume <sid>` / `claude --resume <sid> -p`) so the reviewer retains its prior findings; if no session id was captured or resume fails, issue a fresh external call with the full updated plan/diff re-passed. A failed resume that also fails fresh trips the fallback row above.
+The convergence-based loop from [`four-canonical-agents.md`](four-canonical-agents.md) governs external rounds unchanged — iterate while the reviewer's objections are narrowing, escalate the moment they stall or diverge, under the same 5-cycle runaway backstop. For external rounds, prefer session resume so the reviewer retains its prior findings; if no session id was captured or resume fails, issue a fresh external call with the full updated plan/diff re-passed. A failed resume that also fails fresh trips the fallback row above.
+
+The resume recipes are **not** the initial-call recipes with the prompt swapped — each `resume` subcommand has its own flag surface:
+
+- **codex:** `codex exec resume` rejects `-s/--sandbox` and `-C/--cd` (they exist only on the parent `exec`; codex-cli 0.136.0 errors `unexpected argument '-s'`, exit 2 — verified). Set the sandbox via a `-c` override and `cd` into the repo instead of `-C`:
+
+  ```
+  ( cd "$REPO" && env -u OPENAI_API_KEY -u CODEX_API_KEY codex exec resume "$TID" --json -c 'approval_policy="never"' -c 'sandbox_mode="read-only"' --output-last-message "$MSGFILE" "$(cat "$PROMPTFILE")" >"$EVENTS" 2>/dev/null )
+  ```
+
+- **claude:** `claude --resume <sid> -p "$(cat "$PROMPTFILE")"` keeps the same `--permission-mode` / `--allowedTools` / `--output-format json` flags as the initial call; `.session_id` from the JSON envelope is the `<sid>`.
+
+Capturing the session id is itself part of the contract, not an afterthought: codex requires `--json` on the initial call (the id is on stderr otherwise, which the recipe discards); claude reads `.session_id` from its JSON envelope. A recipe that omits codex's `--json`, or a resume that copies the `exec` flags verbatim, silently defeats resume and forces a fresh cold context every round — both were real defects in the first cut of these recipes.
+
+**Re-capture the id from each round's output and thread the latest one forward** — do not keep reusing the first-round id. Both venues currently return a stable id across a resume chain (verified: a 4-round claude chain held one `session_id` throughout and accumulated context across all rounds; codex resume continued the same `thread_id`), but Claude Code's `--resume` has forked the id on resume in some versions, and a stale id would silently resume a pre-fork state and drop the intermediate rounds. Reading the latest id each round is free and immune to that.
 
 ## Handoff hygiene
 
