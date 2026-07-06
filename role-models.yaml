@@ -1,0 +1,15 @@
+# role-models.yaml — per-role model/harness pins for /kickoff.
+#
+# Managed by bin/role-models; set via the /roles skill. One role per line,
+# "role: model". Governed by policies/role-models.md.
+#
+# Roles:  planner reviewer coder critic
+# Models: default | opus | fable | codex
+#   default       → native (the current /kickoff session's model)
+#   opus | fable  → Claude Code harness (claude --model opus|fable)
+#   codex         → Codex harness (codex, its default/latest model)
+
+planner: default
+reviewer: default
+coder: default
+critic: default

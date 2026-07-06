@@ -17,6 +17,7 @@ The template ships with:
 - Four **canonical agent roles** (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`) defined once and mirrored to every supported harness.
 - A **`/stamp` skill** (starter-template-only) for stamping out new repos from this one.
 - **`/learn` and `/teach` skills** (universal — carried into every derived project) for moving patterns *between* methodology-following repos. `/learn` absorbs patterns from another repo into the current one; `/teach` sends patterns from the current repo out to a target. Both are plan-first: the user approves before any file changes.
+- A **`/roles` skill** (universal) that pins a model/harness to any of the four canonical roles — e.g. `/roles reviewer: codex, coder: opus`. `/kickoff` then runs each pinned role on that model; orchestration and build gates always stay on your session's model. See [`policies/role-models.md`](policies/role-models.md).
 - A **`plan/` ledger** (status table, dependency graph, cross-cutting concerns) where work is tracked phase by phase.
 - A **`briefs/` library** for durable design decisions and methodology notes.
 - A **`policies/` library** for the rules every phase must respect.
@@ -129,6 +130,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   │   ├── methodology/SKILL.md    ←   the eleven steps (self-contained)
 │   │   ├── learn/SKILL.md          ←   absorb patterns FROM another repo (universal)
 │   │   ├── teach/SKILL.md          ←   send patterns TO another repo (universal)
+│   │   ├── roles/SKILL.md          ←   pin a model/harness to a role (universal)
 │   │   └── stamp/SKILL.md          ←   new-project bootstrapper (starter-only)
 │   └── agents/
 │       ├── phase-planner.md
@@ -146,6 +148,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │       ├── methodology.md
 │       ├── learn.md
 │       ├── teach.md
+│       ├── roles.md
 │       └── stamp.md
 └── .agents/                        ← Codex CLI's native project-skill discovery
     └── skills/                     ←   (developers.openai.com/codex/skills)
@@ -153,6 +156,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
         ├── methodology             ←     (directory-level because Codex doesn't follow
         ├── learn                   ←      file-level symlinks inside skill dirs — issue #11314)
         ├── teach
+        ├── roles
         └── stamp                   ←   present only in this template repo
 ```
 

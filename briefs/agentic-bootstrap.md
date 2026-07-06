@@ -60,6 +60,8 @@ A project derived from this template contains the following **portable structure
                            #   THIS repo from another
       teach/SKILL.md       # Universal cross-repo skill: apply THIS repo's
                            #   patterns to another
+      roles/SKILL.md       # Universal: pin a model/harness to any of the four
+                           #   canonical roles (wraps bin/role-models)
       # /stamp is NOT carried over — the new project doesn't need to stamp
       # out more projects from itself by default
     agents/
@@ -79,6 +81,7 @@ A project derived from this template contains the following **portable structure
       methodology.md
       learn.md
       teach.md
+      roles.md
 
   .agents/                 # Codex CLI native skill discovery
                            # (developers.openai.com/codex/skills)
@@ -87,6 +90,7 @@ A project derived from this template contains the following **portable structure
       methodology          # (Codex doesn't follow file-level symlinks inside
       learn                #  a skill dir — issue #11314 — but does traverse
       teach                #  a symlinked skill directory.)
+      roles
       # /stamp is NOT mirrored here either — starter-only
 
   project/                 # When project-isolation is enabled (default for
@@ -132,6 +136,7 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.claude/skills/methodology/SKILL.md`
 - `.claude/skills/learn/SKILL.md` (universal cross-repo skill)
 - `.claude/skills/teach/SKILL.md` (universal cross-repo skill)
+- `.claude/skills/roles/SKILL.md` (universal — per-role model pinning; wraps `bin/role-models`)
 - `.claude/agents/phase-planner.md`
 - `.claude/agents/plan-reviewer.md`
 - `.claude/agents/phase-coder.md`
@@ -141,12 +146,15 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.codex/prompts/methodology.md` (symlink)
 - `.codex/prompts/learn.md` (symlink)
 - `.codex/prompts/teach.md` (symlink)
+- `.codex/prompts/roles.md` (symlink)
 - `.agents/skills/kickoff` (directory symlink → `../../.claude/skills/kickoff`)
 - `.agents/skills/methodology` (directory symlink → `../../.claude/skills/methodology`)
 - `.agents/skills/learn` (directory symlink → `../../.claude/skills/learn`)
 - `.agents/skills/teach` (directory symlink → `../../.claude/skills/teach`)
+- `.agents/skills/roles` (directory symlink → `../../.claude/skills/roles`)
 - `AGENTS.md` symlink → `CLAUDE.md`
 - Every file under `policies/` (these are universal by design)
+- `bin/role-models` (universal deterministic script backing `/roles`), and a `role-models.yaml` config seeded with all four roles = `default`
 - `briefs/methodology.md`
 - `briefs/agentic-bootstrap.md` (this file, so the next bootstrap is possible)
 - `briefs/cross-agent-invocation.md` (the cross-CLI invocation BCPs cited by `policies/cross-harness-review.md`)
@@ -237,7 +245,7 @@ Then create the empty directory shape:
 .claude/agents/
 .codex/agents/
 .codex/prompts/
-.agents/skills/        # (the four skill entries here are directory symlinks
+.agents/skills/        # (the five skill entries here are directory symlinks
                        #  to ../../.claude/skills/<name>, created in Step 5)
 briefs/
 policies/
@@ -261,7 +269,7 @@ In this exact order (each feeds the next):
      - `## Project briefs` — `briefs/` entries specific to this project (initially `BRIEF.md` only).
      - `## Project surfaces` — the deliverable (location, language, seed code description).
      - `## Project conventions` — language, tooling, build-gate command shape.
-     - `## Project-specific skills` — any beyond the universal four. Omit if none.
+     - `## Project-specific skills` — any beyond the universal five. Omit if none.
 
 3. **`AGENTS.md`** — symlink to `CLAUDE.md`:
    ```bash

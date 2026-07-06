@@ -34,7 +34,8 @@ Before changing anything, verify:
 1. **Source repo invariants.** This repo (the template) is itself in a healthy state. Specifically:
    - `readlink AGENTS.md` returns `CLAUDE.md`.
    - `.claude/agents/` contains exactly `phase-planner.md`, `plan-reviewer.md`, `phase-coder.md`, `code-critic.md`.
-   - `.claude/skills/kickoff/SKILL.md` and `.claude/skills/methodology/SKILL.md` exist.
+   - `.claude/skills/kickoff/SKILL.md`, `.claude/skills/methodology/SKILL.md`, and `.claude/skills/roles/SKILL.md` exist.
+   - `bin/role-models` exists and is executable.
    - `.codex/agents/*.toml` has one TOML file per canonical agent.
    - `briefs/BRIEF.md`, `briefs/methodology.md`, `briefs/agentic-bootstrap.md` exist.
    - `plan/INDEX.md` and `plan/phase-1.md` exist.
@@ -99,11 +100,12 @@ Follow [`briefs/agentic-bootstrap.md` §3](../../../briefs/agentic-bootstrap.md)
   .claude/skills/methodology/
   .claude/skills/learn/
   .claude/skills/teach/
+  .claude/skills/roles/
   .claude/agents/
   .codex/agents/
   .codex/prompts/
-  .agents/skills/         # (kickoff, methodology, learn, teach added as
-                          #  directory symlinks in Step 2)
+  .agents/skills/         # (kickoff, methodology, learn, teach, roles added
+                          #  as directory symlinks in Step 2)
 ```
 
 Plus the language-specific deliverable directories. When `project_isolation` is enabled (the default for single-deliverable projects), the deliverable goes under `project/`:
@@ -126,6 +128,7 @@ Copy these files **from this template** into the new project, then run a name su
 - `.claude/skills/methodology/SKILL.md`
 - `.claude/skills/learn/SKILL.md`
 - `.claude/skills/teach/SKILL.md`
+- `.claude/skills/roles/SKILL.md`
 - `.claude/agents/phase-planner.md`
 - `.claude/agents/plan-reviewer.md`
 - `.claude/agents/phase-coder.md`
@@ -138,6 +141,7 @@ Copy these files **from this template** into the new project, then run a name su
 - `.codex/prompts/methodology.md`
 - `.codex/prompts/learn.md`
 - `.codex/prompts/teach.md`
+- `.codex/prompts/roles.md`
 - Every file under `policies/` **except** any policy explicitly marked starter-only (currently `policies/anonymize-log-references.md` — the public-repo LOG anonymization rule; the asymmetry is driven by this template's publicness, not by methodology).
 - `briefs/methodology.md` (verbatim — methodology is universal)
 - `briefs/agentic-bootstrap.md` (verbatim — so the next bootstrap from this project is possible)
@@ -153,6 +157,7 @@ ln -s ../../.claude/skills/kickoff     .agents/skills/kickoff
 ln -s ../../.claude/skills/methodology .agents/skills/methodology
 ln -s ../../.claude/skills/learn       .agents/skills/learn
 ln -s ../../.claude/skills/teach       .agents/skills/teach
+ln -s ../../.claude/skills/roles       .agents/skills/roles
 ```
 
 Verify each `readlink <dest>/.agents/skills/<name>` returns the expected target and `test -L <dest>/.agents/skills/<name> && test -d <dest>/.agents/skills/<name>` passes before moving on.
@@ -161,7 +166,7 @@ The `.codex/prompts/<name>.md` files are *file* symlinks pointing at the SKILL.m
 
 **Do not** copy `.claude/skills/stamp/` (this skill itself), `.codex/prompts/stamp.md`, create `.agents/skills/stamp` in the destination, or copy `policies/anonymize-log-references.md`, `bin/check-anonymization.sh`, or `bin/anonymization-denylist.local.example` (and drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`). The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too, and the anonymization rule (and its enforcement script) doesn't apply to private downstream projects. `/learn` and `/teach` *are* carried over — they are universal cross-repo skills that benefit every methodology-following project.
 
-The `bin/` directory, its `bin/README.md` convention preamble, and `policies/mechanistic-vs-intelligence.md` **are** carried over — the deterministic-script home and the mechanistic-vs-intelligence triage are universal methodology. But because `check-anonymization.sh` is starter-only (excluded above), the adaptation pass must **delete the starter-only `### check-anonymization.sh` entry** from the destination's `bin/README.md`, leaving the convention preamble and an empty (or project-seeded) Scripts section.
+The `bin/` directory, its `bin/README.md` convention preamble, and `policies/mechanistic-vs-intelligence.md` **are** carried over — the deterministic-script home and the mechanistic-vs-intelligence triage are universal methodology. The **universal `bin/role-models`** script carries over too (it backs the universal `/roles` skill), so its `### role-models` entry stays in the destination's `bin/README.md`, and the adaptation pass seeds a default **`role-models.yaml` at the destination root with all four roles set to `default`** (run `<dest>/bin/role-models --reset`, or write the file directly). But because `check-anonymization.sh` is starter-only (excluded above), the adaptation pass must **delete the starter-only `### check-anonymization.sh` entry** from the destination's `bin/README.md`, leaving the convention preamble plus the `role-models` entry.
 
 Because the anonymization policy and its script are starter-only but `code-critic.md` is copied verbatim (above), the adaptation pass must **delete the "External / private-repo references" bullet** from the destination's `.claude/agents/code-critic.md` — it references `bin/check-anonymization.sh` and `policies/anonymize-log-references.md`, neither of which the new project will have.
 
@@ -181,7 +186,7 @@ Author these afresh, using the gathered configuration:
     - `## Project surfaces` — describe the deliverable (path, what language, what the example or seed code is). When `project_isolation` is on, the surface is `project/`; when off, name the sibling deliverable directories.
     - `## Project conventions` — language, tooling, build-gate command shape for this project.
     - `## Cross-harness review` — the one-paragraph description plus the activation token, mirroring the template's own subsection. Default `cross-harness-review: enabled` (it self-disables when the other CLI isn't installed, so the default is harmless); note the seeded default in the final report so the owner knows the bit exists. Governed by `policies/cross-harness-review.md`.
-    - `## Project-specific skills` — if the new project carries any skills beyond the universal four (kickoff, methodology, learn, teach), list them here. For most fresh projects, this section is empty (or omitted).
+    - `## Project-specific skills` — if the new project carries any skills beyond the universal five (kickoff, methodology, learn, teach, roles), list them here. For most fresh projects, this section is empty (or omitted).
   - Preserve the introductory paragraph that explains the two-zone contract; it is informational and lives outside both markers.
 
 - **`<dest>/AGENTS.md`** — symlink to `CLAUDE.md`. Create with `ln -s CLAUDE.md AGENTS.md` in the destination.
@@ -273,7 +278,8 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - `ls <dest>/.claude/skills/kickoff/` contains `SKILL.md`.
 - `ls <dest>/.claude/skills/methodology/` contains `SKILL.md`.
 - `ls <dest>/.claude/skills/stamp/` does **not** exist (we did not transfer it).
-- For each name in {kickoff, methodology, learn, teach}: `readlink <dest>/.agents/skills/<name>` returns `../../.claude/skills/<name>`, `test -L <dest>/.agents/skills/<name>` and `test -d <dest>/.agents/skills/<name>` both pass, and `<dest>/.agents/skills/<name>/SKILL.md` is reachable through the directory symlink.
+- For each name in {kickoff, methodology, learn, teach, roles}: `readlink <dest>/.agents/skills/<name>` returns `../../.claude/skills/<name>`, `test -L <dest>/.agents/skills/<name>` and `test -d <dest>/.agents/skills/<name>` both pass, and `<dest>/.agents/skills/<name>/SKILL.md` is reachable through the directory symlink.
+- `<dest>/bin/role-models --show` runs and prints all four roles as `default` (the seeded config), and `<dest>/bin/README.md` retains the `### role-models` entry but **not** the `### check-anonymization.sh` entry.
 - `<dest>/.agents/skills/stamp` does **not** exist (starter-only, must not propagate).
 - The new `CLAUDE.md`'s catalogs reference every file in `briefs/` and `policies/`.
 - `grep -cE 'cross-harness-review: (enabled|disabled)' <dest>/CLAUDE.md` returns 1 (the activation token was seeded in Project Context), and `<dest>/policies/cross-harness-review.md` and `<dest>/briefs/cross-agent-invocation.md` both exist.

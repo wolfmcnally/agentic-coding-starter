@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+#
+# role-models — read/write the per-role model/harness pins for /kickoff.
+#
+# The four canonical roles (planner, reviewer, coder, critic) can each be
+# pinned to a model/harness. /kickoff reads the pins at Step 0a and invokes
+# each pinned role on that model via the cross-harness CLI recipes; unpinned
+# roles keep the default behavior. Orchestration and build gates always run
+# on the current session's model. Governed by policies/role-models.md.
+#
+#   bin/role-models                       show current pins (same as --show)
+#   bin/role-models --show                show current pins
+#   bin/role-models <role>: <model>, ...  set one or more pins, then show
+#   bin/role-models --reset               reset every role to default
+#   bin/role-models --help                this text
+#
+# Roles:  planner reviewer coder critic
+# Models: default | opus | fable | codex
+#   default       → native (the current /kickoff session's model)
+#   opus | fable  → Claude Code harness (claude --model opus|fable)
+#   codex         → Codex harness (codex, its default/latest model)
+#
+# Setting a role to "default" clears its pin. Roles not named are left as-is.
+# Unknown roles or models are rejected non-zero and the config is untouched.
+
+set -euo pipefail
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//; $d'
+  exit 0
+fi
+
+cd "$(git rev-parse --show-toplevel)"
+
+CONFIG='role-models.yaml'
+ROLES=(planner reviewer coder critic)
+MODELS=(default opus fable codex)
+
+die() { printf 'role-models: %s\n' "$1" >&2; exit 1; }
+
+in_list() {  # $1 = needle, $2.. = haystack
+  local needle="$1"; shift
+  local item
+  for item in "$@"; do [[ "$item" == "$needle" ]] && return 0; done
+  return 1
+}
+
+# --- Load current pins (default when the file or a line is absent) ----------
+declare -A pin
+for role in "${ROLES[@]}"; do pin[$role]='default'; done
+
+if [[ -f "$CONFIG" ]]; then
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line%%#*}"                                    # strip comments
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+    [[ "$line" == *:* ]] || continue
+    key="${line%%:*}"; val="${line#*:}"
+    key="$(printf '%s' "$key" | tr -d '[:space:]')"
+    val="$(printf '%s' "$val" | tr -d '[:space:]')"
+    in_list "$key" "${ROLES[@]}" && pin[$key]="$val"
+  done < "$CONFIG"
+fi
+
+show() {
+  printf '%-9s %s\n' 'planner:'  "${pin[planner]}"
+  printf '%-9s %s\n' 'reviewer:' "${pin[reviewer]}"
+  printf '%-9s %s\n' 'coder:'    "${pin[coder]}"
+  printf '%-9s %s\n' 'critic:'   "${pin[critic]}"
+}
+
+write_config() {
+  {
+    printf '# role-models.yaml — per-role model/harness pins for /kickoff.\n'
+    printf '#\n'
+    printf '# Managed by bin/role-models; set via the /roles skill. One role per line,\n'
+    printf '# "role: model". Governed by policies/role-models.md.\n'
+    printf '#\n'
+    printf '# Roles:  planner reviewer coder critic\n'
+    printf '# Models: default | opus | fable | codex\n'
+    printf '#   default       → native (the current /kickoff session'\''s model)\n'
+    printf '#   opus | fable  → Claude Code harness (claude --model opus|fable)\n'
+    printf '#   codex         → Codex harness (codex, its default/latest model)\n'
+    printf '\n'
+    for role in "${ROLES[@]}"; do printf '%s: %s\n' "$role" "${pin[$role]}"; done
+  } > "$CONFIG"
+}
+
+# --- No args or --show: report and exit ------------------------------------
+if [[ $# -eq 0 || "${1:-}" == "--show" ]]; then
+  show
+  exit 0
+fi
+
+# --- --reset: all roles to default -----------------------------------------
+if [[ "${1:-}" == "--reset" ]]; then
+  for role in "${ROLES[@]}"; do pin[$role]='default'; done
+  write_config
+  show
+  exit 0
+fi
+
+# --- Set pins: parse "role: model, role: model, ..." from all args ---------
+# Shell word-splitting is irrelevant: rejoin every arg, then split on commas.
+raw="$*"
+staged_roles=()
+staged_models=()
+
+IFS=',' read -ra pairs <<< "$raw"
+for pair in "${pairs[@]}"; do
+  [[ "$pair" =~ ^[[:space:]]*$ ]] && continue
+  [[ "$pair" == *:* ]] || die "expected 'role: model', got '$pair'"
+  role="${pair%%:*}"; model="${pair#*:}"
+  role="$(printf '%s' "$role" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+  model="$(printf '%s' "$model" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+  in_list "$role" "${ROLES[@]}"   || die "unknown role '$role' (roles: ${ROLES[*]})"
+  in_list "$model" "${MODELS[@]}" || die "unknown model '$model' (models: ${MODELS[*]})"
+  staged_roles+=("$role")
+  staged_models+=("$model")
+done
+
+[[ ${#staged_roles[@]} -eq 0 ]] && die "no pins given (usage: role-models <role>: <model>, ...)"
+
+# All valid — apply and persist.
+for i in "${!staged_roles[@]}"; do pin[${staged_roles[$i]}]="${staged_models[$i]}"; done
+write_config
+show

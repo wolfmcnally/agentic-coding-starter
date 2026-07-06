@@ -15,7 +15,12 @@ The Codex mirrors live at `.codex/agents/<role>.toml`. See [`cross-harness-parit
 
 ## Execution venue
 
-The roles, names, tool stances, and verdict headers above are fixed. The **execution venue** of the two reviewer roles is not: when cross-harness review is enabled ([`cross-harness-review.md`](cross-harness-review.md)), `/kickoff` may run `plan-reviewer` and `code-critic` in the *other* harness's CLI (`codex` from Claude Code, `claude` from Codex). The external venue reads the same canonical `.claude/agents/<role>.md` file, honors the same tool stance, and emits the same verdict headers — only where the role executes changes. `phase-planner` and `phase-coder` always run in the invoking harness. Do not assume the reviewers run as in-harness subagents when reasoning about orchestration.
+The roles, names, tool stances, and verdict headers above are fixed. The **execution venue** — which harness and model runs a role — is not. Two mechanisms move it, and both read the same canonical `.claude/agents/<role>.md` file, honor the same tool stance, and emit the same verdict headers; only *where* the role executes changes:
+
+- **Cross-harness review** ([`cross-harness-review.md`](cross-harness-review.md)): when enabled, `/kickoff` may run the two reviewer roles (`plan-reviewer`, `code-critic`) in the *other* harness's CLI (`codex` from Claude Code, `claude` from Codex).
+- **Per-role model pinning** ([`role-models.md`](role-models.md)): the `role-models.yaml` config (set via `/roles`) can pin *any* of the four roles to a specific model/harness — including `phase-planner` and `phase-coder`, which otherwise run natively. A pinned role runs on its model via the same CLI recipes (the coder write-enabled); a reviewer/critic pin overrides the cross-harness-review venue for that role.
+
+So do **not** assume any role runs as an in-harness subagent on the session model when reasoning about orchestration — check the resolved venue. The one invariant: **orchestration and build gates always run on the invoking session's model** and are never pinnable.
 
 ## Execution cadence: review lanes
 

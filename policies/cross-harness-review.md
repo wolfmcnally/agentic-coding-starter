@@ -1,13 +1,13 @@
 # Policy: Cross-Harness Review
 
-When enabled, `/kickoff` delegates its two **review** stages — plan review (Step 4) and code critique (Step 6) — to the *other* harness's CLI: `codex` when `/kickoff` runs in Claude Code, `claude` when it runs in Codex. Orchestration, planning, and coding always stay in the invoking harness. A model reviewing another vendor's model catches failure classes same-model review misses; the research and flag-level rationale live in [`briefs/cross-agent-invocation.md`](../briefs/cross-agent-invocation.md).
+When enabled, `/kickoff` delegates its two **review** stages — plan review (Step 4) and code critique (Step 6) — to the *other* harness's CLI: `codex` when `/kickoff` runs in Claude Code, `claude` when it runs in Codex. This feature moves only the two review roles: orchestration always stays in the invoking harness, and the planner and coder stay too unless a project separately pins them ([`role-models.md`](role-models.md)). A model reviewing another vendor's model catches failure classes same-model review misses; the research and flag-level rationale live in [`briefs/cross-agent-invocation.md`](../briefs/cross-agent-invocation.md).
 
 ## Review diversity scales with coder capability
 
 A reviewer from the *same* model family shares the coder's blind spots, and its marginal catches shrink as the coder's baseline quality rises. Cross-model review's value is decorrelation, and decorrelation does not shrink: whatever class of error a frontier coder still makes is precisely the class it is least able to see in its own family's review. Two consequences:
 
 - **The stronger the coding model, the stronger the case for this policy.** Same-family subagent review depreciates with coder capability; cross-harness review is the review mechanism whose value survives it. Do not read a strong coder's streak of clean first-cycle reviews as a reason to disable delegation — read it as same-family review running out of things only a different family would catch.
-- **Projects that pin models per role should route the reviewer roles to a different model family from the coder.** A per-role model-routing table (a policy file mapping role → model) is an established pattern in derived projects; where one exists, `plan-reviewer` and `code-critic` belong on the other family. Where the harness offers only one frontier family natively, this policy's CLI delegation *is* the mechanism that supplies the second family.
+- **Projects that pin models per role should route the reviewer roles to a different model family from the coder.** Per-role model pinning is provided by [`role-models.md`](role-models.md) (the `role-models.yaml` config, set via `/roles`); where a project pins the coder, `plan-reviewer` and `code-critic` belong on the other family. A `reviewer`/`critic` pin overrides this policy's venue token for that role (and adds a model flag to the same recipes). Where the harness offers only one frontier family natively, this policy's CLI delegation *is* the mechanism that supplies the second family.
 
 Interaction with review lanes ([`review-lanes.md`](review-lanes.md)): in a `light` lane the code critique is the only review that runs, which makes its venue diversity matter more, not less. Light-lane phases use the resolved venue like any other phase.
 
@@ -39,7 +39,7 @@ The four canonical roles are unchanged — names, procedures, tool stances, verd
 
 Resolved **once per session**, before phase work begins:
 
-1. If the env var `KICKOFF_REVIEW_DEPTH` is set, the venue is `native` regardless of config — this session *is* a delegated reviewer; it must not delegate further (recursion guard).
+1. If the env var `KICKOFF_DELEGATION_DEPTH` is set, the venue is `native` regardless of config — this session *is* a delegated role invoked by an outer `/kickoff`; it must not delegate further (recursion guard). The guard is shared with per-role model pinning ([`role-models.md`](role-models.md)); it is named for delegation generally, not review specifically.
 2. Read the `cross-harness-review:` token from `CLAUDE.md` Project Context. `disabled` or absent → `native`.
 3. Detect the invoking harness: `CLAUDECODE=1` in the environment means Claude Code (alternative CLI: `codex`); otherwise Codex (alternative CLI: `claude`).
 4. `command -v <alternative-cli>` — absent → `native` (silent). Present → the alternative CLI is the review venue.
@@ -60,12 +60,12 @@ Claude Code → codex:
 env -u OPENAI_API_KEY -u CODEX_API_KEY codex exec --json -s read-only -c 'approval_policy="never"' -C "$(pwd)" --output-last-message "$MSGFILE" "$(cat "$PROMPTFILE")" >"$EVENTS" 2>/dev/null </dev/null
 ```
 
-Non-negotiable: approvals pinned off via the `-c 'approval_policy="never"'` config override (an approval prompt with no TTY can hang the call and has held git index locks; the override is used because `codex exec` flag surfaces churn — e.g., codex-cli 0.136.0 rejects the older `-a/--ask-for-approval` flag on `exec` — while `-c` overrides parse across versions); `-s read-only` (reviewer tool stance; no tree contention); **redirect stdin from `/dev/null` (`</dev/null`)** — `codex exec` reads stdin even with the prompt passed as an argument, and an open non-TTY stdin that never sees EOF (any backgrounded/detached parent — e.g. a harness that runs a long review as a background command) makes it block on `Reading additional input from stdin...` until the wall-clock timeout discards the call; a foreground shell closes stdin and hides the bug, so the redirect is unconditional (empirically: a backgrounded code-review hung on that exact line, killed at 900 s, while the identical foreground call succeeded); capture the **verdict** from the `--output-last-message` artifact (it populates normally under `--json`); `--json` so stdout carries the JSONL event stream and the **session id** can be captured for revision rounds (`TID=$(grep -m1 '"thread.started"' "$EVENTS" | grep -ioE '[0-9a-f-]{36}')`) — without `--json` the session id reaches *only* stderr, which the recipe discards, making it unrecoverable and forcing a fresh cold context every revision round (brief §2); no hardcoded `-m` model (names churn); scrub `OPENAI_API_KEY` / `CODEX_API_KEY` from the child environment (a set `OPENAI_API_KEY` silently flips codex from ChatGPT-plan auth to API-key billing — or 401s on a stale key — while `codex /status` still reports the plan login; brief §2); run with `KICKOFF_REVIEW_DEPTH=1` in the child environment. If the invocation fails with a flag-parse error, consult `codex exec --help` and adapt — or treat it as a fallback trigger like any other. Revision rounds prefer `codex exec resume <session-id>` — but note the `resume` subcommand rejects `-s/--sandbox` and `-C/--cd`; see "Revision cycles across harnesses" below for the corrected resume recipe.
+Non-negotiable: approvals pinned off via the `-c 'approval_policy="never"'` config override (an approval prompt with no TTY can hang the call and has held git index locks; the override is used because `codex exec` flag surfaces churn — e.g., codex-cli 0.136.0 rejects the older `-a/--ask-for-approval` flag on `exec` — while `-c` overrides parse across versions); `-s read-only` (reviewer tool stance; no tree contention); **redirect stdin from `/dev/null` (`</dev/null`)** — `codex exec` reads stdin even with the prompt passed as an argument, and an open non-TTY stdin that never sees EOF (any backgrounded/detached parent — e.g. a harness that runs a long review as a background command) makes it block on `Reading additional input from stdin...` until the wall-clock timeout discards the call; a foreground shell closes stdin and hides the bug, so the redirect is unconditional (empirically: a backgrounded code-review hung on that exact line, killed at 900 s, while the identical foreground call succeeded); capture the **verdict** from the `--output-last-message` artifact (it populates normally under `--json`); `--json` so stdout carries the JSONL event stream and the **session id** can be captured for revision rounds (`TID=$(grep -m1 '"thread.started"' "$EVENTS" | grep -ioE '[0-9a-f-]{36}')`) — without `--json` the session id reaches *only* stderr, which the recipe discards, making it unrecoverable and forcing a fresh cold context every revision round (brief §2); no hardcoded `-m` model (names churn); scrub `OPENAI_API_KEY` / `CODEX_API_KEY` from the child environment (a set `OPENAI_API_KEY` silently flips codex from ChatGPT-plan auth to API-key billing — or 401s on a stale key — while `codex /status` still reports the plan login; brief §2); run with `KICKOFF_DELEGATION_DEPTH=1` in the child environment. If the invocation fails with a flag-parse error, consult `codex exec --help` and adapt — or treat it as a fallback trigger like any other. Revision rounds prefer `codex exec resume <session-id>` — but note the `resume` subcommand rejects `-s/--sandbox` and `-C/--cd`; see "Revision cycles across harnesses" below for the corrected resume recipe.
 
 Codex → claude:
 
 ```
-env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT -u ANTHROPIC_API_KEY KICKOFF_REVIEW_DEPTH=1 claude -p "$(cat "$PROMPTFILE")" --permission-mode dontAsk --allowedTools "Read,Grep,Glob" --output-format json --max-turns 50 </dev/null
+env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT -u ANTHROPIC_API_KEY KICKOFF_DELEGATION_DEPTH=1 claude -p "$(cat "$PROMPTFILE")" --permission-mode dontAsk --allowedTools "Read,Grep,Glob" --output-format json --max-turns 50 </dev/null
 ```
 
 Non-negotiable: **redirect stdin from `/dev/null` (`</dev/null`)** (same trap as codex — a headless `claude -p` can treat a piped stdin from a backgrounded parent as extra input or hang on it; close it unconditionally); `--permission-mode dontAsk`, never `--dangerously-skip-permissions` (its one-time interactive consent dialog hangs without a TTY); `--allowedTools` mirrors the reviewer tool stance (`AskUserQuestion` omitted — a nested CLI cannot reach the human; an unresolved product question becomes a `REVISE` verdict stating the question); scrub `CLAUDECODE` / `CLAUDE_CODE_ENTRYPOINT` / `ANTHROPIC_API_KEY` from the child environment (an inherited `CLAUDECODE=1` makes the inner `claude` refuse to launch; an inherited `ANTHROPIC_API_KEY` silently outranks subscription auth — next paragraph); parse `.result` and `.session_id` from the JSON envelope, and treat an envelope with `is_error: true` as a failed call regardless of content. Revision rounds prefer `claude --resume <session-id> -p`.
@@ -87,7 +87,7 @@ Any signal failing means the call failed. Triggers and handling:
 | Trigger | Detected | Action |
 |---|---|---|
 | Alternative CLI not on PATH | Step 0a | Venue is `native` for the whole session. Silent; venue report reads `native (<cli> not on PATH)`. |
-| Recursion guard (`KICKOFF_REVIEW_DEPTH` set) | Step 0a | Venue is `native`. Silent. |
+| Recursion guard (`KICKOFF_DELEGATION_DEPTH` set) | Step 0a | Venue is `native`. Silent. |
 | Non-zero exit, timeout, or network failure | During an external call | This **stage** finishes natively: read the canonical role file and perform the role in-harness. Record `[fallback: <reason>]` in the END block. |
 | Turn cap exhausted (claude envelope `subtype: "error_max_turns"`, `is_error: true`, no verdict) | After an external call | The investigation is done but unreported and the session id is live — **resume once** (`claude --resume <sid> -p "Conclude your review now: emit the exact verdict header and your essential findings only. Do not investigate further."`) before giving up. If the resume also fails the gate, fall back native: `[fallback: max-turns exhausted]`. |
 | Artifact missing/empty or verdict header missing/malformed | After an external call | Same as above — `[fallback: malformed verdict]`. |
@@ -132,18 +132,21 @@ Capturing the session id is itself part of the contract, not an afterthought: co
 
 ## END-block reporting
 
-Every `/kickoff` END block records the venue per stage (format owned by `/kickoff`):
+Every `/kickoff` END block records the resolved venue for each role (format owned by `/kickoff`). Because per-role model pinning ([`role-models.md`](role-models.md)) unified the reporting, the block covers all four roles — the reviewer and critic lines carry this policy's venue (or a pin), and the planner and coder lines carry their pin (or `native`):
 
 ```
-Review venue (per policies/cross-harness-review.md):
-- Plan review: native | codex | claude  [fallback: <reason>]
-- Code review: native | codex | claude  [fallback: <reason>]
+Role model/venue (per policies/role-models.md + policies/cross-harness-review.md):
+- Planner:  native (<session model>) | opus | fable | codex  [fallback: <reason>]
+- Reviewer (plan review): native | codex | claude | opus | fable | skipped (light lane)  [fallback: <reason>]
+- Coder:    native (<session model>) | opus | fable | codex  [fallback: <reason>]
+- Critic (code review):   native | codex | claude | opus | fable  [fallback: <reason>]
 ```
 
-When the other CLI simply isn't installed, the line reads `native (<cli> not on PATH)` — informative, not a failure.
+When the other CLI simply isn't installed, the line reads `native (<cli> not on PATH)` — informative, not a failure. A pinned role that fell back is *also* surfaced with 🚨 in the user-facing summary ([`role-models.md`](role-models.md)), so a pin→native disconnect is never silent.
 
 ## Relationship to other policies
 
 - [`four-canonical-agents.md`](four-canonical-agents.md) owns the roles, tool stances, verdict headers, and cycle caps; this policy configures only the execution venue of the two reviewer roles.
+- [`role-models.md`](role-models.md) generalizes this policy to all four roles: it pins any role to a specific model/harness and reuses these recipes (plus a model flag; write-enabled for the coder) and this fallback machinery. A `reviewer`/`critic` pin overrides the venue token here for that role; the recursion guard and session-resume mechanics are shared.
 - [`cross-harness-parity.md`](cross-harness-parity.md) owns canonical-vs-mirror discipline; the canonical role files this policy points external CLIs at are the same files that policy protects.
 - [`human-in-the-loop.md`](human-in-the-loop.md) is unaffected: no venue may commit, advance gates, or claim subjective acceptance. The human decides done, whichever vendor reviewed.

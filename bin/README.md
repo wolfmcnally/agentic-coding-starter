@@ -11,6 +11,19 @@
 
 ## Scripts
 
+### `role-models` — per-role model/harness pins for `/kickoff`
+
+Reads and writes the repo-root `role-models.yaml` config that pins each of the four canonical roles (planner, reviewer, coder, critic) to a model/harness. Backs the `/roles` skill (the parse/validate/write is the mechanical half; the skill is the thin wrapper). Validates every role and model against a closed vocabulary and rejects unknowns non-zero, leaving the config untouched. Governed by [`policies/role-models.md`](../policies/role-models.md).
+
+```bash
+./bin/role-models --show                                   # current pins
+./bin/role-models coder: opus, reviewer: codex             # set pins, then show
+./bin/role-models --reset                                  # clear all pins
+./bin/role-models --help                                   # usage
+```
+
+Universal: `/stamp` and `/teach` carry it (and a default all-`default` config) into every derived project — every project has the same four roles to pin.
+
 ### `check-anonymization.sh` — pre-publish leak guard *(starter-only)*
 
 Scans every tracked file for the two *mechanizable* leak classes — real absolute/home paths and commit-SHA-like tokens — and exits non-zero on any finding. Optionally reads a gitignored local name denylist (`bin/anonymization-denylist.local`, seeded from the committed `.example`) and greps for those private names too. Run it before any push.
