@@ -1,15 +1,34 @@
 # role-models.yaml — per-role model/harness pins for /kickoff.
 #
-# Managed by bin/role-models; set via the /roles skill. One role per line,
-# "role: model". Governed by policies/role-models.md.
+# Managed by bin/role-models; set via the /roles skill. Governed by
+# policies/role-models.md. This file is a two-level YAML mapping:
 #
-# Roles:  planner reviewer coder critic
-# Models: default | opus | fable | codex
-#   default       → native (the current /kickoff session's model)
-#   opus | fable  → Claude Code harness (claude --model opus|fable)
-#   codex         → Codex harness (codex, its default/latest model)
+#   <harness>:            # which harness is ORCHESTRATING /kickoff
+#     <role>: <model>     # the model/harness to run that role on
+#
+# Harness sections:  default (base layer, applies under every harness)
+#                    claude  (overrides when Claude Code orchestrates)
+#                    codex   (overrides when Codex orchestrates)
+# Roles:             planner  reviewer  coder  critic
+# Models:            default | claude | codex | opus | fable
+#   default        native — the orchestrator's own session model (no CLI)
+#   claude         claude CLI, its configured default model (no --model)
+#   codex          codex CLI, its configured default model (no -m)
+#   opus | fable   claude --model opus|fable
+#
+# Resolution for role R under orchestrating harness H:
+#   H's section, else the default section, else native.
+# So the block below routes reviewer+critic to the *other* harness by default
+# (cross-vendor review), and leaves planner+coder native.
 
-planner: default
-reviewer: default
-coder: default
-critic: default
+default:
+  planner: default
+  reviewer: default
+  coder: default
+  critic: default
+claude:
+  reviewer: codex
+  critic: codex
+codex:
+  reviewer: opus
+  critic: opus

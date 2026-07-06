@@ -15,10 +15,7 @@ The Codex mirrors live at `.codex/agents/<role>.toml`. See [`cross-harness-parit
 
 ## Execution venue
 
-The roles, names, tool stances, and verdict headers above are fixed. The **execution venue** — which harness and model runs a role — is not. Two mechanisms move it, and both read the same canonical `.claude/agents/<role>.md` file, honor the same tool stance, and emit the same verdict headers; only *where* the role executes changes:
-
-- **Cross-harness review** ([`cross-harness-review.md`](cross-harness-review.md)): when enabled, `/kickoff` may run the two reviewer roles (`plan-reviewer`, `code-critic`) in the *other* harness's CLI (`codex` from Claude Code, `claude` from Codex).
-- **Per-role model pinning** ([`role-models.md`](role-models.md)): the `role-models.yaml` config (set via `/roles`) can pin *any* of the four roles to a specific model/harness — including `phase-planner` and `phase-coder`, which otherwise run natively. A pinned role runs on its model via the same CLI recipes (the coder write-enabled); a reviewer/critic pin overrides the cross-harness-review venue for that role.
+The roles, names, tool stances, and verdict headers above are fixed. The **execution venue** — which harness and model runs a role — is not, and is governed by [`role-models.md`](role-models.md): the harness-aware `role-models.yaml` (set via `/roles`) resolves *any* of the four roles to a model/harness, scoped by which harness orchestrates. A role resolving to a CLI runs there — reading the same canonical `.claude/agents/<role>.md` file, honoring the same tool stance, emitting the same verdict headers; only *where* it executes changes (the coder write-enabled). The shipped default runs `plan-reviewer` + `code-critic` in the *other* harness (cross-vendor review); `phase-planner` and `phase-coder` can be routed too.
 
 So do **not** assume any role runs as an in-harness subagent on the session model when reasoning about orchestration — check the resolved venue. The one invariant: **orchestration and build gates always run on the invoking session's model** and are never pinnable.
 
@@ -67,7 +64,7 @@ The same judgment governs all three loops:
 - **Code review** (coder → critic): continue while findings shrink in count and severity; escalate on recurrence or whack-a-mole.
 - **Build-gate failure** (coder → gate): converging means each fix knocks down failures and the error surface shrinks; stalled means the same failure recurs or each fix trades one break for another.
 
-**Runaway backstop.** Independent of the convergence read, no single loop runs past **5 cycles** without surfacing to the human. This is a runaway guard, not a budget — the same philosophy as the `--max-turns` cap in [`cross-harness-review.md`](cross-harness-review.md): a healthy converging loop almost never reaches it, and a loop that does has by definition failed to converge. When the backstop trips, escalate exactly as for a stall.
+**Runaway backstop.** Independent of the convergence read, no single loop runs past **5 cycles** without surfacing to the human. This is a runaway guard, not a budget — the same philosophy as the `--max-turns` cap in [`role-models.md`](role-models.md): a healthy converging loop almost never reaches it, and a loop that does has by definition failed to converge. When the backstop trips, escalate exactly as for a stall.
 
 These bounds are deliberate. The methodology assumes a human in the loop ([`human-in-the-loop.md`](human-in-the-loop.md)); the goal is to spend revision cycles only while they are buying convergence, and to hand a genuinely stuck decision to the human rather than grind identical objections — or burn the whole backstop — against a wall.
 

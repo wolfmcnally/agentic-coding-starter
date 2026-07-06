@@ -11,18 +11,27 @@
 
 ## Scripts
 
-### `role-models` — per-role model/harness pins for `/kickoff`
+### `role-models` — harness-aware per-role model/venue for `/kickoff`
 
-Reads and writes the repo-root `role-models.yaml` config that pins each of the four canonical roles (planner, reviewer, coder, critic) to a model/harness. Backs the `/roles` skill (the parse/validate/write is the mechanical half; the skill is the thin wrapper). Validates every role and model against a closed vocabulary and rejects unknowns non-zero, leaving the config untouched. Governed by [`policies/role-models.md`](../policies/role-models.md).
+Reads and writes the repo-root `role-models.yaml` — a two-level `harness → role → model` config that resolves which model/harness runs each of the four canonical roles (planner, reviewer, coder, critic), scoped by which harness is orchestrating. Backs the `/roles` skill (the parse/validate/write is the mechanical half; the skill is the thin wrapper). Validates every harness/role/model against a closed vocabulary and rejects unknowns non-zero, leaving the config untouched. A Python script run via `uv` (PEP 723 inline `pyyaml`). Governed by [`policies/role-models.md`](../policies/role-models.md).
 
 ```bash
-./bin/role-models --show                                   # current pins
-./bin/role-models coder: opus, reviewer: codex             # set pins, then show
-./bin/role-models --reset                                  # clear all pins
-./bin/role-models --help                                   # usage
+./bin/role-models --show                                   # config + resolved-for-this-harness view
 ```
 
-Universal: `/stamp` and `/teach` carry it (and a default all-`default` config) into every derived project — every project has the same four roles to pin.
+```bash
+./bin/role-models codex reviewer: opus, critic: opus       # set pins in a harness section
+```
+
+```bash
+./bin/role-models coder: opus                              # no harness token → the `default` section
+```
+
+```bash
+./bin/role-models --reset                                  # restore the shipped cross-review default
+```
+
+Universal: `/stamp` and `/teach` carry it (and the cross-vendor-review default config) into every derived project — every project has the same four roles and the same default.
 
 ### `check-anonymization.sh` — pre-publish leak guard *(starter-only)*
 

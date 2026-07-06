@@ -1,90 +1,119 @@
-# Policy: Per-Role Model Pinning
+# Policy: Per-Role Model Pinning (harness-aware)
 
-Each of the four canonical roles ([`four-canonical-agents.md`](four-canonical-agents.md)) — planner, reviewer, coder, critic — may be **pinned to a specific model/harness**. When a role is pinned, `/kickoff` always invokes that harness's CLI with that model for the role, using the cross-harness invocation recipes ([`cross-harness-review.md`](cross-harness-review.md), [`briefs/cross-agent-invocation.md`](../briefs/cross-agent-invocation.md)). When a role is unpinned it keeps the current behavior. **Orchestration and build gates — the `/kickoff` main loop itself — always run on the current session's model and are never pinnable.**
+Each of the four canonical roles ([`four-canonical-agents.md`](four-canonical-agents.md)) — planner, reviewer, coder, critic — may be **pinned to a model/harness**, and the pin is **scoped by which harness is orchestrating** `/kickoff`. When a role resolves to a pin, `/kickoff` invokes that harness's CLI with that model for the role, using the invocation recipes in [`briefs/cross-agent-invocation.md`](../briefs/cross-agent-invocation.md). When it resolves to `default`, the role runs native. **Orchestration and build gates — the `/kickoff` main loop itself — always run on the current session's model and are never pinnable.**
 
-This generalizes cross-harness review. That policy makes the *venue* of the two reviewer roles configurable; this policy makes the *(harness, model)* of *all four* roles configurable, and is the mechanism the cross-harness-review policy anticipated when it noted that "projects that pin models per role should route the reviewer roles to a different model family from the coder."
+This is the single mechanism for choosing where any role runs. The harness-keyed structure expresses harness-*relative* routing ("when Claude Code orchestrates, review in Codex; when Codex orchestrates, review in Claude"), which is why the shipped default reproduces cross-vendor review out of the box for the two reviewer roles.
 
 ## Why pin at all
 
-Review decorrelation ([`cross-harness-review.md`](cross-harness-review.md)) is one reason: a critic on a different model family from the coder catches failure classes a same-family critic shares blind spots on. But pinning is broader — a project may want a cheaper/faster model for mechanical planning, the strongest available model for implementation, or a specific vendor for a role for any reason. The template does not prescribe *which* pins are wise; it provides the mechanism and the safe defaults.
+Review decorrelation is the headline reason: a critic on a different model family from the coder catches failure classes a same-family critic shares blind spots on, and that value *grows* as coding models get stronger — whatever a frontier coder still gets wrong is exactly what its own family is least able to see. But pinning is broader: a project may want a cheaper/faster model for mechanical planning, the strongest model for implementation, or a specific vendor for a role for any reason. The template ships safe defaults (cross-vendor review) and provides the mechanism; it does not prescribe which pins are wise.
 
 ## The config file
 
-Pins live in a dedicated file **`role-models.yaml` at the repo root**, owned by `bin/role-models` and set through the `/roles` skill. It is a small YAML mapping — one `role: model` entry per line, `#` comments:
+Pins live in **`role-models.yaml` at the repo root**, owned by `bin/role-models` and set through the `/roles` skill. It is a **two-level YAML mapping** — top-level *harness sections*, each mapping *role → model*:
 
-```
-planner: fable
-reviewer: codex
-coder: opus
-critic: fable
+```yaml
+default:            # base layer — applies under every harness
+  planner: default
+  reviewer: default
+  coder: default
+  critic: default
+claude:             # overrides when Claude Code orchestrates
+  reviewer: codex
+  critic: codex
+codex:              # overrides when Codex orchestrates
+  reviewer: opus
+  critic: opus
 ```
 
+- **Harness sections:** `default` (a base layer applied under every harness), `claude`, `codex`. A section names *who is orchestrating* — not where the role runs.
 - **Roles:** `planner` → `phase-planner`, `reviewer` → `plan-reviewer`, `coder` → `phase-coder`, `critic` → `code-critic`.
-- **Models (current vocabulary):**
-  - `default` — native: the current `/kickoff` session's model. The unpinned default for every role.
-  - `opus`, `fable` — Claude Code harness (`claude --model opus` / `claude --model fable`; fall back to the full ids `claude-opus-4-8` / `claude-fable-5` if an alias is unrecognized).
-  - `codex` — Codex harness (`codex` with **no** `-m` flag — its configured default, i.e. "the most recent codex").
+- **Models (the vocabulary):**
+  - `default` — native: the orchestrator's own session model. No CLI call.
+  - `claude` — the `claude` CLI, its configured default model (no `--model`).
+  - `codex` — the `codex` CLI, its configured default model (no `-m`).
+  - `opus`, `fable` — the `claude` CLI, a specific model (`claude --model opus|fable`; full ids `claude-opus-4-8` / `claude-fable-5` if an alias is unrecognized).
 
-A missing file, a missing line, or `default` all mean unpinned. The file is a
-dedicated machine-owned surface deliberately — *not* a token in `CLAUDE.md`
-Project Context like `cross-harness-review:` — because a script rewrites it
-repeatedly and it must not disturb the human-authored prose zone `/stamp`
-rewrites. The vocabulary is closed: `bin/role-models` rejects any role or model
-outside the sets above non-zero and leaves the file unchanged.
+The **model value names the CLI**, independent of who orchestrates. `default` → native subagent; every other value → the CLI recipe. There is deliberately no "the pin equals the session model, so skip the CLI" short-circuit — a non-`default` value always goes through the CLI recipe (uniform, no fragile session-model probing). Putting a bare harness value in its own section (e.g. `claude:` → `reviewer: claude`) is pointless same-harness routing — use `default` for native; it is documented, not special-cased.
 
-Extending the vocabulary (a new supported model) is a deliberate edit to
-`bin/role-models`' `MODELS` list, this policy's model table, and the `/roles`
-skill's vocabulary — kept in lockstep in one commit.
+The vocabulary is closed: `bin/role-models` rejects any harness/role/model outside these sets non-zero and leaves the file unchanged. Extending it (a new supported model) is a deliberate, lockstep edit to `bin/role-models`' `MODELS`, this policy's table, and the `/roles` skill.
+
+The file is a dedicated machine-owned surface — *not* a token in `CLAUDE.md` Project Context — because a script rewrites it repeatedly and it must not disturb the human-authored prose zone `/stamp` rewrites.
 
 ## Mechanistic/intelligence seam
 
-Per [`mechanistic-vs-intelligence.md`](mechanistic-vs-intelligence.md), the parse-validate-write is **mechanistic** and lives in `bin/role-models` (deterministic, idempotent, harness-portable, testable). The `/roles` skill is the thin intelligence wrapper: it resolves a possibly-vague request ("put the coder on the big model") into concrete `role: model` pairs, then shells out to the script. No model does the writing.
+Per [`mechanistic-vs-intelligence.md`](mechanistic-vs-intelligence.md), the parse-validate-write is **mechanistic** and lives in `bin/role-models` (a Python + PyYAML script, run via `uv` with PEP 723 inline deps — deterministic, idempotent, harness-portable, testable, doing a robust two-level read-modify-write that preserves untouched sections). The `/roles` skill is the thin intelligence wrapper: it resolves a possibly-vague request ("put the coder on the big model") into concrete `[harness] role: model` pairs, then shells out to the script. No model does the writing.
 
 ## Resolution (kickoff Step 0a)
 
-Resolved **once per session**, before phase work, per role. This subsumes the review-venue resolution in [`cross-harness-review.md`](cross-harness-review.md):
+Resolved **once per session**, before phase work. Detect the orchestrating harness `H`: `CLAUDECODE=1` in the environment → `claude`; otherwise → `codex`.
 
 1. **Recursion guard.** If `KICKOFF_DELEGATION_DEPTH` is set, this session is *itself* a delegated role invoked by an outer `/kickoff`; **every role runs native** and no further delegation happens. Skip the rest.
-2. **Read `role-models.yaml`.** For each role:
-   - **Pinned** (`opus` / `fable` / `codex`) → the role runs on that harness/model via the CLI recipe. A pin on `reviewer` or `critic` **overrides** the `cross-harness-review:` token for that role.
-   - **Unset / `default`** → current behavior: `planner` and `coder` run **native** (in-harness subagents on the session model); `reviewer` and `critic` follow the `cross-harness-review:` token + harness detection + PATH resolution.
-3. **CLI availability.** A pinned role whose target harness CLI is not on PATH resolves to **native**, and the role is flagged for 🚨 disconnect surfacing (§ Fallback) — the pin was requested but could not be honored.
+2. **Merge, per role `R`:** `effective(R) = config[H].get(R)` if set, else `config['default'].get(R)` if set, else `default`. (The harness section overrides the base layer; the base layer overrides native.)
+3. **Map the value to a venue.** `default` → native (in-harness subagent on the session model). `claude`/`codex`/`opus`/`fable` → the named CLI recipe (planner/reviewer/critic read-only; coder write-enabled — see below).
+4. **CLI availability.** A role that resolves to a CLI whose binary is not on PATH → **native**, recorded as a *quiet* informational note (`native — <cli> not on PATH`). This is **not** a 🚨 disconnect: a missing other-CLI is an environment fact, and the shipped cross-review default must not alarm a single-CLI user every phase.
 
-Resolution deliberately does **not** try to detect "the pin equals the session model" and skip the CLI. A pinned role *always* goes through the CLI recipe — uniform, deterministic, and free of fragile session-model probing. The cost of an occasional redundant subprocess is accepted in exchange for a resolution rule with no special cases.
+Every role's resolved `(venue, model)` is remembered for Steps 3–6 and the Step 10 END block. Roles do not re-resolve mid-session.
 
 ## Invocation, resume, and the write-enabled coder
 
-Pinned **read-only** roles (planner, reviewer, critic) use the read-only recipes from [`cross-harness-review.md`](cross-harness-review.md) with the model flag added (`claude --model <m>` / `codex` with no `-m`) and `--allowedTools` mirroring the role's tool stance (planner keeps `WebSearch,WebFetch`; reviewer/critic keep `Read,Grep,Glob`).
+The command lines, flag rationale, auth scrubs, `</dev/null` trap, and session-id capture live in [`briefs/cross-agent-invocation.md`](../briefs/cross-agent-invocation.md) §§2–4. Summary of what each role adds:
 
-The pinned **coder** writes, so it uses a **write-enabled** variant:
+- **Read-only roles** (planner, reviewer, critic) use the read-only recipe with the model flag added (`claude --model <m>` / `codex` no `-m`) and `--allowedTools` mirroring the role's tool stance (planner keeps `WebSearch,WebFetch`; reviewer/critic keep `Read,Grep,Glob`).
+- **The coder writes**, so it uses the **write-enabled** variant: claude `--allowedTools "Read,Grep,Glob,Write,Edit,Bash"` with a higher `--max-turns`; codex `-s workspace-write` (initial) / `-c 'sandbox_mode="workspace-write"'` (resume). **Never** `--yolo` / `danger-full-access`. Single-writer guarantee: `/kickoff` is sequential, so the pinned coder owns the tree exclusively during its stage (build gates run afterward) — satisfying "never two writers on one tree" without a worktree.
+- **Session resume across a phase.** A role invoked more than once in a phase — the planner across plan-revision rounds, the coder across code-revision and build-fix rounds, a reviewer/critic across review rounds — **resumes the same session** so its prior context stays live: capture the session id (codex `thread_id` via `--json`; claude `.session_id`), thread the latest id forward, re-capture each round, and honor the codex `resume` flag-surface trap (`-s`/`-C` rejected → `-c 'sandbox_mode=…'` + `cd`).
+- **Recursion guard.** Every delegated child runs with `KICKOFF_DELEGATION_DEPTH=1` in its environment, so a delegated role that itself reads this config never re-delegates (resolution step 1).
 
-- **claude coder:** `--allowedTools "Read,Grep,Glob,Write,Edit,Bash"`, a higher `--max-turns` (an implementation loop, not a review), `--model <m>`, otherwise the same `--permission-mode dontAsk`, env scrubs, and `</dev/null` redirect. Protected paths (`.git`, `.claude`) stay non-auto-approved under `dontAsk`; the coder writes under the deliverable directory.
-- **codex coder:** `-s workspace-write` on the initial call / `-c 'sandbox_mode="workspace-write"'` on resume, `approval_policy="never"`, no `-m`, the same scrubs and `</dev/null`. **Never** `--yolo` / `danger-full-access`.
+## Fallback state machine
 
-**Single-writer guarantee.** `/kickoff` is sequential; during the coder's stage the orchestrator runs no concurrent native writer, so the pinned coder owns the tree exclusively (build gates run afterward, in the orchestrator). This satisfies the "serialize or isolate — never two writers on one tree" rule in [`briefs/cross-agent-invocation.md`](../briefs/cross-agent-invocation.md) §4 without a worktree.
+Success of a delegated call is gated on **three signals together**:
 
-**Session resume across a phase.** A pinned role invoked more than once in a phase — the planner across plan-revision rounds, the coder across code-revision and build-fix rounds — **resumes the same session** so its prior context stays live, exactly as the reviewer roles already do: capture the session id (codex `thread_id` via `--json`; claude `.session_id`), thread the latest id forward, re-capture each round, and honor the codex `resume` flag-surface trap (`-s`/`-C` rejected → `-c 'sandbox_mode=…'` + `cd`). Details in [`cross-harness-review.md`](cross-harness-review.md) "Revision cycles across harnesses".
+1. The output artifact (codex `--output-last-message` file / claude JSON `.result`) exists and is non-empty.
+2. It carries the role's expected output shape — for a reviewer/critic, exactly one `## Verdict: APPROVED` / `## Verdict: REVISE` header; for a planner/coder, the plan / file-list-and-status report the role file defines.
+3. The call returned within a wall-clock timeout — 600 s plan review, 900 s code critique, higher for the coder's implementation loop. The timeout is a **hang guard, not a performance target**: it only keeps a stalled subprocess from hanging the orchestrator; a working call takes as long as it takes. Tune upward freely; tighten only with evidence.
 
-**Recursion guard.** Every delegated child — read-only or write-enabled — runs with `KICKOFF_DELEGATION_DEPTH=1` in its environment, so a delegated role that itself reads this config never re-delegates (step 1 above). The guard is shared with cross-harness review ([`cross-harness-review.md`](cross-harness-review.md)); it is named for delegation generally because it guards every delegated role, not just review.
+Any signal failing means the call failed. Triggers and handling:
 
-## Fallback and 🚨 disconnect surfacing
+| Trigger | Detected | Action |
+|---|---|---|
+| Resolved CLI not on PATH | Step 0a | Role runs **native** for the session. **Quiet** — END-block note `native (<cli> not on PATH)`, no 🚨. |
+| Recursion guard (`KICKOFF_DELEGATION_DEPTH` set) | Step 0a | All roles native. Silent. |
+| Non-zero exit, timeout, or network failure (incl. the macOS Seatbelt `workspace-write` network trap) | During a call | This **stage** finishes natively. Record `[fallback: <reason>]` and raise a **🚨** disconnect (a role that *was* reachable didn't run on its pin). Do not repair the sandbox mid-run. |
+| Turn cap exhausted (claude `subtype: "error_max_turns"`, no verdict) | After a call | Investigation done but unreported and the session is live — **resume once** (`claude --resume <sid> -p "Conclude your review now: emit the exact verdict header and your essential findings only."`) before giving up. If the rescue also fails the gate: native, `[fallback: max-turns exhausted]`, 🚨. |
+| Artifact missing/empty or output shape malformed | After a call | Native, `[fallback: malformed output]`, 🚨. |
 
-A pinned role falls back to **native (the session model)** — and the phase proceeds — on any of: the target CLI absent at Step 0a; the three-signal gate failing (empty artifact, malformed/absent expected output, or wall-clock timeout); or a sandbox network failure (the macOS Seatbelt `workspace-write` network trap — treat as a fallback trigger, never repair the sandbox mid-run). Fallback is never a phase failure.
+Rules:
 
-Because a fallback means **what ran ≠ what was pinned**, the disconnect must be made loud, not buried:
+- **Absent CLI is quiet; a failed reachable call is 🚨.** The distinction is deliberate: "you don't have the other CLI installed" is an environment fact the shipped default shouldn't nag about, while "the model you pinned was there but the call broke" is a real disconnect between what you asked for and what ran.
+- The `--max-turns` cap is a **runaway-loop guard, not a depth budget** — the wall-clock timeout is the binding guard. Calibrate generously (50 for review; higher for the coder).
+- Fallback is **per stage**. A planner fallback does not force the coder native; each stage resolves its own venue.
+- Once a stage falls back mid-way, **all remaining rounds of that stage run native** — no venue thrashing inside a stage.
+- Fallback is never an error condition. The phase proceeds; the END block and the 🚨 summary tell the human what happened.
 
-- **`LOG.md` END block** records each role's resolved model/venue plus `[fallback: <reason>]`.
-- **The user-facing `/kickoff` summary** carries a 🚨 line per disconnect, e.g. `🚨 coder pinned to opus but ran native (codex CLI not on PATH) — output was NOT produced by opus`. A clean run (every pinned role ran on its pin) shows no 🚨.
+Convergence-based revision loops ([`four-canonical-agents.md`](four-canonical-agents.md)) govern delegated rounds unchanged, under the same 5-cycle runaway backstop. Handoff hygiene for delegated review (redact the implementer's self-assessment, adversarial framing, map-not-payload, flag regenerated blobs, scope the reading mandate) is in [`briefs/cross-agent-invocation.md`](../briefs/cross-agent-invocation.md) §4.
 
-The human must be able to see, at a glance, when a pin they set did not take effect.
+## END-block reporting and 🚨 disconnect surfacing
+
+Every `/kickoff` END block records the orchestrating harness and each role's resolved model/venue (format owned by `/kickoff`):
+
+```
+Role model/venue (per policies/role-models.md) — orchestrated by <claude|codex>:
+- Planner:  native (<session model>) | claude | codex | opus | fable  [fallback: <reason>]
+- Reviewer (plan review): native | claude | codex | opus | fable | skipped (light lane)  [note/fallback]
+- Coder:    native (<session model>) | claude | codex | opus | fable  [fallback: <reason>]
+- Critic (code review):   native | claude | codex | opus | fable  [note/fallback]
+```
+
+Because a *failed* pin means **what ran ≠ what was configured**, each such disconnect is *also* surfaced with a **🚨** line in the user-facing summary — e.g. `🚨 coder configured for opus but ran native (call timed out) — output was NOT produced by opus`. A CLI-absent fallback is the quiet exception (informational END-block note only). A clean run raises no 🚨.
 
 ## Propagation
 
-`/roles`, `bin/role-models`, this policy, and a default (all-`default`) `role-models.yaml` are **universal** — `/stamp` carries them into every derived project, and `/teach` can port them. Every project has the same four roles and may want to pin them. The *values* are per-project state (seeded all-`default`, like the `cross-harness-review:` token is seeded `enabled`); the *machinery* is methodology.
+`/roles`, `bin/role-models`, this policy, and the shipped `role-models.yaml` (with its cross-review harness sections) are **universal** — `/stamp` carries them into every derived project, and `/teach` can port them. Every project has the same four roles and the same cross-vendor-review default. The *values* are per-project state; the *machinery* is methodology.
 
 ## Relationship to other policies
 
-- [`four-canonical-agents.md`](four-canonical-agents.md) owns the roles, names, tool stances, and verdict headers; this policy pins their model/harness without changing any of that.
-- [`cross-harness-review.md`](cross-harness-review.md) owns the invocation recipes, the fallback state machine, and the reviewer-venue default; a role pin overrides its token for that role, and its recipes are reused (plus a model flag) for every pinned role.
-- [`mechanistic-vs-intelligence.md`](mechanistic-vs-intelligence.md) governs the script/skill seam.
-- [`human-in-the-loop.md`](human-in-the-loop.md) is unaffected: no pinned model may commit, advance gates, or claim subjective acceptance. The human decides done, whichever model ran.
+- [`four-canonical-agents.md`](four-canonical-agents.md) owns the roles, names, tool stances, verdict headers, and cycle caps; this policy chooses each role's model/harness without changing any of that.
+- [`mechanistic-vs-intelligence.md`](mechanistic-vs-intelligence.md) governs the `bin/role-models` (script) / `/roles` (skill) seam.
+- [`review-lanes.md`](review-lanes.md): in a `light` lane the code critique is the only review that runs, so its resolved venue matters more, not less. Light-lane phases resolve venues like any other.
+- [`human-in-the-loop.md`](human-in-the-loop.md) is unaffected: no delegated model may commit, advance gates, or claim subjective acceptance. The human decides done, whichever model ran.
+- Invocation recipes, flag rationale, auth traps, and handoff hygiene: [`briefs/cross-agent-invocation.md`](../briefs/cross-agent-invocation.md).

@@ -38,8 +38,8 @@ A project derived from this template contains the following **portable structure
     README.md
     briefs-and-policies.md
     cross-harness-parity.md
-    cross-harness-review.md
     four-canonical-agents.md
+    role-models.md
     review-lanes.md
     phase-status.md
     acceptance-empirical.md
@@ -154,10 +154,10 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.agents/skills/roles` (directory symlink → `../../.claude/skills/roles`)
 - `AGENTS.md` symlink → `CLAUDE.md`
 - Every file under `policies/` (these are universal by design)
-- `bin/role-models` (universal deterministic script backing `/roles`), and a `role-models.yaml` config seeded with all four roles = `default`
+- `bin/role-models` (universal Python/uv script backing `/roles`), and a `role-models.yaml` seeded with the cross-vendor-review default (via `bin/role-models --reset`)
 - `briefs/methodology.md`
 - `briefs/agentic-bootstrap.md` (this file, so the next bootstrap is possible)
-- `briefs/cross-agent-invocation.md` (the cross-CLI invocation BCPs cited by `policies/cross-harness-review.md`)
+- `briefs/cross-agent-invocation.md` (the cross-CLI invocation BCPs cited by `policies/role-models.md`)
 - `briefs/deterministic-orchestration.md` (draft universal brief: decision criteria for a deterministic kickoff loop, so the derived project can act when its harnesses gain parity workflow primitives)
 - The skeletal headings/structure of `plan/INDEX.md`
 - The skeletal frontmatter shape for `plan/phase-*.md` (`id`, `title`, `depends_on`, `informs`, optional `review_lane` per `policies/review-lanes.md`)
@@ -415,7 +415,7 @@ The bootstrap is the same shape every time. The variation is in:
 | **Deployment story**          | AWS / Cloudflare / Vercel / app stores / static / none        |
 | **Per-project invariants**    | Cost ceilings; license policy; privacy boundaries; FOSS-only  |
 | **Per-project skills**        | Domain-specific workflows on top of `/kickoff`                |
-| **Cross-harness review**      | `cross-harness-review: enabled` (default) or `disabled` in `CLAUDE.md` Project Context, per `../policies/cross-harness-review.md` |
+| **Model & review venue**      | `role-models.yaml` (seeded with the cross-vendor-review default; set via `/roles`), per `../policies/role-models.md` |
 
 When adapting, edit these files (and only these) to reflect those choices:
 

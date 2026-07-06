@@ -41,9 +41,9 @@ This asymmetry is the blocker. [`../policies/cross-harness-parity.md`](../polici
 ## 5. Design sketch (tentative — to be re-validated at implementation time)
 
 - `SKILL.md` remains the **canonical contract**: the steps, the policies they bind to, the END-block format. The workflow program is an *implementation* of that contract, not a second authority.
-- The program lives at a well-known repo path (e.g., `workflow/kickoff` in whatever format the harness requires) and is activated by a Project Context token mirroring the cross-harness-review pattern — e.g., `deterministic-orchestration: enabled` — resolved in a Step 0b: token enabled **and** the current harness has the primitive → program path; otherwise → prose path, silently.
+- The program lives at a well-known repo path (e.g., `workflow/kickoff` in whatever format the harness requires) and is activated by a Project Context token — e.g., `deterministic-orchestration: enabled` — resolved in a Step 0b: token enabled **and** the current harness has the primitive → program path; otherwise → prose path, silently.
 - Step granularity maps 1:1 to today's Steps 0a–10, so the END block, LOG discipline, and status-marker transitions are byte-identical regardless of path. A human reading `LOG.md` cannot tell which path ran except by the venue/path line that reports it.
-- Verdicts move to the structured-output schema in the program path. **Open question (greenfield rule):** if the schema becomes the real contract, the prose path and the role files should adopt the same shape at the same time — one verdict contract everywhere, not a compat split. That migration touches `four-canonical-agents.md`, both reviewer role files, and `cross-harness-review.md`'s three-signal gate, and must land in the same phase that lands the program.
+- Verdicts move to the structured-output schema in the program path. **Open question (greenfield rule):** if the schema becomes the real contract, the prose path and the role files should adopt the same shape at the same time — one verdict contract everywhere, not a compat split. That migration touches `four-canonical-agents.md`, both reviewer role files, and `role-models.md`'s three-signal gate, and must land in the same phase that lands the program.
 - **Drift guard:** a parity check (same family as `cross-harness-parity.md`'s verification sweep) asserting the program's step graph matches `SKILL.md`'s step list — mechanically extractable from both sides. Without this, prose and program *will* diverge silently; the guard is a precondition, not a nice-to-have.
 
 ## 6. Decision criteria — when to take this out of draft
@@ -51,7 +51,7 @@ This asymmetry is the blocker. [`../policies/cross-harness-parity.md`](../polici
 Implement when **all** of:
 
 1. **Codex (or whatever the second supported harness is) ships a workflow-parity function** — deterministic script, subagent spawning, schema-enforced outputs, resume. This is the trigger this brief waits on.
-2. Both harnesses' primitives can express the cross-harness-review fallback state machine and the review-lane escalation path — the two most stateful parts of the loop.
+2. Both harnesses' primitives can express the `role-models.md` fallback state machine and the review-lane escalation path — the two most stateful parts of the loop.
 3. The drift guard (§5) has a concrete mechanical design.
 4. Re-validation of §4: harness APIs churn; the sketch above describes 2026-06 reality and must be re-checked, not trusted.
 

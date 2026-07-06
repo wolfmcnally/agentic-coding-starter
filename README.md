@@ -17,7 +17,7 @@ The template ships with:
 - Four **canonical agent roles** (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`) defined once and mirrored to every supported harness.
 - A **`/stamp` skill** (starter-template-only) for stamping out new repos from this one.
 - **`/learn` and `/teach` skills** (universal — carried into every derived project) for moving patterns *between* methodology-following repos. `/learn` absorbs patterns from another repo into the current one; `/teach` sends patterns from the current repo out to a target. Both are plan-first: the user approves before any file changes.
-- A **`/roles` skill** (universal) that pins a model/harness to any of the four canonical roles — e.g. `/roles reviewer: codex, coder: opus`. `/kickoff` then runs each pinned role on that model; orchestration and build gates always stay on your session's model. See [`policies/role-models.md`](policies/role-models.md).
+- **Harness-aware model & review venue.** `role-models.yaml` (set via the universal **`/roles`** skill) chooses which model/harness runs each of the four roles, scoped by which harness is orchestrating. The shipped default gives **cross-vendor review** for free: reviewer and critic run in the *other* harness (`codex` when Claude Code orchestrates, `claude` when Codex does) — a model reviewing another vendor's model catches failure classes same-family review misses. Any role can be routed anywhere — e.g. `/roles codex coder: opus`; orchestration and build gates always stay on your session's model. See [`policies/role-models.md`](policies/role-models.md).
 - A **`plan/` ledger** (status table, dependency graph, cross-cutting concerns) where work is tracked phase by phase.
 - A **`briefs/` library** for durable design decisions and methodology notes.
 - A **`policies/` library** for the rules every phase must respect.
@@ -93,6 +93,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 ├── CLAUDE.md                       ← top-level guidance for agents
 ├── AGENTS.md                       ← symlink → CLAUDE.md (for Codex/aider)
 ├── LOG.md                          ← append-only activity log
+├── role-models.yaml                ← per-role model/venue pins (set via /roles)
 ├── project/                        ← the deliverable (self-contained per
 │   │                                  policies/project-isolation.md)
 │   ├── pyproject.toml              ←   package metadata

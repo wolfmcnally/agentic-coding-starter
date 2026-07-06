@@ -2,12 +2,12 @@
 title: "Cross-Agent CLI Invocation — Best Current Practices"
 date: 2026-06-03
 status: methodology
-scope: BCPs for invoking one coding-agent CLI from inside another (Claude Code ↔ Codex CLI), and the design rationale for the config-gated cross-harness review feature.
+scope: BCPs for invoking one coding-agent CLI from inside another (Claude Code ↔ Codex CLI), and the design rationale for the per-role model/venue feature (harness-aware cross-vendor review and pinning).
 ---
 
 # Cross-Agent CLI Invocation — Best Current Practices
 
-This brief pins the researched best current practices (as of mid-2026) for invoking OpenAI's `codex` CLI from inside Claude Code and Anthropic's `claude` CLI from inside Codex, so future work cites a stable position instead of re-deriving it. It also records the design rationale for the **cross-harness review** feature governed by [`policies/cross-harness-review.md`](../policies/cross-harness-review.md).
+This brief pins the researched best current practices (as of mid-2026) for invoking OpenAI's `codex` CLI from inside Claude Code and Anthropic's `claude` CLI from inside Codex, so future work cites a stable position instead of re-deriving it. It also records the design rationale for **cross-harness review** — now delivered as the shipped default of the per-role model/venue feature governed by [`policies/role-models.md`](../policies/role-models.md).
 
 Both vendors sanction this interop: OpenAI ships an official Claude Code plugin that delegates to the local Codex CLI, and both CLIs document headless scripting modes. Every mature published pattern is **subprocess-first** — shelling out to the other CLI — rather than MCP-bridged. MCP wrappers exist but add a moving part without changing the fundamentals; for bounded, one-shot delegations the subprocess is the de-facto standard.
 
@@ -94,9 +94,7 @@ Flag-by-flag rationale:
 
 ## 5. How this maps onto our methodology
 
-The cross-harness review feature applies these BCPs at exactly two points in the `/kickoff` pipeline — Step 4 (plan review) and Step 6 (code critique) — where the role is read-only and the verdict contract already exists. That feature alone leaves orchestration, planning, and coding in the invoking harness (per-role model pinning, below, is what can move the planner or coder). The external CLI is told to read the *same canonical role file* (`.claude/agents/plan-reviewer.md` / `.claude/agents/code-critic.md`) the native subagent uses: one role definition, two execution venues. Activation, fallback, and reporting are prescribed by [`policies/cross-harness-review.md`](../policies/cross-harness-review.md).
-
-**Per-role model pinning** ([`policies/role-models.md`](../policies/role-models.md)) generalizes the same BCPs to *all four* roles: a pinned role runs its canonical role file in the named harness/model via these recipes (plus a model flag), with session resume across its rounds and the same three-signal fallback. The coder pin is the one write-enabled case (above); planner/reviewer/critic pins stay read-only. Orchestration and build gates are never pinnable — they always run on the invoking session's model.
+These BCPs are applied by the per-role model/venue feature ([`policies/role-models.md`](../policies/role-models.md)). Its shipped default is cross-vendor review: at Step 4 (plan review) and Step 6 (code critique), the read-only reviewer roles run in the *other* harness. But the same machinery routes *any* of the four roles to any harness/model — the planner and coder too (the coder write-enabled). Whatever the venue, the CLI is told to read the *same canonical role file* the native subagent uses: one role definition, many execution venues. Resolution, fallback, and reporting are prescribed by [`policies/role-models.md`](../policies/role-models.md). Orchestration and build gates are never delegated — they always run on the invoking session's model.
 
 ## 6. Sources
 

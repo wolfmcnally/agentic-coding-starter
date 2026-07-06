@@ -145,7 +145,7 @@ Copy these files **from this template** into the new project, then run a name su
 - Every file under `policies/` **except** any policy explicitly marked starter-only (currently `policies/anonymize-log-references.md` — the public-repo LOG anonymization rule; the asymmetry is driven by this template's publicness, not by methodology).
 - `briefs/methodology.md` (verbatim — methodology is universal)
 - `briefs/agentic-bootstrap.md` (verbatim — so the next bootstrap from this project is possible)
-- `briefs/cross-agent-invocation.md` (verbatim — the cross-CLI invocation BCPs that `policies/cross-harness-review.md` cites are universal)
+- `briefs/cross-agent-invocation.md` (verbatim — the cross-CLI invocation BCPs that `policies/role-models.md` cites are universal)
 - `briefs/deterministic-orchestration.md` (verbatim — universal draft brief: decision criteria for a deterministic kickoff loop once every supported harness has a parity workflow primitive)
 
 Then create the `.agents/skills/` **directory symlinks** for Codex CLI's native skill discovery. Each is a relative symlink whose target is the canonical skill *directory* (not the SKILL.md file inside it — Codex doesn't follow file-level symlinks inside a skill dir per [openai/codex#11314](https://github.com/openai/codex/issues/11314), but does traverse a symlinked skill directory):
@@ -166,7 +166,7 @@ The `.codex/prompts/<name>.md` files are *file* symlinks pointing at the SKILL.m
 
 **Do not** copy `.claude/skills/stamp/` (this skill itself), `.codex/prompts/stamp.md`, create `.agents/skills/stamp` in the destination, or copy `policies/anonymize-log-references.md`, `bin/check-anonymization.sh`, or `bin/anonymization-denylist.local.example` (and drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`). The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too, and the anonymization rule (and its enforcement script) doesn't apply to private downstream projects. `/learn` and `/teach` *are* carried over — they are universal cross-repo skills that benefit every methodology-following project.
 
-The `bin/` directory, its `bin/README.md` convention preamble, and `policies/mechanistic-vs-intelligence.md` **are** carried over — the deterministic-script home and the mechanistic-vs-intelligence triage are universal methodology. The **universal `bin/role-models`** script carries over too (it backs the universal `/roles` skill), so its `### role-models` entry stays in the destination's `bin/README.md`, and the adaptation pass seeds a default **`role-models.yaml` at the destination root with all four roles set to `default`** (run `<dest>/bin/role-models --reset`, or write the file directly). But because `check-anonymization.sh` is starter-only (excluded above), the adaptation pass must **delete the starter-only `### check-anonymization.sh` entry** from the destination's `bin/README.md`, leaving the convention preamble plus the `role-models` entry.
+The `bin/` directory, its `bin/README.md` convention preamble, and `policies/mechanistic-vs-intelligence.md` **are** carried over — the deterministic-script home and the mechanistic-vs-intelligence triage are universal methodology. The **universal `bin/role-models`** script carries over too (it backs the universal `/roles` skill), so its `### role-models` entry stays in the destination's `bin/README.md`, and the adaptation pass seeds the default **`role-models.yaml` at the destination root** — the harness-aware cross-vendor-review default (reviewer + critic in the other harness, planner + coder native) — by running `<dest>/bin/role-models --reset`. `bin/role-models` runs via `uv` (PEP 723 inline `pyyaml`), so the destination needs `uv` on PATH (already assumed for Python build gates). But because `check-anonymization.sh` is starter-only (excluded above), the adaptation pass must **delete the starter-only `### check-anonymization.sh` entry** from the destination's `bin/README.md`, leaving the convention preamble plus the `role-models` entry.
 
 Because the anonymization policy and its script are starter-only but `code-critic.md` is copied verbatim (above), the adaptation pass must **delete the "External / private-repo references" bullet** from the destination's `.claude/agents/code-critic.md` — it references `bin/check-anonymization.sh` and `policies/anonymize-log-references.md`, neither of which the new project will have.
 
@@ -185,7 +185,7 @@ Author these afresh, using the gathered configuration:
     - `## Project briefs` — list of `briefs/*.md` files specific to this project (initially just `BRIEF.md`).
     - `## Project surfaces` — describe the deliverable (path, what language, what the example or seed code is). When `project_isolation` is on, the surface is `project/`; when off, name the sibling deliverable directories.
     - `## Project conventions` — language, tooling, build-gate command shape for this project.
-    - `## Cross-harness review` — the one-paragraph description plus the activation token, mirroring the template's own subsection. Default `cross-harness-review: enabled` (it self-disables when the other CLI isn't installed, so the default is harmless); note the seeded default in the final report so the owner knows the bit exists. Governed by `policies/cross-harness-review.md`.
+    - `## Model & review venue` — the one-paragraph description mirroring the template's own subsection: which model/harness runs each role is set in `role-models.yaml` (via `/roles`), the shipped default gives cross-vendor review (reviewer + critic in the other harness), and there is no on/off token. Governed by `policies/role-models.md`. (The actual `role-models.yaml` is seeded in Step 2, not here — this subsection just documents it.)
     - `## Project-specific skills` — if the new project carries any skills beyond the universal five (kickoff, methodology, learn, teach, roles), list them here. For most fresh projects, this section is empty (or omitted).
   - Preserve the introductory paragraph that explains the two-zone contract; it is informational and lives outside both markers.
 
@@ -282,7 +282,7 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - `<dest>/bin/role-models --show` runs and prints all four roles as `default` (the seeded config), and `<dest>/bin/README.md` retains the `### role-models` entry but **not** the `### check-anonymization.sh` entry.
 - `<dest>/.agents/skills/stamp` does **not** exist (starter-only, must not propagate).
 - The new `CLAUDE.md`'s catalogs reference every file in `briefs/` and `policies/`.
-- `grep -cE 'cross-harness-review: (enabled|disabled)' <dest>/CLAUDE.md` returns 1 (the activation token was seeded in Project Context), and `<dest>/policies/cross-harness-review.md` and `<dest>/briefs/cross-agent-invocation.md` both exist.
+- `<dest>/role-models.yaml` exists and `<dest>/bin/role-models --show` prints the seeded default (reviewer + critic → the other harness); `<dest>/policies/role-models.md` and `<dest>/briefs/cross-agent-invocation.md` both exist.
 - The project's primary build gate runs clean on the seeded code.
 
 Run the language-specific gate to confirm. For example, for Python with `project_isolation` enabled:
@@ -301,7 +301,7 @@ When the bootstrap finishes cleanly, report to the user:
 
 - The destination path.
 - The project name, slug, primary language, and inferred surfaces.
-- That cross-harness review was seeded `enabled` (per `policies/cross-harness-review.md`) and where to flip the token (`CLAUDE.md` Project Context) if unwanted.
+- That `role-models.yaml` was seeded with the cross-vendor-review default (reviewer + critic run in the other harness) per `policies/role-models.md`, and that `/roles` changes it.
 - The path to the new project's `BRIEF.md` (which the user should flesh out next) and `plan/phase-1.md` (which the user should review before `/kickoff`'ing).
 - The recommended next steps:
   1. `cd <dest>`

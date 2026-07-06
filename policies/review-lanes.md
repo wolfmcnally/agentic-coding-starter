@@ -71,6 +71,6 @@ The stronger the coder model, the larger the fraction of mechanical phases whose
 ## Relationship to other policies
 
 - [`four-canonical-agents.md`](four-canonical-agents.md) — the roles, tool stances, verdict headers, and cycle caps are unchanged. `light` skips one *invocation* of `plan-reviewer`; it changes nothing about the role.
-- [`cross-harness-review.md`](cross-harness-review.md) — lane and venue are orthogonal. In the light lane, the code critique (the only review that runs) still executes in the resolved venue — and venue diversity matters *more* there, since it is the sole independent check.
+- [`role-models.md`](role-models.md) — lane and venue are orthogonal. In the light lane, the code critique (the only review that runs) still executes in the resolved venue — and venue diversity matters *more* there, since it is the sole independent check.
 - [`phase-status.md`](phase-status.md) — `review_lane` is a phase property, not a status. It lives in per-phase frontmatter; status still lives only in `plan/INDEX.md`.
 - [`human-in-the-loop.md`](human-in-the-loop.md) — unchanged. The lane is named in the opening report and END block precisely so the human can veto a `light` declaration before or after the fact.

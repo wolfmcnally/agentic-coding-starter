@@ -1,126 +1,210 @@
-#!/usr/bin/env bash
-#
-# role-models — read/write the per-role model/harness pins for /kickoff.
-#
-# The four canonical roles (planner, reviewer, coder, critic) can each be
-# pinned to a model/harness. /kickoff reads the pins at Step 0a and invokes
-# each pinned role on that model via the cross-harness CLI recipes; unpinned
-# roles keep the default behavior. Orchestration and build gates always run
-# on the current session's model. Governed by policies/role-models.md.
-#
-#   bin/role-models                       show current pins (same as --show)
-#   bin/role-models --show                show current pins
-#   bin/role-models <role>: <model>, ...  set one or more pins, then show
-#   bin/role-models --reset               reset every role to default
-#   bin/role-models --help                this text
-#
-# Roles:  planner reviewer coder critic
-# Models: default | opus | fable | codex
-#   default       → native (the current /kickoff session's model)
-#   opus | fable  → Claude Code harness (claude --model opus|fable)
-#   codex         → Codex harness (codex, its default/latest model)
-#
-# Setting a role to "default" clears its pin. Roles not named are left as-is.
-# Unknown roles or models are rejected non-zero and the config is untouched.
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["pyyaml"]
+# ///
+"""role-models — read/write the harness-aware per-role model pins for /kickoff.
 
-set -euo pipefail
+The four canonical roles (planner, reviewer, coder, critic) can each be pinned
+to a model/harness, scoped by which harness is orchestrating. /kickoff reads the
+pins at Step 0a and invokes each pinned role on that model via the cross-harness
+CLI recipes; unpinned roles run native. Orchestration and build gates always run
+on the current session's model. Governed by policies/role-models.md.
 
-if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-  sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//; $d'
-  exit 0
-fi
+  bin/role-models                              show pins + resolved view
+  bin/role-models --show                       (same)
+  bin/role-models [<harness>] <role>: <model>, ...   set pins in a section
+  bin/role-models --reset                      restore the shipped default
+  bin/role-models --help                       this text
 
-cd "$(git rev-parse --show-toplevel)"
+Harness sections:  default (base layer) | claude | codex
+Roles:             planner reviewer coder critic
+Models:            default | claude | codex | opus | fable
+  default        native — the orchestrator's own session model (no CLI)
+  claude         claude CLI, its configured default model (no --model)
+  codex          codex CLI, its configured default model (no -m)
+  opus | fable   claude --model opus|fable
 
-CONFIG='role-models.yaml'
-ROLES=(planner reviewer coder critic)
-MODELS=(default opus fable codex)
+Resolution for a role R under orchestrating harness H:
+  config[H][R]  if set, else  config['default'][R]  if set, else  default (native)
 
-die() { printf 'role-models: %s\n' "$1" >&2; exit 1; }
+Set grammar: an optional leading harness token (default/claude/codex) selects the
+section; omitted, pins land in the `default` section. Example:
+  bin/role-models claude reviewer: codex, critic: codex
+Unknown harness/role/model is rejected non-zero and the file is left unchanged.
+"""
 
-in_list() {  # $1 = needle, $2.. = haystack
-  local needle="$1"; shift
-  local item
-  for item in "$@"; do [[ "$item" == "$needle" ]] && return 0; done
-  return 1
+import subprocess
+import sys
+
+import yaml
+
+HARNESSES = ["default", "claude", "codex"]
+ROLES = ["planner", "reviewer", "coder", "critic"]
+MODELS = ["default", "claude", "codex", "opus", "fable"]
+CONFIG = "role-models.yaml"
+
+# The shipped default reproduces cross-vendor review out of the box: whichever
+# harness orchestrates, the reviewer and critic run in the *other* one.
+SHIPPED_DEFAULT: dict[str, dict[str, str]] = {
+    "default": {"planner": "default", "reviewer": "default", "coder": "default", "critic": "default"},
+    "claude": {"reviewer": "codex", "critic": "codex"},
+    "codex": {"reviewer": "opus", "critic": "opus"},
 }
 
-# --- Load current pins (default when the file or a line is absent) ----------
-declare -A pin
-for role in "${ROLES[@]}"; do pin[$role]='default'; done
+HEADER = """\
+# role-models.yaml — per-role model/harness pins for /kickoff.
+#
+# Managed by bin/role-models; set via the /roles skill. Governed by
+# policies/role-models.md. This file is a two-level YAML mapping:
+#
+#   <harness>:            # which harness is ORCHESTRATING /kickoff
+#     <role>: <model>     # the model/harness to run that role on
+#
+# Harness sections:  default (base layer, applies under every harness)
+#                    claude  (overrides when Claude Code orchestrates)
+#                    codex   (overrides when Codex orchestrates)
+# Roles:             planner  reviewer  coder  critic
+# Models:            default | claude | codex | opus | fable
+#   default        native — the orchestrator's own session model (no CLI)
+#   claude         claude CLI, its configured default model (no --model)
+#   codex          codex CLI, its configured default model (no -m)
+#   opus | fable   claude --model opus|fable
+#
+# Resolution for role R under orchestrating harness H:
+#   H's section, else the default section, else native.
+# So the block below routes reviewer+critic to the *other* harness by default
+# (cross-vendor review), and leaves planner+coder native.
+"""
 
-if [[ -f "$CONFIG" ]]; then
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    line="${line%%#*}"                                    # strip comments
-    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
-    [[ "$line" == *:* ]] || continue
-    key="${line%%:*}"; val="${line#*:}"
-    key="$(printf '%s' "$key" | tr -d '[:space:]')"
-    val="$(printf '%s' "$val" | tr -d '[:space:]')"
-    in_list "$key" "${ROLES[@]}" && pin[$key]="$val"
-  done < "$CONFIG"
-fi
 
-show() {
-  printf '%-9s %s\n' 'planner:'  "${pin[planner]}"
-  printf '%-9s %s\n' 'reviewer:' "${pin[reviewer]}"
-  printf '%-9s %s\n' 'coder:'    "${pin[coder]}"
-  printf '%-9s %s\n' 'critic:'   "${pin[critic]}"
+def die(msg: str) -> "None":
+    sys.stderr.write(f"role-models: {msg}\n")
+    raise SystemExit(1)
+
+
+def repo_root() -> str:
+    return subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+
+
+def load() -> dict[str, dict[str, str]]:
+    """Load the config leniently, keeping only known harness/role/model keys."""
+    try:
+        with open(CONFIG) as fh:
+            raw = yaml.safe_load(fh) or {}
+    except FileNotFoundError:
+        return {}
+    if not isinstance(raw, dict):
+        die(f"{CONFIG} is not a YAML mapping")
+    cfg: dict[str, dict[str, str]] = {}
+    for harness, roles in raw.items():
+        if harness not in HARNESSES or not isinstance(roles, dict):
+            sys.stderr.write(f"role-models: ignoring unknown section '{harness}' in {CONFIG}\n")
+            continue
+        for role, model in roles.items():
+            if role in ROLES and model in MODELS:
+                cfg.setdefault(harness, {})[role] = str(model)
+            else:
+                sys.stderr.write(f"role-models: ignoring '{harness}.{role}: {model}' in {CONFIG}\n")
+    return cfg
+
+
+def dump(cfg: dict[str, dict[str, str]]) -> None:
+    """Write the config canonically: sections and roles in fixed order, with the header."""
+    ordered = {
+        h: {r: cfg[h][r] for r in ROLES if r in cfg[h]}
+        for h in HARNESSES if cfg.get(h)
+    }
+    body = yaml.safe_dump(ordered, sort_keys=False, default_flow_style=False, indent=2)
+    with open(CONFIG, "w") as fh:
+        fh.write(HEADER + "\n" + body)
+
+
+def detect_harness() -> str:
+    import os
+    return "claude" if os.environ.get("CLAUDECODE") == "1" else "codex"
+
+
+def resolve(cfg: dict[str, dict[str, str]], harness: str) -> dict[str, str]:
+    out = {}
+    for role in ROLES:
+        out[role] = cfg.get(harness, {}).get(role) or cfg.get("default", {}).get(role) or "default"
+    return out
+
+
+VENUE = {
+    "default": "native (session model)",
+    "claude": "claude CLI (default model)",
+    "codex": "codex CLI (default model)",
+    "opus": "claude --model opus",
+    "fable": "claude --model fable",
 }
 
-write_config() {
-  {
-    printf '# role-models.yaml — per-role model/harness pins for /kickoff.\n'
-    printf '#\n'
-    printf '# Managed by bin/role-models; set via the /roles skill. One role per line,\n'
-    printf '# "role: model". Governed by policies/role-models.md.\n'
-    printf '#\n'
-    printf '# Roles:  planner reviewer coder critic\n'
-    printf '# Models: default | opus | fable | codex\n'
-    printf '#   default       → native (the current /kickoff session'\''s model)\n'
-    printf '#   opus | fable  → Claude Code harness (claude --model opus|fable)\n'
-    printf '#   codex         → Codex harness (codex, its default/latest model)\n'
-    printf '\n'
-    for role in "${ROLES[@]}"; do printf '%s: %s\n' "$role" "${pin[$role]}"; done
-  } > "$CONFIG"
-}
 
-# --- No args or --show: report and exit ------------------------------------
-if [[ $# -eq 0 || "${1:-}" == "--show" ]]; then
-  show
-  exit 0
-fi
+def show(cfg: dict[str, dict[str, str]]) -> None:
+    if cfg:
+        print("Configured pins (by orchestrating harness):")
+        for h in HARNESSES:
+            if cfg.get(h):
+                print(f"  {h}:")
+                for r in ROLES:
+                    if r in cfg[h]:
+                        print(f"    {r:<9} {cfg[h][r]}")
+    else:
+        print(f"(no {CONFIG} — every role runs native)")
+    h = detect_harness()
+    print(f"\nResolved for this harness ({h}):")
+    for role, value in resolve(cfg, h).items():
+        print(f"  {role:<9} {value:<8} → {VENUE[value]}")
 
-# --- --reset: all roles to default -----------------------------------------
-if [[ "${1:-}" == "--reset" ]]; then
-  for role in "${ROLES[@]}"; do pin[$role]='default'; done
-  write_config
-  show
-  exit 0
-fi
 
-# --- Set pins: parse "role: model, role: model, ..." from all args ---------
-# Shell word-splitting is irrelevant: rejoin every arg, then split on commas.
-raw="$*"
-staged_roles=()
-staged_models=()
+def set_pins(argv: list[str]) -> None:
+    section = "default"
+    if argv and ":" not in argv[0] and argv[0].lower() in HARNESSES:
+        section = argv[0].lower()
+        argv = argv[1:]
+    raw = " ".join(argv)
+    staged: list[tuple[str, str]] = []
+    for pair in raw.split(","):
+        if not pair.strip():
+            continue
+        if ":" not in pair:
+            die(f"expected 'role: model', got '{pair.strip()}'")
+        role, model = pair.split(":", 1)
+        role = role.strip().lower()
+        model = model.strip().lower()
+        if role not in ROLES:
+            die(f"unknown role '{role}' (roles: {' '.join(ROLES)})")
+        if model not in MODELS:
+            die(f"unknown model '{model}' (models: {' '.join(MODELS)})")
+        staged.append((role, model))
+    if not staged:
+        die("no pins given (usage: role-models [<harness>] <role>: <model>, ...)")
+    cfg = load()
+    for role, model in staged:
+        cfg.setdefault(section, {})[role] = model
+    dump(cfg)
+    show(load())
 
-IFS=',' read -ra pairs <<< "$raw"
-for pair in "${pairs[@]}"; do
-  [[ "$pair" =~ ^[[:space:]]*$ ]] && continue
-  [[ "$pair" == *:* ]] || die "expected 'role: model', got '$pair'"
-  role="${pair%%:*}"; model="${pair#*:}"
-  role="$(printf '%s' "$role" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
-  model="$(printf '%s' "$model" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
-  in_list "$role" "${ROLES[@]}"   || die "unknown role '$role' (roles: ${ROLES[*]})"
-  in_list "$model" "${MODELS[@]}" || die "unknown model '$model' (models: ${MODELS[*]})"
-  staged_roles+=("$role")
-  staged_models+=("$model")
-done
 
-[[ ${#staged_roles[@]} -eq 0 ]] && die "no pins given (usage: role-models <role>: <model>, ...)"
+def main() -> None:
+    args = sys.argv[1:]
+    if args and args[0] in ("--help", "-h"):
+        print(__doc__, end="")
+        return
+    import os
+    os.chdir(repo_root())
+    if not args or args[0] == "--show":
+        show(load())
+    elif args[0] == "--reset":
+        dump(SHIPPED_DEFAULT)
+        show(load())
+    else:
+        set_pins(args)
 
-# All valid — apply and persist.
-for i in "${!staged_roles[@]}"; do pin[${staged_roles[$i]}]="${staged_models[$i]}"; done
-write_config
-show
+
+if __name__ == "__main__":
+    main()
