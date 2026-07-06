@@ -114,13 +114,13 @@ Cross-harness parity: `.codex/agents/code-critic.toml` unchanged (thin pointer, 
 Manual checks for user: review the new policy's voice against the rest of `policies/`; confirm `bin/` (vs. `scripts/`) is the name you want every derived project to inherit; the exec bit on `bin/check-anonymization.sh` survived the rename.
 
 ## 2026-06-20 05:30 — TAUGHT FROM TEMPLATE
-Source: winifred @ 9272d2f
+Source: winifred @ <commit>
 
 Items applied: 1, by tier T1=0/T2=1/T3=0/T4=0.
 Parity heals applied: 0 (AUTO); 0 surfaced as DECIDE — parity surfaces already clean (AGENTS.md symlink, all .codex/prompts file-symlinks, all .agents/skills dir-symlinks, cross-harness-review token present and enabled).
 Stale-in-light-of-teaching migrations: 0 (AUTO); 0 DECIDE; 0 DEFER — the redirect is additive to existing recipes; no catalog/convention/naming drift.
 
-1. **cross-harness-review stdin-redirect fix** (T2; winifred `9272d2f`). `codex exec` / `codex exec resume` (and `claude -p`) read stdin even with the prompt passed as an argument; when the call is backgrounded/detached with an open non-TTY stdin they block on `Reading additional input from stdin...` until the wall-clock timeout discards the call. A foreground shell closes stdin and hides the bug — which is why winifred's first cut survived several review rounds before a backgrounded Phase 10.3 code review hung at the 900 s guard. Fix: add the unconditional `</dev/null` redirect to every recipe + rationale. Applied to: policies/cross-harness-review.md (codex-exec, claude-p, and codex-resume recipes + both Non-negotiable paragraphs), briefs/cross-agent-invocation.md (§2 codex-exec + resume recipes + a stdin-trap BCP bullet; §3 claude-p recipe + bullet), .claude/skills/kickoff/SKILL.md (Step-4 recipe sketch + mandatory-redirect note).
+1. **cross-harness-review stdin-redirect fix** (T2; winifred). `codex exec` / `codex exec resume` (and `claude -p`) read stdin even with the prompt passed as an argument; when the call is backgrounded/detached with an open non-TTY stdin they block on `Reading additional input from stdin...` until the wall-clock timeout discards the call. A foreground shell closes stdin and hides the bug — which is why winifred's first cut survived several review rounds before a backgrounded Phase 10.3 code review hung at the 900 s guard. Fix: add the unconditional `</dev/null` redirect to every recipe + rationale. Applied to: policies/cross-harness-review.md (codex-exec, claude-p, and codex-resume recipes + both Non-negotiable paragraphs), briefs/cross-agent-invocation.md (§2 codex-exec + resume recipes + a stdin-trap BCP bullet; §3 claude-p recipe + bullet), .claude/skills/kickoff/SKILL.md (Step-4 recipe sketch + mandatory-redirect note).
 
 Patterns to feed back via /learn (target → source): None identified — the starter was behind winifred on this surface.
 Files touched in target: 3 (policies/cross-harness-review.md, briefs/cross-agent-invocation.md, .claude/skills/kickoff/SKILL.md).
