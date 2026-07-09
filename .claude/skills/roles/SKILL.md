@@ -6,8 +6,9 @@ description: >-
   the current pins. Writes the repo's role-models.yaml so the orchestrator
   invokes each role on the resolved model. Orchestration and build gates always
   stay on the current session's model. Invoke as /roles (show), /roles
-  [<harness>] <role>: <model>, ... (set), or /roles reset (restore defaults).
-argument-hint: "[<harness>] <role>: <model>, ... | reset"
+  [<harness>] <role>: <model>[@<effort>], ... (set), or /roles reset (restore
+  defaults).
+argument-hint: "[<harness>] <role>: <model>[@<effort>], ... | reset"
 allowed-tools: Bash
 ---
 
@@ -27,6 +28,14 @@ which harness is orchestrating. This is a thin wrapper over the deterministic
   - `claude` — `claude` CLI, its configured default model.
   - `codex` — `codex` CLI, its configured default model.
   - `opus`, `fable` — `claude --model opus|fable`.
+  - `sol`, `terra`, `luna` — `codex --model gpt-5.6-sol|terra|luna`.
+- **Reasoning effort:** append `@low`, `@medium`, `@high`, or `@xhigh` to a
+  Codex- or Claude-routed value when the role needs an explicit effort. Claude
+  values additionally accept `@max`. Examples: `sol@medium`, `opus@high`,
+  `fable@max`, or `claude@medium`. Omit the suffix to preserve the model's
+  configured/default effort. Effort suffixes are rejected for `default` because
+  `/roles` cannot control the orchestrator's native session effort. `max` is
+  Claude-only; `Ultra` is a product execution mode rather than a role-pin effort.
 
 Resolution for a role under harness `H`: `H`'s section, else the `default`
 section, else native. The shipped default routes reviewer + critic to the *other*
@@ -38,9 +47,13 @@ Raw arguments: `!{ARGUMENTS}`
 
 - **Empty** → show current pins + the resolved view for this harness: run `./bin/role-models --show`.
 - **`reset`** (or `--reset`) → restore the shipped default: run `./bin/role-models --reset`.
-- **One or more `<role>: <model>` pairs**, optionally preceded by a **harness token** (`default`/`claude`/`codex`) → pass the arguments straight through: `./bin/role-models <args>`. With no harness token the pins land in the `default` section. The script tolerates the shell splitting the pairs — it rejoins and re-parses.
+- **One or more `<role>: <model>[@<effort>]` pairs**, optionally preceded by a
+  **harness token** (`default`/`claude`/`codex`) → pass the arguments straight
+  through: `./bin/role-models <args>`. With no harness token the pins land in the
+  `default` section. The script tolerates the shell splitting the pairs — it
+  rejoins and re-parses.
 
-If the request is vague or uses a synonym (e.g. "when I'm on Codex, review with opus", "put the coder on the big model"), resolve it to concrete `[harness] role: model` pairs using the vocabulary above, state the mapping you chose, then run the script. That interpretation is the only judgment this skill makes. If genuinely ambiguous, ask rather than guess.
+If the request is vague or uses a synonym (e.g. "when I'm on Codex, review with opus", "put the coder on the big model"), resolve it to concrete `[harness] role: model[@effort]` pairs using the vocabulary above, state the mapping you chose, then run the script. That interpretation is the only judgment this skill makes. If genuinely ambiguous, ask rather than guess.
 
 ## Run
 
@@ -48,6 +61,18 @@ Invoke the script with the resolved arguments, e.g.:
 
 ```
 ./bin/role-models codex reviewer: opus, critic: opus
+```
+
+An explicit GPT-5.6 configuration uses the code names directly:
+
+```
+./bin/role-models claude reviewer: sol@medium, critic: terra@low
+```
+
+Claude Code models use the same suffix grammar:
+
+```
+./bin/role-models codex reviewer: opus@high, critic: fable@max
 ```
 
 The script validates every pair, rewrites `role-models.yaml` (preserving the

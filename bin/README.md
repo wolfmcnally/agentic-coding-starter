@@ -13,7 +13,7 @@
 
 ### `role-models` — harness-aware per-role model/venue for `/kickoff`
 
-Reads and writes the repo-root `role-models.yaml` — a two-level `harness → role → model` config that resolves which model/harness runs each of the four canonical roles (planner, reviewer, coder, critic), scoped by which harness is orchestrating. Backs the `/roles` skill (the parse/validate/write is the mechanical half; the skill is the thin wrapper). Validates every harness/role/model against a closed vocabulary and rejects unknowns non-zero, leaving the config untouched. A Python script run via `uv` (PEP 723 inline `pyyaml`). Governed by [`policies/role-models.md`](../policies/role-models.md).
+Reads and writes the repo-root `role-models.yaml` — a two-level `harness → role → model[@effort]` config that resolves which model, implied harness, and optional reasoning effort runs each of the four canonical roles (planner, reviewer, coder, critic), scoped by which harness is orchestrating. Backs the `/roles` skill (the parse/validate/write is the mechanical half; the skill is the thin wrapper). Validates every harness, role, model, effort, and model/effort combination against a closed vocabulary and rejects unknowns non-zero, leaving the config untouched. GPT-5.6 code names map deterministically: `sol` → `gpt-5.6-sol`, `terra` → `gpt-5.6-terra`, `luna` → `gpt-5.6-luna`; Claude pins use the same suffix grammar and additionally support `@max`. A Python script run via `uv` (PEP 723 inline `pyyaml`). Governed by [`policies/role-models.md`](../policies/role-models.md).
 
 ```bash
 ./bin/role-models --show                                   # config + resolved-for-this-harness view
@@ -21,6 +21,14 @@ Reads and writes the repo-root `role-models.yaml` — a two-level `harness → r
 
 ```bash
 ./bin/role-models codex reviewer: opus, critic: opus       # set pins in a harness section
+```
+
+```bash
+./bin/role-models claude reviewer: sol@medium, critic: terra@low
+```
+
+```bash
+./bin/role-models codex reviewer: opus@high, critic: fable@max
 ```
 
 ```bash

@@ -1,20 +1,26 @@
-# role-models.yaml — per-role model/harness pins for /kickoff.
+# role-models.yaml — per-role model/effort pins for /kickoff.
 #
 # Managed by bin/role-models; set via the /roles skill. Governed by
 # policies/role-models.md. This file is a two-level YAML mapping:
 #
 #   <harness>:            # which harness is ORCHESTRATING /kickoff
-#     <role>: <model>     # the model/harness to run that role on
+#     <role>: <model>[@<effort>]  # model code name implies its CLI
 #
 # Harness sections:  default (base layer, applies under every harness)
 #                    claude  (overrides when Claude Code orchestrates)
 #                    codex   (overrides when Codex orchestrates)
 # Roles:             planner  reviewer  coder  critic
-# Models:            default | claude | codex | opus | fable
+# Models:            default | claude | codex | opus | fable | sol | terra | luna
+# Effort suffix:     @low | @medium | @high | @xhigh  (Codex or Claude)
+#                    @max                                (Claude only)
 #   default        native — the orchestrator's own session model (no CLI)
 #   claude         claude CLI, its configured default model (no --model)
 #   codex          codex CLI, its configured default model (no -m)
 #   opus | fable   claude --model opus|fable
+#   sol            codex -m gpt-5.6-sol
+#   terra          codex -m gpt-5.6-terra
+#   luna           codex -m gpt-5.6-luna
+# Append an effort when needed: sol@medium, terra@low, opus@high, fable@max.
 #
 # Resolution for role R under orchestrating harness H:
 #   H's section, else the default section, else native.

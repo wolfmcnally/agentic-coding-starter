@@ -3,27 +3,37 @@
 # requires-python = ">=3.11"
 # dependencies = ["pyyaml"]
 # ///
-"""role-models — read/write the harness-aware per-role model pins for /kickoff.
+"""role-models — read/write harness-aware per-role model/effort pins for /kickoff.
 
 The four canonical roles (planner, reviewer, coder, critic) can each be pinned
-to a model/harness, scoped by which harness is orchestrating. /kickoff reads the
-pins at Step 0a and invokes each pinned role on that model via the cross-harness
-CLI recipes; unpinned roles run native. Orchestration and build gates always run
-on the current session's model. Governed by policies/role-models.md.
+to a model and optional reasoning effort, scoped by which harness is
+orchestrating. The model code name implies its CLI. /kickoff reads the pins at
+Step 0a and invokes each pinned role through the cross-harness CLI recipes;
+unpinned roles run native. Orchestration and build gates always run on the
+current session's model. Governed by policies/role-models.md.
 
   bin/role-models                              show pins + resolved view
   bin/role-models --show                       (same)
-  bin/role-models [<harness>] <role>: <model>, ...   set pins in a section
+  bin/role-models [<harness>] <role>: <model>[@<effort>], ...
   bin/role-models --reset                      restore the shipped default
   bin/role-models --help                       this text
 
 Harness sections:  default (base layer) | claude | codex
 Roles:             planner reviewer coder critic
-Models:            default | claude | codex | opus | fable
+Models:            default | claude | codex | opus | fable | sol | terra | luna
+Effort suffix:     @low | @medium | @high | @xhigh  (Codex or Claude)
+                   @max                                (Claude only)
   default        native — the orchestrator's own session model (no CLI)
   claude         claude CLI, its configured default model (no --model)
   codex          codex CLI, its configured default model (no -m)
   opus | fable   claude --model opus|fable
+  sol            codex -m gpt-5.6-sol
+  terra          codex -m gpt-5.6-terra
+  luna           codex -m gpt-5.6-luna
+
+Append an effort when a role needs an explicit reasoning level:
+  bin/role-models claude reviewer: sol@medium, critic: terra@low
+  bin/role-models codex reviewer: opus@high, critic: fable@max
 
 Resolution for a role R under orchestrating harness H:
   config[H][R]  if set, else  config['default'][R]  if set, else  default (native)
@@ -31,7 +41,8 @@ Resolution for a role R under orchestrating harness H:
 Set grammar: an optional leading harness token (default/claude/codex) selects the
 section; omitted, pins land in the `default` section. Example:
   bin/role-models claude reviewer: codex, critic: codex
-Unknown harness/role/model is rejected non-zero and the file is left unchanged.
+Unknown harness, role, model, effort, or invalid combination is rejected
+non-zero and the file is left unchanged.
 """
 
 import subprocess
@@ -41,7 +52,20 @@ import yaml
 
 HARNESSES = ["default", "claude", "codex"]
 ROLES = ["planner", "reviewer", "coder", "critic"]
-MODELS = ["default", "claude", "codex", "opus", "fable"]
+MODELS = ["default", "claude", "codex", "opus", "fable", "sol", "terra", "luna"]
+CODEX_MODELS = {
+    "codex": None,
+    "sol": "gpt-5.6-sol",
+    "terra": "gpt-5.6-terra",
+    "luna": "gpt-5.6-luna",
+}
+CLAUDE_MODELS = {
+    "claude": None,
+    "opus": "opus",
+    "fable": "fable",
+}
+CODEX_EFFORTS = ["low", "medium", "high", "xhigh"]
+CLAUDE_EFFORTS = ["low", "medium", "high", "xhigh", "max"]
 CONFIG = "role-models.yaml"
 
 # The shipped default reproduces cross-vendor review out of the box: whichever
@@ -53,23 +77,29 @@ SHIPPED_DEFAULT: dict[str, dict[str, str]] = {
 }
 
 HEADER = """\
-# role-models.yaml — per-role model/harness pins for /kickoff.
+# role-models.yaml — per-role model/effort pins for /kickoff.
 #
 # Managed by bin/role-models; set via the /roles skill. Governed by
 # policies/role-models.md. This file is a two-level YAML mapping:
 #
 #   <harness>:            # which harness is ORCHESTRATING /kickoff
-#     <role>: <model>     # the model/harness to run that role on
+#     <role>: <model>[@<effort>]  # model code name implies its CLI
 #
 # Harness sections:  default (base layer, applies under every harness)
 #                    claude  (overrides when Claude Code orchestrates)
 #                    codex   (overrides when Codex orchestrates)
 # Roles:             planner  reviewer  coder  critic
-# Models:            default | claude | codex | opus | fable
+# Models:            default | claude | codex | opus | fable | sol | terra | luna
+# Effort suffix:     @low | @medium | @high | @xhigh  (Codex or Claude)
+#                    @max                                (Claude only)
 #   default        native — the orchestrator's own session model (no CLI)
 #   claude         claude CLI, its configured default model (no --model)
 #   codex          codex CLI, its configured default model (no -m)
 #   opus | fable   claude --model opus|fable
+#   sol            codex -m gpt-5.6-sol
+#   terra          codex -m gpt-5.6-terra
+#   luna           codex -m gpt-5.6-luna
+# Append an effort when needed: sol@medium, terra@low, opus@high, fable@max.
 #
 # Resolution for role R under orchestrating harness H:
 #   H's section, else the default section, else native.
@@ -90,6 +120,41 @@ def repo_root() -> str:
     ).stdout.strip()
 
 
+def parse_pin(pin: str) -> tuple[str, str | None]:
+    """Return (model, effort), rejecting values outside the closed grammar."""
+    model, separator, effort = str(pin).lower().partition("@")
+    if model not in MODELS:
+        die(f"unknown model '{model}' (models: {' '.join(MODELS)})")
+    if not separator:
+        return model, None
+    if not effort or "@" in effort:
+        die(f"invalid model/effort pin '{pin}' (expected model@effort)")
+    efforts = supported_efforts(model)
+    if not efforts:
+        die(f"reasoning effort cannot be overridden for '{model}'")
+    if effort not in efforts:
+        die(f"unknown reasoning effort '{effort}' for '{model}' (efforts: {' '.join(efforts)})")
+    return model, effort
+
+
+def supported_efforts(model: str) -> list[str]:
+    if model in CODEX_MODELS:
+        return CODEX_EFFORTS
+    if model in CLAUDE_MODELS:
+        return CLAUDE_EFFORTS
+    return []
+
+
+def valid_pin(pin: object) -> bool:
+    raw = str(pin).lower()
+    model, separator, effort = raw.partition("@")
+    if model not in MODELS:
+        return False
+    if not separator:
+        return True
+    return bool(effort and "@" not in effort and effort in supported_efforts(model))
+
+
 def load() -> dict[str, dict[str, str]]:
     """Load the config leniently, keeping only known harness/role/model keys."""
     try:
@@ -104,11 +169,11 @@ def load() -> dict[str, dict[str, str]]:
         if harness not in HARNESSES or not isinstance(roles, dict):
             sys.stderr.write(f"role-models: ignoring unknown section '{harness}' in {CONFIG}\n")
             continue
-        for role, model in roles.items():
-            if role in ROLES and model in MODELS:
-                cfg.setdefault(harness, {})[role] = str(model)
+        for role, pin in roles.items():
+            if role in ROLES and valid_pin(pin):
+                cfg.setdefault(harness, {})[role] = str(pin).lower()
             else:
-                sys.stderr.write(f"role-models: ignoring '{harness}.{role}: {model}' in {CONFIG}\n")
+                sys.stderr.write(f"role-models: ignoring '{harness}.{role}: {pin}' in {CONFIG}\n")
     return cfg
 
 
@@ -144,6 +209,18 @@ VENUE = {
 }
 
 
+def describe_pin(pin: str) -> str:
+    model, effort = parse_pin(pin)
+    codex_model = CODEX_MODELS.get(model)
+    description = f"codex --model {codex_model}" if codex_model else VENUE[model]
+    if effort:
+        if model in CODEX_MODELS:
+            description += f" -c 'model_reasoning_effort=\"{effort}\"'"
+        else:
+            description += f" --effort {effort}"
+    return description
+
+
 def show(cfg: dict[str, dict[str, str]]) -> None:
     if cfg:
         print("Configured pins (by orchestrating harness):")
@@ -158,7 +235,7 @@ def show(cfg: dict[str, dict[str, str]]) -> None:
     h = detect_harness()
     print(f"\nResolved for this harness ({h}):")
     for role, value in resolve(cfg, h).items():
-        print(f"  {role:<9} {value:<8} → {VENUE[value]}")
+        print(f"  {role:<9} {value:<16} → {describe_pin(value)}")
 
 
 def set_pins(argv: list[str]) -> None:
@@ -172,20 +249,19 @@ def set_pins(argv: list[str]) -> None:
         if not pair.strip():
             continue
         if ":" not in pair:
-            die(f"expected 'role: model', got '{pair.strip()}'")
-        role, model = pair.split(":", 1)
+            die(f"expected 'role: model[@effort]', got '{pair.strip()}'")
+        role, pin = pair.split(":", 1)
         role = role.strip().lower()
-        model = model.strip().lower()
+        pin = pin.strip().lower()
         if role not in ROLES:
             die(f"unknown role '{role}' (roles: {' '.join(ROLES)})")
-        if model not in MODELS:
-            die(f"unknown model '{model}' (models: {' '.join(MODELS)})")
-        staged.append((role, model))
+        parse_pin(pin)
+        staged.append((role, pin))
     if not staged:
-        die("no pins given (usage: role-models [<harness>] <role>: <model>, ...)")
+        die("no pins given (usage: role-models [<harness>] <role>: <model>[@<effort>], ...)")
     cfg = load()
-    for role, model in staged:
-        cfg.setdefault(section, {})[role] = model
+    for role, pin in staged:
+        cfg.setdefault(section, {})[role] = pin
     dump(cfg)
     show(load())
 
