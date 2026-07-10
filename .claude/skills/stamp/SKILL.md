@@ -35,7 +35,8 @@ Before changing anything, verify:
    - `readlink AGENTS.md` returns `CLAUDE.md`.
    - `.claude/agents/` contains exactly `phase-planner.md`, `plan-reviewer.md`, `phase-coder.md`, `code-critic.md`.
    - `.claude/skills/kickoff/SKILL.md`, `.claude/skills/methodology/SKILL.md`, and `.claude/skills/roles/SKILL.md` exist.
-   - `bin/role-models` exists and is executable.
+   - `bin/kickoff-config` exists and is executable.
+   - `kickoff.yaml` exists and `./bin/kickoff-config show` validates both sections.
    - `.codex/agents/*.toml` has one TOML file per canonical agent.
    - `briefs/BRIEF.md`, `briefs/methodology.md`, `briefs/agentic-bootstrap.md` exist.
    - `plan/INDEX.md` and `plan/phase-1.md` exist.
@@ -147,6 +148,7 @@ Copy these files **from this template** into the new project, then run a name su
 - `briefs/agentic-bootstrap.md` (verbatim — so the next bootstrap from this project is possible)
 - `briefs/cross-agent-invocation.md` (verbatim — the cross-CLI invocation BCPs that `policies/role-models.md` cites are universal)
 - `briefs/deterministic-orchestration.md` (verbatim — universal draft brief: decision criteria for a deterministic kickoff loop once every supported harness has a parity workflow primitive)
+- `tests/test_kickoff_config.py` (verbatim — universal behavioral coverage for the manager/watchdog contract)
 
 Then create the `.agents/skills/` **directory symlinks** for Codex CLI's native skill discovery. Each is a relative symlink whose target is the canonical skill *directory* (not the SKILL.md file inside it — Codex doesn't follow file-level symlinks inside a skill dir per [openai/codex#11314](https://github.com/openai/codex/issues/11314), but does traverse a symlinked skill directory):
 
@@ -166,7 +168,7 @@ The `.codex/prompts/<name>.md` files are *file* symlinks pointing at the SKILL.m
 
 **Do not** copy `.claude/skills/stamp/` (this skill itself), `.codex/prompts/stamp.md`, create `.agents/skills/stamp` in the destination, or copy `policies/anonymize-log-references.md`, `bin/check-anonymization.sh`, or `bin/anonymization-denylist.local.example` (and drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`). The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too, and the anonymization rule (and its enforcement script) doesn't apply to private downstream projects. `/learn` and `/teach` *are* carried over — they are universal cross-repo skills that benefit every methodology-following project.
 
-The `bin/` directory, its `bin/README.md` convention preamble, and `policies/mechanistic-vs-intelligence.md` **are** carried over — the deterministic-script home and the mechanistic-vs-intelligence triage are universal methodology. The **universal `bin/role-models`** script carries over too (it backs the universal `/roles` skill), so its `### role-models` entry stays in the destination's `bin/README.md`, and the adaptation pass seeds the default **`role-models.yaml` at the destination root** — the harness-aware cross-vendor-review default (reviewer + critic in the other harness, planner + coder native) — by running `<dest>/bin/role-models --reset`. `bin/role-models` runs via `uv` (PEP 723 inline `pyyaml`), so the destination needs `uv` on PATH (already assumed for Python build gates). But because `check-anonymization.sh` is starter-only (excluded above), the adaptation pass must **delete the starter-only `### check-anonymization.sh` entry** from the destination's `bin/README.md`, leaving the convention preamble plus the `role-models` entry.
+The `bin/` directory, its `bin/README.md` convention preamble, and `policies/mechanistic-vs-intelligence.md` **are** carried over. The universal `bin/kickoff-config` manager and human-editable `kickoff.yaml` carry over too. Seed both config sections by running `<dest>/bin/kickoff-config reset all`; this preserves data under `extensions` if the destination already has it. The manager runs via `uv` with PEP 723 `ruamel.yaml`, so the destination needs `uv` on PATH. Keep its script entry in `bin/README.md`; delete only the starter-only anonymization entry.
 
 Because the anonymization policy and its script are starter-only but `code-critic.md` is copied verbatim (above), the adaptation pass must **delete the "External / private-repo references" bullet** from the destination's `.claude/agents/code-critic.md` — it references `bin/check-anonymization.sh` and `policies/anonymize-log-references.md`, neither of which the new project will have.
 
@@ -185,7 +187,7 @@ Author these afresh, using the gathered configuration:
     - `## Project briefs` — list of `briefs/*.md` files specific to this project (initially just `BRIEF.md`).
     - `## Project surfaces` — describe the deliverable (path, what language, what the example or seed code is). When `project_isolation` is on, the surface is `project/`; when off, name the sibling deliverable directories.
     - `## Project conventions` — language, tooling, build-gate command shape for this project.
-    - `## Model & review venue` — the one-paragraph description mirroring the template's own subsection: which model/harness runs each role is set in `role-models.yaml` (via `/roles`), the shipped default gives cross-vendor review (reviewer + critic in the other harness), and there is no on/off token. Governed by `policies/role-models.md`. (The actual `role-models.yaml` is seeded in Step 2, not here — this subsection just documents it.)
+    - `## Model & review venue` — describe `kickoff.yaml` as the human-editable source for separate model/effort fields and execution budgets; `/roles` is an optional validated editor; the shipped default gives cross-vendor review. Governed by the two role policies.
     - `## Project-specific skills` — if the new project carries any skills beyond the universal five (kickoff, methodology, learn, teach, roles), list them here. For most fresh projects, this section is empty (or omitted).
   - Preserve the introductory paragraph that explains the two-zone contract; it is informational and lives outside both markers.
 
@@ -248,7 +250,7 @@ Write a minimal-but-runnable code skeleton in the project's primary language. Th
 
 **Other languages:** apply the same pattern — package metadata, one source file with a stub entry, one passing test, a concise README, the language's `.gitignore` inside `project/`.
 
-The artifact's `README.md` is short and self-contained (no `..` references) per [`policies/project-isolation.md`](../../../policies/project-isolation.md). The deliverable's `.gitignore` lives inside `project/` so submodule extraction carries it. The repo's top-level `.gitignore` lists only editor/OS files and the agentic harness runtime state. The repo's didactic top-level `README.md` describes the methodology and points at `project/` for the artifact.
+The artifact's `README.md` is short and self-contained (no `..` references) per [`policies/project-isolation.md`](../../../policies/project-isolation.md). The deliverable's `.gitignore` lives inside `project/` so submodule extraction carries it. The repo's top-level `.gitignore` lists only editor/OS files and agentic harness runtime state, including `.kickoff/` local timing telemetry. The repo's didactic top-level `README.md` describes the methodology and points at `project/` for the artifact.
 
 When `project_isolation` is disabled (polyglot), there is no `project/.gitignore`; all language entries live at the repo root in a single combined `.gitignore`.
 
@@ -279,10 +281,11 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - `ls <dest>/.claude/skills/methodology/` contains `SKILL.md`.
 - `ls <dest>/.claude/skills/stamp/` does **not** exist (we did not transfer it).
 - For each name in {kickoff, methodology, learn, teach, roles}: `readlink <dest>/.agents/skills/<name>` returns `../../.claude/skills/<name>`, `test -L <dest>/.agents/skills/<name>` and `test -d <dest>/.agents/skills/<name>` both pass, and `<dest>/.agents/skills/<name>/SKILL.md` is reachable through the directory symlink.
-- `<dest>/bin/role-models --show` runs and prints all four roles as `default` (the seeded config), and `<dest>/bin/README.md` retains the `### role-models` entry but **not** the `### check-anonymization.sh` entry.
+- `<dest>/bin/kickoff-config show` runs; `<dest>/bin/README.md` retains its universal entry but **not** the `### check-anonymization.sh` entry.
 - `<dest>/.agents/skills/stamp` does **not** exist (starter-only, must not propagate).
 - The new `CLAUDE.md`'s catalogs reference every file in `briefs/` and `policies/`.
-- `<dest>/role-models.yaml` exists and `<dest>/bin/role-models --show` prints the seeded default (reviewer + critic → the other harness); `<dest>/policies/role-models.md` and `<dest>/briefs/cross-agent-invocation.md` both exist.
+- `<dest>/kickoff.yaml` exists; `show` prints the seeded cross-vendor model routing and portable timeout values; a scoped model edit preserves timeout comments/values; `<dest>/.gitignore` includes `.kickoff/`; the two role policies and invocation brief exist.
+- `cd <dest> && uv run --with pytest pytest -q tests/test_kickoff_config.py` passes independently of the deliverable's language/toolchain.
 - The project's primary build gate runs clean on the seeded code.
 
 Run the language-specific gate to confirm. For example, for Python with `project_isolation` enabled:
@@ -301,7 +304,7 @@ When the bootstrap finishes cleanly, report to the user:
 
 - The destination path.
 - The project name, slug, primary language, and inferred surfaces.
-- That `role-models.yaml` was seeded with the cross-vendor-review default (reviewer + critic run in the other harness) per `policies/role-models.md`, and that `/roles` changes it.
+- That human-editable `kickoff.yaml` was seeded with cross-vendor model routing and portable role budgets; model and effort are separate fields; `/roles` edits model fields; local telemetry stays under `.kickoff/`; and `bin/kickoff-config recommend-timeouts` proposes target-local recalibration.
 - The path to the new project's `BRIEF.md` (which the user should flesh out next) and `plan/phase-1.md` (which the user should review before `/kickoff`'ing).
 - The recommended next steps:
   1. `cd <dest>`

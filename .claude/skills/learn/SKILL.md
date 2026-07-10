@@ -35,6 +35,7 @@ If `<donor-dir>` is missing or not a readable directory, refuse with `Usage: /le
    - `.claude/agents/` contains the four canonical roles (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`).
    - `.claude/skills/kickoff/SKILL.md` exists.
    - `.claude/skills/methodology/SKILL.md` exists.
+   - `bin/kickoff-config` and `kickoff.yaml` exist; `show` validates both config sections.
    - `briefs/`, `policies/`, `plan/` directories are present and non-empty.
    - `LOG.md` exists.
    If any fail, refuse with a specific error and exit. (If you arrived here by running `/learn` in a repo that hasn't been bootstrapped, run the bootstrap procedure in [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md) first, or invoke `/stamp` from the starter template.)
@@ -66,6 +67,7 @@ Build a structural map of the donor. **Do not** open every file; do targeted rea
 6. **Language conventions.** Read `<donor>/CLAUDE.md` (or `AGENTS.md`) section by section. Note any architectural invariants, glossary entries, or conventions the donor pins that this starter doesn't.
 7. **Build gates.** Read the donor's language metadata (`pyproject.toml`, `package.json`, `Cargo.toml`, `go.mod`, etc.). Note pinned tooling, lockfile presence, gate command idioms.
 8. **Anti-patterns.** Note where the donor *violates* something the template considers a load-bearing invariant (status field in phase frontmatter; absolute paths; LOG.md hand-edits). Those are not for learning; mention them as confirmation the starter's rules are correct.
+9. **Unified kickoff configuration.** Inspect the donor's schema shape, round-trip manager, behavioral tests, both role policies, `/roles`, `/kickoff` call sites, invocation brief, gitignore, and reporting contract as one bundle. Learn only generalizable mechanics, schema, algorithms, and defensible universal defaults. Never read, copy, or summarize raw telemetry, percentiles, model/effort choices, calibrated values, comments, `extensions` data, or project overrides.
 
 Output of Stage 1 is internal. The user sees Stage 3's plan.
 
@@ -83,7 +85,7 @@ For each candidate surfaced in Stage 1, classify on two axes.
 
 ### Generality tier (lower number = more general = higher priority)
 
-- **Tier 1 — Methodology-level.** Orchestrator patterns, agent role definitions, policy structures, brief shapes, the briefs/policies/plan triplet itself, cross-harness orchestration machinery (e.g., a donor's evolved take on `policies/role-models.md`'s harness-aware venue resolution or `briefs/cross-agent-invocation.md`'s invocation recipes), review-intensity machinery (e.g., a donor's refined lane-eligibility criteria for `policies/review-lanes.md`). Improvements here help *every* downstream project.
+- **Tier 1 — Methodology-level.** Orchestrator patterns, agent role definitions, policy structures, brief shapes, the briefs/policies/plan triplet itself, cross-harness orchestration machinery, role-timeout enforcement/calibration contracts, and review-intensity machinery. Improvements here help *every* downstream project.
 - **Tier 2 — Universal template content.** `.gitignore` patterns, build-gate idioms common across languages, log discipline rules, status-marker conventions.
 - **Tier 3 — Language or platform specializations.** Python-specific lint rules, TypeScript-specific tsconfig defaults, Rust workspace patterns. These specialize the template for a language family.
 - **Tier 4 — Domain specializations.** Unity game project structure, ML/data-science project structure, CDK-backed AWS project structure. These narrow the template to a niche.
@@ -143,6 +145,16 @@ Produce a structured plan inline in the conversation. Use this exact format:
   - **Replace with donor's.**
   - **Merge** (skill produces a unified version).
 
+## Stale-in-light-of-learning (will be migrated or surfaced)
+
+For every approved learning, identify existing files in this repo made stale by the new convention. Classify each item as:
+
+- **AUTO** `<this-repo file>` — mechanical migration applied in the same run.
+- **DECIDE** `<this-repo file>` — requires a project-specific or policy choice; ask during approval.
+- **DEFER** `<this-repo file>` — depends on a named later condition.
+
+If none, declare "None identified." A learned timeout improvement must list every member of the atomic timeout bundle here or in the proposal write set; importing a single donor file is not complete.
+
 ## Proposed write set (will only be applied after approval)
 
 - `<this-repo file>` — NEW | MODIFY (diff size)
@@ -154,6 +166,7 @@ Produce a structured plan inline in the conversation. Use this exact format:
 ## <YYYY-MM-DD HH:MM> — LEARN
 Donor: <donor-name> @ <sha or fp>
 Items absorbed: <count>, by tier T1=<n>/T2=<n>/T3=<n>/T4=<n>
+Stale-in-light-of-learning migrations: <count> (AUTO); <count> DECIDE; <count> DEFER
 Files touched: <count>
 ```
 ```
@@ -177,13 +190,14 @@ Once approved, apply the approved items. Order:
 
 1. Add NEW files (policies first, then briefs, then skills/agents/prompts, then plan files, then code).
 2. MODIFY existing files (smallest diffs first; one logical change per Edit call).
-3. Resolve every cross-harness parity obligation that the changes create:
+3. Apply every approved AUTO item from "Stale-in-light-of-learning"; carry DECIDE/DEFER items into the LOG entry with their decision or condition.
+4. Resolve every cross-harness parity obligation that the changes create:
    - If a `.claude/agents/<role>.md` body changed, refresh `.codex/agents/<role>.toml` (the wrapper body changes only if the description line changed; the pointer stays the same).
    - If a new `.claude/skills/<name>/SKILL.md` was added, add the matching `.codex/prompts/<name>.md` pointer wrapper.
    - See [`policies/cross-harness-parity.md`](../../../policies/cross-harness-parity.md).
-4. Update `CLAUDE.md`'s catalogs (briefs catalog, policies catalog) so every new file is indexed.
-5. Run the build gates (the same ones the template's `/kickoff` would run) to confirm nothing regressed. Currently for this repo: `uv run ruff check example tests`, `uv run ruff format --check example tests`, `uv run pytest -q`.
-6. Append the LEARN entry to `LOG.md`. Format as proposed in the plan.
+5. Update `CLAUDE.md`'s catalogs (briefs catalog, policies catalog) so every new file is indexed.
+6. Run the build gates (the same ones the template's `/kickoff` would run) to confirm nothing regressed. Currently for this repo: `cd project && uv run ruff check example tests ../bin/kickoff-config ../tests && uv run ruff format --check example tests ../bin/kickoff-config ../tests && uv run pytest -q tests ../tests`.
+7. Append the LEARN entry to `LOG.md`. Format as proposed in the plan.
 
 **Do not auto-commit.** Per [`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md), the human owns commits. Report the file list, the build-gate status, and any unresolved manual steps so the user can review and commit.
 
@@ -196,4 +210,6 @@ Once approved, apply the approved items. Order:
 - **Catalog drift is forbidden.** `CLAUDE.md`'s catalogs reflect every file in `briefs/` and `policies/` after the apply finishes. Verify before reporting done.
 - **Skip donor-specific PII, secrets, and proprietary content** wholesale during Stage 1. If a donor file contains real names, emails, API keys, or internal company names, do not read its body beyond confirming the type; never transfer such content, even in inspiration form.
 - **One LOG entry per `/learn` run.** Not per item. The aggregate entry preserves the audit trail without flooding the log.
+- **Stale sweep is acceptance.** Every file made stale by an approved learning is migrated (AUTO), decided (DECIDE), or deferred with a named condition (DEFER) in the same plan and LOG entry.
+- **Kickoff-config learning is atomic and privacy-preserving.** Adopt generalizable policy/schema/round-trip manager/test/invocation/reporting improvements together. Never ingest donor raw telemetry, percentiles, values, comments, `extensions` data, overrides, model choices, or efforts; validate the local bundle with `bin/kickoff-config show`, the behavioral suite, scoped-update preservation tests, and a bounded watchdog smoke test.
 - **Skill-exclusion list.** `/stamp` and the starter template's `example/` Python project are starter-only and never transferred. `/learn` and `/teach` themselves are universal — if the donor has a more evolved version, treat it like any other candidate; if this repo lacks them and the donor has them, propose adding them (the bootstrap procedure expects them in every methodology-following project).

@@ -10,6 +10,11 @@
 .claude/settings.local.json
 .claude/projects/
 .codex/cache/
+.kickoff/
+
+# Root-level methodology test runtime state
+__pycache__/
+.pytest_cache/
 
 # Local-only anonymization denylist (private names must never be committed)
 bin/anonymization-denylist.local

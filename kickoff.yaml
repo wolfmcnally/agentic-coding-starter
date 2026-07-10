@@ -1,0 +1,70 @@
+# kickoff.yaml — human-editable /kickoff execution configuration.
+#
+# Validated and updated by bin/kickoff-config. Direct edits are supported.
+# Commands update only their owned section, preserve comments and extension
+# keys, validate before writing, and replace this file atomically.
+
+version: 1
+
+# Optional project- or harness-specific keys may be added here. The current
+# manager preserves unknown extension data without interpreting it.
+extensions: {}
+
+# Which model and implied harness runs each canonical role. A harness section
+# overrides `default` when that harness orchestrates /kickoff.
+role_models:
+  default:
+    planner:
+      model: default
+    reviewer:
+      model: default
+    coder:
+      model: default
+    critic:
+      model: default
+  claude:
+    reviewer:
+      model: codex
+    critic:
+      model: codex
+  codex:
+    reviewer:
+      model: opus
+      effort: high
+    critic:
+      model: opus
+      effort: high
+
+# Per-invocation execution budgets. These are hang guards, not performance
+# targets. `claude_max_turns` is a Claude CLI circuit breaker; Codex and native
+# roles use the three clocks because those venues expose no equivalent flag.
+# Target repos may recalibrate the clocks from their own local telemetry.
+role_timeouts:
+  first_event_timeout_seconds: 120
+  minimum_samples_for_recalibration: 30
+  recalibration_multiplier: 2.0
+  roles:
+    planner:
+      hard_timeout_seconds: 1800
+      idle_timeout_seconds: 600
+      claude_max_turns: 50
+      hard_floor_seconds: 1800
+      idle_floor_seconds: 600
+    reviewer:
+      hard_timeout_seconds: 1800
+      idle_timeout_seconds: 600
+      claude_max_turns: 50
+      hard_floor_seconds: 1800
+      idle_floor_seconds: 600
+    coder:
+      hard_timeout_seconds: 7200
+      idle_timeout_seconds: 1200
+      claude_max_turns: 200
+      hard_floor_seconds: 7200
+      idle_floor_seconds: 1200
+    critic:
+      hard_timeout_seconds: 2700
+      idle_timeout_seconds: 600
+      claude_max_turns: 50
+      hard_floor_seconds: 2700
+      idle_floor_seconds: 600

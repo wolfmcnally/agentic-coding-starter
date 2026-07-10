@@ -11,35 +11,37 @@
 
 ## Scripts
 
-### `role-models` — harness-aware per-role model/venue for `/kickoff`
+### `kickoff-config` — human-editable `/kickoff` configuration and enforcement
 
-Reads and writes the repo-root `role-models.yaml` — a two-level `harness → role → model[@effort]` config that resolves which model, implied harness, and optional reasoning effort runs each of the four canonical roles (planner, reviewer, coder, critic), scoped by which harness is orchestrating. Backs the `/roles` skill (the parse/validate/write is the mechanical half; the skill is the thin wrapper). Validates every harness, role, model, effort, and model/effort combination against a closed vocabulary and rejects unknowns non-zero, leaving the config untouched. GPT-5.6 code names map deterministically: `sol` → `gpt-5.6-sol`, `terra` → `gpt-5.6-terra`, `luna` → `gpt-5.6-luna`; Claude pins use the same suffix grammar and additionally support `@max`. A Python script run via `uv` (PEP 723 inline `pyyaml`). Governed by [`policies/role-models.md`](../policies/role-models.md).
+Validates and safely edits repo-root `kickoff.yaml`, whose `role_models` and `role_timeouts` sections hold separate model/effort fields and execution budgets. Round-trip YAML handling preserves human comments, ordering, quoting, and data under `extensions`; strict known sections reject typos; scoped resets never overwrite the other section; every write validates first and atomically replaces the file. The same manager performs fail-closed live venue preflight, routing-verified and progress-aware subprocess supervision, fresh-artifact enforcement, gitignored telemetry, and evidence-based timeout recommendations. A Python script run via `uv` with PEP 723 `ruamel.yaml`. Governed by [`policies/role-models.md`](../policies/role-models.md) and [`policies/role-timeouts.md`](../policies/role-timeouts.md).
 
 ```bash
-./bin/role-models --show                                   # config + resolved-for-this-harness view
+./bin/kickoff-config show
 ```
 
 ```bash
-./bin/role-models codex reviewer: opus, critic: opus       # set pins in a harness section
+./bin/kickoff-config set-models codex reviewer.model=opus reviewer.effort=high critic.model=opus critic.effort=high
 ```
 
 ```bash
-./bin/role-models claude reviewer: sol@medium, critic: terra@low
+./bin/kickoff-config reset models
 ```
 
 ```bash
-./bin/role-models codex reviewer: opus@high, critic: fable@max
+./bin/kickoff-config preflight
 ```
 
 ```bash
-./bin/role-models coder: opus                              # no harness token → the `default` section
+./bin/kickoff-config watch --role reviewer --venue claude --model opus --effort high --phase 2 --stdout-file /tmp/reviewer.events.jsonl --stderr-file /tmp/reviewer.stderr --result-file /tmp/reviewer.result -- claude --model opus --effort high <production flags>
 ```
 
 ```bash
-./bin/role-models --reset                                  # restore the shipped cross-review default
+./bin/kickoff-config recommend-timeouts
 ```
 
-Universal: `/stamp` and `/teach` carry it (and the cross-vendor-review default config) into every derived project — every project has the same four roles and the same default.
+Behavioral coverage lives in `tests/test_kickoff_config.py`; this starter's build gate lints and format-checks both the manager and its tests, then runs them alongside the isolated example package tests.
+
+Universal: `/stamp` and `/teach` carry the manager, policies, tests, and seed config. Target values, comments, `extensions` data, and raw `.kickoff/` telemetry stay target-owned.
 
 ### `check-anonymization.sh` — pre-publish leak guard *(starter-only)*
 

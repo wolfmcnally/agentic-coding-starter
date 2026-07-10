@@ -25,6 +25,15 @@ A project derived from this template contains the following **portable structure
   AGENTS.md                # Symlink → CLAUDE.md (for Codex/aider/OpenHands)
   LOG.md                   # Append-only activity log; /kickoff writes
                            #   START/END blocks here
+  .gitignore               # Editor/harness state; includes local .kickoff/
+  kickoff.yaml             # Human-editable model/effort/timeout configuration
+
+  bin/
+    README.md              # Deterministic script operator index
+    kickoff-config         # Round-trip editor, preflight, watchdog, calibration
+
+  tests/
+    test_kickoff_config.py # Universal manager/watchdog behavioral coverage
 
   briefs/
     BRIEF.md               # Entry-point brief, project-specific
@@ -40,6 +49,7 @@ A project derived from this template contains the following **portable structure
     cross-harness-parity.md
     four-canonical-agents.md
     role-models.md
+    role-timeouts.md
     review-lanes.md
     phase-status.md
     acceptance-empirical.md
@@ -60,8 +70,8 @@ A project derived from this template contains the following **portable structure
                            #   THIS repo from another
       teach/SKILL.md       # Universal cross-repo skill: apply THIS repo's
                            #   patterns to another
-      roles/SKILL.md       # Universal: pin a model/harness to any of the four
-                           #   canonical roles (wraps bin/role-models)
+      roles/SKILL.md       # Universal: edit model/effort fields for any role
+                           #   (wraps bin/kickoff-config)
       # /stamp is NOT carried over — the new project doesn't need to stamp
       # out more projects from itself by default
     agents/
@@ -136,7 +146,7 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.claude/skills/methodology/SKILL.md`
 - `.claude/skills/learn/SKILL.md` (universal cross-repo skill)
 - `.claude/skills/teach/SKILL.md` (universal cross-repo skill)
-- `.claude/skills/roles/SKILL.md` (universal — per-role model pinning; wraps `bin/role-models`)
+- `.claude/skills/roles/SKILL.md` (universal — per-role model/effort editing; wraps `bin/kickoff-config`)
 - `.claude/agents/phase-planner.md`
 - `.claude/agents/plan-reviewer.md`
 - `.claude/agents/phase-coder.md`
@@ -154,7 +164,8 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.agents/skills/roles` (directory symlink → `../../.claude/skills/roles`)
 - `AGENTS.md` symlink → `CLAUDE.md`
 - Every file under `policies/` (these are universal by design)
-- `bin/role-models` (universal Python/uv script backing `/roles`), and a `role-models.yaml` seeded with the cross-vendor-review default (via `bin/role-models --reset`)
+- `bin/kickoff-config` (universal Python/uv round-trip config manager, fail-closed venue preflight, execution watchdog, and telemetry calibrator), plus human-editable `kickoff.yaml` seeded via `bin/kickoff-config reset all`
+- `tests/test_kickoff_config.py` (universal manager/watchdog behavioral coverage; run independently of the deliverable's language)
 - `briefs/methodology.md`
 - `briefs/agentic-bootstrap.md` (this file, so the next bootstrap is possible)
 - `briefs/cross-agent-invocation.md` (the cross-CLI invocation BCPs cited by `policies/role-models.md`)
@@ -233,6 +244,7 @@ Then write `.gitignore` from a language-appropriate template plus the methodolog
 .claude/settings.local.json
 .claude/projects/
 .codex/cache/
+.kickoff/
 ```
 
 Do not gitignore the `.claude/` or `.codex/` *directories* themselves — the skill and agent definitions are committed source. Only runtime state is ignored.
@@ -394,6 +406,8 @@ Before declaring the bootstrap complete, verify:
 - `ls .claude/agents/` lists exactly the four canonical role files.
 - `ls .claude/skills/kickoff/` contains `SKILL.md`.
 - `ls .claude/skills/methodology/` contains `SKILL.md`.
+- `bin/kickoff-config show` succeeds and `kickoff.yaml` contains valid `role_models` and `role_timeouts` sections.
+- `uv run --with pytest pytest -q tests/test_kickoff_config.py` passes before any live venue probe.
 - The new `CLAUDE.md`'s "Briefs catalog" section lists every file in `briefs/`, and every file in `briefs/` is referenced from the catalog (no orphans either way).
 - The new `CLAUDE.md`'s "Policies catalog" section lists every file in `policies/`, and every file in `policies/` is referenced from the catalog (no orphans either way).
 - `plan/phase-1.md`'s `Brief refs` section lists at least one brief, and each listed brief exists.
@@ -415,7 +429,7 @@ The bootstrap is the same shape every time. The variation is in:
 | **Deployment story**          | AWS / Cloudflare / Vercel / app stores / static / none        |
 | **Per-project invariants**    | Cost ceilings; license policy; privacy boundaries; FOSS-only  |
 | **Per-project skills**        | Domain-specific workflows on top of `/kickoff`                |
-| **Model & review venue**      | `role-models.yaml` (seeded with the cross-vendor-review default; set via `/roles`), per `../policies/role-models.md` |
+| **Kickoff execution config** | Human-editable `kickoff.yaml`: separate model/effort fields plus target-local timeout calibration, per the two role policies |
 
 When adapting, edit these files (and only these) to reflect those choices:
 
@@ -484,6 +498,9 @@ Bootstrap is complete when **all** of the following hold:
 [ ] .agents/skills/{kickoff,methodology,learn,teach} exist as directory
     symlinks to ../../.claude/skills/<name> (the canonical skill directory)
 [ ] .agents/skills/stamp does NOT exist (starter-only, must not propagate)
+[ ] bin/kickoff-config is executable; kickoff.yaml validates; scoped updates
+    preserve human comments and `extensions` data; `.kickoff/` is gitignored
+[ ] tests/test_kickoff_config.py passes through `uv run --with pytest pytest`
 [ ] Every file in policies/ from the template exists, with project-name
     references updated
 [ ] No template-specific skills, briefs, or example code remain in the new

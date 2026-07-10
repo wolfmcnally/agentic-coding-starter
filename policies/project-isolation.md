@@ -84,6 +84,8 @@ This shape is preferred because:
 
 The `/kickoff` skill's "Final build gate" section uses this shape. The four canonical agents follow suit.
 
+Root-level methodology machinery is a separate surface, not part of the isolated deliverable. In this starter, `tests/test_kickoff_config.py` exercises `bin/kickoff-config`; the starter build gate runs that test in addition to the `project/` gates. Derived projects carry the test and may run it with `uv run --with pytest pytest -q tests/test_kickoff_config.py` regardless of the deliverable's language.
+
 ## Extracting `project/` as a submodule
 
 When the artifact is ready to be reused outside this repo:

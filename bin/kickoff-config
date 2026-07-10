@@ -1,0 +1,1094 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["ruamel.yaml>=0.18,<0.19"]
+# ///
+"""Validate, edit, and enforce the human-editable /kickoff configuration.
+
+  bin/kickoff-config show [all|models|timeouts]
+  bin/kickoff-config set-models [<harness>] <role>.model=<model> [<role>.effort=<effort>] ...
+  bin/kickoff-config reset models|timeouts|all
+  bin/kickoff-config preflight
+  bin/kickoff-config watch [metadata/options] -- <command> [args...]
+  bin/kickoff-config recommend-timeouts
+
+Section updates use ruamel.yaml round-trip mode: comments, ordering, quoting,
+and data under `extensions` survive. Known schemas are strict. All writes
+validate first and use atomic replacement. `watch` returns the child status,
+65 on a protocol failure, or 124 on timeout.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import os
+import re
+import selectors
+import shutil
+import signal
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+from collections.abc import MutableMapping
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any, BinaryIO
+
+from ruamel.yaml import YAML
+from ruamel.yaml.comments import CommentedMap
+
+CONFIG = Path(os.environ.get("KICKOFF_CONFIG_FILE", "kickoff.yaml"))
+DEFAULT_TELEMETRY = ".kickoff/role-timings.jsonl"
+TIMEOUT_EXIT = 124
+PROTOCOL_EXIT = 65
+PREFLIGHT_SENTINEL = "KICKOFF_PREFLIGHT_OK"
+PREFLIGHT_TIMEOUT_SECONDS = 120
+
+HARNESSES = ("default", "claude", "codex")
+ROLES = ("planner", "reviewer", "coder", "critic")
+MODELS = ("default", "claude", "codex", "opus", "fable", "sol", "terra", "luna")
+CODEX_MODELS = {
+    "codex": None,
+    "sol": "gpt-5.6-sol",
+    "terra": "gpt-5.6-terra",
+    "luna": "gpt-5.6-luna",
+}
+CLAUDE_MODELS = {"claude": None, "opus": "opus", "fable": "fable"}
+CODEX_EFFORTS = ("low", "medium", "high", "xhigh")
+CLAUDE_EFFORTS = ("low", "medium", "high", "xhigh", "max")
+
+SHIPPED_MODELS: dict[str, dict[str, dict[str, str]]] = {
+    "default": {
+        "planner": {"model": "default"},
+        "reviewer": {"model": "default"},
+        "coder": {"model": "default"},
+        "critic": {"model": "default"},
+    },
+    "claude": {"reviewer": {"model": "codex"}, "critic": {"model": "codex"}},
+    "codex": {
+        "reviewer": {"model": "opus", "effort": "high"},
+        "critic": {"model": "opus", "effort": "high"},
+    },
+}
+
+SHIPPED_TIMEOUTS: dict[str, Any] = {
+    "first_event_timeout_seconds": 120,
+    "minimum_samples_for_recalibration": 30,
+    "recalibration_multiplier": 2.0,
+    "roles": {
+        "planner": {
+            "hard_timeout_seconds": 1800,
+            "idle_timeout_seconds": 600,
+            "claude_max_turns": 50,
+            "hard_floor_seconds": 1800,
+            "idle_floor_seconds": 600,
+        },
+        "reviewer": {
+            "hard_timeout_seconds": 1800,
+            "idle_timeout_seconds": 600,
+            "claude_max_turns": 50,
+            "hard_floor_seconds": 1800,
+            "idle_floor_seconds": 600,
+        },
+        "coder": {
+            "hard_timeout_seconds": 7200,
+            "idle_timeout_seconds": 1200,
+            "claude_max_turns": 200,
+            "hard_floor_seconds": 7200,
+            "idle_floor_seconds": 1200,
+        },
+        "critic": {
+            "hard_timeout_seconds": 2700,
+            "idle_timeout_seconds": 600,
+            "claude_max_turns": 50,
+            "hard_floor_seconds": 2700,
+            "idle_floor_seconds": 600,
+        },
+    },
+}
+
+
+def yaml_engine() -> YAML:
+    engine = YAML()
+    engine.preserve_quotes = True
+    engine.indent(mapping=2, sequence=4, offset=2)
+    engine.width = 100
+    return engine
+
+
+def die(message: str) -> None:
+    print(f"kickoff-config: {message}", file=sys.stderr)
+    raise SystemExit(2)
+
+
+def repo_root() -> Path:
+    proc = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return Path(proc.stdout.strip())
+
+
+def commented(value: Any) -> Any:
+    if isinstance(value, dict):
+        out = CommentedMap()
+        for key, item in value.items():
+            out[key] = commented(item)
+        return out
+    if isinstance(value, list):
+        return [commented(item) for item in value]
+    return value
+
+
+def positive_number(value: Any, label: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+        die(f"{label} must be a positive number")
+    return float(value)
+
+
+def positive_integer(value: Any, label: str) -> int:
+    number = positive_number(value, label)
+    if not number.is_integer():
+        die(f"{label} must be an integer")
+    return int(number)
+
+
+def supported_efforts(model: str) -> tuple[str, ...]:
+    if model in CODEX_MODELS:
+        return CODEX_EFFORTS
+    if model in CLAUDE_MODELS:
+        return CLAUDE_EFFORTS
+    return ()
+
+
+def reject_unknown_keys(value: MutableMapping[str, Any], allowed: set[str], label: str) -> None:
+    unknown = sorted(str(key) for key in value if key not in allowed)
+    if unknown:
+        die(
+            f"unknown key(s) in {label}: {' '.join(unknown)}; "
+            "put project-specific data under the top-level extensions mapping"
+        )
+
+
+def validate_model_fields(value: Any, label: str) -> tuple[str, str | None]:
+    if not isinstance(value, MutableMapping):
+        die(f"{label} must be a mapping with a model field")
+    reject_unknown_keys(value, {"model", "effort"}, label)
+    model = str(value.get("model", "")).lower()
+    effort_value = value.get("effort")
+    effort = str(effort_value).lower() if effort_value is not None else None
+    if model not in MODELS:
+        die(f"unknown model '{model}' (models: {' '.join(MODELS)})")
+    if effort is None:
+        return model, None
+    if not effort:
+        die(f"{label}.effort cannot be empty")
+    efforts = supported_efforts(model)
+    if not efforts:
+        die(f"reasoning effort cannot be overridden for '{model}'")
+    if effort not in efforts:
+        die(f"unknown reasoning effort '{effort}' for '{model}' (efforts: {' '.join(efforts)})")
+    return model, effort
+
+
+def validate_models(section: Any) -> MutableMapping[str, Any]:
+    if not isinstance(section, MutableMapping):
+        die("role_models must be a mapping")
+    for harness, values in section.items():
+        if not isinstance(values, MutableMapping):
+            die(f"role_models.{harness} must be a mapping")
+        if harness not in HARNESSES:
+            die(f"unknown harness '{harness}' (harnesses: {' '.join(HARNESSES)})")
+        for role, fields in values.items():
+            if role not in ROLES:
+                die(f"unknown role '{role}' (roles: {' '.join(ROLES)})")
+            validate_model_fields(fields, f"role_models.{harness}.{role}")
+    return section
+
+
+def validate_timeouts(section: Any) -> MutableMapping[str, Any]:
+    if not isinstance(section, MutableMapping):
+        die("role_timeouts must be a mapping")
+    reject_unknown_keys(
+        section,
+        {
+            "first_event_timeout_seconds",
+            "minimum_samples_for_recalibration",
+            "recalibration_multiplier",
+            "roles",
+        },
+        "role_timeouts",
+    )
+    positive_integer(
+        section.get("first_event_timeout_seconds"),
+        "role_timeouts.first_event_timeout_seconds",
+    )
+    positive_integer(
+        section.get("minimum_samples_for_recalibration"),
+        "role_timeouts.minimum_samples_for_recalibration",
+    )
+    positive_number(
+        section.get("recalibration_multiplier"),
+        "role_timeouts.recalibration_multiplier",
+    )
+    roles = section.get("roles")
+    if not isinstance(roles, MutableMapping):
+        die("role_timeouts.roles must be a mapping")
+    reject_unknown_keys(roles, set(ROLES), "role_timeouts.roles")
+    for role in ROLES:
+        values = roles.get(role)
+        if not isinstance(values, MutableMapping):
+            die(f"role_timeouts.roles.{role} must be a mapping")
+        reject_unknown_keys(
+            values,
+            {
+                "hard_timeout_seconds",
+                "idle_timeout_seconds",
+                "claude_max_turns",
+                "hard_floor_seconds",
+                "idle_floor_seconds",
+            },
+            f"role_timeouts.roles.{role}",
+        )
+        for field in (
+            "hard_timeout_seconds",
+            "idle_timeout_seconds",
+            "claude_max_turns",
+            "hard_floor_seconds",
+            "idle_floor_seconds",
+        ):
+            positive_integer(values.get(field), f"role_timeouts.roles.{role}.{field}")
+        if values["idle_timeout_seconds"] > values["hard_timeout_seconds"]:
+            die(f"role_timeouts.roles.{role}.idle_timeout_seconds cannot exceed its hard timeout")
+    return section
+
+
+def validate_document(document: Any) -> MutableMapping[str, Any]:
+    if not isinstance(document, MutableMapping):
+        die(f"{CONFIG} must be a YAML mapping")
+    reject_unknown_keys(
+        document,
+        {"version", "extensions", "role_models", "role_timeouts"},
+        str(CONFIG),
+    )
+    if document.get("version") != 1:
+        die(f"{CONFIG} must declare version: 1")
+    extensions = document.get("extensions", {})
+    if not isinstance(extensions, MutableMapping):
+        die(f"{CONFIG}.extensions must be a mapping")
+    validate_models(document.get("role_models"))
+    validate_timeouts(document.get("role_timeouts"))
+    return document
+
+
+def load_document(*, allow_missing: bool = False) -> MutableMapping[str, Any]:
+    if not CONFIG.exists():
+        if not allow_missing:
+            die(f"{CONFIG} is missing; run ./bin/kickoff-config reset all")
+        document = CommentedMap()
+        document["version"] = 1
+        document["role_models"] = commented(SHIPPED_MODELS)
+        document["role_timeouts"] = commented(SHIPPED_TIMEOUTS)
+        return document
+    try:
+        document = yaml_engine().load(CONFIG.read_text())
+    except Exception as exc:
+        die(f"cannot parse {CONFIG}: {exc}")
+    return validate_document(document)
+
+
+def atomic_dump(document: MutableMapping[str, Any]) -> None:
+    validate_document(document)
+    mode = stat.S_IMODE(CONFIG.stat().st_mode) if CONFIG.exists() else 0o644
+    fd, temporary = tempfile.mkstemp(prefix=f".{CONFIG.name}.", suffix=".tmp", dir=CONFIG.parent)
+    try:
+        with os.fdopen(fd, "w") as handle:
+            yaml_engine().dump(document, handle)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(temporary, mode)
+        os.replace(temporary, CONFIG)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def detect_harness() -> str:
+    return "claude" if os.environ.get("CLAUDECODE") == "1" else "codex"
+
+
+def resolve_models(
+    section: MutableMapping[str, Any], harness: str
+) -> dict[str, tuple[str, str | None]]:
+    resolved: dict[str, tuple[str, str | None]] = {}
+    harness_values = section.get(harness, {})
+    default_values = section.get("default", {})
+    for role in ROLES:
+        fields = harness_values.get(role) or default_values.get(role) or {"model": "default"}
+        resolved[role] = validate_model_fields(fields, f"resolved role {role}")
+    return resolved
+
+
+def describe_model(model: str, effort: str | None) -> str:
+    if model == "default":
+        description = "native (session model)"
+    elif model in CLAUDE_MODELS:
+        selected = CLAUDE_MODELS[model]
+        description = f"claude --model {selected}" if selected else "claude CLI (default model)"
+    else:
+        selected = CODEX_MODELS[model]
+        description = f"codex --model {selected}" if selected else "codex CLI (default model)"
+    if effort:
+        if model in CODEX_MODELS:
+            description += f" -c 'model_reasoning_effort=\"{effort}\"'"
+        else:
+            description += f" --effort {effort}"
+    return description
+
+
+def show_models(section: MutableMapping[str, Any]) -> None:
+    print(f"Model pins from {CONFIG}:")
+    found = False
+    for harness in HARNESSES:
+        values = section.get(harness)
+        if not isinstance(values, MutableMapping):
+            continue
+        found = True
+        print(f"  {harness}:")
+        for role in ROLES:
+            if role in values:
+                model, effort = validate_model_fields(values[role], f"role_models.{harness}.{role}")
+                print(f"    {role:<9} model={model:<8} effort={effort or 'default'}")
+    if not found:
+        print("  (none — every role runs native)")
+    harness = detect_harness()
+    print(f"\nResolved for this harness ({harness}):")
+    for role, (model, effort) in resolve_models(section, harness).items():
+        effort_text = effort or "default"
+        print(
+            f"  {role:<9} model={model:<8} effort={effort_text:<7} "
+            f"→ {describe_model(model, effort)}"
+        )
+
+
+def show_timeouts(section: MutableMapping[str, Any]) -> None:
+    print(f"Execution budgets from {CONFIG}:")
+    print(f"First structured event: {section['first_event_timeout_seconds']}s")
+    print("Role       hard    idle   claude turns")
+    for role in ROLES:
+        values = section["roles"][role]
+        print(
+            f"{role:<10} {values['hard_timeout_seconds']:>5}s "
+            f"{values['idle_timeout_seconds']:>7}s {values['claude_max_turns']:>14}"
+        )
+    print(
+        "Recalibration: at least "
+        f"{section['minimum_samples_for_recalibration']} successful samples per "
+        "(role, venue, model, effort); recommend max(floor, "
+        f"{section['recalibration_multiplier']:g} × p95)."
+    )
+
+
+def show(document: MutableMapping[str, Any], scope: str) -> None:
+    if scope in ("all", "models"):
+        show_models(document["role_models"])
+    if scope == "all":
+        print()
+    if scope in ("all", "timeouts"):
+        show_timeouts(document["role_timeouts"])
+
+
+def set_models(arguments: list[str]) -> None:
+    section_name = "default"
+    if arguments and "=" not in arguments[0] and arguments[0].lower() in HARNESSES:
+        section_name = arguments.pop(0).lower()
+    staged: list[tuple[str, str, str | None]] = []
+    for assignment in arguments:
+        assignment = assignment.strip().strip(",")
+        if not assignment:
+            continue
+        if "=" not in assignment or "." not in assignment.split("=", 1)[0]:
+            die(f"expected role.model=value or role.effort=value, got '{assignment}'")
+        path, raw_value = assignment.split("=", 1)
+        role, field = path.lower().split(".", 1)
+        if role not in ROLES:
+            die(f"unknown role '{role}' (roles: {' '.join(ROLES)})")
+        if field not in ("model", "effort"):
+            die(f"unknown model field '{field}' (fields: model effort)")
+        value = raw_value.strip().lower()
+        if field == "model" and value not in MODELS:
+            die(f"unknown model '{value}' (models: {' '.join(MODELS)})")
+        if field == "effort" and value in ("default", "none"):
+            staged.append((role, field, None))
+        elif field == "effort" and value not in CLAUDE_EFFORTS:
+            die(f"unknown reasoning effort '{value}'")
+        else:
+            staged.append((role, field, value))
+    if not staged:
+        die("no pins given")
+    document = load_document()
+    section = document["role_models"]
+    if section_name not in section:
+        section[section_name] = CommentedMap()
+    for role, field, value in staged:
+        if role not in section[section_name]:
+            section[section_name][role] = CommentedMap({"model": "default"})
+        if value is None:
+            section[section_name][role].pop(field, None)
+        else:
+            section[section_name][role][field] = value
+    atomic_dump(document)
+    show_models(load_document()["role_models"])
+
+
+def reset(scope: str) -> None:
+    document = load_document(allow_missing=True)
+    if scope in ("models", "all"):
+        document["role_models"] = commented(SHIPPED_MODELS)
+    if scope in ("timeouts", "all"):
+        document["role_timeouts"] = commented(SHIPPED_TIMEOUTS)
+    atomic_dump(document)
+    show(load_document(), "all" if scope == "all" else scope)
+
+
+@dataclass(frozen=True)
+class PreflightTarget:
+    cli: str
+    model: str | None
+    effort: str | None
+    write_enabled: bool
+
+
+def preflight_targets(
+    section: MutableMapping[str, Any], harness: str
+) -> dict[PreflightTarget, list[str]]:
+    targets: dict[PreflightTarget, list[str]] = {}
+    for role, (model, effort) in resolve_models(section, harness).items():
+        if model == "default":
+            continue
+        if model in CLAUDE_MODELS:
+            target = PreflightTarget("claude", CLAUDE_MODELS[model], effort, role == "coder")
+        else:
+            target = PreflightTarget("codex", CODEX_MODELS[model], effort, role == "coder")
+        targets.setdefault(target, []).append(role)
+    return targets
+
+
+def scrubbed_env(cli: str) -> dict[str, str]:
+    environment = os.environ.copy()
+    keys = (
+        ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "ANTHROPIC_API_KEY")
+        if cli == "claude"
+        else ("OPENAI_API_KEY", "CODEX_API_KEY")
+    )
+    for key in keys:
+        environment.pop(key, None)
+    environment["KICKOFF_DELEGATION_DEPTH"] = "1"
+    return environment
+
+
+def diagnostic(process: subprocess.CompletedProcess[str]) -> str:
+    raw = (process.stderr or process.stdout or "no diagnostic output").strip()
+    return " ".join(raw.split())[-1000:]
+
+
+def run_claude_preflight(target: PreflightTarget, workdir: str) -> None:
+    command = [
+        "claude",
+        "-p",
+        f"Reply with exactly: {PREFLIGHT_SENTINEL}",
+        "--permission-mode",
+        "dontAsk",
+        "--allowedTools",
+        "Read,Grep,Glob,Write,Edit,Bash" if target.write_enabled else "Read,Grep,Glob",
+        "--output-format",
+        "json",
+        "--max-turns",
+        "3",
+    ]
+    if target.model:
+        command.extend(("--model", target.model))
+    if target.effort:
+        command.extend(("--effort", target.effort))
+    process = subprocess.run(
+        command,
+        cwd=workdir,
+        env=scrubbed_env("claude"),
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        timeout=PREFLIGHT_TIMEOUT_SECONDS,
+    )
+    if process.returncode:
+        raise RuntimeError(f"exit {process.returncode}: {diagnostic(process)}")
+    try:
+        envelope = json.loads(process.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"malformed JSON response: {exc}") from exc
+    result = str(envelope.get("result", "")).strip()
+    if envelope.get("is_error") or result != PREFLIGHT_SENTINEL:
+        detail = envelope.get("result") or envelope.get("error") or "sentinel missing"
+        raise RuntimeError(f"unsuccessful response: {' '.join(str(detail).split())[-1000:]}")
+
+
+def run_codex_preflight(target: PreflightTarget, workdir: str) -> None:
+    with tempfile.TemporaryDirectory(prefix="kickoff-preflight-") as temporary:
+        message_file = os.path.join(temporary, "last-message.txt")
+        command = [
+            "codex",
+            "exec",
+            "--json",
+            "--skip-git-repo-check",
+            "-s",
+            "workspace-write" if target.write_enabled else "read-only",
+            "-c",
+            'approval_policy="never"',
+            "-C",
+            workdir,
+            "--output-last-message",
+            message_file,
+        ]
+        if target.model:
+            command.extend(("--model", target.model))
+        if target.effort:
+            command.extend(("-c", f'model_reasoning_effort="{target.effort}"'))
+        command.append(f"Reply with exactly: {PREFLIGHT_SENTINEL}")
+        process = subprocess.run(
+            command,
+            cwd=workdir,
+            env=scrubbed_env("codex"),
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=PREFLIGHT_TIMEOUT_SECONDS,
+        )
+        if process.returncode:
+            raise RuntimeError(f"exit {process.returncode}: {diagnostic(process)}")
+        try:
+            result = Path(message_file).read_text().strip()
+        except FileNotFoundError as exc:
+            raise RuntimeError("output artifact missing") from exc
+        if result != PREFLIGHT_SENTINEL:
+            raise RuntimeError(
+                f"unsuccessful response: {' '.join(result.split())[-1000:] or 'sentinel missing'}"
+            )
+
+
+def preflight(section: MutableMapping[str, Any]) -> None:
+    if os.environ.get("KICKOFF_DELEGATION_DEPTH"):
+        print("Role venue preflight: skipped (delegated session; every role runs native)")
+        return
+    harness = detect_harness()
+    targets = preflight_targets(section, harness)
+    if not targets:
+        print("Role venue preflight: N/A (every role runs native)")
+        return
+    with tempfile.TemporaryDirectory(prefix="kickoff-preflight-workdir-") as workdir:
+        for target, roles in targets.items():
+            model = f" --model {target.model}" if target.model else " (default model)"
+            effort = f", effort {target.effort}" if target.effort else ""
+            access = "write-enabled" if target.write_enabled else "read-only"
+            label = f"{target.cli}{model}{effort}, {access}; roles: {', '.join(roles)}"
+            if shutil.which(target.cli) is None:
+                die(f"preflight failed for {label}: CLI not on PATH")
+            print(f"Role venue preflight: validating {label} ...", flush=True)
+            try:
+                if target.cli == "claude":
+                    run_claude_preflight(target, workdir)
+                else:
+                    run_codex_preflight(target, workdir)
+            except subprocess.TimeoutExpired:
+                die(f"preflight failed for {label}: timed out after {PREFLIGHT_TIMEOUT_SECONDS}s")
+            except (OSError, RuntimeError) as exc:
+                die(f"preflight failed for {label}: {exc}")
+            print(f"Role venue preflight: OK — {label}")
+
+
+def utc_now() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+def terminate_group(process: subprocess.Popen[bytes]) -> None:
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    try:
+        process.wait(timeout=5)
+        return
+    except subprocess.TimeoutExpired:
+        pass
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+
+
+def open_artifact(path: str | None) -> BinaryIO | None:
+    if not path:
+        return None
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    return target.open("wb")
+
+
+def prepare_output_path(path: str | None) -> Path | None:
+    if not path:
+        return None
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(b"")
+    return target
+
+
+def invoked_program_index(command: list[str]) -> int:
+    if Path(command[0]).name != "env":
+        return 0
+    index = 1
+    while index < len(command):
+        token = command[index]
+        if token == "--":
+            return index + 1
+        if token in ("-u", "--unset"):
+            index += 2
+            continue
+        if token.startswith("--unset=") or ("=" in token and not token.startswith("-")):
+            index += 1
+            continue
+        if token.startswith("-"):
+            die(f"unsupported env option before watched command: {token}")
+        return index
+    die("watch command contains env but no program")
+
+
+def option_value(command: list[str], names: tuple[str, ...]) -> str | None:
+    for index, token in enumerate(command):
+        for name in names:
+            if token == name and index + 1 < len(command):
+                return command[index + 1]
+            prefix = f"{name}="
+            if token.startswith(prefix):
+                return token[len(prefix) :]
+    return None
+
+
+def validate_watch_routing(arguments: argparse.Namespace, command: list[str]) -> int:
+    program_index = invoked_program_index(command)
+    actual_venue = Path(command[program_index]).name
+    if actual_venue != arguments.venue:
+        die(f"watch venue={arguments.venue} but command invokes {actual_venue}")
+
+    effort = None if arguments.effort == "default" else arguments.effort
+    model, effort = validate_model_fields(
+        {"model": arguments.model, **({"effort": effort} if effort else {})},
+        "watch routing",
+    )
+    family = "claude" if model in CLAUDE_MODELS else "codex" if model in CODEX_MODELS else None
+    if family != arguments.venue:
+        die(f"model '{model}' routes to {family or 'native'}, not {arguments.venue}")
+
+    cli_arguments = command[program_index + 1 :]
+    expected_model = CLAUDE_MODELS[model] if family == "claude" else CODEX_MODELS[model]
+    actual_model = option_value(cli_arguments, ("--model", "-m"))
+    if expected_model and actual_model != expected_model:
+        die(
+            f"watch metadata declares model={model}, but command must include "
+            f"--model {expected_model}"
+        )
+    if not expected_model and actual_model:
+        die(
+            f"watch metadata declares the {model} CLI default model, but command "
+            f"overrides it with {actual_model}"
+        )
+
+    if effort and family == "claude":
+        actual_effort = option_value(cli_arguments, ("--effort",))
+        if actual_effort != effort:
+            die(
+                f"watch metadata declares effort={effort}, but command must include "
+                f"--effort {effort}"
+            )
+    elif effort:
+        pattern = re.compile(rf'^model_reasoning_effort=["\']?{re.escape(effort)}["\']?$')
+        if not any(pattern.match(token) for token in cli_arguments):
+            die(
+                f"watch metadata declares effort={effort}, but command must include "
+                f"-c 'model_reasoning_effort=\"{effort}\"'"
+            )
+    return program_index
+
+
+def numbers_from_usage(value: Any) -> tuple[int, int]:
+    if not isinstance(value, dict):
+        return (0, 0)
+    input_tokens = value.get("input_tokens", value.get("inputTokens", 0))
+    output_tokens = value.get("output_tokens", value.get("outputTokens", 0))
+    return (
+        int(input_tokens) if isinstance(input_tokens, (int, float)) else 0,
+        int(output_tokens) if isinstance(output_tokens, (int, float)) else 0,
+    )
+
+
+def parse_events(data: bytes) -> tuple[int | None, int | None, int | None, str | None]:
+    turns = 0
+    input_tokens = 0
+    output_tokens = 0
+    result: str | None = None
+    parsed = False
+    for raw_line in data.decode("utf-8", errors="replace").splitlines():
+        try:
+            event = json.loads(raw_line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        parsed = True
+        event_type = str(event.get("type", ""))
+        if event_type in {"turn.started", "assistant"}:
+            turns += 1
+        usage_candidates = [event.get("usage")]
+        message = event.get("message")
+        if isinstance(message, dict):
+            usage_candidates.append(message.get("usage"))
+        for usage in usage_candidates:
+            seen_input, seen_output = numbers_from_usage(usage)
+            input_tokens = max(input_tokens, seen_input)
+            output_tokens = max(output_tokens, seen_output)
+        if event_type == "result" and isinstance(event.get("result"), str):
+            result = event["result"]
+    return (
+        turns if parsed else None,
+        input_tokens if parsed else None,
+        output_tokens if parsed else None,
+        result,
+    )
+
+
+def append_record(record: dict[str, Any], telemetry_path: str) -> None:
+    target = Path(telemetry_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.open("a") as handle:
+        json.dump(record, handle, sort_keys=True, separators=(",", ":"))
+        handle.write("\n")
+
+
+def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> int:
+    command = arguments.command
+    if command and command[0] == "--":
+        command = command[1:]
+    if not command:
+        die("watch requires a command after --")
+    program_index = validate_watch_routing(arguments, command)
+    role_config = section["roles"][arguments.role]
+    first_limit = (
+        arguments.first_event_timeout
+        if arguments.first_event_timeout is not None
+        else section["first_event_timeout_seconds"]
+    )
+    idle_limit = (
+        arguments.idle_timeout
+        if arguments.idle_timeout is not None
+        else role_config["idle_timeout_seconds"]
+    )
+    hard_limit = (
+        arguments.hard_timeout
+        if arguments.hard_timeout is not None
+        else role_config["hard_timeout_seconds"]
+    )
+    for label, limit in (
+        ("first-event timeout", first_limit),
+        ("idle timeout", idle_limit),
+        ("hard timeout", hard_limit),
+    ):
+        if limit <= 0:
+            die(f"{label} must be positive")
+    if idle_limit > hard_limit:
+        die("idle timeout cannot exceed hard timeout")
+
+    stdout_file = open_artifact(arguments.stdout_file)
+    stderr_file = open_artifact(arguments.stderr_file)
+    result_path = prepare_output_path(arguments.result_file)
+    required_output_path = prepare_output_path(arguments.required_output_file)
+    started_iso = utc_now()
+    started = time.monotonic()
+    last_activity = started
+    first_event_at: float | None = None
+    longest_idle = 0.0
+    stdout_data = bytearray()
+    stdout_line_buffer = bytearray()
+    timeout_kind: str | None = None
+    try:
+        process = subprocess.Popen(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
+        )
+    except OSError as exc:
+        if stdout_file:
+            stdout_file.close()
+        if stderr_file:
+            stderr_file.close()
+        die(f"could not start {command[0]}: {exc}")
+    selector = selectors.DefaultSelector()
+    assert process.stdout is not None and process.stderr is not None
+    selector.register(process.stdout, selectors.EVENT_READ, ("stdout", stdout_file))
+    selector.register(process.stderr, selectors.EVENT_READ, ("stderr", stderr_file))
+    try:
+        while True:
+            now = time.monotonic()
+            if now - started >= hard_limit:
+                timeout_kind = "hard"
+                break
+            if first_event_at is None and now - started >= first_limit:
+                timeout_kind = "first-event"
+                break
+            if first_event_at is not None and now - last_activity >= idle_limit:
+                timeout_kind = "idle"
+                break
+            remaining = min(
+                hard_limit - (now - started),
+                (first_limit - (now - started))
+                if first_event_at is None
+                else (idle_limit - (now - last_activity)),
+                1.0,
+            )
+            wait_for = max(0.05, remaining)
+            if not selector.get_map():
+                if process.poll() is not None:
+                    break
+                time.sleep(min(0.1, wait_for))
+                continue
+            events = selector.select(wait_for)
+            for key, _ in events:
+                stream_name, artifact = key.data
+                chunk = os.read(key.fileobj.fileno(), 65536)
+                if not chunk:
+                    selector.unregister(key.fileobj)
+                    continue
+                observed = time.monotonic()
+                longest_idle = max(longest_idle, observed - last_activity)
+                last_activity = observed
+                if stream_name == "stdout":
+                    stdout_data.extend(chunk)
+                    stdout_line_buffer.extend(chunk)
+                    while b"\n" in stdout_line_buffer:
+                        line, _, remainder = stdout_line_buffer.partition(b"\n")
+                        stdout_line_buffer = bytearray(remainder)
+                        try:
+                            structured_event = json.loads(line.decode("utf-8", errors="replace"))
+                        except json.JSONDecodeError:
+                            structured_event = None
+                        if first_event_at is None and isinstance(structured_event, dict):
+                            first_event_at = observed
+                    if first_event_at is None and stdout_line_buffer:
+                        try:
+                            trailing_event = json.loads(
+                                stdout_line_buffer.decode("utf-8", errors="replace")
+                            )
+                        except json.JSONDecodeError:
+                            trailing_event = None
+                        if isinstance(trailing_event, dict):
+                            first_event_at = observed
+                    sys.stdout.buffer.write(chunk)
+                    sys.stdout.buffer.flush()
+                else:
+                    sys.stderr.buffer.write(chunk)
+                    sys.stderr.buffer.flush()
+                if artifact:
+                    artifact.write(chunk)
+                    artifact.flush()
+        if timeout_kind:
+            terminate_group(process)
+            return_code = TIMEOUT_EXIT
+        else:
+            return_code = process.wait()
+    finally:
+        selector.close()
+        if stdout_file:
+            stdout_file.close()
+        if stderr_file:
+            stderr_file.close()
+
+    ended = time.monotonic()
+    longest_idle = max(longest_idle, max(0.0, ended - last_activity))
+    turns, input_tokens, output_tokens, result = parse_events(bytes(stdout_data))
+    protocol_errors: list[str] = []
+    if not timeout_kind and first_event_at is None:
+        protocol_errors.append("no structured stdout event")
+    if result_path is not None:
+        if result is None or not result.strip():
+            protocol_errors.append("stream result event missing or empty")
+        else:
+            result_path.write_text(result)
+    if required_output_path is not None:
+        if not required_output_path.exists() or required_output_path.stat().st_size == 0:
+            protocol_errors.append("required output artifact missing or empty")
+    if protocol_errors and return_code == 0:
+        return_code = PROTOCOL_EXIT
+    outcome = "timeout" if timeout_kind else ("success" if return_code == 0 else "error")
+    append_record(
+        {
+            "schema_version": 1,
+            "phase": arguments.phase,
+            "role": arguments.role,
+            "venue": arguments.venue,
+            "model": arguments.model,
+            "effort": arguments.effort,
+            "started_at": started_iso,
+            "ended_at": utc_now(),
+            "duration_seconds": round(ended - started, 3),
+            "first_event_seconds": (
+                round(first_event_at - started, 3) if first_event_at is not None else None
+            ),
+            "longest_idle_seconds": round(longest_idle, 3),
+            "turns": turns,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "outcome": outcome,
+            "timeout_kind": timeout_kind,
+            "protocol_error": "; ".join(protocol_errors) if protocol_errors else None,
+            "exit_code": return_code,
+            "program": Path(command[program_index]).name,
+        },
+        os.environ.get("KICKOFF_TIMING_LOG", DEFAULT_TELEMETRY),
+    )
+    if timeout_kind:
+        print(
+            f"kickoff-config: {arguments.role} timed out ({timeout_kind}) after "
+            f"{ended - started:.1f}s",
+            file=sys.stderr,
+        )
+    elif protocol_errors:
+        print(
+            f"kickoff-config: {arguments.role} protocol error: {'; '.join(protocol_errors)}",
+            file=sys.stderr,
+        )
+    return return_code
+
+
+def percentile95(values: list[float]) -> float:
+    ordered = sorted(values)
+    return ordered[max(0, math.ceil(0.95 * len(ordered)) - 1)]
+
+
+def recommend_timeouts(section: MutableMapping[str, Any]) -> None:
+    telemetry_path = Path(os.environ.get("KICKOFF_TIMING_LOG", DEFAULT_TELEMETRY))
+    if not telemetry_path.exists():
+        print(f"No telemetry at {telemetry_path}.")
+        return
+    groups: dict[tuple[str, str, str, str], list[dict[str, Any]]] = {}
+    lines = telemetry_path.read_text().splitlines()
+    for line_number, line in enumerate(lines, 1):
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            print(f"Ignoring malformed telemetry line {line_number}.", file=sys.stderr)
+            continue
+        if record.get("outcome") != "success" or record.get("role") not in ROLES:
+            continue
+        key = tuple(
+            str(record.get(field) or "default") for field in ("role", "venue", "model", "effort")
+        )
+        groups.setdefault(key, []).append(record)
+    minimum = section["minimum_samples_for_recalibration"]
+    multiplier = float(section["recalibration_multiplier"])
+    printed = False
+    for key, records in sorted(groups.items()):
+        if len(records) < minimum:
+            continue
+        role = key[0]
+        durations = [float(item["duration_seconds"]) for item in records]
+        gaps = [float(item["longest_idle_seconds"]) for item in records]
+        role_config = section["roles"][role]
+        hard = max(
+            role_config["hard_floor_seconds"],
+            math.ceil(multiplier * percentile95(durations)),
+        )
+        idle = max(
+            role_config["idle_floor_seconds"],
+            math.ceil(multiplier * percentile95(gaps)),
+        )
+        print(
+            f"{role}/{key[1]} model={key[2]} effort={key[3]} n={len(records)}: "
+            f"hard={hard}s idle={idle}s "
+            f"(p95 duration={percentile95(durations):.1f}s, "
+            f"p95 gap={percentile95(gaps):.1f}s)"
+        )
+        printed = True
+    if not printed:
+        print(f"No group has the required {minimum} successful samples yet.")
+    timeout_count = sum(1 for line in lines if '"outcome":"timeout"' in line.replace(" ", ""))
+    if timeout_count:
+        print(
+            f"Review {timeout_count} censored timeout record(s) separately before changing policy."
+        )
+
+
+def build_parser() -> argparse.ArgumentParser:
+    root = argparse.ArgumentParser(description=__doc__)
+    subparsers = root.add_subparsers(dest="action", required=True)
+
+    show_parser = subparsers.add_parser("show")
+    show_parser.add_argument(
+        "scope", nargs="?", choices=("all", "models", "timeouts"), default="all"
+    )
+
+    set_parser = subparsers.add_parser("set-models")
+    set_parser.add_argument("arguments", nargs=argparse.REMAINDER)
+
+    reset_parser = subparsers.add_parser("reset")
+    reset_parser.add_argument("scope", choices=("models", "timeouts", "all"))
+
+    subparsers.add_parser("preflight")
+    subparsers.add_parser("recommend-timeouts")
+
+    watch_parser = subparsers.add_parser("watch")
+    watch_parser.add_argument("--role", required=True, choices=ROLES)
+    watch_parser.add_argument("--venue", required=True, choices=("claude", "codex"))
+    watch_parser.add_argument("--model", required=True, choices=MODELS)
+    watch_parser.add_argument("--effort", default="default", choices=("default", *CLAUDE_EFFORTS))
+    watch_parser.add_argument("--phase", required=True)
+    watch_parser.add_argument("--stdout-file")
+    watch_parser.add_argument("--stderr-file")
+    watch_parser.add_argument("--result-file")
+    watch_parser.add_argument("--required-output-file")
+    watch_parser.add_argument("--first-event-timeout", type=float)
+    watch_parser.add_argument("--idle-timeout", type=float)
+    watch_parser.add_argument("--hard-timeout", type=float)
+    watch_parser.add_argument("command", nargs=argparse.REMAINDER)
+    return root
+
+
+def main() -> None:
+    os.chdir(repo_root())
+    arguments = build_parser().parse_args()
+    if arguments.action == "reset":
+        reset(arguments.scope)
+        return
+    document = load_document()
+    if arguments.action == "show":
+        show(document, arguments.scope)
+    elif arguments.action == "set-models":
+        set_models(arguments.arguments)
+    elif arguments.action == "preflight":
+        preflight(document["role_models"])
+    elif arguments.action == "watch":
+        raise SystemExit(watch(arguments, document["role_timeouts"]))
+    else:
+        recommend_timeouts(document["role_timeouts"])
+
+
+if __name__ == "__main__":
+    main()

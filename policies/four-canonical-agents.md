@@ -15,7 +15,9 @@ The Codex mirrors live at `.codex/agents/<role>.toml`. See [`cross-harness-parit
 
 ## Execution venue
 
-The roles, names, tool stances, and verdict headers above are fixed. The **execution venue** — which model and implied harness runs a role — is not, and is governed by [`role-models.md`](role-models.md): the harness-aware `role-models.yaml` (set via `/roles`) resolves *any* of the four roles to a model and optional reasoning effort, scoped by which harness orchestrates. A role resolving to a CLI runs there — reading the same canonical `.claude/agents/<role>.md` file, honoring the same tool stance, emitting the same verdict headers; only *where* it executes changes (the coder write-enabled). The shipped default runs `plan-reviewer` + `code-critic` in the *other* harness (cross-vendor review); `phase-planner` and `phase-coder` can be routed too.
+The roles, names, tool stances, and verdict headers above are fixed. The **execution venue** — which model and implied harness runs a role — is not, and is governed by [`role-models.md`](role-models.md): `kickoff.yaml`'s harness-aware `role_models` section (edited directly or via `/roles`) resolves any role to separate model and optional effort fields, scoped by which harness orchestrates. A role resolving to a CLI runs there while reading the same canonical role file and honoring the same contract; only where it executes changes. The shipped default runs `plan-reviewer` + `code-critic` in the other harness; planner and coder can be routed too.
+
+Each invocation or revision round is also bounded by the role-specific first-event, idle-progress, and hard-deadline values in [`role-timeouts.md`](role-timeouts.md). Claude CLI roles additionally use its configured turn circuit breaker; Codex and native roles expose no equivalent flag. Those guards limit one run; the convergence rules below limit the number of runs.
 
 So do **not** assume any role runs as an in-harness subagent on the session model when reasoning about orchestration — check the resolved venue. The one invariant: **orchestration and build gates always run on the invoking session's model** and are never pinnable.
 
@@ -64,7 +66,7 @@ The same judgment governs all three loops:
 - **Code review** (coder → critic): continue while findings shrink in count and severity; escalate on recurrence or whack-a-mole.
 - **Build-gate failure** (coder → gate): converging means each fix knocks down failures and the error surface shrinks; stalled means the same failure recurs or each fix trades one break for another.
 
-**Runaway backstop.** Independent of the convergence read, no single loop runs past **5 cycles** without surfacing to the human. This is a runaway guard, not a budget — the same philosophy as the `--max-turns` cap in [`role-models.md`](role-models.md): a healthy converging loop almost never reaches it, and a loop that does has by definition failed to converge. When the backstop trips, escalate exactly as for a stall.
+**Runaway backstop.** Independent of the convergence read, no single loop runs past **5 cycles** without surfacing to the human. This is a runaway guard, not a budget — the same philosophy as the `--max-turns` cap in [`role-timeouts.md`](role-timeouts.md): a healthy converging loop almost never reaches it, and a loop that does has by definition failed to converge. When the backstop trips, escalate exactly as for a stall.
 
 These bounds are deliberate. The methodology assumes a human in the loop ([`human-in-the-loop.md`](human-in-the-loop.md)); the goal is to spend revision cycles only while they are buying convergence, and to hand a genuinely stuck decision to the human rather than grind identical objections — or burn the whole backstop — against a wall.
 

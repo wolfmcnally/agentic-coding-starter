@@ -33,11 +33,11 @@ Raw arguments: `!{ARGUMENTS}`
 
 ### Step 0a: Resolve per-role model/venue
 
-Resolve once per session, before phase work begins, per [`policies/role-models.md`](../../../policies/role-models.md). This resolves a `(venue, model, effort)` for **each of the four roles** from the harness-aware `role-models.yaml`.
+Resolve once per session, before phase work begins, per [`policies/role-models.md`](../../../policies/role-models.md). This resolves a `(venue, model, effort)` for **each of the four roles** from `kickoff.yaml`'s harness-aware `role_models` section.
 
 1. **Recursion guard.** If the env var `KICKOFF_DELEGATION_DEPTH` is set, this session is *itself* a delegated role invoked by an outer `/kickoff`; **every role runs native** and no further delegation happens. Skip the rest of Step 0a.
 2. **Detect the orchestrating harness `H`:** `CLAUDECODE=1` in the environment → `claude`; otherwise → `codex`.
-3. **Read + resolve.** Run `./bin/role-models --show` — it reads `role-models.yaml` and prints the resolved value per role for the current harness. (The resolution rule is: `config[H][role]` if set, else `config['default'][role]` if set, else `default`.) Each role resolves to one of `default | claude | codex | opus | fable | sol | terra | luna`. Codex- and Claude-routed values accept an optional `@low|medium|high|xhigh` suffix; Claude values additionally accept `@max`.
+3. **Read + resolve.** Run `./bin/kickoff-config show models` — it validates the complete human-editable `kickoff.yaml` and prints the resolved `model` plus optional separate `effort` field per role for the current harness. (The resolution rule is: `role_models[H][role]` if set, else `role_models['default'][role]` if set, else `{model: default}`.) Models are `default | claude | codex | opus | fable | sol | terra | luna`; effort is absent/default or `low | medium | high | xhigh`, plus Claude-only `max`.
 4. **Map each resolved value to a venue:**
    - `default` → **native** (in-harness subagent on the session model). No CLI.
    - `claude` → the `claude` CLI, its configured default model (no `--model`).
@@ -45,12 +45,39 @@ Resolve once per session, before phase work begins, per [`policies/role-models.m
    - `opus` / `fable` → the `claude` CLI, `--model opus|fable`.
    - `sol` / `terra` / `luna` → the `codex` CLI,
      `--model gpt-5.6-sol|terra|luna` respectively.
-   - An effort suffix adds `-c 'model_reasoning_effort="<effort>"'` to Codex
+   - A separate effort field adds `-c 'model_reasoning_effort="<effort>"'` to Codex
      initial and resume invocations, or `--effort <effort>` to Claude initial
-     and resume invocations. No suffix preserves the configured/default effort.
-5. **CLI availability.** For any role resolving to a CLI, `command -v <cli>` — **absent → native**, recorded as a *quiet* END-block note (`native — <cli> not on PATH`), **not** a 🚨 (a missing other-CLI is an environment fact, and the shipped cross-review default must not alarm a single-CLI user).
+     and resume invocations. An absent effort field preserves the configured/default effort.
 
-Remember each role's resolved `(venue, model, effort)` and the orchestrating harness for Steps 3–6 and the Step 10 END block. Roles do not re-resolve mid-session. A non-`default` value always goes through the CLI recipe — do **not** short-circuit "value == session model" (uniform resolution, no session-model probing).
+Remember each role's resolved `(venue, model, effort)` and the orchestrating harness for Steps 3–6 and the Step 10 END block. Roles do not re-resolve mid-session. A non-`default` model always goes through the CLI recipe — do **not** short-circuit "model == session model" (uniform resolution, no session-model probing).
+
+### Step 0b: Preflight every non-native role venue
+
+Before identifying a phase, changing a status marker, writing `LOG.md`, or invoking any role, run:
+
+```
+./bin/kickoff-config preflight
+```
+
+This deterministic preflight resolves the same role pins as Step 0a and makes one live sentinel call for every unique non-native `(CLI, model, effort, access mode)` target. It uses the production credential scrubs, model/effort overrides, headless flags, stdin closure, and read-only versus write-enabled posture, but runs in an empty temporary working directory so it neither loads repository context nor touches the tree (the Codex probe adds `--skip-git-repo-check` solely because that directory is intentionally not a checkout). The active orchestrator needs no probe because the current session already proves it is authenticated; every role that will run through a subprocess is probed, including a deliberately configured same-vendor pin. Duplicate targets are probed once.
+
+The preflight validates the full upstream path needed by the phase: CLI presence, usable authentication, model entitlement, network reachability, current flag compatibility, sandbox/access posture, a response within the 120-second hang guard, and an exact `KICKOFF_PREFLIGHT_OK` sentinel. A status command or credential-file check is insufficient because it does not prove a live model call under the production environment.
+
+**Any failure aborts `/kickoff` immediately.** Report the failed target and the script's diagnostic, then stop. Do not fall back to native, identify or decompose the phase, change `plan/INDEX.md`, append a START/END block, or invoke an agent. After the user fixes authentication or the other upstream error, they rerun `/kickoff` from a clean pre-phase state. If every role is native, or the recursion guard makes every role native, the script reports `N/A` / `skipped` and succeeds.
+
+### Step 0c: Load per-role execution budgets
+
+Run `./bin/kickoff-config show timeouts` and retain the first-event timeout, each role's hard deadline and idle watchdog, plus its Claude-only `claude_max_turns` circuit breaker from `kickoff.yaml`'s `role_timeouts` section, per [`policies/role-timeouts.md`](../../../policies/role-timeouts.md). The three clocks apply to **every invocation or resumed revision round**; the turn value applies only when the delegated venue is Claude, because Codex and native subagents expose no equivalent flag. The shipped seed values are below; when a project has deliberately recalibrated its config, the validated config output governs:
+
+- planner — 1,800 s hard / 600 s idle / 50 turns;
+- reviewer — 1,800 s hard / 600 s idle / 50 turns;
+- coder — 7,200 s hard / 1,200 s idle / 200 turns;
+- critic — 2,700 s hard / 600 s idle / 50 turns;
+- every role — first structured event within 120 s.
+
+For every external CLI call, including resumes and the one permitted max-turn rescue, invoke the production command through `./bin/kickoff-config watch` with `--role`, resolved `--venue`, `--model`, `--effort`, phase id, and named stdout/stderr/result artifacts. Pass Claude's extracted result path as `--result-file`; pass Codex's `--output-last-message` path as `--required-output-file`. The wrapper closes stdin, verifies that the actual CLI/model/effort flags match its metadata, truncates result paths before launch, requires a structured event and fresh result, streams progress, terminates the whole process group on first-event/idle/hard timeout, returns 124 on timeout or 65 on a protocol failure, and appends local telemetry to `.kickoff/role-timings.jsonl`. Codex must emit JSONL with `--json`; Claude must emit JSONL with `--output-format stream-json --verbose`. Preserve each role's timing record for Step 10.
+
+For native subagents, use the same role-specific hard and idle budgets through the harness's wait/status mechanism. Progress means a real agent event, status transition, or tool result; the orchestrator's own polling is not progress. If the harness cannot expose idle timing, enforce the hard deadline and record first-event/idle as `unavailable`. Keep the user informed at least every 60 seconds while waiting.
 
 ### Step 1: Identify the phase
 
@@ -101,13 +128,13 @@ Use the phase's "Deliverables" list from `plan/phase-<id>.md` verbatim (trimmed 
 
 ### Step 3: Plan
 
-**Native venue** (planner unpinned, per Step 0a): delegate the planning stage to the `phase-planner` subagent (Claude Code) / the `phase-planner` agent (Codex). Pass it:
+**Native venue** (planner unpinned, per Step 0a): delegate the planning stage to the `phase-planner` subagent (Claude Code) / the `phase-planner` agent (Codex), enforcing the planner budget from Step 0c. Pass it:
 
 - The phase identifier (e.g., `Phase 1.3`) and heading.
 - The full phase text from `plan/phase-<id>.md` (copy/paste, do not summarize).
 - Nothing about the agent's own procedure — the role definition already covers the reading protocol and output format.
 
-**Delegated venue** (`claude`/`codex`/`opus`/`fable`/`sol`/`terra`/`luna`, with optional effort, per Step 0a): run the planner in that CLI per [`policies/role-models.md`](../../../policies/role-models.md), reusing the read-only recipe in [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md) with the resolved model/effort flags and `KICKOFF_DELEGATION_DEPTH=1` in the child environment. The planner is read-only but needs its full tool stance — `--allowedTools "Read,Grep,Glob,WebSearch,WebFetch"` for claude; codex read-only sandbox. Instruct the external agent to read `.claude/agents/phase-planner.md` and adopt that role; pass the phase reference and full phase text via a temp file. Capture the session id for revision rounds (codex `--json` `thread_id`; claude `.session_id`) — the planner resumes across plan-revision rounds with the same resolved model and effort. On failure, fall back to the native `phase-planner` and record it for Step 10 — a *reachable* CLI whose call failed (three-signal gate, timeout) is a 🚨 disconnect; a CLI simply *not on PATH* is a quiet note.
+**Delegated venue** (`claude`/`codex`/`opus`/`fable`/`sol`/`terra`/`luna`, with optional effort, per Step 0a): run the planner in that CLI per [`policies/role-models.md`](../../../policies/role-models.md), reusing the read-only recipe in [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md) with the resolved model/effort flags and `KICKOFF_DELEGATION_DEPTH=1` in the child environment, wrapped by `bin/kickoff-config watch` with the planner budget. The planner is read-only but needs its full tool stance — `--allowedTools "Read,Grep,Glob,WebSearch,WebFetch"` for claude; codex read-only sandbox. Instruct the external agent to read `.claude/agents/phase-planner.md` and adopt that role; pass the phase reference and full phase text via a temp file. Capture the session id for revision rounds (codex `--json` `thread_id`; claude stream event `session_id`) — the planner resumes across plan-revision rounds with the same resolved model and effort. If a later runtime call fails despite the successful preflight, fall back to the native `phase-planner` and record it for Step 10; that is a 🚨 disconnect.
 
 Wait for the plan.
 
@@ -121,12 +148,12 @@ Wait for the plan.
 - The full phase text from `plan/phase-<id>.md`.
 - The full plan text from Step 3.
 
-**Delegated venue** (the non-`default` value `reviewer` resolved to in Step 0a): run the role in that CLI per [`policies/role-models.md`](../../../policies/role-models.md). The default `role-models.yaml` resolves reviewer to the *other* harness (cross-vendor review); a project may resolve it anywhere. Add the resolved model and effort flags to the recipe below and preserve them on resume; everything else is identical. A reachable-but-failed call falls back to native with a 🚨 in Step 10; a CLI not on PATH falls back with a quiet note.
+**Delegated venue** (the non-`default` model `reviewer` resolved to in Step 0a): run the role in that CLI per [`policies/role-models.md`](../../../policies/role-models.md). The shipped `kickoff.yaml` resolves reviewer to the *other* harness (cross-vendor review); a project may resolve it anywhere. Add the resolved model and effort flags to the recipe below and preserve them on resume; everything else is identical. A later runtime failure despite the successful preflight falls back to native with a 🚨 in Step 10.
 
 1. Write the full phase text and the full plan text to temp files (e.g., `/tmp/kickoff-phase-<id>.md`, `/tmp/kickoff-plan-<id>.md`). Do not include the planner's own confidence statements or open-questions commentary beyond the plan text itself.
 2. Write a prompt file instructing the external agent to: read `.claude/agents/plan-reviewer.md` and adopt that role for this review; review the plan in `<plan temp file>` against the phase text in `<phase temp file>`; assume the planner was careful but missed something; end with the exact verdict header (`## Verdict: APPROVED` or `## Verdict: REVISE`). Note that `AskUserQuestion` is unavailable in this venue — an unresolved product decision becomes `REVISE` with the question stated. **Scope the reading mandate** — the reviewer has a read-only checkout and its own Read/Grep, so name the handful of load-bearing files to read (the sources the plan actually reshapes), not "read all the sources the plan touches." An unbounded "read everything" instruction on a large multi-file phase can exhaust the external reviewer's own context (and trip its internal compaction, which can fail on a network stall) before it reaches a verdict — see [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md) §4.
-3. Invoke the recipe for the venue from [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md) (codex: `env -u OPENAI_API_KEY -u CODEX_API_KEY codex exec --json -s read-only … --output-last-message … >"$EVENTS" </dev/null`; claude: `env -u CLAUDECODE -u ANTHROPIC_API_KEY … claude -p … --output-format json </dev/null` — the API-key scrubs are unconditional, a set key silently outranks subscription auth; and the `</dev/null` stdin redirect is **mandatory** — `codex exec` reads stdin even with the prompt as an argument and hangs on `Reading additional input from stdin...` until the timeout when the call is backgrounded/detached with an open stdin), with `KICKOFF_DELEGATION_DEPTH=1` in the child environment and a 600 s wall-clock timeout (a hang guard, not a performance target — per [`policies/role-models.md`](../../../policies/role-models.md), generous by design). **Capture the session id for revision rounds**: codex requires `--json` on the call — the id is the first stdout event, `{"type":"thread.started","thread_id":"<uuid>"}` (without `--json` the id reaches only stderr, which the recipe discards, so resume becomes impossible and every round spawns a fresh context); claude reads `.session_id` from its JSON envelope. A flag-parse error from a churned CLI version counts as an invocation failure (next item).
-4. Gate on the three-signal check: output artifact non-empty, exactly one `## Verdict:` header, returned within timeout. Exception before falling back: a claude envelope with `subtype: "error_max_turns"` means the investigation finished but went unreported — **resume the session once** (`claude --resume <sid> -p "Conclude your review now: emit the exact verdict header and your essential findings only. Do not investigate further."`) and re-gate. On failure (including a failed rescue): perform this stage with the native `plan-reviewer` instead, record `[fallback: <reason>]` for the END block, and keep all remaining rounds of this stage native.
+3. Invoke the recipe for the venue from [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md) through `bin/kickoff-config watch` with the reviewer budget and named event/diagnostic/result artifacts (codex emits `--json` and supplies `--required-output-file`; claude emits `--output-format stream-json --verbose` and supplies `--result-file`). Put the resolved model and effort flags on the actual child CLI command as well as the watchdog metadata; the watchdog rejects any mismatch before launch. The API-key scrubs are unconditional because a set key silently outranks subscription auth; the wrapper closes stdin. **Capture the session id for revision rounds**: for codex it is the first stdout event, `{"type":"thread.started","thread_id":"<uuid>"}`; for claude, read `session_id` from the stream. A flag-parse error from a churned CLI version counts as an invocation failure (next item).
+4. Gate on the three-signal check: output artifact non-empty, exactly one `## Verdict:` header, and execution inside all three clocks. Exception before falling back: a claude stream result with `subtype: "error_max_turns"` means the investigation finished but went unreported — **resume the session once** (`claude --resume <sid> -p "Conclude your review now: emit the exact verdict header and your essential findings only. Do not investigate further."`) and re-gate. On failure (including a failed rescue): perform this stage with the native `plan-reviewer` instead, record `[fallback: <reason>]` for the END block, and keep all remaining rounds of this stage native.
 
 **If `APPROVED`**: proceed to Step 5. Show the user a brief summary plus any Minor Corrections (do not wait for explicit approval unless the user asked to review plans themselves).
 
@@ -138,15 +165,15 @@ Wait for the plan.
 
 - The approved plan (full text, including any Minor Corrections from the plan-reviewer appended as a note).
 
-**Pinned venue** (any non-`default` value, per Step 0a): run the coder in that model's implied CLI per [`policies/role-models.md`](../../../policies/role-models.md), using the **write-enabled** recipe (the coder writes — unlike every read-only reviewer role):
+**Pinned venue** (any non-`default` model, per Step 0a): run the coder in that model's implied CLI per [`policies/role-models.md`](../../../policies/role-models.md), using the **write-enabled** recipe (the coder writes — unlike every read-only reviewer role):
 
 1. Instruct the external agent to read `.claude/agents/phase-coder.md` and adopt that role; pass the approved plan (full text) via a temp file.
 2. Invoke the write-enabled recipe with `KICKOFF_DELEGATION_DEPTH=1` in the child environment:
-   - **claude coder:** `env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT -u ANTHROPIC_API_KEY KICKOFF_DELEGATION_DEPTH=1 claude -p "$(cat "$PROMPTFILE")" --model <m> [--effort <effort>] --permission-mode dontAsk --allowedTools "Read,Grep,Glob,Write,Edit,Bash" --output-format json --max-turns 200 </dev/null` (raised turn cap — an implementation loop, not a review; `.git`/`.claude` stay non-auto-approved under `dontAsk`, and the coder writes under the deliverable dir).
+   - **claude coder:** run `claude -p "$(cat "$PROMPTFILE")" --model <m> [--effort <effort>] --permission-mode dontAsk --allowedTools "Read,Grep,Glob,Write,Edit,Bash" --output-format stream-json --verbose --max-turns <coder claude_max_turns>` through `bin/kickoff-config watch`, with the credential scrubs and recursion guard from the invocation brief. The implementation loop uses the coder's larger budget; `.git`/`.claude` stay non-auto-approved under `dontAsk`, and the coder writes under the deliverable dir.
    - **codex coder:** the Step 4 codex recipe but `-s workspace-write` (initial) / `-c 'sandbox_mode="workspace-write"'` (resume), plus the resolved `--model gpt-5.6-<name>` and `model_reasoning_effort` overrides when present. **Never** `--yolo`/`danger-full-access`.
 3. **Single-writer guarantee:** `/kickoff` is sequential, so during this stage no native writer touches the tree — the pinned coder owns it exclusively (build gates run afterward, Step 7). This satisfies "serialize or isolate — never two writers on one tree" without a worktree.
-4. Capture the session id (codex `--json` `thread_id`; claude `.session_id`) — the coder resumes across code-revision and build-fix rounds. Read the report (file list, Build Status, Manual Checks) from the CLI output (`.result` / `--output-last-message`); the file writes have already landed in the tree.
-5. **Fallback:** three-signal gate failure, timeout, or the **macOS Seatbelt `workspace-write` network trap** (a codex-spawned claude denied network) → fall back to the native `phase-coder`, record `[fallback: <reason>]`, and raise the 🚨 disconnect for Step 10 (the CLI was reachable but the call failed). A CLI simply *not on PATH* is the quiet exception (native + informational note, no 🚨). Do not attempt to repair the sandbox mid-run.
+4. Capture the session id (codex `--json` `thread_id`; claude stream `session_id`) — the coder resumes across code-revision and build-fix rounds. Read the report (file list, Build Status, Manual Checks) from the watcher result artifact / codex `--output-last-message`; the file writes have already landed in the tree.
+5. **Fallback:** a later three-signal gate failure or timeout despite the successful preflight → fall back to the native `phase-coder`, record `[fallback: <reason>]`, and raise the 🚨 disconnect for Step 10. Do not attempt to repair the sandbox mid-run.
 
 Wait for the coder. Collect the list of files created or modified, the Build Status block, and the Manual Checks list.
 
@@ -159,12 +186,12 @@ Wait for the coder. Collect the list of files created or modified, the Build Sta
 - The list of files the coder created or modified.
 - **Light lane only:** the lane declaration, with the instruction to additionally judge lane fit per [`policies/review-lanes.md`](../../../policies/review-lanes.md) — did the diff stay within mechanical scope?
 
-**Delegated venue** (the non-`default` value `critic` resolved to in Step 0a): run the role in that model's implied CLI per [`policies/role-models.md`](../../../policies/role-models.md). The default `role-models.yaml` resolves critic to the *other* harness (cross-vendor review). Add the resolved model and effort flags and preserve them on resume; a reachable-but-failed call falls back with a 🚨 in Step 10, a CLI not on PATH with a quiet note.
+**Delegated venue** (the non-`default` model `critic` resolved to in Step 0a): run the role in that model's implied CLI per [`policies/role-models.md`](../../../policies/role-models.md). The shipped `kickoff.yaml` resolves critic to the *other* harness (cross-vendor review). Add the resolved model and effort flags and preserve them on resume; a later runtime failure despite the successful preflight falls back with a 🚨 in Step 10.
 
 1. Write the approved plan and the **changed-file list** to temp files, and capture `git diff --stat` (what changed and where). The external reviewer runs against a **read-only checkout** with its own Read/Grep, so hand it a map, not a payload: it pulls the specific files it wants. Inline a full diff into a temp file only when the change is small enough to read whole; for a large change the file list + `git diff --stat` *is* the handoff. **Never pre-materialize a monolithic diff and reject the venue because `git diff | wc -c` is large** — an on-disk artifact is not tokens-in-the-window; a reviewer with Read/Grep reads surgically, and delegation is discarded only on the three-signal gate below, never on a pre-computed size estimate. **Flag machine-regenerated blobs** in the file list (fixtures, snapshot JSON, lockfiles, golden files) as "spot-check structure, don't read line-by-line" — they dominate byte count but carry almost no review surface. **Redact the coder's self-assessment** — no Build Status block, no Manual Checks narrative, no "tests pass" framing. Cold artifacts review 3–4× deeper (see [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md) §§1, 4).
 2. Write a prompt file instructing the external agent to: read `.claude/agents/code-critic.md` and adopt that role for this review; review the changed files (listed in the file-list temp file; explore them via the read-only checkout) against the plan in the temp file; assume the implementer was careful but missed something; end with the exact verdict header.
-3. Invoke the policy's recipe for the venue, with `KICKOFF_DELEGATION_DEPTH=1` in the child environment and a 900 s wall-clock timeout (hang guard; same rationale as Step 4). Capture the session id for revision rounds the same way as Step 4 (codex: `--json` first event `thread_id`; claude: `.session_id`).
-4. Gate on the three-signal check (artifact non-empty; exactly one `## Verdict:` header; within timeout). Exception before falling back: on `subtype: "error_max_turns"`, resume the session once with the "conclude now" instruction (as in Step 4) and re-gate. On failure (including a failed rescue): perform this stage with the native `code-critic` instead, record `[fallback: <reason>]` for the END block, and keep all remaining rounds of this stage native.
+3. Invoke the policy's recipe for the venue through `bin/kickoff-config watch`, with `KICKOFF_DELEGATION_DEPTH=1` in the child environment and the critic budget from Step 0c. Capture the session id for revision rounds the same way as Step 4 (codex: `--json` first event `thread_id`; claude: stream `session_id`).
+4. Gate on the three-signal check (artifact non-empty; exactly one `## Verdict:` header; execution inside all three clocks). Exception before falling back: on `subtype: "error_max_turns"`, resume the session once with the "conclude now" instruction (as in Step 4) and re-gate. On failure (including a failed rescue): perform this stage with the native `code-critic` instead, record `[fallback: <reason>]` for the END block, and keep all remaining rounds of this stage native.
 
 **If `APPROVED`**: proceed to Step 7.
 
@@ -181,7 +208,7 @@ Identify "touched surfaces" by looking at the files the coder reported plus `git
 The project's primary build gates come from the project's actual tooling. For the **Agentic Coding Starter Template itself**, the example Python project lives under `project/` per [`policies/project-isolation.md`](../../../policies/project-isolation.md), so the gates are:
 
 ```
-cd project && uv run ruff check example tests && uv run ruff format --check example tests && uv run pytest -q
+cd project && uv run ruff check example tests ../bin/kickoff-config ../tests && uv run ruff format --check example tests ../bin/kickoff-config ../tests && uv run pytest -q tests ../tests
 ```
 
 The `cd project && ...` pattern is the canonical shape (single executable line; uniform across language ecosystems). Projects that opt out of the `project/` convention put the metadata at the root and drop the `cd project &&` prefix. A project derived from this template via `/stamp` may have different gates — Node, Rust, Go, polyglot. The planner is responsible for listing them; the orchestrator runs whatever the planner listed.
@@ -275,10 +302,17 @@ Review lane (per `policies/review-lanes.md`):
 - full | light | light → full (escalated: <reason>) | light → full (orchestrator upgrade: <reason>)
 
 Role model/venue (per `policies/role-models.md`) — orchestrated by <claude|codex>:
-- Planner: native (<session model>) | <pin> [resolved: <CLI model and effort>] <annotate "native (<cli> not on PATH)" or "[fallback: <reason>]">
-- Reviewer (plan review): native | <pin> [resolved: <CLI model and effort>] | skipped (light lane) <same annotations>
-- Coder: native (<session model>) | <pin> [resolved: <CLI model and effort>] <same annotations>
-- Critic (code review): native | <pin> [resolved: <CLI model and effort>] <same annotations>
+- Preflight: OK (<validated targets>) | N/A (every role native)
+- Planner: model=<model> effort=<effort|default> venue=<native|claude|codex> <annotate "[fallback: <reason>]" only for a post-preflight runtime failure>
+- Reviewer (plan review): model=<model> effort=<effort|default> venue=<native|claude|codex> | skipped (light lane) <same annotations>
+- Coder: model=<model> effort=<effort|default> venue=<native|claude|codex> <same annotations>
+- Critic (code review): model=<model> effort=<effort|default> venue=<native|claude|codex> <same annotations>
+
+Role timing (per `policies/role-timeouts.md`):
+- Planner: <duration>; first event <duration|unavailable>; longest idle <duration|unavailable>; <success|error|timeout(type)>
+- Reviewer (plan review): <same> | skipped (light lane)
+- Coder: <same>
+- Critic (code review): <same>
 
 Manual checks for user:
 - <named check> | None
@@ -297,7 +331,7 @@ Remaining:
 
 Then report to the user:
 
-- **🚨 Role disconnects (per [`policies/role-models.md`](../../../policies/role-models.md)):** for every role whose resolved CLI **was reachable but whose call failed** (three-signal gate, timeout, sandbox-network trap) so it ran native instead, a 🚨 line stating what was configured, what actually ran, and why — e.g. `🚨 coder configured for opus but ran native (call timed out) — output was NOT produced by opus`. A role that fell back only because its CLI was **not installed** is *not* a 🚨 — mention it once, plainly, as an informational note. If every role ran on its resolved venue, omit this entirely — no 🚨 on a clean run.
+- **🚨 Role disconnects (per [`policies/role-models.md`](../../../policies/role-models.md)):** for every role whose runtime call failed after a successful preflight (three-signal gate or timeout) so it ran native instead, add a 🚨 line stating what was configured, what actually ran, and why — e.g. `🚨 coder configured for opus but ran native (call timed out) — output was NOT produced by opus`. If every role ran on its resolved venue, omit this entirely. Preflight failures never reach Step 10 because they abort before phase state exists.
 - Which phase was completed and which is next (`⬅️`).
 - Files created/modified, grouped by surface.
 - Build and gate status.
@@ -312,7 +346,8 @@ Then report to the user:
 
 - The four canonical role names (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`) are load-bearing. See [`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md).
 - The verdict header (`## Verdict: APPROVED` or `## Verdict: REVISE`) is parsed by string match. Mis-cased or rephrased verdicts break orchestration.
-- Per-role model/venue ([`policies/role-models.md`](../../../policies/role-models.md)): the harness-aware `role-models.yaml` (set via `/roles`) resolves each of the four roles to a model, its implied venue, and optional reasoning effort at Step 0a, scoped by which harness is orchestrating. The shipped default routes reviewer + critic to the *other* harness (cross-vendor review — there is no separate on/off token) and leaves planner + coder native; a project may resolve any role anywhere. A role resolving to a CLI is invoked there with the resolved model/effort overrides (write-enabled for the coder), resuming the same session across the role's rounds. Orchestration and build gates always run on the session model — never pinnable. Fallback is graceful, per-stage, reported in the END block, and never a phase failure: a *reachable* CLI whose call failed surfaces a 🚨 in the Step 10 report; a CLI simply *not on PATH* is a quiet note. The recursion guard env var is `KICKOFF_DELEGATION_DEPTH` (a delegated role never re-delegates). Recipes and handoff hygiene: [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md).
+- Per-role model/venue ([`policies/role-models.md`](../../../policies/role-models.md)): `kickoff.yaml`'s human-editable `role_models` section (set directly or via `/roles`) resolves each of the four roles to separate model and effort fields plus an implied venue at Step 0a, scoped by which harness is orchestrating. Step 0b live-validates every non-native CLI/model/access target and aborts before phase mutation on any upstream failure. The shipped default routes reviewer + critic to the *other* harness (cross-vendor review — there is no separate on/off token) and leaves planner + coder native; a project may resolve any role anywhere. A role resolving to a CLI is invoked there with the resolved model/effort overrides (write-enabled for the coder), resuming the same session across the role's rounds. Orchestration and build gates always run on the session model — never pinnable. A later runtime failure after successful preflight may still fall back per-stage and surfaces a 🚨 in the Step 10 report. The recursion guard env var is `KICKOFF_DELEGATION_DEPTH` (a delegated role never re-delegates). Recipes and handoff hygiene: [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md).
+- Per-role execution budgets ([`policies/role-timeouts.md`](../../../policies/role-timeouts.md)): Step 0c loads portable defaults from `kickoff.yaml`'s `role_timeouts` section. Every external initial/resume/rescue call runs through `bin/kickoff-config watch`; native calls use the same budgets through the harness wait mechanism. Raw telemetry is local under `.kickoff/`, and Step 10 records the human-readable timing summary.
 - Review lanes ([`policies/review-lanes.md`](../../../policies/review-lanes.md)): a phase's `review_lane: light` frontmatter skips Step 4 for mechanical work. The code critic always runs in every lane, guards the lane, and can escalate a light phase back to full; the END block records the lane. Lane and venue are orthogonal.
 - The ripple pass in Step 9a (sub-phase close) and Step 9b (major-phase close) is governed by [`policies/phase-ripple.md`](../../../policies/phase-ripple.md). AUTO ripples land in the same session; DECIDE ripples appear in the END block as named follow-ups.
 - Cross-harness: this same skill drives both Claude Code and Codex. The Codex slash-command entry point lives at `.codex/prompts/kickoff.md` (file symlink to this file); Codex's native skill-discovery surface reaches it through `.agents/skills/kickoff` (directory symlink to the parent `.claude/skills/kickoff/`). Edit this canonical skill, not the wrappers.

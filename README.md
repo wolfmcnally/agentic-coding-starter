@@ -17,7 +17,8 @@ The template ships with:
 - Four **canonical agent roles** (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`) defined once and mirrored to every supported harness.
 - A **`/stamp` skill** (starter-template-only) for stamping out new repos from this one.
 - **`/learn` and `/teach` skills** (universal — carried into every derived project) for moving patterns *between* methodology-following repos. `/learn` absorbs patterns from another repo into the current one; `/teach` sends patterns from the current repo out to a target. Both are plan-first: the user approves before any file changes.
-- **Harness-aware model & review venue.** `role-models.yaml` (set via the universal **`/roles`** skill) chooses which model runs each of the four roles—the model code name implies its CLI—scoped by which harness is orchestrating. GPT-5.6 pins use `sol`, `terra`, or `luna`; Codex and Claude models both accept optional reasoning effort (`sol@medium`, `opus@high`, `fable@max`). The shipped default gives **cross-vendor review** for free: reviewer and critic run in the *other* harness (`codex` when Claude Code orchestrates, `claude` when Codex does) — a model reviewing another vendor's model catches failure classes same-family review misses. Any role can be routed anywhere — e.g. `/roles codex coder: opus`; orchestration and build gates always stay on your session's model. See [`policies/role-models.md`](policies/role-models.md).
+- **Human-editable kickoff configuration.** One `kickoff.yaml` contains harness-aware role routing and execution budgets. Model and effort are separate fields. Edit it directly or use `/roles`; the round-trip-safe manager rejects schema typos while preserving comments and project-specific data under `extensions`.
+- **Fail-fast readiness and progress-aware timeouts.** `/kickoff` live-validates every required non-orchestrator CLI/model/auth path before it mutates phase state. Production role calls then use per-role first-event, idle, and hard deadlines from the same config; local gitignored telemetry supports evidence-based recalibration. See [`policies/role-models.md`](policies/role-models.md) and [`policies/role-timeouts.md`](policies/role-timeouts.md).
 - A **`plan/` ledger** (status table, dependency graph, cross-cutting concerns) where work is tracked phase by phase.
 - A **`briefs/` library** for durable design decisions and methodology notes.
 - A **`policies/` library** for the rules every phase must respect.
@@ -93,7 +94,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 ├── CLAUDE.md                       ← top-level guidance for agents
 ├── AGENTS.md                       ← symlink → CLAUDE.md (for Codex/aider)
 ├── LOG.md                          ← append-only activity log
-├── role-models.yaml                ← per-role model/venue pins (set via /roles)
+├── kickoff.yaml                    ← human-editable role models/efforts/timeouts
 ├── project/                        ← the deliverable (self-contained per
 │   │                                  policies/project-isolation.md)
 │   ├── pyproject.toml              ←   package metadata
@@ -108,6 +109,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── BRIEF.md                    ←   entry-point brief for *this* repo
 │   ├── methodology.md              ←   the eleven-step methodology
 │   ├── agentic-bootstrap.md        ←   how to stand up a new project
+│   ├── cross-agent-invocation.md   ←   cross-CLI invocation BCPs
 │   └── deterministic-orchestration.md ← draft: deterministic kickoff loop
 ├── policies/                       ← non-negotiable rules every phase honors
 │   ├── README.md
@@ -119,9 +121,16 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── log-discipline.md
 │   ├── human-in-the-loop.md
 │   ├── four-canonical-agents.md
+│   ├── role-models.md              ← role routing and fail-closed preflight
+│   ├── role-timeouts.md            ← first-event/idle/hard execution budgets
 │   ├── review-lanes.md             ← risk-adaptive review intensity
 │   ├── project-isolation.md        ← isolate deliverable under project/
 │   └── greenfield-until-released.md ← no backward-compat shims pre-release
+├── bin/                            ← deterministic methodology executables
+│   ├── kickoff-config              ← round-trip config, preflight, watchdog
+│   └── check-anonymization.sh       ← starter-only public-repo leak guard
+├── tests/                          ← universal methodology machinery tests
+│   └── test_kickoff_config.py       ← config/watchdog behavioral coverage
 ├── plan/                           ← phased execution plan
 │   ├── INDEX.md                    ←   phase ledger (status lives ONLY here)
 │   └── phase-1.md                  ←   first phase (a stub you replace)
