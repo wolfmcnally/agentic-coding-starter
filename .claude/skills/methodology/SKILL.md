@@ -6,15 +6,15 @@ description: >-
   sub-phase decomposition → orchestrated planner/reviewer/coder/critic loops
   → acceptance → log → human evaluation → stay agile. Invoke when scoping a
   new project, setting up a repo's planning structure, breaking a large
-  initiative into phases, or when you need a reminder of the steps without
-  reading the full brief.
+  initiative into phases, or reviewing the steps without reading the full
+  brief. Invoke as /methodology in Claude Code or $methodology in Codex.
 ---
 
 # The Agentic Coding Methodology
 
 A methodology for writing software with AI coding agents in a way that scales beyond ad-hoc prompting. Each step involves conversing with or using LLMs. Apply it when scoping or structuring a coding project — not when answering one-off coding questions.
 
-The authoritative source is [`briefs/methodology.md`](../../../briefs/methodology.md). This skill is a slash-command-accessible restatement.
+The authoritative source is [`briefs/methodology.md`](../../../briefs/methodology.md). Invoke this restatement as `/methodology` in Claude Code or `$methodology` in Codex.
 
 ## The eleven steps
 
@@ -30,7 +30,7 @@ The authoritative source is [`briefs/methodology.md`](../../../briefs/methodolog
 
 6. **Sub-phase breakdown at phase start.** At the start of every major phase, break it down into sub-phases. Resist decomposing future major phases at bootstrap. Bite size is capability-indexed: a coder model that routinely closes phases with first-cycle approvals can take bigger bites — see `briefs/methodology.md` §6.
 
-7. **Orchestrator-driven sub-phase execution.** Use a high-level orchestrator skill (`/kickoff`) that does **no coding itself**. It:
+7. **Orchestrator-driven sub-phase execution.** Use the high-level `kickoff` orchestrator skill (`/kickoff` in Claude Code; `$kickoff` in Codex), which does **no coding itself**. It:
    - determines the current phase,
    - invokes a **planner agent**,
    - hands the plan to a **plan reviewer** (skipped when the phase declares the `light` review lane per `policies/review-lanes.md`),
@@ -52,7 +52,7 @@ The authoritative source is [`briefs/methodology.md`](../../../briefs/methodolog
 - If a brief exists but no architecture, do step 3 and research BCPs.
 - If architecture exists but no phase plan, do step 5.
 - If a phase exists but no sub-phases, do step 6.
-- If a sub-phase is being executed, follow step 7's orchestrator pattern (`/kickoff`).
+- If a sub-phase is being executed, follow step 7's `kickoff` orchestrator pattern.
 - Whenever a phase opens or closes, write to the append-only log (step 9) with explicit evidence.
 
 ## The four canonical agents

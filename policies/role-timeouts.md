@@ -1,6 +1,6 @@
 # Policy: Per-Role Execution Budgets
 
-Every `/kickoff` role invocation has three independent guards: **first structured event**, **idle progress**, and **absolute runtime**. A role may legitimately take a long time; it may not disappear silently or run without an upper bound. Budgets apply to each invocation or resumed revision round, not to the phase as a whole.
+Every `kickoff` role invocation has three independent guards: **first structured event**, **idle progress**, and **absolute runtime**. A role may legitimately take a long time; it may not disappear silently or run without an upper bound. Budgets apply to each invocation or resumed revision round, not to the phase as a whole.
 
 ## Shipped budgets
 
@@ -50,7 +50,7 @@ Timeouts are right-censored evidence, not successful durations. Review them sepa
 
 ## Portability
 
-The two policy sections, unified config schema and shipped defaults, manager, telemetry schema, `/kickoff` instructions, `/roles`, and invocation recipes are one **atomic universal bundle**. `/stamp` copies the bundle. `/teach` proposes it atomically but preserves an existing target's values, comments, `extensions` data, local telemetry, model choices, and project-specific overrides. `/learn` may adopt improved mechanics, schema, algorithms, or universal defaults, but never imports donor operational state.
+The two policy sections, unified config schema and shipped defaults, manager, telemetry schema, `kickoff` instructions, `roles`, and invocation recipes are one **atomic universal bundle**. `stamp` copies the bundle. `teach` proposes it atomically but preserves an existing target's values, comments, `extensions` data, local telemetry, model choices, and project-specific overrides. `learn` may adopt improved mechanics, schema, algorithms, or universal defaults, but never imports donor operational state.
 
 ## Relationship to other policies
 

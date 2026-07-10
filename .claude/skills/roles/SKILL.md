@@ -1,21 +1,20 @@
 ---
 name: roles
 description: >-
-  Pin a model/harness to any of the four canonical /kickoff roles (planner,
+  Pin a model/harness to any of the four canonical kickoff roles (planner,
   reviewer, coder, critic), scoped by which harness is orchestrating, or show
   the current pins. Updates the role_models section of the repo's kickoff.yaml
   while preserving human comments and other sections, so the orchestrator
   invokes each role on the resolved model. Orchestration and build gates always
-  stay on the current session's model. Invoke as /roles (show), /roles
-  [<harness>] <role>: <model> [effort <level>], ... (set), or /roles reset (restore
-  defaults).
+  stay on the current session's model. Invoke as /roles in Claude Code or
+  $roles in Codex; arguments show, set, or reset the pins.
 argument-hint: "[<harness>] <role>: <model> [effort <level>], ... | reset"
 allowed-tools: Bash
 ---
 
-# /roles — Pin models/harnesses to the four canonical roles
+# Roles — Pin models/harnesses to the four canonical roles
 
-Set which model/harness `/kickoff` uses for each of its four roles, scoped by
+Set which model/harness the `kickoff` skill uses for each of its four roles, scoped by
 which harness is orchestrating. This is a thin wrapper over the deterministic
 `bin/kickoff-config` manager — the parse, validate, round-trip-safe section update, and atomic write are mechanical (per
 [`policies/mechanistic-vs-intelligence.md`](../../../policies/mechanistic-vs-intelligence.md)), so this skill only translates the request and echoes the result. The rules the orchestrator obeys live in [`policies/role-models.md`](../../../policies/role-models.md).
@@ -34,7 +33,7 @@ which harness is orchestrating. This is a thin wrapper over the deterministic
   or `xhigh` when a Codex- or Claude-routed role needs an explicit effort. Claude
   additionally accepts `max`. Omit the field to preserve the model's
   configured/default effort. Effort is rejected for `default` because
-  `/roles` cannot control the orchestrator's native session effort. `max` is
+  `roles` cannot control the orchestrator's native session effort. `max` is
   Claude-only; `Ultra` is a product execution mode rather than a role-pin effort.
 
 Resolution for a role under harness `H`: `H`'s section, else the `default`
@@ -81,12 +80,12 @@ its error message verbatim and do not retry with the same bad value.
 Echo the script's output so the user sees the config and the resolved view.
 When any role resolves to a non-`default` model, add a one-line reminder:
 
-> These take effect on the next `/kickoff`. Its fail-closed preflight aborts before phase mutation if a required external CLI, authentication path, or model is unavailable; a later runtime failure falls back with a 🚨 in the `/kickoff` summary.
+> These take effect on the next `kickoff`. Its fail-closed preflight aborts before phase mutation if a required external CLI, authentication path, or model is unavailable; a later runtime failure falls back with a 🚨 in the `kickoff` summary.
 
 Do **not** commit the change — the user owns commits ([`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md)).
 
 ## Notes
 
-- The config file is `kickoff.yaml` at the repo root and is deliberately human-editable. `/roles` is a convenient validated editor for its `role_models` section, not its owner.
-- `/roles` is universal — carried into every project `/stamp` derives; every derived project has the same four roles and the same cross-vendor-review default.
+- The config file is `kickoff.yaml` at the repo root and is deliberately human-editable. `roles` is a convenient validated editor for its `role_models` section, not its owner.
+- `roles` is universal — carried into every project `stamp` derives; every derived project has the same four roles and the same cross-vendor-review default.
 - The default `claude:`/`codex:` sections are what provide out-of-the-box cross-vendor review. Editing or clearing them changes the review venue; there is no separate on/off switch.

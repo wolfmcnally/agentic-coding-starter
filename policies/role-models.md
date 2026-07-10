@@ -1,6 +1,6 @@
 # Policy: Per-Role Model Pinning (harness-aware)
 
-Each canonical `/kickoff` role may select a model and optional reasoning effort, scoped by which harness is orchestrating. The model determines the delegated CLI; `{model: default}` runs natively. Orchestration and build gates always stay on the current session model.
+Each canonical `kickoff` role may select a model and optional reasoning effort, scoped by which harness is orchestrating. The model determines the delegated CLI; `{model: default}` runs natively. Orchestration and build gates always stay on the current session model.
 
 ## Human-editable configuration
 
@@ -49,7 +49,7 @@ The routing and timeout schemas are strict: unknown harnesses, roles, or fields 
 - `reset models` resets only model routing;
 - `preflight` validates live external venues.
 
-It uses round-trip YAML parsing, preserves comments, ordering, quoting, and data under `extensions`, and atomically replaces the file only after full validation. `/roles` is its thin natural-language wrapper. Direct human edits are equally supported and take effect after `show models` validates them.
+It uses round-trip YAML parsing, preserves comments, ordering, quoting, and data under `extensions`, and atomically replaces the file only after full validation. `roles` is its thin natural-language wrapper. Direct human edits are equally supported and take effect after `show models` validates them.
 
 ## Resolution (kickoff Step 0a)
 
@@ -64,7 +64,7 @@ Planner, reviewer, and critic remain read-only; the coder remains write-enabled.
 
 ## Mandatory live preflight (kickoff Step 0b)
 
-Before phase identification, decomposition, status mutation, log writes, or agent invocation, `/kickoff` runs:
+Before phase identification, decomposition, status mutation, log writes, or agent invocation, `kickoff` runs:
 
 ```bash
 ./bin/kickoff-config preflight
@@ -72,7 +72,7 @@ Before phase identification, decomposition, status mutation, log writes, or agen
 
 The manager groups unique non-native `(CLI, model, effort, access mode)` targets and makes one live sentinel call per group. It uses production credential scrubs, model/effort flags, stdin closure, approval posture, and read-only/write-enabled access in an empty temporary directory. Success requires the exact `KICKOFF_PREFLIGHT_OK` result within 120 seconds.
 
-Preflight is fail-closed. A missing CLI, unusable authentication, unavailable model, network or sandbox error, flag incompatibility, timeout, malformed response, or wrong sentinel aborts `/kickoff` before phase state exists. There is no native fallback for an upstream prerequisite failure.
+Preflight is fail-closed. A missing CLI, unusable authentication, unavailable model, network or sandbox error, flag incompatibility, timeout, malformed response, or wrong sentinel aborts `kickoff` before phase state exists. There is no native fallback for an upstream prerequisite failure.
 
 ## Invocation, resume, and fallback
 
@@ -92,11 +92,11 @@ Every END block records the preflight result, orchestrating harness, and each ro
 
 ## Propagation
 
-`kickoff.yaml`, `bin/kickoff-config`, `/roles`, this policy, the timeout policy, and the invocation brief are one universal configuration/execution bundle. `/stamp` carries it. `/teach` upgrades its schema and mechanics while preserving target values, comments, `extensions` data, and telemetry. `/learn` may absorb general mechanics but not donor operational state.
+`kickoff.yaml`, `bin/kickoff-config`, `roles`, this policy, the timeout policy, and the invocation brief are one universal configuration/execution bundle. `stamp` carries it. `teach` upgrades its schema and mechanics while preserving target values, comments, `extensions` data, and telemetry. `learn` may absorb general mechanics but not donor operational state.
 
 ## Relationship to other policies
 
 - [`four-canonical-agents.md`](four-canonical-agents.md) owns role names, semantics, tool stances, verdicts, and convergence limits.
 - [`role-timeouts.md`](role-timeouts.md) owns execution budgets, process-group termination, telemetry, and recalibration.
-- [`mechanistic-vs-intelligence.md`](mechanistic-vs-intelligence.md) puts validation and editing in `bin/kickoff-config`; model-choice judgment stays with the human or `/roles` interpretation.
+- [`mechanistic-vs-intelligence.md`](mechanistic-vs-intelligence.md) puts validation and editing in `bin/kickoff-config`; model-choice judgment stays with the human or `roles` interpretation.
 - [`human-in-the-loop.md`](human-in-the-loop.md) still governs completion and commits.

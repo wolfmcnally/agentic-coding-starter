@@ -25,33 +25,33 @@ Ripples never land in the *closing* phase's own file (its history is fixed once 
 
 ## AUTO vs DECIDE classification
 
-Mirrors `/teach`'s stale-sweep model. Every potential ripple gets one classification:
+Mirrors `teach`'s stale-sweep model. Every potential ripple gets one classification:
 
 - **AUTO** — mechanical edit with one correct shape and no judgment call. Examples:
   - Renaming a path the closing phase pinned that a downstream phase references verbatim.
   - Adding a brief ref the closing phase introduced to a downstream phase's "Brief refs" section when the downstream phase's Deliverables genuinely depend on it.
   - Tightening a downstream Acceptance criterion from "TBD in phase N" to the actual value phase N just pinned.
   - Updating a flag/value/version number the downstream phase references.
-  AUTO ripples land as edits in the same `/kickoff` session, before the END block is written, so the END block can list them.
+  AUTO ripples land as edits in the same `kickoff` session, before the END block is written, so the END block can list them.
 
 - **DECIDE** — touches judgment-bearing content. Examples:
   - The closing phase reveals a downstream Goal needs revision (its scope shifted).
   - A downstream Deliverable became obsolete or was absorbed by the closing phase.
   - The dependency graph changes (a downstream phase no longer depends on this one, or vice versa).
   - Multiple acceptable shapes exist for the downstream edit and the orchestrator can't pick.
-  DECIDE ripples are *not* applied. They are listed in the closing phase's END block as named manual follow-ups for the user to resolve before the next `/kickoff`.
+  DECIDE ripples are *not* applied. They are listed in the closing phase's END block as named manual follow-ups for the user to resolve before the next `kickoff`.
 
 When in doubt, classify as DECIDE. The cost of surfacing a mechanical edit for human approval is one extra round-trip; the cost of an unwanted auto-edit to a downstream draft is silent drift.
 
 ## Who owns ripple application
 
-`/kickoff` Step 9a (sub-phase close) and Step 9b (major-phase close) execute the ripple pass.
+`kickoff` Step 9a (sub-phase close) and Step 9b (major-phase close) execute the ripple pass.
 
 `phase-planner` is invoked when the AUTO edit requires more than a one-line mechanical change — e.g., reshaping an Acceptance section to incorporate a now-pinned value. The planner is given the closing phase's END block, the downstream phase file, and the specific ripple description; it produces the edit.
 
 `phase-coder` and `code-critic` are *not* invoked during a ripple pass. Ripples touch only `plan/` files, not project code. Code-impacting changes belong to the next phase's own kickoff cycle.
 
-The user owns DECIDE resolution and may also override any AUTO edit by editing the downstream file directly before the next `/kickoff`.
+The user owns DECIDE resolution and may also override any AUTO edit by editing the downstream file directly before the next `kickoff`.
 
 ## Cross-references
 

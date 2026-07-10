@@ -11,7 +11,7 @@
 
 ## Scripts
 
-### `kickoff-config` — human-editable `/kickoff` configuration and enforcement
+### `kickoff-config` — human-editable `kickoff` configuration and enforcement
 
 Validates and safely edits repo-root `kickoff.yaml`, whose `role_models` and `role_timeouts` sections hold separate model/effort fields and execution budgets. Round-trip YAML handling preserves human comments, ordering, quoting, and data under `extensions`; strict known sections reject typos; scoped resets never overwrite the other section; every write validates first and atomically replaces the file. The same manager performs fail-closed live venue preflight, routing-verified and progress-aware subprocess supervision, fresh-artifact enforcement, gitignored telemetry, and evidence-based timeout recommendations. A Python script run via `uv` with PEP 723 `ruamel.yaml`. Governed by [`policies/role-models.md`](../policies/role-models.md) and [`policies/role-timeouts.md`](../policies/role-timeouts.md).
 
@@ -41,7 +41,7 @@ Validates and safely edits repo-root `kickoff.yaml`, whose `role_models` and `ro
 
 Behavioral coverage lives in `tests/test_kickoff_config.py`; this starter's build gate lints and format-checks both the manager and its tests, then runs them alongside the isolated example package tests.
 
-Universal: `/stamp` and `/teach` carry the manager, policies, tests, and seed config. Target values, comments, `extensions` data, and raw `.kickoff/` telemetry stay target-owned.
+Universal: `stamp` and `teach` carry the manager, policies, tests, and seed config. Target values, comments, `extensions` data, and raw `.kickoff/` telemetry stay target-owned.
 
 ### `check-anonymization.sh` — pre-publish leak guard *(starter-only)*
 
@@ -52,4 +52,4 @@ Scans every tracked file for the two *mechanizable* leak classes — real absolu
 ./bin/check-anonymization.sh --help   # usage
 ```
 
-Starter-only: this script enforces [`policies/anonymize-log-references.md`](../policies/anonymize-log-references.md), which exists because *this* template repo is public. `/stamp` and `/teach` do not transfer it — a private downstream project has nothing to anonymize against itself. The `bin/` convention and the triage policy above **are** universal and do propagate.
+Starter-only: this script enforces [`policies/anonymize-log-references.md`](../policies/anonymize-log-references.md), which exists because *this* template repo is public. `stamp` and `teach` do not transfer it — a private downstream project has nothing to anonymize against itself. The `bin/` convention and the triage policy above **are** universal and do propagate.

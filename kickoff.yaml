@@ -1,4 +1,4 @@
-# kickoff.yaml — human-editable /kickoff execution configuration.
+# kickoff.yaml — human-editable kickoff execution configuration.
 #
 # Validated and updated by bin/kickoff-config. Direct edits are supported.
 # Commands update only their owned section, preserve comments and extension
@@ -11,7 +11,7 @@ version: 1
 extensions: {}
 
 # Which model and implied harness runs each canonical role. A harness section
-# overrides `default` when that harness orchestrates /kickoff.
+# overrides `default` when that harness orchestrates kickoff.
 role_models:
   default:
     planner:

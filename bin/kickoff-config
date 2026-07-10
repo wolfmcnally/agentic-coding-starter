@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["ruamel.yaml>=0.18,<0.19"]
 # ///
-"""Validate, edit, and enforce the human-editable /kickoff configuration.
+"""Validate, edit, and enforce the human-editable kickoff configuration.
 
   bin/kickoff-config show [all|models|timeouts]
   bin/kickoff-config set-models [<harness>] <role>.model=<model> [<role>.effort=<effort>] ...

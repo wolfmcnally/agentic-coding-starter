@@ -1,1 +1,0 @@
-../../.claude/skills/roles/SKILL.md

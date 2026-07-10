@@ -20,7 +20,7 @@
 # identifier per line. The .local file is gitignored so the names it lists
 # are never themselves leaked into this public repo.
 #
-# Starter-only: NOT transferred by /stamp or /teach to derived projects.
+# Starter-only: NOT transferred by stamp or teach to derived projects.
 # A private downstream project has nothing to anonymize against itself.
 
 set -euo pipefail

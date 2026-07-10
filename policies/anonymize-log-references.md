@@ -1,8 +1,8 @@
 # Policy: Anonymize External-Repo References (starter-only)
 
-**This policy applies only to this repository** — the agentic-coding-starter-template. Projects derived from this template via `/stamp`, and projects retrofitted via `/teach`, do **not** inherit this policy. Their `LOG.md` files and other documents are their own business; their references to external work are theirs to disclose or not.
+**This policy applies only to this repository** — the agentic-coding-starter-template. Projects derived from this template via `stamp`, and projects retrofitted via `teach`, do **not** inherit this policy. Their `LOG.md` files and other documents are their own business; their references to external work are theirs to disclose or not.
 
-The reason for the asymmetry: **this repository is intended to be public**. Every commit, every `LOG.md` entry, and every committed file will be readable by anyone with the repo URL. A public template must not leak the private context of the projects it absorbs patterns from (via `/learn`) or teaches them to (via `/teach`).
+The reason for the asymmetry: **this repository is intended to be public**. Every commit, every `LOG.md` entry, and every committed file will be readable by anyone with the repo URL. A public template must not leak the private context of the projects it absorbs patterns from (via `learn`) or teaches them to (via `teach`).
 
 ## Scope: every committed file, not just `LOG.md`
 
@@ -44,7 +44,7 @@ It scans every tracked file for the two *mechanizable* leak classes — real abs
 
 - Any change to `LOG.md` **or any other committed file** in a phase under review is read against this policy. A reviewer that spots a verbatim external project name, SHA, or proprietary identifier returns `REVISE` with a one-line note ("Anonymize the reference to `<X>` per `policies/anonymize-log-references.md`").
 - `code-critic` runs (or mirrors, via its grep checklist) `bin/check-anonymization.sh` on the files a phase touched, and blocks on any hit.
-- The orchestrator (`/kickoff`, `/learn`, `/teach`) writes `LOG.md` entries and archived dispositions already anonymized — no rely-on-the-reviewer-to-catch-it pattern.
+- The orchestrator (`kickoff`, `learn`, `teach`) writes `LOG.md` entries and archived dispositions already anonymized — no rely-on-the-reviewer-to-catch-it pattern.
 
 ## Backfill rule
 
@@ -54,4 +54,4 @@ When this policy is first adopted (or revised to broaden), any pre-existing comm
 
 Private projects have no incentive to anonymize their own `LOG.md` — the audit trail is more valuable when it names what was learned from where. A private repo's `LOG.md` referencing its own donors by name is *exactly* what those private logs should do. The asymmetry is driven by the publicness of *this* repo, not by any methodology principle.
 
-`/teach` and `/stamp` exclude this policy from transfer to derived projects. See the Out-of-scope list in `.claude/skills/teach/SKILL.md` and the "Do not copy" carve-outs in `.claude/skills/stamp/SKILL.md`.
+`teach` and `stamp` exclude this policy from transfer to derived projects. See the Out-of-scope list in `.claude/skills/teach/SKILL.md` and the "Do not copy" carve-outs in `.claude/skills/stamp/SKILL.md`.

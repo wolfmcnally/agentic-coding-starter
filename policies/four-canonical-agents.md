@@ -1,6 +1,6 @@
 # Policy: The Four Canonical Agents
 
-The methodology's orchestrator (`/kickoff`) delegates one phase of work to four specialist agents. Their names are load-bearing: `/kickoff` invokes them by name. A typo silently breaks the orchestration.
+The methodology's orchestrator (`kickoff`) delegates one phase of work to four specialist agents. Their names are load-bearing: `kickoff` invokes them by name. A typo silently breaks the orchestration.
 
 ## The four roles
 
@@ -15,7 +15,7 @@ The Codex mirrors live at `.codex/agents/<role>.toml`. See [`cross-harness-parit
 
 ## Execution venue
 
-The roles, names, tool stances, and verdict headers above are fixed. The **execution venue** — which model and implied harness runs a role — is not, and is governed by [`role-models.md`](role-models.md): `kickoff.yaml`'s harness-aware `role_models` section (edited directly or via `/roles`) resolves any role to separate model and optional effort fields, scoped by which harness orchestrates. A role resolving to a CLI runs there while reading the same canonical role file and honoring the same contract; only where it executes changes. The shipped default runs `plan-reviewer` + `code-critic` in the other harness; planner and coder can be routed too.
+The roles, names, tool stances, and verdict headers above are fixed. The **execution venue** — which model and implied harness runs a role — is not, and is governed by [`role-models.md`](role-models.md): `kickoff.yaml`'s harness-aware `role_models` section (edited directly or via `roles`) resolves any role to separate model and optional effort fields, scoped by which harness orchestrates. A role resolving to a CLI runs there while reading the same canonical role file and honoring the same contract; only where it executes changes. The shipped default runs `plan-reviewer` + `code-critic` in the other harness; planner and coder can be routed too.
 
 Each invocation or revision round is also bounded by the role-specific first-event, idle-progress, and hard-deadline values in [`role-timeouts.md`](role-timeouts.md). Claude CLI roles additionally use its configured turn circuit breaker; Codex and native roles expose no equivalent flag. Those guards limit one run; the convergence rules below limit the number of runs.
 
@@ -51,11 +51,11 @@ or
 
 Followed in the `REVISE` case by a `### Required Changes` section listing specific, actionable changes.
 
-`/kickoff` parses the verdict by matching the first occurrence of one of those two strings. Any deviation — different casing, a missing colon, a wrapped section — breaks orchestration.
+`kickoff` parses the verdict by matching the first occurrence of one of those two strings. Any deviation — different casing, a missing colon, a wrapped section — breaks orchestration.
 
 ## Revision loops
 
-`/kickoff` keeps iterating a review or fix loop only while it is **converging on approval**, and escalates to the human the moment it stalls or diverges — rather than counting to a fixed cap. After each cycle the orchestrator compares the new verdict against the prior one and judges the trend:
+`kickoff` keeps iterating a review or fix loop only while it is **converging on approval**, and escalates to the human the moment it stalls or diverges — rather than counting to a fixed cap. After each cycle the orchestrator compares the new verdict against the prior one and judges the trend:
 
 - **Converging — continue.** The set of Required Changes is shrinking, their severity is trending down (blocking → minor → nit), each round resolves prior findings without raising equal-or-worse new ones, and the reviewer's verdict is moving toward approval.
 - **Stalled or diverging — escalate.** The same finding recurs across rounds (the fix didn't take, or the reviewer keeps re-raising it); new findings of equal or greater severity keep appearing (whack-a-mole); the loop oscillates (fixing A re-breaks B); or a finding rests on a product or architecture disagreement the agents cannot resolve among themselves. Surface the cycle history and the sticking point to the human.
@@ -75,5 +75,5 @@ These bounds are deliberate. The methodology assumes a human in the loop ([`huma
 This policy does not forbid project-specific agents — a project may add a `database-migration-reviewer` or an `audio-perceptual-judge` agent as needed. But:
 
 - The fifth agent must not replace one of the four canonical roles.
-- `/kickoff` does not invoke it automatically. Either the fifth agent is called from a different skill, or `/kickoff` is customized for the project to call it at a specific point in the cycle.
+- `kickoff` does not invoke it automatically. Either the fifth agent is called from a different skill, or `kickoff` is customized for the project to call it at a specific point in the cycle.
 - Its name should be unambiguous (e.g., `migration-reviewer`, not `reviewer`).

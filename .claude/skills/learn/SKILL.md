@@ -7,13 +7,14 @@ description: >-
   approval, then applies approved changes to this repo. Use when another
   repo contains agentic-coding patterns, brief or policy ideas, build-gate
   idioms, or domain specializations worth absorbing here. Invoke as
-  /learn <donor-dir> [<desc>].
+  /learn <donor-dir> [<desc>] in Claude Code or $learn <donor-dir> [<desc>]
+  in Codex.
 argument-hint: "<donor-dir> [<desc>]"
 ---
 
-# /learn — Absorb patterns from another repo into this repo
+# Learn — Absorb patterns from another repo into this repo
 
-This skill is **universal**. It runs inside any project that follows the agentic methodology — the starter template and every project derived from it. It treats *this* repository (whichever one is invoking `/learn`) as the destination and `<donor-dir>` as the source of ideas. The user approves a plan before any change is made.
+This skill is **universal**. It runs inside any project that follows the agentic methodology — the starter template and every project derived from it. It treats *this* repository (whichever one invokes the skill) as the destination and `<donor-dir>` as the source of ideas. The user approves a plan before any change is made.
 
 Three-stage skill-acquisition pipeline (inspired by the 2026 work on automated skill mining from agentic repositories): **structural analysis → semantic identification → translation**. Updates use a Copier-style discipline: the donor is read-only, conflicts are surfaced for the user, and template-controlled vs. user-controlled files are distinguished before any write.
 
@@ -26,7 +27,7 @@ Raw arguments: `!{ARGUMENTS}`
 - `<donor-dir>` — the directory to learn from. May be absolute, tilde-expanded, or relative to the CWD. Must exist and be readable.
 - `<desc>` (optional) — narrows intent ("focus on the testing setup", "Unity specialization", "just policies"). When absent, do the broader assessment described in Stage 2 with **generality preference enabled**.
 
-If `<donor-dir>` is missing or not a readable directory, refuse with `Usage: /learn <donor-dir> [<desc>]` and exit.
+If `<donor-dir>` is missing or not a readable directory, refuse with `Usage: /learn <donor-dir> [<desc>] (Claude Code) or $learn <donor-dir> [<desc>] (Codex)` and exit.
 
 ## Pre-flight checks
 
@@ -38,11 +39,11 @@ If `<donor-dir>` is missing or not a readable directory, refuse with `Usage: /le
    - `bin/kickoff-config` and `kickoff.yaml` exist; `show` validates both config sections.
    - `briefs/`, `policies/`, `plan/` directories are present and non-empty.
    - `LOG.md` exists.
-   If any fail, refuse with a specific error and exit. (If you arrived here by running `/learn` in a repo that hasn't been bootstrapped, run the bootstrap procedure in [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md) first, or invoke `/stamp` from the starter template.)
+   If any fail, refuse with a specific error and exit. (If this skill was invoked in a repo that hasn't been bootstrapped, run the bootstrap procedure in [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md) first, or invoke `/stamp` in Claude Code or `$stamp` in Codex from the starter template.)
 
 2. **Donor is reachable.** `ls <donor-dir>` succeeds. If the donor is a git repo, capture its `HEAD` SHA for the audit trail; otherwise capture an mtime fingerprint of its top-level files. We don't require the donor to be a git repo.
 
-3. **Working tree clean** (if this repo is a git repo). `/learn` produces commits' worth of changes; running it on a dirty tree mixes the learning with other work. If unclean, list the uncommitted files and ask the user to stash or commit first.
+3. **Working tree clean** (if this repo is a git repo). `learn` produces commits' worth of changes; running it on a dirty tree mixes the learning with other work. If unclean, list the uncommitted files and ask the user to stash or commit first.
 
 ## Plan-mode lifecycle (Stages 1–4)
 
@@ -67,7 +68,7 @@ Build a structural map of the donor. **Do not** open every file; do targeted rea
 6. **Language conventions.** Read `<donor>/CLAUDE.md` (or `AGENTS.md`) section by section. Note any architectural invariants, glossary entries, or conventions the donor pins that this starter doesn't.
 7. **Build gates.** Read the donor's language metadata (`pyproject.toml`, `package.json`, `Cargo.toml`, `go.mod`, etc.). Note pinned tooling, lockfile presence, gate command idioms.
 8. **Anti-patterns.** Note where the donor *violates* something the template considers a load-bearing invariant (status field in phase frontmatter; absolute paths; LOG.md hand-edits). Those are not for learning; mention them as confirmation the starter's rules are correct.
-9. **Unified kickoff configuration.** Inspect the donor's schema shape, round-trip manager, behavioral tests, both role policies, `/roles`, `/kickoff` call sites, invocation brief, gitignore, and reporting contract as one bundle. Learn only generalizable mechanics, schema, algorithms, and defensible universal defaults. Never read, copy, or summarize raw telemetry, percentiles, model/effort choices, calibrated values, comments, `extensions` data, or project overrides.
+9. **Unified kickoff configuration.** Inspect the donor's schema shape, round-trip manager, behavioral tests, both role policies, `roles`, `kickoff` call sites, invocation brief, gitignore, and reporting contract as one bundle. Learn only generalizable mechanics, schema, algorithms, and defensible universal defaults. Never read, copy, or summarize raw telemetry, percentiles, model/effort choices, calibrated values, comments, `extensions` data, or project overrides.
 
 Output of Stage 1 is internal. The user sees Stage 3's plan.
 
@@ -188,28 +189,28 @@ If the user partially approves (a subset of items, whether via plan-mode revise-
 
 Once approved, apply the approved items. Order:
 
-1. Add NEW files (policies first, then briefs, then skills/agents/prompts, then plan files, then code).
+1. Add NEW files (policies first, then briefs, then skills/agents, then plan files, then code).
 2. MODIFY existing files (smallest diffs first; one logical change per Edit call).
 3. Apply every approved AUTO item from "Stale-in-light-of-learning"; carry DECIDE/DEFER items into the LOG entry with their decision or condition.
 4. Resolve every cross-harness parity obligation that the changes create:
    - If a `.claude/agents/<role>.md` body changed, refresh `.codex/agents/<role>.toml` (the wrapper body changes only if the description line changed; the pointer stays the same).
-   - If a new `.claude/skills/<name>/SKILL.md` was added, add the matching `.codex/prompts/<name>.md` pointer wrapper.
+   - If a new `.claude/skills/<name>/SKILL.md` was added, add the matching `.agents/skills/<name>` directory symlink for Codex discovery.
    - See [`policies/cross-harness-parity.md`](../../../policies/cross-harness-parity.md).
 5. Update `CLAUDE.md`'s catalogs (briefs catalog, policies catalog) so every new file is indexed.
-6. Run the build gates (the same ones the template's `/kickoff` would run) to confirm nothing regressed. Currently for this repo: `cd project && uv run ruff check example tests ../bin/kickoff-config ../tests && uv run ruff format --check example tests ../bin/kickoff-config ../tests && uv run pytest -q tests ../tests`.
+6. Run the build gates (the same ones the template's `kickoff` would run) to confirm nothing regressed. Currently for this repo: `cd project && uv run ruff check example tests ../bin/kickoff-config ../tests && uv run ruff format --check example tests ../bin/kickoff-config ../tests && uv run pytest -q tests ../tests`.
 7. Append the LEARN entry to `LOG.md`. Format as proposed in the plan.
 
 **Do not auto-commit.** Per [`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md), the human owns commits. Report the file list, the build-gate status, and any unresolved manual steps so the user can review and commit.
 
 ## Rules
 
-- **The donor is read-only.** Never write to `<donor-dir>` under any circumstances. If the user wants to push improvements back to the donor, that is a separate `/teach <donor-dir>` invocation.
+- **The donor is read-only.** Never write to `<donor-dir>` under any circumstances. If the user wants to push improvements back to the donor, that is a separate `/teach <donor-dir>` invocation in Claude Code or `$teach <donor-dir>` invocation in Codex.
 - **Generality first.** Default to Tier 1+2 transfers. Specialize only when those are exhausted or the user's `<desc>` requested it.
 - **Approval is mandatory.** No bytes change in this repo before explicit approval.
 - **Cross-harness parity is non-negotiable.** Any change touching `.claude/` or `.codex/` updates both surfaces in the same apply step.
 - **Catalog drift is forbidden.** `CLAUDE.md`'s catalogs reflect every file in `briefs/` and `policies/` after the apply finishes. Verify before reporting done.
 - **Skip donor-specific PII, secrets, and proprietary content** wholesale during Stage 1. If a donor file contains real names, emails, API keys, or internal company names, do not read its body beyond confirming the type; never transfer such content, even in inspiration form.
-- **One LOG entry per `/learn` run.** Not per item. The aggregate entry preserves the audit trail without flooding the log.
+- **One LOG entry per `learn` run.** Not per item. The aggregate entry preserves the audit trail without flooding the log.
 - **Stale sweep is acceptance.** Every file made stale by an approved learning is migrated (AUTO), decided (DECIDE), or deferred with a named condition (DEFER) in the same plan and LOG entry.
 - **Kickoff-config learning is atomic and privacy-preserving.** Adopt generalizable policy/schema/round-trip manager/test/invocation/reporting improvements together. Never ingest donor raw telemetry, percentiles, values, comments, `extensions` data, overrides, model choices, or efforts; validate the local bundle with `bin/kickoff-config show`, the behavioral suite, scoped-update preservation tests, and a bounded watchdog smoke test.
-- **Skill-exclusion list.** `/stamp` and the starter template's `example/` Python project are starter-only and never transferred. `/learn` and `/teach` themselves are universal — if the donor has a more evolved version, treat it like any other candidate; if this repo lacks them and the donor has them, propose adding them (the bootstrap procedure expects them in every methodology-following project).
+- **Skill-exclusion list.** `stamp` and the starter template's `example/` Python project are starter-only and never transferred. `learn` and `teach` themselves are universal — if the donor has a more evolved version, treat it like any other candidate; if this repo lacks them and the donor has them, propose adding them (the bootstrap procedure expects them in every methodology-following project).

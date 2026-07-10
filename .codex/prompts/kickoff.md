@@ -1,1 +1,0 @@
-../../.claude/skills/kickoff/SKILL.md

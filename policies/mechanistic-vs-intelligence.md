@@ -23,7 +23,7 @@ The two are not ranked; they are different tools for different jobs. The failure
 
 - **Cross-harness parity** (`policies/cross-harness-parity.md`). Scripts are the harness-invariant layer: a `bin/` executable runs identically under every CLI, while agent prose must be mirrored per harness. When a capability must behave the same everywhere, that is a strong signal to make it mechanistic.
 - **Acceptance is empirical** (`policies/acceptance-empirical.md`). Deterministic scripts give exact, checkable gates — a clean exit code is acceptance you can trust. Prefer a script when a phase needs a repeatable pass/fail check rather than a subjective read.
-- **Deterministic orchestration** (`briefs/deterministic-orchestration.md`). That brief is one *application* of this principle — encoding `/kickoff`'s delegate→verdict→route-back loop as a deterministic program where the mechanics (caps, timeouts, fallbacks, schema-validated verdicts) are scripted while the four roles' judgment stays intelligence. This policy is the general rule; that brief is the specific case.
+- **Deterministic orchestration** (`briefs/deterministic-orchestration.md`). That brief is one *application* of this principle — encoding `kickoff`'s delegate→verdict→route-back loop as a deterministic program where the mechanics (caps, timeouts, fallbacks, schema-validated verdicts) are scripted while the four roles' judgment stays intelligence. This policy is the general rule; that brief is the specific case.
 
 ## Acceptance
 

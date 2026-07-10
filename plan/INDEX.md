@@ -2,7 +2,7 @@
 
 This directory is the phased execution plan for *this* repository. It is the authoritative source for what to build, in what order, and under what invariants.
 
-If you cloned this template to start a new project, replace this `plan/` with your project's plan. Phase 1 here is a placeholder that exists so the first `/kickoff` invocation has something to do; the real first phase is yours to write.
+If you cloned this template to start a new project, replace this `plan/` with your project's plan. Phase 1 here is a placeholder that exists so the first `kickoff` invocation has something to do; the real first phase is yours to write.
 
 If you opened this repo to use the template directly (Mode B in [`../briefs/BRIEF.md`](../briefs/BRIEF.md)), Phase 1 below leads you through deciding what to build with the template's surfaces.
 
@@ -30,7 +30,7 @@ graph TD
     P1[Phase 1<br/>Adopt the template for your project]
 ```
 
-The graph contains a single placeholder phase because starter's own deliverable is "the template itself" — a one-phase project. **Derived projects** stamped from this template via `/stamp` enumerate every major phase the brief surfaces at bootstrap (each as a sketched `plan/phase-N.md` file at lower fidelity), per [`../briefs/methodology.md`](../briefs/methodology.md) §6 and [`../briefs/agentic-bootstrap.md`](../briefs/agentic-bootstrap.md) §8. Sub-phases stay JIT (drafted at parent open via `/kickoff` Step 1a) and ripple at every phase close per [`../policies/phase-ripple.md`](../policies/phase-ripple.md).
+The graph contains a single placeholder phase because starter's own deliverable is "the template itself" — a one-phase project. **Derived projects** stamped from this template via `stamp` enumerate every major phase the brief surfaces at bootstrap (each as a sketched `plan/phase-N.md` file at lower fidelity), per [`../briefs/methodology.md`](../briefs/methodology.md) §6 and [`../briefs/agentic-bootstrap.md`](../briefs/agentic-bootstrap.md) §8. Sub-phases stay JIT (drafted at parent open via `kickoff` Step 1a) and ripple at every phase close per [`../policies/phase-ripple.md`](../policies/phase-ripple.md).
 
 ## Phase Table
 
@@ -40,7 +40,7 @@ Status legend: ⏳ Not Started · ⬅️ Next (only one at a time) · 🚧 In Pr
 |------------------------|--------------------------------------|--------|
 | [Phase 1](phase-1.md)  | Adopt the template for your project  | ⬅️     |
 
-`/kickoff` flips `⬅️` → `🚧` on start, `🚧` → `✅` on completion, and advances the next `⏳` row to `⬅️` per this dependency graph. Status does not live in per-phase frontmatter.
+`kickoff` flips `⬅️` → `🚧` on start, `🚧` → `✅` on completion, and advances the next `⏳` row to `⬅️` per this dependency graph. Status does not live in per-phase frontmatter.
 
 ## Cross-Cutting Concerns (apply to every phase)
 
@@ -52,8 +52,8 @@ These are the universals the template ships with. A project derived from this te
 - **Acceptance is empirical** (see [`../policies/acceptance-empirical.md`](../policies/acceptance-empirical.md)). Verifiable shell commands and named manual checks — not "the code compiles."
 - **Repo-relative paths only** in any file committed to this repo (see [`../policies/repo-relative-paths.md`](../policies/repo-relative-paths.md)). Bash invocations may use absolute paths.
 - **Cross-harness parity** (see [`../policies/cross-harness-parity.md`](../policies/cross-harness-parity.md)). The same canonical files drive Claude Code, Codex CLI, and any other harness. Mirrors do not get hand-edited.
-- **Human decides done** (see [`../policies/human-in-the-loop.md`](../policies/human-in-the-loop.md)). `/kickoff` never auto-commits, never advances past unresolved gates, never claims subjective acceptance.
-- **Log discipline** (see [`../policies/log-discipline.md`](../policies/log-discipline.md)). `LOG.md` is append-only and owned by `/kickoff`.
+- **Human decides done** (see [`../policies/human-in-the-loop.md`](../policies/human-in-the-loop.md)). `kickoff` never auto-commits, never advances past unresolved gates, never claims subjective acceptance.
+- **Log discipline** (see [`../policies/log-discipline.md`](../policies/log-discipline.md)). `LOG.md` is append-only and owned by `kickoff`.
 
 ## Critical-Files Map
 
@@ -66,12 +66,12 @@ These are the universals the template ships with. A project derived from this te
 | Activity log                         | [`../LOG.md`](../LOG.md)                                  |
 | Phase orchestrator                   | [`../.claude/skills/kickoff/SKILL.md`](../.claude/skills/kickoff/SKILL.md) |
 | New-project bootstrapper             | [`../.claude/skills/stamp/SKILL.md`](../.claude/skills/stamp/SKILL.md) |
-| Methodology slash-command            | [`../.claude/skills/methodology/SKILL.md`](../.claude/skills/methodology/SKILL.md) |
+| Methodology skill                    | [`../.claude/skills/methodology/SKILL.md`](../.claude/skills/methodology/SKILL.md) |
 | `phase-planner` agent (canonical)    | [`../.claude/agents/phase-planner.md`](../.claude/agents/phase-planner.md) |
 | `plan-reviewer` agent (canonical)    | [`../.claude/agents/plan-reviewer.md`](../.claude/agents/plan-reviewer.md) |
 | `phase-coder` agent (canonical)      | [`../.claude/agents/phase-coder.md`](../.claude/agents/phase-coder.md) |
 | `code-critic` agent (canonical)      | [`../.claude/agents/code-critic.md`](../.claude/agents/code-critic.md) |
-| Codex mirrors                        | `../.codex/agents/*.toml`, `../.codex/prompts/*.md`, `../.agents/skills/*` (directory symlinks) |
+| Codex mirrors                        | `../.codex/agents/*.toml`, `../.agents/skills/*` (directory symlinks) |
 | Deliverable artifact (self-contained)| `../project/` (per [`../policies/project-isolation.md`](../policies/project-isolation.md)) |
 | Example Python package               | `../project/example/`                                     |
 | Example test suite                   | `../project/tests/`                                       |

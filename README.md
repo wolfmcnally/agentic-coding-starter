@@ -8,21 +8,30 @@ This template is harness-agnostic. It works with [Claude Code](https://claude.co
 
 ## What this is
 
-A starter template — a *master template* — for projects that use agent-driven development. Clone it, run `/stamp` to spin up a new project from it, or open it directly and run `/kickoff` to start building.
+A starter template — a *master template* — for projects that use agent-driven development. Clone it, invoke the `stamp` skill to spin up a new project from it, or open it directly and invoke `kickoff` to start building.
+
+Skill invocation is harness-specific:
+
+| Harness | Syntax | Example |
+|---|---|---|
+| Claude Code | `/name [arguments]` | `/kickoff` |
+| Codex | `$name [arguments]` | `$kickoff` |
+
+The rest of this README uses bare names such as `kickoff` when discussing a skill and shows both forms when giving a command to type.
 
 The template ships with:
 
 - A **methodology** (eleven-step pipeline, see [`briefs/methodology.md`](briefs/methodology.md)) that takes you from idea to shipped code.
-- A **`/kickoff` skill** that orchestrates one phase of work end-to-end: plan → plan-review → code → code-review → build → log.
+- A **`kickoff` skill** that orchestrates one phase of work end-to-end: plan → plan-review → code → code-review → build → log.
 - Four **canonical agent roles** (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`) defined once and mirrored to every supported harness.
-- A **`/stamp` skill** (starter-template-only) for stamping out new repos from this one.
-- **`/learn` and `/teach` skills** (universal — carried into every derived project) for moving patterns *between* methodology-following repos. `/learn` absorbs patterns from another repo into the current one; `/teach` sends patterns from the current repo out to a target. Both are plan-first: the user approves before any file changes.
-- **Human-editable kickoff configuration.** One `kickoff.yaml` contains harness-aware role routing and execution budgets. Model and effort are separate fields. Edit it directly or use `/roles`; the round-trip-safe manager rejects schema typos while preserving comments and project-specific data under `extensions`.
-- **Fail-fast readiness and progress-aware timeouts.** `/kickoff` live-validates every required non-orchestrator CLI/model/auth path before it mutates phase state. Production role calls then use per-role first-event, idle, and hard deadlines from the same config; local gitignored telemetry supports evidence-based recalibration. See [`policies/role-models.md`](policies/role-models.md) and [`policies/role-timeouts.md`](policies/role-timeouts.md).
+- A **`stamp` skill** (starter-template-only) for stamping out new repos from this one.
+- **`learn` and `teach` skills** (universal — carried into every derived project) for moving patterns *between* methodology-following repos. `learn` absorbs patterns from another repo into the current one; `teach` sends patterns from the current repo out to a target. Both are plan-first: the user approves before any file changes.
+- **Human-editable kickoff configuration.** One `kickoff.yaml` contains harness-aware role routing and execution budgets. Model and effort are separate fields. Edit it directly or use the `roles` skill; the round-trip-safe manager rejects schema typos while preserving comments and project-specific data under `extensions`.
+- **Fail-fast readiness and progress-aware timeouts.** `kickoff` live-validates every required non-orchestrator CLI/model/auth path before it mutates phase state. Production role calls then use per-role first-event, idle, and hard deadlines from the same config; local gitignored telemetry supports evidence-based recalibration. See [`policies/role-models.md`](policies/role-models.md) and [`policies/role-timeouts.md`](policies/role-timeouts.md).
 - A **`plan/` ledger** (status table, dependency graph, cross-cutting concerns) where work is tracked phase by phase.
 - A **`briefs/` library** for durable design decisions and methodology notes.
 - A **`policies/` library** for the rules every phase must respect.
-- A **`LOG.md`** activity log written by `/kickoff` on phase open and close.
+- A **`LOG.md`** activity log written by `kickoff` on phase open and close.
 - A minimal Python example project so the build gates have something real to chew on.
 
 ---
@@ -48,23 +57,39 @@ There are two ways to start.
 
 ### Option A — Stamp out a new project (recommended)
 
-From inside this repo, in your agent host of choice:
+From inside this repo, invoke `stamp` with the destination and description.
+
+Claude Code:
 
 ```
 /stamp ~/path/to/new-project "one-line description of what to build"
 ```
 
-The `/stamp` skill copies this repo's structural files into the new directory, asks a few configuration questions (project name, primary language, build commands) when the description doesn't make them obvious, and leaves you with a ready-to-`/kickoff` project.
+Codex:
+
+```
+$stamp ~/path/to/new-project "one-line description of what to build"
+```
+
+The `stamp` skill copies this repo's structural files into the new directory, asks a few configuration questions (project name, primary language, build commands) when the description doesn't make them obvious, and leaves you with a project ready for `kickoff`.
 
 ### Option B — Use this repo directly
 
-If you're trying it out or learning the workflow, just open this repo in your agent host and type:
+If you're trying it out or learning the workflow, open this repo and invoke `kickoff`.
+
+Claude Code:
 
 ```
 /kickoff
 ```
 
-The first kickoff will pick up Phase 1 (currently a placeholder for "decide what you're building"), walk you through the planner → reviewer → coder → critic loop, and write a START/END pair to `LOG.md`. Edit the brief, edit the plan, run kickoff again. The example Python project under `example/` exists so build gates have something to lint and test from the very first run.
+Codex:
+
+```
+$kickoff
+```
+
+The first `kickoff` run will pick up Phase 1 (currently a placeholder for "decide what you're building"), walk you through the planner → reviewer → coder → critic loop, and write a START/END pair to `LOG.md`. Edit the brief, edit the plan, then invoke `/kickoff` again in Claude Code or `$kickoff` again in Codex. The example Python project under `example/` exists so build gates have something to lint and test from the very first run.
 
 ---
 
@@ -78,7 +103,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 4. **Repo-level policies.** Codify the non-negotiables. Lives under `policies/`.
 5. **Brief + architecture → phased plan.** Break the work into incremental, testable phases.
 6. **Sub-phase breakdown at phase start.** Decompose each major phase only when you start it.
-7. **Orchestrator-driven sub-phase execution.** `/kickoff` runs planner → reviewer → coder → critic, with bounded revision loops. It never writes code itself.
+7. **Orchestrator-driven sub-phase execution.** `kickoff` runs planner → reviewer → coder → critic, with bounded revision loops. It never writes code itself.
 8. **Acceptance check.** The orchestrator runs the tests and gates the phase declares.
 9. **Append-only phase log.** `LOG.md` records open and close with evidence.
 10. **Human evaluation.** *You* decide whether each sub-phase is done. The agent does not.
@@ -147,19 +172,12 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │       ├── plan-reviewer.md
 │       ├── phase-coder.md
 │       └── code-critic.md
-├── .codex/                         ← Codex CLI slash-command + agent mirrors
-│   ├── agents/
-│   │   ├── phase-planner.toml
-│   │   ├── plan-reviewer.toml
-│   │   ├── phase-coder.toml
-│   │   └── code-critic.toml
-│   └── prompts/
-│       ├── kickoff.md              ← Codex slash-command entry point (symlink → .claude/skills/<name>/SKILL.md)
-│       ├── methodology.md
-│       ├── learn.md
-│       ├── teach.md
-│       ├── roles.md
-│       └── stamp.md
+├── .codex/                         ← Codex CLI agent mirrors
+│   └── agents/
+│       ├── phase-planner.toml
+│       ├── plan-reviewer.toml
+│       ├── phase-coder.toml
+│       └── code-critic.toml
 └── .agents/                        ← Codex CLI's native project-skill discovery
     └── skills/                     ←   (developers.openai.com/codex/skills)
         ├── kickoff                 ←   each is a directory symlink → ../../.claude/skills/<name>
@@ -181,13 +199,13 @@ Phase status lives in **`plan/INDEX.md`** and nowhere else. The legend is:
 - 🚧 In Progress
 - ✅ Completed
 
-`/kickoff` flips `⬅️` → `🚧` on start, `🚧` → `✅` on completion, and advances the next `⏳` row to `⬅️`. Status does not live in per-phase frontmatter; `id`, `title`, `depends_on`, `informs`, and the optional `review_lane` (see `policies/review-lanes.md`) are the only frontmatter fields.
+`kickoff` flips `⬅️` → `🚧` on start, `🚧` → `✅` on completion, and advances the next `⏳` row to `⬅️`. Status does not live in per-phase frontmatter; `id`, `title`, `depends_on`, `informs`, and the optional `review_lane` (see `policies/review-lanes.md`) are the only frontmatter fields.
 
 ---
 
 ## The four canonical agents
 
-Every phase passes through four roles. Their names are load-bearing — `/kickoff` calls them by name.
+Every phase passes through four roles. Their names are load-bearing — `kickoff` calls them by name.
 
 | Role | Tools | Writes code | Job |
 |---|---|---|---|
@@ -196,7 +214,7 @@ Every phase passes through four roles. Their names are load-bearing — `/kickof
 | `phase-coder` | Read, Write, Edit, Grep, Glob, Bash | Yes | Implement the approved plan |
 | `code-critic` | Read, Grep, Glob | No | Approve the code or send it back for revision |
 
-`/kickoff` itself does *not* write code. Its job is to delegate, watch verdicts, run build gates, and write `LOG.md`.
+`kickoff` itself does *not* write code. Its job is to delegate, watch verdicts, run build gates, and write `LOG.md`.
 
 ---
 
@@ -219,22 +237,22 @@ See [`policies/briefs-and-policies.md`](policies/briefs-and-policies.md) for the
 The same workflow runs in Claude Code, Codex CLI, and other agent hosts. The contract:
 
 - **Canonical sources** live under `.claude/` (skills, agents) and at the repo root (`CLAUDE.md`).
-- **Harness mirrors** are either symlinks (`AGENTS.md` → `CLAUDE.md`; `.codex/prompts/<name>.md` → `.claude/skills/<name>/SKILL.md` as a *file* symlink; `.agents/skills/<name>` → `.claude/skills/<name>` as a *directory* symlink) or thin wrapper files (`.codex/agents/*.toml`) that point at the canonical content.
-- **`.codex/prompts/`** feeds Codex's slash-command surface; **`.agents/skills/`** feeds Codex's native skill loader ([documented contract](https://developers.openai.com/codex/skills)). Both mirror the same canonical skill content. The `.agents/skills/` mirror uses *directory* symlinks because Codex doesn't follow file-level symlinks inside a skill directory ([openai/codex#11314](https://github.com/openai/codex/issues/11314)), but does traverse a symlinked skill directory.
+- **Harness mirrors** are either symlinks (`AGENTS.md` → `CLAUDE.md`; `.agents/skills/<name>` → `.claude/skills/<name>` as a *directory* symlink) or thin wrapper files (`.codex/agents/*.toml`) that point at the canonical content.
+- **`.agents/skills/`** feeds Codex's native skill loader ([documented contract](https://developers.openai.com/codex/skills)). Repo skills are invoked with `$name` in Codex. The mirror uses *directory* symlinks because Codex doesn't follow file-level symlinks inside a skill directory ([openai/codex#11314](https://github.com/openai/codex/issues/11314)), but does traverse a symlinked skill directory.
 - **Never edit a mirror by hand.** Update the canonical file; refresh the mirror.
 
 See [`policies/cross-harness-parity.md`](policies/cross-harness-parity.md) for the rules and the onboarding procedure for adding a third harness.
 
 ---
 
-## Cross-repo knowledge transfer: `/learn` and `/teach`
+## Cross-repo knowledge transfer: `learn` and `teach`
 
 Once you have more than one methodology-following project, patterns evolve in one and stop in another. Two universal skills handle the round trip:
 
-- **`/learn <donor-dir> [<desc>]`** — Run from inside *this* repo. Explores `<donor-dir>` for patterns (skills, policies, briefs, agent refinements, build-gate idioms, even domain specializations) and proposes which to absorb. The donor stays read-only. You get a plan ranked by generality (methodology-level first, language specializations later, domain specializations last). Nothing is written here until you approve.
-- **`/teach <target-dir> [<desc>]`** — The inverse. Run from inside *this* repo. Proposes which of *this* repo's patterns to apply to `<target-dir>` — useful for upgrading a previously-stamped project that has fallen behind, or retrofitting an existing project with the methodology. This repo stays read-only. The target's custom skills, agents, briefs, and active phase work are preserved by default.
+- **`learn <donor-dir> [<desc>]`** — Invoke as `/learn ...` in Claude Code or `$learn ...` in Codex. Explores `<donor-dir>` for patterns (skills, policies, briefs, agent refinements, build-gate idioms, even domain specializations) and proposes which to absorb. The donor stays read-only. Nothing is written here until you approve.
+- **`teach <target-dir> [<desc>]`** — Invoke as `/teach ...` in Claude Code or `$teach ...` in Codex. Proposes which of *this* repo's patterns to apply to `<target-dir>`. This repo stays read-only, and the target's custom work is preserved by default.
 
-Both skills are carried into every project `/stamp` stamps out, so any methodology-following project can `/learn` from any other and `/teach` to any other.
+Both skills are carried into every project that `stamp` creates, so any methodology-following project can learn from or teach another.
 
 The `<desc>` argument narrows intent. Omit it for a broad assessment that defaults to general-purpose improvements; supply it to focus on a specific surface ("focus on the testing setup", "Unity specialization", "just the policies").
 
@@ -244,9 +262,7 @@ The `<desc>` argument narrows intent. Omit it for a broad assessment that defaul
    - **Claude Code**: `claude` in this directory.
    - **Codex CLI**: `codex` in this directory.
 2. Read [`briefs/BRIEF.md`](briefs/BRIEF.md), [`briefs/methodology.md`](briefs/methodology.md), and [`plan/INDEX.md`](plan/INDEX.md) to ground yourself in what this repo expects.
-3. Either:
-   - Use this repo directly: type `/kickoff` and let the orchestrator drive the placeholder Phase 1.
-   - Stamp out a new project: type `/stamp ~/path/to/new-project "what you want to build"`.
+3. Either invoke `kickoff` (`/kickoff` in Claude Code; `$kickoff` in Codex) to use this repo directly, or invoke `stamp` (`/stamp ...` in Claude Code; `$stamp ...` in Codex) to create a new project.
 
 ---
 

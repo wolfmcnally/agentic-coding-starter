@@ -30,7 +30,7 @@ A methodology for writing software with AI coding agents in a way that scales be
 
    Net effect: the major-phase roadmap is visible at bootstrap; the orchestrator works one sub-phase at a time with each predecessor's outcomes baked in; the downstream sketches stay fresh as work proceeds rather than diverging from reality.
 
-7. **Orchestrator-driven sub-phase execution.** Use a high-level orchestrator skill (`/kickoff`) that does **no coding itself**. It:
+7. **Orchestrator-driven sub-phase execution.** Use a high-level orchestrator skill (`kickoff`) that does **no coding itself**. It:
    - determines the current phase,
    - invokes a **planning agent** to turn the current sub-phase into a file-level plan,
    - hands the plan to a **plan-reviewer agent**,
@@ -72,7 +72,7 @@ The methodology's orchestrator delegates to four specialist roles. Their names a
 | `phase-coder` | Briefs, plan, repo, approved plan | Yes | Implement the approved plan and run build gates |
 | `code-critic` | Briefs, plan, repo, code diff | No | Approve the code or send it back for revision |
 
-The orchestrator (`/kickoff`) is the fifth participant. It does no coding either — its job is delegation, verdict-handling, build-gate execution, and `LOG.md` upkeep.
+The orchestrator (`kickoff`) is the fifth participant. It does no coding either — its job is delegation, verdict-handling, build-gate execution, and `LOG.md` upkeep.
 
 ## Non-negotiables
 
@@ -89,12 +89,12 @@ Honest accounting of the cost.
 
 - **Speed of a single throwaway iteration.** A one-line ad-hoc prompt is faster than spinning up a brief, a plan, and a phase. Use ad-hoc for one-off scripts; use this methodology for projects that will exist next month.
 - **Autonomy.** The methodology assumes a human reviewer per phase. It's the wrong tool if your goal is unattended overnight code generation.
-- **Flexibility within a session.** The orchestrator follows the plan. If you want to wander, do it before `/kickoff` starts or in between phases — not mid-orchestration.
+- **Flexibility within a session.** The orchestrator follows the plan. If you want to wander, do it before `kickoff` starts or in between phases — not mid-orchestration.
 
 What you get in exchange: each phase leaves a reviewable artifact pair (END block + commit diff), the next session resumes from a known state without re-explaining anything, and the structural surface (briefs, policies, plan, log) tells the next human contributor — or the next session of you — what's true about the project.
 
 ## Related skills
 
-- **`/kickoff`** — runs steps 7–9 for one sub-phase, end-to-end.
-- **`/stamp`** — runs the bootstrap procedure described in [`agentic-bootstrap.md`](agentic-bootstrap.md) to stand up a new repo under this methodology.
-- **`/methodology`** — re-states this brief as a slash-command, for sessions that need a reminder of the steps without reading the whole file.
+- **`kickoff`** — runs steps 7–9 for one sub-phase, end-to-end.
+- **`stamp`** — runs the bootstrap procedure described in [`agentic-bootstrap.md`](agentic-bootstrap.md) to stand up a new repo under this methodology.
+- **`methodology`** — re-states this brief as a skill, invoked as `/methodology` in Claude Code or `$methodology` in Codex, for sessions that need a reminder without reading the whole file.

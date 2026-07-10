@@ -2,16 +2,16 @@
 title: "Deterministic Orchestration of the Kickoff Loop"
 date: 2026-06-09
 status: draft
-scope: Design and decision criteria for encoding /kickoff's delegate → verdict → route-back loop as a deterministic workflow program instead of orchestrator prose; deferred until every supported harness has a parity workflow primitive.
+scope: Design and decision criteria for encoding kickoff's delegate → verdict → route-back loop as a deterministic workflow program instead of orchestrator prose; deferred until every supported harness has a parity workflow primitive.
 ---
 
 # Deterministic Orchestration of the Kickoff Loop
 
-This brief proposes — and deliberately defers — moving `/kickoff`'s control flow from prose executed by the orchestrating model to a deterministic workflow program executed by the harness. It exists so the decision can be made quickly when its trigger condition lands, rather than re-derived from scratch.
+This brief proposes — and deliberately defers — moving `kickoff`'s control flow from prose executed by the orchestrating model to a deterministic workflow program executed by the harness. It exists so the decision can be made quickly when its trigger condition lands, rather than re-derived from scratch.
 
 ## 1. Problem
 
-`/kickoff` is a state machine written in prose. The orchestrating model reads `.claude/skills/kickoff/SKILL.md` and *performs* the machine: resolve venue (Step 0a), resolve phase and lane (Step 1), decompose (Step 1a), delegate to four roles, parse verdicts by string match, run convergence-based revision loops (a judgment call — iterate while objections narrow, escalate on stall or divergence — bounded by a deterministic 5-cycle runaway backstop), run the cross-harness fallback state machine, run the ripple pass, assemble the END block.
+`kickoff` is a state machine written in prose. The orchestrating model reads `.claude/skills/kickoff/SKILL.md` and *performs* the machine: resolve venue (Step 0a), resolve phase and lane (Step 1), decompose (Step 1a), delegate to four roles, parse verdicts by string match, run convergence-based revision loops (a judgment call — iterate while objections narrow, escalate on stall or divergence — bounded by a deterministic 5-cycle runaway backstop), run the cross-harness fallback state machine, run the ripple pass, assemble the END block.
 
 Field use across this template and its derived projects shows the prose machine executing faithfully — END blocks match status flips, revision caps hold, fallbacks degrade gracefully. But the state count has grown monotonically: venue resolution, per-stage fallback, turn-cap rescue, review lanes with escalation, AUTO/DECIDE ripple classification. Prose execution risk grows with the number of states the orchestrating model must track, and every addition is paid on every phase. The known failure classes — none yet observed at damaging scale, all structurally possible — are: a skipped step, a mis-parsed verdict (`## Verdict:` is matched by string; [`../policies/four-canonical-agents.md`](../policies/four-canonical-agents.md) already warns that any deviation breaks orchestration), a forgotten ripple pass, a revision loop that loses count, venue thrash after a fallback.
 
@@ -36,7 +36,7 @@ The program orchestrates; it does not judge. These remain model (or human) work:
 - **Claude Code** ships a workflow primitive: a deterministic script that spawns subagents, enforces JSON-schema structured outputs per agent call, supports sequential/parallel/pipelined composition, journals execution, and resumes from the journal. Everything §2 needs exists today on this harness.
 - **Codex CLI** has no announced parity primitive. Orchestration there is prose or external scripting.
 
-This asymmetry is the blocker. [`../policies/cross-harness-parity.md`](../policies/cross-harness-parity.md) requires one canonical `/kickoff` to drive both harnesses; a deterministic path that exists on one harness only is acceptable **only** in the shape cross-harness review already proved out: a config-gated enhancement with graceful fallback to the prose path, where the canonical contract stays in `SKILL.md`.
+This asymmetry is the blocker. [`../policies/cross-harness-parity.md`](../policies/cross-harness-parity.md) requires one canonical `kickoff` to drive both harnesses; a deterministic path that exists on one harness only is acceptable **only** in the shape cross-harness review already proved out: a config-gated enhancement with graceful fallback to the prose path, where the canonical contract stays in `SKILL.md`.
 
 ## 5. Design sketch (tentative — to be re-validated at implementation time)
 

@@ -102,7 +102,7 @@ When in doubt, leave it open and surface the question. Falsely closing an action
 
 ## Agent contract at session start
 
-Every agentic session — `/kickoff` invocation, a hand-driven skill, an ad-hoc edit pass — globs `user-actions/*.md` and reads frontmatter before doing dependent work. If the session's task depends on an open action, flag the dependency and wait; don't proceed silently. If the session creates new human-only follow-ups, file them as files before the session ends.
+Every agentic session — `kickoff` invocation, a hand-driven skill, an ad-hoc edit pass — globs `user-actions/*.md` and reads frontmatter before doing dependent work. If the session's task depends on an open action, flag the dependency and wait; don't proceed silently. If the session creates new human-only follow-ups, file them as files before the session ends.
 
 ## Relationship to other artifacts
 

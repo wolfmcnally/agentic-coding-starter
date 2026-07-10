@@ -6,13 +6,14 @@ description: >-
   the optional <description> doesn't make the answers obvious. Adapts
   CLAUDE.md, README.md, briefs/BRIEF.md, the kickoff skill's build gates,
   and the four canonical agents for the new project's name and primary
-  language. Invoke as /stamp <directory> [<description>].
+  language. Invoke as /stamp <directory> [<description>] in Claude Code or
+  $stamp <directory> [<description>] in Codex.
 argument-hint: "<directory> [<description>]"
 ---
 
-# /stamp — Bootstrap a new agentic-coding project
+# Stamp — Bootstrap a new agentic-coding project
 
-Use **this** repository as a master template to stand up a new project at `<directory>`. The new project ends up with everything needed to immediately `/kickoff` its first phase: a brief, a phased plan, policies, the four canonical agents, the kickoff skill, the methodology skill, harness mirrors, and a minimal code surface in the project's primary language.
+Use **this** repository as a master template to stand up a new project at `<directory>`. The new project ends up with everything needed to immediately invoke its `kickoff` skill (`/kickoff` in Claude Code; `$kickoff` in Codex): a brief, a phased plan, policies, the four canonical agents, the kickoff skill, the methodology skill, harness mirrors, and a minimal code surface in the project's primary language.
 
 The authoritative contract this skill implements is [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md). Read that brief before deviating from this skill.
 
@@ -25,7 +26,7 @@ The arguments are a positional `<directory>` followed by an optional `<descripti
 - `<directory>` — the destination path. May be absolute (`~/projects/foo`, `/Users/me/foo`) or relative to the current working directory. Tilde is expanded.
 - `<description>` (optional) — a one-line description of what the new project is for. When provided and informative, it answers most of the configuration questions automatically.
 
-If `<directory>` is missing, refuse with: `Usage: /stamp <directory> [<description>]` and exit.
+If `<directory>` is missing, refuse with: `Usage: /stamp <directory> [<description>] (Claude Code) or $stamp <directory> [<description>] (Codex)` and exit.
 
 ## Pre-flight checks
 
@@ -104,7 +105,6 @@ Follow [`briefs/agentic-bootstrap.md` §3](../../../briefs/agentic-bootstrap.md)
   .claude/skills/roles/
   .claude/agents/
   .codex/agents/
-  .codex/prompts/
   .agents/skills/         # (kickoff, methodology, learn, teach, roles added
                           #  as directory symlinks in Step 2)
 ```
@@ -138,11 +138,6 @@ Copy these files **from this template** into the new project, then run a name su
 - `.codex/agents/plan-reviewer.toml`
 - `.codex/agents/phase-coder.toml`
 - `.codex/agents/code-critic.toml`
-- `.codex/prompts/kickoff.md`
-- `.codex/prompts/methodology.md`
-- `.codex/prompts/learn.md`
-- `.codex/prompts/teach.md`
-- `.codex/prompts/roles.md`
 - Every file under `policies/` **except** any policy explicitly marked starter-only (currently `policies/anonymize-log-references.md` — the public-repo LOG anonymization rule; the asymmetry is driven by this template's publicness, not by methodology).
 - `briefs/methodology.md` (verbatim — methodology is universal)
 - `briefs/agentic-bootstrap.md` (verbatim — so the next bootstrap from this project is possible)
@@ -164,9 +159,7 @@ ln -s ../../.claude/skills/roles       .agents/skills/roles
 
 Verify each `readlink <dest>/.agents/skills/<name>` returns the expected target and `test -L <dest>/.agents/skills/<name> && test -d <dest>/.agents/skills/<name>` passes before moving on.
 
-The `.codex/prompts/<name>.md` files are *file* symlinks pointing at the SKILL.md inside the canonical skill dir (`../../.claude/skills/<name>/SKILL.md`); they feed Codex's slash-command surface. Both surfaces are symlink-based because formats match — see [`policies/cross-harness-parity.md`](../../../policies/cross-harness-parity.md).
-
-**Do not** copy `.claude/skills/stamp/` (this skill itself), `.codex/prompts/stamp.md`, create `.agents/skills/stamp` in the destination, or copy `policies/anonymize-log-references.md`, `bin/check-anonymization.sh`, or `bin/anonymization-denylist.local.example` (and drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`). The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too, and the anonymization rule (and its enforcement script) doesn't apply to private downstream projects. `/learn` and `/teach` *are* carried over — they are universal cross-repo skills that benefit every methodology-following project.
+**Do not** copy `.claude/skills/stamp/` (this skill itself), create `.agents/skills/stamp` in the destination, or copy `policies/anonymize-log-references.md`, `bin/check-anonymization.sh`, or `bin/anonymization-denylist.local.example` (and drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`). The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too, and the anonymization rule (and its enforcement script) doesn't apply to private downstream projects. The `learn` and `teach` skills *are* carried over — they are universal cross-repo skills that benefit every methodology-following project.
 
 The `bin/` directory, its `bin/README.md` convention preamble, and `policies/mechanistic-vs-intelligence.md` **are** carried over. The universal `bin/kickoff-config` manager and human-editable `kickoff.yaml` carry over too. Seed both config sections by running `<dest>/bin/kickoff-config reset all`; this preserves data under `extensions` if the destination already has it. The manager runs via `uv` with PEP 723 `ruamel.yaml`, so the destination needs `uv` on PATH. Keep its script entry in `bin/README.md`; delete only the starter-only anonymization entry.
 
@@ -187,7 +180,7 @@ Author these afresh, using the gathered configuration:
     - `## Project briefs` — list of `briefs/*.md` files specific to this project (initially just `BRIEF.md`).
     - `## Project surfaces` — describe the deliverable (path, what language, what the example or seed code is). When `project_isolation` is on, the surface is `project/`; when off, name the sibling deliverable directories.
     - `## Project conventions` — language, tooling, build-gate command shape for this project.
-    - `## Model & review venue` — describe `kickoff.yaml` as the human-editable source for separate model/effort fields and execution budgets; `/roles` is an optional validated editor; the shipped default gives cross-vendor review. Governed by the two role policies.
+    - `## Model & review venue` — describe `kickoff.yaml` as the human-editable source for separate model/effort fields and execution budgets; `roles` is an optional validated editor; the shipped default gives cross-vendor review. Governed by the two role policies.
     - `## Project-specific skills` — if the new project carries any skills beyond the universal five (kickoff, methodology, learn, teach, roles), list them here. For most fresh projects, this section is empty (or omitted).
   - Preserve the introductory paragraph that explains the two-zone contract; it is informational and lives outside both markers.
 
@@ -197,7 +190,7 @@ Author these afresh, using the gathered configuration:
   ```markdown
   # Activity Log
 
-  This log is **append-only** and owned by `/kickoff`. Do not hand-edit historical entries.
+  This log is **append-only** and owned by `kickoff`. Do not hand-edit historical entries.
   ```
 
 - **`<dest>/briefs/BRIEF.md`** — entry-point brief for the new project. Use the thesis-stub shape: H1, italic tagline, `## Thesis` paragraph from `description`, `## Catalog` pointer to `../CLAUDE.md#briefs-catalog`. Mark `status: draft` in frontmatter so the user knows it needs to be fleshed out.
@@ -208,7 +201,7 @@ Author these afresh, using the gathered configuration:
 
 - **`<dest>/plan/phase-2.md`, `<dest>/plan/phase-3.md`, …** — sketched major phases at lower fidelity. For each major phase the brief surfaces beyond Phase 1, draft a `phase-N.md` with frontmatter (`id`, `title`, `depends_on`, `informs`, plus `review_lane: light` only when the phase is mechanical per `policies/review-lanes.md` — omit otherwise) + one-paragraph Goal + high-level Deliverables list + scaffold Acceptance + Brief refs. These sketches will be tightened by ripple at each upstream phase's close (per [`policies/phase-ripple.md`](../../../policies/phase-ripple.md)) and elaborated when their row enters `⬅️` (per the kickoff Step 1a/9a/9b machinery). If the brief surfaces only a single phase, skip the sketches.
 
-- **Do NOT draft any sub-phase files at bootstrap** — no `phase-1.1.md`, no `phase-2.1.md`, none. Sub-phase decomposition is JIT, owned by `/kickoff` Step 1a at each major phase's open. The bootstrap leaves sub-phase shape to the orchestrator with each predecessor's outcomes in hand.
+- **Do NOT draft any sub-phase files at bootstrap** — no `phase-1.1.md`, no `phase-2.1.md`, none. Sub-phase decomposition is JIT, owned by `kickoff` Step 1a at each major phase's open. The bootstrap leaves sub-phase shape to the orchestrator with each predecessor's outcomes in hand.
 
 ### Step 4 — Lay down the primary code surface
 
@@ -284,7 +277,7 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - `<dest>/bin/kickoff-config show` runs; `<dest>/bin/README.md` retains its universal entry but **not** the `### check-anonymization.sh` entry.
 - `<dest>/.agents/skills/stamp` does **not** exist (starter-only, must not propagate).
 - The new `CLAUDE.md`'s catalogs reference every file in `briefs/` and `policies/`.
-- `<dest>/kickoff.yaml` exists; `show` prints the seeded cross-vendor model routing and portable timeout values; a scoped model edit preserves timeout comments/values; `<dest>/.gitignore` includes `.kickoff/`; the two role policies and invocation brief exist.
+- `<dest>kickoff.yaml` exists; `show` prints the seeded cross-vendor model routing and portable timeout values; a scoped model edit preserves timeout comments/values; `<dest>/.gitignore` includes `.kickoff/`; the two role policies and invocation brief exist.
 - `cd <dest> && uv run --with pytest pytest -q tests/test_kickoff_config.py` passes independently of the deliverable's language/toolchain.
 - The project's primary build gate runs clean on the seeded code.
 
@@ -304,13 +297,13 @@ When the bootstrap finishes cleanly, report to the user:
 
 - The destination path.
 - The project name, slug, primary language, and inferred surfaces.
-- That human-editable `kickoff.yaml` was seeded with cross-vendor model routing and portable role budgets; model and effort are separate fields; `/roles` edits model fields; local telemetry stays under `.kickoff/`; and `bin/kickoff-config recommend-timeouts` proposes target-local recalibration.
-- The path to the new project's `BRIEF.md` (which the user should flesh out next) and `plan/phase-1.md` (which the user should review before `/kickoff`'ing).
+- That human-editable `kickoff.yaml` was seeded with cross-vendor model routing and portable role budgets; model and effort are separate fields; `roles` edits model fields; local telemetry stays under `.kickoff/`; and `bin/kickoff-config recommend-timeouts` proposes target-local recalibration.
+- The path to the new project's `BRIEF.md` (which the user should flesh out next) and `plan/phase-1.md` (which the user should review before `kickoff`'ing).
 - The recommended next steps:
   1. `cd <dest>`
   2. Read and edit `briefs/BRIEF.md` until it accurately describes the project.
   3. Read and edit `plan/phase-1.md` if the inferred Phase 1 isn't what you want.
-  4. Run `/kickoff` to start Phase 1.
+  4. Run `/kickoff` in Claude Code or `$kickoff` in Codex to start Phase 1.
 
 **Do not auto-commit** in the new project. The user owns the first commit.
 

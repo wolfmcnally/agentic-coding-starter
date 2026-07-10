@@ -18,11 +18,11 @@ Phase status lives in **`plan/INDEX.md`** and nowhere else. This is a hard rule,
 
 ## Why one place
 
-Duplicating status across files invites drift. The orchestrator (`/kickoff`) reads exactly one file to know what to do next; humans read exactly one file to know what the project's state is; reviewers read exactly one file to verify the orchestrator did the right thing.
+Duplicating status across files invites drift. The orchestrator (`kickoff`) reads exactly one file to know what to do next; humans read exactly one file to know what the project's state is; reviewers read exactly one file to verify the orchestrator did the right thing.
 
 ## Who flips the markers
 
-`/kickoff` owns all status transitions:
+`kickoff` owns all status transitions:
 
 - On phase entry: `⬅️` → `🚧` and append a START block to `LOG.md`.
 - On phase completion: `🚧` → `✅`, advance the next `⏳` row to `⬅️` per the dependency graph, and append an END block to `LOG.md`.
@@ -31,13 +31,13 @@ Duplicating status across files invites drift. The orchestrator (`/kickoff`) rea
 Humans may flip markers manually only in two cases:
 
 - **Bootstrap.** When a brand-new `plan/INDEX.md` is created, the human assigns `⬅️` to Phase 1.
-- **Recovery.** When `/kickoff` failed partway through and left the state inconsistent, the human corrects the table — and ideally adds a note to `LOG.md` explaining the recovery.
+- **Recovery.** When `kickoff` failed partway through and left the state inconsistent, the human corrects the table — and ideally adds a note to `LOG.md` explaining the recovery.
 
 ## "Only one `⬅️` at a time"
 
 This is invariant. The dependency graph at the top of `plan/INDEX.md` permits parallel phases in principle (`P3` and `P4` both depend on `P2`), but the orchestrator works on one phase per session.
 
-If two rows are `⬅️` after a recovery, `/kickoff` picks the earliest one in the dependency graph and warns the human.
+If two rows are `⬅️` after a recovery, `kickoff` picks the earliest one in the dependency graph and warns the human.
 
 ## Verification
 

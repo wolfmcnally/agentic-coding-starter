@@ -1,12 +1,12 @@
 # Policy: Activity Log Discipline
 
-`LOG.md` is the **append-only** record of phase work in this repo. It is owned by `/kickoff`. Do not hand-edit historical entries.
+`LOG.md` is the **append-only** record of phase work in this repo. It is owned by `kickoff`. Do not hand-edit historical entries.
 
 ## What `LOG.md` is
 
 - The narrative record of phase entries and exits.
 - A pair of entries per phase: a **START block** when the phase enters `🚧`, an **END block** when it leaves `🚧` (either to `✅`, or paused with reason).
-- The primary artifact the human reviews after `/kickoff` finishes.
+- The primary artifact the human reviews after `kickoff` finishes.
 
 ## What `LOG.md` is not
 
@@ -18,7 +18,7 @@
 
 ## START block format
 
-`/kickoff` appends this when a phase enters `🚧`:
+`kickoff` appends this when a phase enters `🚧`:
 
 ```markdown
 ## <YYYY-MM-DD HH:MM> — START
@@ -34,7 +34,7 @@ The planned-work list is the phase file's Deliverables list, copied verbatim (tr
 
 ## END block format
 
-`/kickoff` appends this when a phase leaves `🚧`:
+`kickoff` appends this when a phase leaves `🚧`:
 
 ```markdown
 ## <YYYY-MM-DD HH:MM> — END
@@ -62,7 +62,7 @@ When a phase pauses (not completes), the END block uses the same format but adds
 ## Rules
 
 1. **Append-only.** Never edit a historical START or END block. Mistakes get a follow-up END block ("END (correction)") with the corrected information.
-2. **`/kickoff` writes; humans read.** Humans don't write to `LOG.md` directly. The exceptions are bootstrapping (creating the initial `# Activity Log` header) and recovery (when `/kickoff` failed and left an inconsistent state).
+2. **`kickoff` writes; humans read.** Humans don't write to `LOG.md` directly. The exceptions are bootstrapping (creating the initial `# Activity Log` header) and recovery (when `kickoff` failed and left an inconsistent state).
 3. **Timestamps are real.** Use the orchestrator's actual wall-clock time when the block was written. Do not back-date.
 4. **The END block is a contract.** When the orchestrator writes an END block claiming the phase is done, the human is entitled to expect that every claim in the block is true. Fabricated evidence is the most dangerous failure mode this policy guards against; the orchestrator must never claim a build gate passed when it didn't, never claim a manual check was performed by the orchestrator, never embellish the file list.
 
@@ -71,7 +71,7 @@ When a phase pauses (not completes), the END block uses the same format but adds
 Two reasons:
 
 - **Audit trail.** When the human asks "when did we decide to do X?", the log is the source of truth. Edited history loses the answer.
-- **Restart robustness.** When `/kickoff` is re-run after a crashed session, it reads the most recent unmatched START block to know what to resume. Editing blocks invalidates the heuristic.
+- **Restart robustness.** When `kickoff` is re-run after a crashed session, it reads the most recent unmatched START block to know what to resume. Editing blocks invalidates the heuristic.
 
 ## Length
 

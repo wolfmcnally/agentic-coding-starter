@@ -2,12 +2,12 @@
 title: "Standing Up a New Project From This Template"
 date: 2026-05-17
 status: methodology
-scope: Procedure for using this repository as a master template to stand up a new project under the agentic coding methodology. Authoritative reference for the `/stamp` skill.
+scope: Procedure for using this repository as a master template to stand up a new project under the agentic coding methodology. Authoritative reference for the `stamp` skill.
 ---
 
 # Standing Up a New Project From This Template
 
-How to use this repository as a *master template* to bootstrap a new project that follows the same agentic coding methodology. This brief is the contract `/stamp` implements; read it before customizing the skill or running the procedure by hand.
+How to use this repository as a *master template* to bootstrap a new project that follows the same agentic coding methodology. This brief is the contract `stamp` implements; read it before customizing the skill or running the procedure by hand.
 
 This brief assumes you already have (or are about to write) a high-level brief for the new project. If you don't yet have one, do the methodology's steps 1–3 first ([`methodology.md`](methodology.md)) — turn the idea into insights, write a brief, decide an architecture.
 
@@ -23,7 +23,7 @@ A project derived from this template contains the following **portable structure
   CLAUDE.md                # Top-level agent guidance, briefs + policies catalogs,
                            #   invariants, glossary, conventions
   AGENTS.md                # Symlink → CLAUDE.md (for Codex/aider/OpenHands)
-  LOG.md                   # Append-only activity log; /kickoff writes
+  LOG.md                   # Append-only activity log; kickoff writes
                            #   START/END blocks here
   .gitignore               # Editor/harness state; includes local .kickoff/
   kickoff.yaml             # Human-editable model/effort/timeout configuration
@@ -72,7 +72,7 @@ A project derived from this template contains the following **portable structure
                            #   patterns to another
       roles/SKILL.md       # Universal: edit model/effort fields for any role
                            #   (wraps bin/kickoff-config)
-      # /stamp is NOT carried over — the new project doesn't need to stamp
+      # stamp is NOT carried over — the new project doesn't need to stamp
       # out more projects from itself by default
     agents/
       phase-planner.md
@@ -86,12 +86,6 @@ A project derived from this template contains the following **portable structure
       plan-reviewer.toml
       phase-coder.toml
       code-critic.toml
-    prompts/
-      kickoff.md           # Symlink → ../../.claude/skills/kickoff/SKILL.md
-      methodology.md
-      learn.md
-      teach.md
-      roles.md
 
   .agents/                 # Codex CLI native skill discovery
                            # (developers.openai.com/codex/skills)
@@ -101,7 +95,7 @@ A project derived from this template contains the following **portable structure
       learn                #  a skill dir — issue #11314 — but does traverse
       teach                #  a symlinked skill directory.)
       roles
-      # /stamp is NOT mirrored here either — starter-only
+      # stamp is NOT mirrored here either — starter-only
 
   project/                 # When project-isolation is enabled (default for
                            #   single-deliverable projects), the artifact lives
@@ -121,7 +115,7 @@ A project derived from this template contains the following **portable structure
 ⏳ Not Started    ⬅️ Next (only one)    🚧 In Progress    ✅ Completed
 ```
 
-**The four canonical agents** — exact names matter; `/kickoff` invokes them by name:
+**The four canonical agents** — exact names matter; `kickoff` invokes them by name:
 
 | Role            | Tools allowed                                          | Writes code |
 | --------------- | ------------------------------------------------------ | ----------- |
@@ -130,7 +124,7 @@ A project derived from this template contains the following **portable structure
 | `phase-coder`   | Read, Write, Edit, Grep, Glob, Bash                    | Yes         |
 | `code-critic`   | Read, Grep, Glob                                       | No          |
 
-The `/kickoff` skill is itself **also** an agent in spirit, but it behaves as a slash-command-invoked workflow, not a subagent. It does no coding — it only orchestrates the four roles above and edits `plan/INDEX.md` + `LOG.md`.
+The `kickoff` skill is itself **also** an agent in spirit, but it behaves as a user-invoked workflow, not a subagent. It does no coding — it only orchestrates the four roles above and edits `plan/INDEX.md` + `LOG.md`.
 
 ---
 
@@ -152,11 +146,6 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.claude/agents/phase-coder.md`
 - `.claude/agents/code-critic.md`
 - `.codex/agents/*.toml`
-- `.codex/prompts/kickoff.md` (symlink → `../../.claude/skills/kickoff/SKILL.md`)
-- `.codex/prompts/methodology.md` (symlink)
-- `.codex/prompts/learn.md` (symlink)
-- `.codex/prompts/teach.md` (symlink)
-- `.codex/prompts/roles.md` (symlink)
 - `.agents/skills/kickoff` (directory symlink → `../../.claude/skills/kickoff`)
 - `.agents/skills/methodology` (directory symlink → `../../.claude/skills/methodology`)
 - `.agents/skills/learn` (directory symlink → `../../.claude/skills/learn`)
@@ -191,9 +180,8 @@ These files have a stable shape and a project-specific body. Mirror the shape; w
 
 ### 2c. Do not transfer (template-specific)
 
-- `.claude/skills/stamp/SKILL.md` — the new project doesn't need to stamp out more projects from itself, unless it explicitly wants to be a template too. (Note: `/learn` and `/teach` *are* carried over — they are universal cross-repo skills, not starter-specific.)
-- `.codex/prompts/stamp.md` — same reason.
-- `.agents/skills/stamp` — same reason. The starter-only `/stamp` skill is intentionally absent from Codex's native skill discovery in derived projects.
+- `.claude/skills/stamp/SKILL.md` — the new project doesn't need to stamp out more projects from itself, unless it explicitly wants to be a template too. (Note: `learn` and `teach` *are* carried over — they are universal cross-repo skills, not starter-specific.)
+- `.agents/skills/stamp` — same reason. The starter-only `stamp` skill is intentionally absent from Codex's native skill discovery in derived projects.
 - The starter template's own `plan/phase-1.md` (which is a placeholder for "decide what you're building") — replace it entirely with the new project's real Phase 1.
 - The starter template's `example/` Python package and `tests/test_cli.py` — replace with the new project's surface, in whatever language(s) the project uses.
 
@@ -256,7 +244,6 @@ Then create the empty directory shape:
 .claude/skills/methodology/
 .claude/agents/
 .codex/agents/
-.codex/prompts/
 .agents/skills/        # (the five skill entries here are directory symlinks
                        #  to ../../.claude/skills/<name>, created in Step 5)
 briefs/
@@ -293,7 +280,7 @@ In this exact order (each feeds the next):
    ```markdown
    # Activity Log
    ```
-   `/kickoff` will append the first START block.
+   `kickoff` will append the first START block.
 
 5. **`README.md`** — didactic top-level for human readers. Mirror the template's section structure; write project-specific content. The README is the human's entry point; CLAUDE.md is the agent's.
 
@@ -310,7 +297,6 @@ Copy verbatim, then adapt project names and surface-specific build-gate commands
 - `.claude/agents/phase-coder.md`
 - `.claude/agents/code-critic.md`
 - `.codex/agents/*.toml`
-- `.codex/prompts/{kickoff,methodology,learn,teach}.md` (file symlinks → `../../.claude/skills/<name>/SKILL.md`)
 - `.agents/skills/{kickoff,methodology,learn,teach}` (directory symlinks → `../../.claude/skills/<name>`)
 
 Adaptations to make in each:
@@ -413,7 +399,7 @@ Before declaring the bootstrap complete, verify:
 - `plan/phase-1.md`'s `Brief refs` section lists at least one brief, and each listed brief exists.
 - The project's primary build gate runs clean on the trivial seeded code (e.g., `pytest -q` exits 0 with at least one passing test).
 
-The first `/kickoff` invocation should pick up Phase 1's `⬅️` row, flip it to `🚧`, and append a START block to `LOG.md`. If any of those three actions fails, the bootstrap is incomplete — a path mismatch or a missing skill is the typical culprit.
+The first `kickoff` invocation should pick up Phase 1's `⬅️` row, flip it to `🚧`, and append a START block to `LOG.md`. If any of those three actions fails, the bootstrap is incomplete — a path mismatch or a missing skill is the typical culprit.
 
 ---
 
@@ -428,7 +414,7 @@ The bootstrap is the same shape every time. The variation is in:
 | **Languages in play**         | Python / TS / Rust / Go / Swift / Kotlin / polyglot           |
 | **Deployment story**          | AWS / Cloudflare / Vercel / app stores / static / none        |
 | **Per-project invariants**    | Cost ceilings; license policy; privacy boundaries; FOSS-only  |
-| **Per-project skills**        | Domain-specific workflows on top of `/kickoff`                |
+| **Per-project skills**        | Domain-specific workflows on top of `kickoff`                |
 | **Kickoff execution config** | Human-editable `kickoff.yaml`: separate model/effort fields plus target-local timeout calibration, per the two role policies |
 
 When adapting, edit these files (and only these) to reflect those choices:
@@ -451,13 +437,13 @@ These bite every bootstrap; flag them before they happen.
 - **`AGENTS.md` as a real file instead of a symlink.** A duplicate file drifts. Make it a symlink and verify with `readlink`.
 - **Reusing template-specific invariants.** "The example Python project must lint clean" is a template rule. Don't carry it into a project that has no Python.
 - **Filling in Phase 2+ at bootstrap.** Tempting and wrong. Phase 1 reality is the input to Phase 2's design.
-- **Agent name drift.** The four canonical roles must be named exactly `phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`. `/kickoff` invokes them by name. A typo silently breaks the orchestrator's ability to delegate.
-- **Editing `LOG.md` by hand.** History is owned by `/kickoff`. If a phase pauses mid-way, `/kickoff` writes the pause-reason END block; do not retroactively edit prior entries.
+- **Agent name drift.** The four canonical roles must be named exactly `phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`. `kickoff` invokes them by name. A typo silently breaks the orchestrator's ability to delegate.
+- **Editing `LOG.md` by hand.** History is owned by `kickoff`. If a phase pauses mid-way, `kickoff` writes the pause-reason END block; do not retroactively edit prior entries.
 - **Skipping the brief.** The bootstrap assumes a brief exists. Bootstrapping into an empty `briefs/` produces scaffolding for a project nobody has decided yet — the orchestrator will plan against air.
 
 ---
 
-## 6. Acceptance — "the new repo is ready to `/kickoff`"
+## 6. Acceptance — "the new repo is ready for `kickoff`"
 
 Bootstrap is complete when **all** of the following hold:
 
@@ -494,7 +480,6 @@ Bootstrap is complete when **all** of the following hold:
 [ ] .claude/agents/{phase-planner,plan-reviewer,phase-coder,code-critic}.md
     exist, adapted for this project
 [ ] .codex/agents/*.toml mirrors exist
-[ ] .codex/prompts/{kickoff,methodology,learn,teach}.md exist (file symlinks)
 [ ] .agents/skills/{kickoff,methodology,learn,teach} exist as directory
     symlinks to ../../.claude/skills/<name> (the canonical skill directory)
 [ ] .agents/skills/stamp does NOT exist (starter-only, must not propagate)
@@ -506,7 +491,8 @@ Bootstrap is complete when **all** of the following hold:
 [ ] No template-specific skills, briefs, or example code remain in the new
     repo (no example/, no .claude/skills/stamp/)
 [ ] The project's primary build gate runs clean on the seeded code
-[ ] First `/kickoff` invocation successfully picks up Phase 1's ⬅️ row,
+[ ] First `kickoff` invocation (`/kickoff` in Claude Code; `$kickoff` in Codex)
+    successfully picks up Phase 1's ⬅️ row,
     flips it to 🚧, and appends a START block to LOG.md
 ```
 

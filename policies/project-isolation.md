@@ -82,7 +82,7 @@ This shape is preferred because:
 - It is a single executable line that copy-pastes cleanly.
 - It does not assume any language-specific `--project` flag.
 
-The `/kickoff` skill's "Final build gate" section uses this shape. The four canonical agents follow suit.
+The `kickoff` skill's "Final build gate" section uses this shape. The four canonical agents follow suit.
 
 Root-level methodology machinery is a separate surface, not part of the isolated deliverable. In this starter, `tests/test_kickoff_config.py` exercises `bin/kickoff-config`; the starter build gate runs that test in addition to the `project/` gates. Derived projects carry the test and may run it with `uv run --with pytest pytest -q tests/test_kickoff_config.py` regardless of the deliverable's language.
 
@@ -119,7 +119,7 @@ ls project/pyproject.toml project/package.json project/Cargo.toml project/go.mod
 
 ## When to opt out
 
-A project may decline this policy at `/stamp` time when:
+A project may decline this policy at `stamp` time when:
 
 - The project is intrinsically polyglot or multi-deliverable.
 - The project's tooling deeply assumes the deliverable lives at the repo root (rare but real for some IDE workspaces and CI templates).
@@ -127,4 +127,4 @@ A project may decline this policy at `/stamp` time when:
 
 In those cases, the deliverable lives at the repo root, scaffolding lives at the repo root alongside it, and this policy is replaced by the softer rule: *"deliverable directories don't reference each other's internals."*
 
-`/stamp` asks about this at bootstrap. The default for single-language CLI/library/service projects is *opt in*. The default for polyglot or web+infra projects is *opt out*.
+`stamp` asks about this at bootstrap. The default for single-language CLI/library/service projects is *opt in*. The default for polyglot or web+infra projects is *opt out*.
