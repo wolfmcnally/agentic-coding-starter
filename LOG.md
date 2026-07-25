@@ -138,3 +138,13 @@ Teaching: cross-harness review handoff is a *map, not a payload*. Applied one im
 - .claude/skills/kickoff/SKILL.md — Step 4 item 2 gains the scoped-reading-mandate sentence; Step 6 item 1 rewritten to the file-list-first handoff.
 - briefs/cross-agent-invocation.md — §4 reworded the redact bullet and added the "map not payload / never reject on diff size" pattern.
 Observed war-story generalized (no source-repo-specific byte counts) to match the template's style. Codex mirrors (.codex/prompts/kickoff.md, .agents/skills/kickoff) are symlinks to the edited canonical — auto-reflected. Parity surfaces clean; no heals needed. No commit made — target owner owns commits.
+
+## 2026-07-24 20:02 — TAUGHT FROM BARTLEY
+Source: bartley @ <sha>
+Items applied: 1, by tier T1=1/T2=0/T3=0/T4=0
+Parity heals applied: 0 (AUTO); 0 surfaced as DECIDE
+Stale migrations: 0 (AUTO); 0 DECIDE; 0 DEFER
+Files touched in target: 2
+
+Teaching: added the Monotonic Progress architectural invariant to `CLAUDE.md`.
+Patterns to feed back via `/learn`: none identified.
