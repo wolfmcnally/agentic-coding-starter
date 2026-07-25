@@ -3,15 +3,16 @@ name: kickoff
 description: >-
   Orchestrate a single phase of plan/ end-to-end: pick up the next phase,
   plan, review plan, implement, review code, build/test, update status
-  markers in plan/INDEX.md, and log. Language- and surface-agnostic; the
-  project's CLAUDE.md and phase file declare which build gates to run.
+  markers in plan/INDEX.md, and log; route later test- or user-driven
+  corrections by risk and size. Language- and surface-agnostic; the project's
+  CLAUDE.md and phase file declare which build gates to run.
   Invoke as /kickoff in Claude Code or $kickoff in Codex (picks up the ⬅️
   phase); append "phase N" to target a specific phase.
 ---
 
 # Kickoff: Single-Phase Session
 
-Orchestrate a full implementation of one phase under `plan/`, from plan through working code, following the plan → plan-review → code → code-review → build pipeline.
+Orchestrate a full initial implementation of one phase under `plan/`, from plan through working code, following the plan → plan-review → code → code-review → build pipeline. Route later test- or user-driven corrections proportionally instead of replaying that full pipeline by default.
 
 This skill is language- and surface-agnostic. The project's `CLAUDE.md` declares the conventions; the phase file declares the deliverables; the planner picks the build gates; the orchestrator runs them.
 
@@ -27,13 +28,26 @@ Raw arguments: `!{ARGUMENTS}`
 
 - If empty, Step 1 picks up the `⬅️` phase.
 - If `phase N` or `phase N.M` (e.g., `phase 1`, `phase 1.3`), target that specific phase file `plan/phase-<id>.md`.
-- If free text, treat it as a phase description and try to match it against a phase row in `plan/INDEX.md`. If nothing matches, ask the user which phase they mean rather than guess.
+- If free text describes a concrete build/test failure or user-requested correction to an active or recently completed phase, treat it as a **follow-up revision** under [`policies/review-lanes.md`](../../../policies/review-lanes.md), not as a phase description.
+- Otherwise, treat free text as a phase description and try to match it against a phase row in `plan/INDEX.md`. If nothing matches, ask the user which phase they mean rather than guess.
+
+## Follow-up entry
+
+A follow-up revision exists only after the affected implementation has received its initial code-critic pass. Inspect the diagnostic or user instruction and the likely change surface, then classify both risk and size per [`policies/review-lanes.md`](../../../policies/review-lanes.md):
+
+- **Direct fix** (small and low risk): the orchestrator edits the localized code itself. Skip role resolution/preflight and Steps 3–6; validate through Steps 7–8.
+- **Coder only** (low risk, but implementation delegation is useful): run Steps 0a–0c, invoke Step 5, skip Step 6, then validate through Steps 7–8.
+- **Full cycle** (high risk or large/cross-cutting): run Steps 0a–0c and the normal coder → critic path in Steps 5–8. Re-run planning first only when the correction exposes a plan or architecture error.
+
+For a delegated follow-up, use the concrete diagnostic or user instruction, the phase file, and the prior END block as the correction brief for Steps 5–6; do not depend on an ephemeral plan from an earlier session. If those sources do not determine the correction safely, classify it as high risk and re-run planning.
+
+Do not turn an uncertain correction into a direct fix: uncertainty about behavior, blast radius, or validation makes it high risk. For a follow-up during an active phase, continue through the normal Steps 9–10 after validation. If the prior phase is already `✅`, skip Steps 2 and 9 and do not emit the normal Step 10 END block; preserve its status and historical END block, then append an `END (correction)` block and report the route and evidence per [`policies/log-discipline.md`](../../../policies/log-discipline.md). A concrete correction does not reopen the phase, while genuinely new scope belongs in a new phase.
 
 ## Workflow
 
 ### Step 0a: Resolve per-role model/venue
 
-Resolve once per session, before phase work begins, per [`policies/role-models.md`](../../../policies/role-models.md). This resolves a `(venue, model, effort)` for **each of the four roles** from `kickoff.yaml`'s harness-aware `role_models` section.
+For an initial implementation or delegated follow-up, resolve once per session before role work begins, per [`policies/role-models.md`](../../../policies/role-models.md). This resolves a `(venue, model, effort)` for **each of the four roles** from `kickoff.yaml`'s harness-aware `role_models` section. A direct follow-up fix skips this step.
 
 1. **Recursion guard.** If the env var `KICKOFF_DELEGATION_DEPTH` is set, this session is *itself* a delegated role invoked by an outer `kickoff` run; **every role runs native** and no further delegation happens. Skip the rest of Step 0a.
 2. **Detect the orchestrating harness `H`:** `CLAUDECODE=1` in the environment → `claude`; otherwise → `codex`.
@@ -53,7 +67,7 @@ Remember each role's resolved `(venue, model, effort)` and the orchestrating har
 
 ### Step 0b: Preflight every non-native role venue
 
-Before identifying a phase, changing a status marker, writing `LOG.md`, or invoking any role, run:
+Before identifying a phase, changing a status marker, writing `LOG.md`, or invoking any role for an initial implementation or delegated follow-up, run:
 
 ```
 ./bin/kickoff-config preflight
@@ -67,7 +81,7 @@ The preflight validates the full upstream path needed by the phase: CLI presence
 
 ### Step 0c: Load per-role execution budgets
 
-Run `./bin/kickoff-config show timeouts` and retain the first-event timeout, each role's hard deadline and idle watchdog, plus its Claude-only `claude_max_turns` circuit breaker from `kickoff.yaml`'s `role_timeouts` section, per [`policies/role-timeouts.md`](../../../policies/role-timeouts.md). The three clocks apply to **every invocation or resumed revision round**; the turn value applies only when the delegated venue is Claude, because Codex and native subagents expose no equivalent flag. The shipped seed values are below; when a project has deliberately recalibrated its config, the validated config output governs:
+For an initial implementation or delegated follow-up, run `./bin/kickoff-config show timeouts` and retain the first-event timeout, each role's hard deadline and idle watchdog, plus its Claude-only `claude_max_turns` circuit breaker from `kickoff.yaml`'s `role_timeouts` section, per [`policies/role-timeouts.md`](../../../policies/role-timeouts.md). A direct follow-up fix skips this step. The three clocks apply to **every invocation or resumed revision round**; the turn value applies only when the delegated venue is Claude, because Codex and native subagents expose no equivalent flag. The shipped seed values are below; when a project has deliberately recalibrated its config, the validated config output governs:
 
 - planner — 1,800 s hard / 600 s idle / 50 turns;
 - reviewer — 1,800 s hard / 600 s idle / 50 turns;
@@ -201,9 +215,9 @@ Wait for the coder. Collect the list of files created or modified, the Build Sta
 
 ### Step 7: Final build gate
 
-Even though the coder ran the build commands, re-run them in the orchestrator context to guarantee the merged state is green. Build commands depend on the surfaces the phase touched.
+After the initial implementation or any follow-up correction, run the build commands in the orchestrator context to guarantee the resulting state is green. Build commands depend on the surfaces the phase touched.
 
-Identify "touched surfaces" by looking at the files the coder reported plus `git status`. Then run the gates declared in the plan's **Build Gate Sequence** section, in order.
+Identify "touched surfaces" from the files changed by the selected route plus `git status`. Then run the gates declared in the plan's **Build Gate Sequence** section, in order.
 
 The project's primary build gates come from the project's actual tooling. For the **Agentic Coding Starter Template itself**, the example Python project lives under `project/` per [`policies/project-isolation.md`](../../../policies/project-isolation.md), so the gates are:
 
@@ -215,19 +229,24 @@ The `cd project && ...` pattern is the canonical shape (single executable line; 
 
 If any build gate fails:
 
-1. Classify the failure:
-   - **Coder error** (syntax, type mismatch, missing import, wrong signature, failing test assertion) → re-run `phase-coder` with the error output and the plan.
-   - **Plan error** (wrong file path, missing module, architectural mismatch) → re-run `phase-planner` with the error, then `phase-coder` with the updated plan. Counts as one cycle.
-   - **Environment error** (missing toolchain, missing system dependency, missing credential) → report to the user immediately; do not retry.
-2. Re-run the failing gate after the fix.
-3. On success, re-run `code-critic` on the files the coder touched during the fix (same venue rules as Step 6). If `REVISE`, back to coder (feeds the code-review convergence judgment).
-4. Keep iterating only while the build gate is **converging** — each fix knocks down failures and the error surface shrinks. Escalate the moment it stalls: the same failure recurs, or each fix trades one break for another (oscillation). A 5-cycle runaway backstop applies per [`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md); environment errors escalate immediately (step 1) regardless.
+1. Classify the failure source:
+   - **Code error** — syntax, type mismatch, missing import, wrong signature, or failing test assertion.
+   - **Plan error** — wrong file path, missing module, or architectural mismatch.
+   - **Environment error** — missing toolchain, system dependency, or credential. Report this to the user immediately; do not retry.
+2. For a code error, classify the correction's risk and size per [`policies/review-lanes.md`](../../../policies/review-lanes.md):
+   - **Direct fix** (small and low risk) → the orchestrator applies the localized correction.
+   - **Coder only** (low risk, but delegation is useful) → re-run `phase-coder` with the error output and plan.
+   - **Full cycle** (high risk or large/cross-cutting) → re-run `phase-coder`, then `code-critic` under the Step 6 venue rules.
+   A plan error is automatically a full-cycle correction: re-run `phase-planner`, then `phase-coder`, then `code-critic`.
+3. Re-run the failing check first. If it passes, run the focused tests plus the complete build/acceptance gates for every touched surface.
+4. Do not invoke `code-critic` after a successful direct or coder-only correction merely as ceremony. Do invoke it if the correction grows beyond its classification, exposes a design question, lacks convincing validation, or otherwise crosses the full-cycle threshold.
+5. A direct or coder-only attempt gets one pass. If it fails validation or trades one break for another, upgrade to the full cycle. Once in the full cycle, keep iterating only while the gate and review findings are **converging**. Escalate on recurrence or oscillation; the 5-cycle runaway backstop in [`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md) applies to that full loop.
 
 ### Step 8: Phase-specific acceptance gates
 
 Each phase declares its own empirical acceptance checks under `Acceptance` in `plan/phase-<id>.md`. The orchestrator runs whichever of those checks are mechanically executable (shell commands, smoke scripts, curl probes, deterministic comparisons) and reports the rest as **manual checks** for the user.
 
-A failed acceptance gate routes back through Step 7's fix loop.
+A failed acceptance gate routes through Step 7's proportional follow-up classification and validation loop.
 
 Per [`policies/acceptance-empirical.md`](../../../policies/acceptance-empirical.md), every acceptance criterion is either executable or named manual. Treat ambiguous criteria as manual and flag them in the END block.
 
@@ -301,6 +320,9 @@ Build status:
 Review lane (per `policies/review-lanes.md`):
 - full | light | light → full (escalated: <reason>) | light → full (orchestrator upgrade: <reason>)
 
+Follow-up route (per `policies/review-lanes.md`):
+- N/A (initial implementation) | direct fix — <risk/size reason> | coder only — <risk/size reason> | full cycle — <risk/size reason>
+
 Role model/venue (per `policies/role-models.md`) — orchestrated by <claude|codex>:
 - Preflight: OK (<validated targets>) | N/A (every role native)
 - Planner: model=<model> effort=<effort|default> venue=<native|claude|codex> <annotate "[fallback: <reason>]" only for a post-preflight runtime failure>
@@ -348,7 +370,7 @@ Then report to the user:
 - The verdict header (`## Verdict: APPROVED` or `## Verdict: REVISE`) is parsed by string match. Mis-cased or rephrased verdicts break orchestration.
 - Per-role model/venue ([`policies/role-models.md`](../../../policies/role-models.md)): `kickoff.yaml`'s human-editable `role_models` section (set directly or via `roles`) resolves each of the four roles to separate model and effort fields plus an implied venue at Step 0a, scoped by which harness is orchestrating. Step 0b live-validates every non-native CLI/model/access target and aborts before phase mutation on any upstream failure. The shipped default routes reviewer + critic to the *other* harness (cross-vendor review — there is no separate on/off token) and leaves planner + coder native; a project may resolve any role anywhere. A role resolving to a CLI is invoked there with the resolved model/effort overrides (write-enabled for the coder), resuming the same session across the role's rounds. Orchestration and build gates always run on the session model — never pinnable. A later runtime failure after successful preflight may still fall back per-stage and surfaces a 🚨 in the Step 10 report. The recursion guard env var is `KICKOFF_DELEGATION_DEPTH` (a delegated role never re-delegates). Recipes and handoff hygiene: [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md).
 - Per-role execution budgets ([`policies/role-timeouts.md`](../../../policies/role-timeouts.md)): Step 0c loads portable defaults from `kickoff.yaml`'s `role_timeouts` section. Every external initial/resume/rescue call runs through `bin/kickoff-config watch`; native calls use the same budgets through the harness wait mechanism. Raw telemetry is local under `.kickoff/`, and Step 10 records the human-readable timing summary.
-- Review lanes ([`policies/review-lanes.md`](../../../policies/review-lanes.md)): a phase's `review_lane: light` frontmatter skips Step 4 for mechanical work. The code critic always runs in every lane, guards the lane, and can escalate a light phase back to full; the END block records the lane. Lane and venue are orthogonal.
+- Review lanes and follow-up routing ([`policies/review-lanes.md`](../../../policies/review-lanes.md)): a phase's `review_lane: light` frontmatter skips Step 4 for mechanical initial work. The code critic runs on every initial implementation and guards the light lane. Later test- or user-driven corrections use direct fix, coder-only, or full-cycle routing according to risk and size; only the full-cycle route repeats independent review.
 - The ripple pass in Step 9a (sub-phase close) and Step 9b (major-phase close) is governed by [`policies/phase-ripple.md`](../../../policies/phase-ripple.md). AUTO ripples land in the same session; DECIDE ripples appear in the END block as named follow-ups.
 - Cross-harness: this same canonical skill drives both Claude Code and Codex. Claude Code invokes it as `kickoff`; Codex discovers it through `.agents/skills/kickoff` (a directory symlink to `.claude/skills/kickoff/`) and invokes it as `$kickoff`. Edit this canonical skill, not the mirror.
 - If your harness does not expose named subagents, perform the same role sequence locally by reading each `.claude/agents/<role>.md` directly and adopting that role's reading protocol and output format for the duration of the step.

@@ -124,7 +124,7 @@ A project derived from this template contains the following **portable structure
 | `phase-coder`   | Read, Write, Edit, Grep, Glob, Bash                    | Yes         |
 | `code-critic`   | Read, Grep, Glob                                       | No          |
 
-The `kickoff` skill is itself **also** an agent in spirit, but it behaves as a user-invoked workflow, not a subagent. It does no coding — it only orchestrates the four roles above and edits `plan/INDEX.md` + `LOG.md`.
+The `kickoff` skill is itself **also** an agent in spirit, but it behaves as a user-invoked workflow, not a subagent. It delegates initial implementation to the four roles above and edits `plan/INDEX.md` + `LOG.md`; for a small low-risk follow-up correction, it may edit code directly under the proportional routing rule in `policies/review-lanes.md`.
 
 ---
 

@@ -5,7 +5,7 @@
 ## What `LOG.md` is
 
 - The narrative record of phase entries and exits.
-- A pair of entries per phase: a **START block** when the phase enters `🚧`, an **END block** when it leaves `🚧` (either to `✅`, or paused with reason).
+- A START/END pair per phase, plus append-only `END (correction)` blocks when explicit user feedback corrects an already closed phase.
 - The primary artifact the human reviews after `kickoff` finishes.
 
 ## What `LOG.md` is not
@@ -58,6 +58,33 @@ Remaining:
 Build-status lines are project-specific. A Python project might list `ruff check`, `ruff format`, `pytest`. A polyglot project lists every surface's gate. Use `N/A` for gates that don't apply to this phase.
 
 When a phase pauses (not completes), the END block uses the same format but adds a `Pause reason:` line and leaves the phase row in `plan/INDEX.md` at `🚧`.
+
+## Follow-up correction format
+
+When concrete user feedback changes code after a phase has already closed, preserve the historical START/END pair and append:
+
+```markdown
+## <YYYY-MM-DD HH:MM> — END (correction)
+<Phase heading>
+
+Follow-up route:
+- direct fix | coder only | full cycle — <risk/size reason>
+
+Role model/venue:
+- Coder: skipped (direct fix) | model=<model> effort=<effort|default> venue=<native|claude|codex>
+- Critic: skipped (direct fix or coder only) | model=<model> effort=<effort|default> venue=<native|claude|codex>
+
+Files changed:
+- <path> — <brief description of correction>
+
+Build status:
+- <focused and touched-surface validation evidence>
+
+Remaining:
+- <anything significant left incomplete, or "None">
+```
+
+This block records a correction to an already authorized goal; it does not reopen the phase or change its `✅` marker. New scope gets a new phase and a normal START/END pair.
 
 ## Rules
 

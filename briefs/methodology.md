@@ -30,7 +30,7 @@ A methodology for writing software with AI coding agents in a way that scales be
 
    Net effect: the major-phase roadmap is visible at bootstrap; the orchestrator works one sub-phase at a time with each predecessor's outcomes baked in; the downstream sketches stay fresh as work proceeds rather than diverging from reality.
 
-7. **Orchestrator-driven sub-phase execution.** Use a high-level orchestrator skill (`kickoff`) that does **no coding itself**. It:
+7. **Orchestrator-driven sub-phase execution.** Use a high-level orchestrator skill (`kickoff`) that delegates the initial implementation. It:
    - determines the current phase,
    - invokes a **planning agent** to turn the current sub-phase into a file-level plan,
    - hands the plan to a **plan-reviewer agent**,
@@ -40,9 +40,9 @@ A methodology for writing software with AI coding agents in a way that scales be
 
    *One step, a lot happening. Each of those four roles is a specialist with its own tool stance, reading protocol, and verdict format.*
 
-   Review intensity is risk-adaptive: a phase may declare a **review lane** ([`../policies/review-lanes.md`](../policies/review-lanes.md)). The default `full` lane runs all four roles; a `light` lane — mechanical phases only — skips plan review while always keeping the code critic, who also guards the lane and escalates back to `full` when the work exceeded mechanical scope.
+   Review intensity is risk-adaptive: a phase may declare a **review lane** ([`../policies/review-lanes.md`](../policies/review-lanes.md)). The default `full` lane runs all four roles; a `light` lane — mechanical phases only — skips initial plan review while keeping the initial code critic, who also guards the lane and escalates back to `full` when the work exceeded mechanical scope.
 
-8. **Acceptance check.** The orchestrator runs the tests and the build gates that the sub-phase declares. If anything fails, the orchestrator classifies the failure (coder error, plan error, environment error) and routes back through the appropriate revision loop, with a cap on iterations before surfacing to the human.
+8. **Acceptance check.** The orchestrator runs the tests and build gates that the sub-phase declares. A failure or concrete user correction is routed proportionally: the orchestrator may apply a small low-risk fix directly, use the coder alone for a low-risk delegated fix, or repeat the coder → critic cycle when risk is high or the change is large/cross-cutting. Every route reruns focused and touched-surface validation; a failed lightweight attempt upgrades to the full cycle.
 
 9. **Append-only phase log.** Use an append-only log (`LOG.md`) to **open and close** work on every phase. Closing requires recording the **evidence** of what happened and **why** the orchestrator believes the success criteria were met. The human reads the END block before accepting the phase.
 
@@ -72,14 +72,14 @@ The methodology's orchestrator delegates to four specialist roles. Their names a
 | `phase-coder` | Briefs, plan, repo, approved plan | Yes | Implement the approved plan and run build gates |
 | `code-critic` | Briefs, plan, repo, code diff | No | Approve the code or send it back for revision |
 
-The orchestrator (`kickoff`) is the fifth participant. It does no coding either — its job is delegation, verdict-handling, build-gate execution, and `LOG.md` upkeep.
+The orchestrator (`kickoff`) is the fifth participant. It delegates initial implementation and handles verdicts, build gates, and `LOG.md`; it may write code only for a small, low-risk follow-up correction whose intended shape is already determined.
 
 ## Non-negotiables
 
 - **Every completed phase is incremental and testable** (step 4).
-- **Every phase passes the code critic**, whichever review lane it declares (step 7).
+- **Every initial phase implementation passes the code critic**, whichever review lane it declares; repeat review on follow-ups is risk- and size-based (steps 7–8).
 - **The human decides when work is "done"**; the orchestrator does not (step 4, step 10).
-- **The orchestrator never writes code itself** (step 7).
+- **The orchestrator writes code only for eligible small, low-risk follow-up corrections** (step 8).
 - **Closing a phase requires recorded evidence**, not just a green test run (step 9).
 - **Phases and sub-phases are mutable**; refactor the plan as understanding grows (step 11).
 

@@ -8,14 +8,14 @@ The methodology assumes a human reviews each phase before the next begins. This 
 - **Never advances past unresolved gates.** If a build gate fails after the bounded fix loop, `kickoff` surfaces the failure to the human; it does not silently downgrade the failure to a warning and proceed.
 - **Never claims subjective acceptance.** If a phase has a manual acceptance criterion (audition the audio, eyeball the design, review the writing), the orchestrator surfaces the criterion in the END block. It does not say "I listened and it sounds great" — it cannot.
 - **Never adds work the plan doesn't authorize.** Drift is contained to the plan that was actually approved. If the coder thinks something extra should land, the coder reports it as a Note for the human to consider.
-- **Never edits closed phases.** A phase whose status is `✅` is closed. Changes belong in a new phase that supersedes or extends the old one.
+- **Never silently reopens closed phases.** A phase whose status is `✅` keeps that status, and its historical plan and END block remain unchanged. A concrete user-requested correction may amend the code without reopening the phase; `kickoff` routes it proportionally under [`review-lanes.md`](review-lanes.md) and appends an `END (correction)` block. New scope that supersedes or extends the old goal belongs in a new phase.
 - **Never modifies `policies/` or top-level `CLAUDE.md` without explicit instruction.** Those are the rules of the road; the orchestrator and the four canonical agents serve those rules, they do not amend them.
 
 ## What the human does
 
 - **Decides "done."** The human reads each phase's END block, optionally audits the diff and the artifacts, and either:
   - Accepts the phase (commits the work, or asks the orchestrator to advance to the next phase).
-  - Asks for revisions (calls `kickoff` again with feedback, or invokes a specific agent directly).
+  - Asks for revisions. `kickoff` treats concrete feedback as a proportional follow-up revision; the human may also invoke a specific agent directly.
   - Rejects the phase wholesale (resets `plan/INDEX.md`, writes a follow-up END block documenting the rejection, refactors the plan).
 - **Authors and amends briefs.** Briefs document the human's intent. Agents may propose changes (in their reports), but the human is the editor of record for `briefs/`.
 - **Authors and amends policies.** Policies are the rules the human chooses to live by. Agents propose policies; humans approve them.

@@ -30,15 +30,15 @@ The authoritative source is [`briefs/methodology.md`](../../../briefs/methodolog
 
 6. **Sub-phase breakdown at phase start.** At the start of every major phase, break it down into sub-phases. Resist decomposing future major phases at bootstrap. Bite size is capability-indexed: a coder model that routinely closes phases with first-cycle approvals can take bigger bites — see `briefs/methodology.md` §6.
 
-7. **Orchestrator-driven sub-phase execution.** Use the high-level `kickoff` orchestrator skill (`/kickoff` in Claude Code; `$kickoff` in Codex), which does **no coding itself**. It:
+7. **Orchestrator-driven sub-phase execution.** Use the high-level `kickoff` orchestrator skill (`/kickoff` in Claude Code; `$kickoff` in Codex), which delegates the initial implementation. It:
    - determines the current phase,
    - invokes a **planner agent**,
    - hands the plan to a **plan reviewer** (skipped when the phase declares the `light` review lane per `policies/review-lanes.md`),
    - hands the approved plan to a **coding agent**,
-   - hands the result to a **code critic** (runs in every lane; in `light`, it also guards the lane and can escalate back to `full`),
+   - hands the result to a **code critic** (runs on every initial implementation; in `light`, it also guards the lane and can escalate back to `full`),
    - on any critic's complaint, sends the work back to the relevant agent for revision (bounded loops).
 
-8. **Acceptance check.** The orchestrator runs the tests and gates. Failures are classified (coder error, plan error, environment error) and routed back through the appropriate revision loop, with a cap before surfacing to the human.
+8. **Acceptance check.** The orchestrator runs the tests and gates. Test- or user-driven follow-ups are routed by risk and size: direct fix, coder only, or the full coder → critic cycle. Validation always runs; a failed lightweight route upgrades to the full cycle.
 
 9. **Append-only phase log.** `LOG.md` opens and closes work on every phase. Closing requires recording evidence of what happened and why the success criteria were met.
 
@@ -69,9 +69,9 @@ The orchestrator delegates to four specialist roles. Their names are load-bearin
 ## Non-negotiables
 
 - **Every completed phase is incremental and testable.**
-- **Every phase passes the code critic, whichever review lane it declares.**
+- **Every initial phase implementation passes the code critic; repeat review on follow-ups is risk- and size-based.**
 - **The human decides when work is "done."**
-- **The orchestrator never writes code itself.**
+- **The orchestrator writes code only for eligible small, low-risk follow-up corrections.**
 - **Closing a phase requires recorded evidence.**
 - **Phases and sub-phases are mutable.**
 

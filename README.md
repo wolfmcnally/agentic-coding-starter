@@ -103,7 +103,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 4. **Repo-level policies.** Codify the non-negotiables. Lives under `policies/`.
 5. **Brief + architecture → phased plan.** Break the work into incremental, testable phases.
 6. **Sub-phase breakdown at phase start.** Decompose each major phase only when you start it.
-7. **Orchestrator-driven sub-phase execution.** `kickoff` runs planner → reviewer → coder → critic, with bounded revision loops. It never writes code itself.
+7. **Orchestrator-driven sub-phase execution.** `kickoff` runs initial work through planner → reviewer → coder → critic, with bounded revision loops. Small low-risk follow-ups may be fixed directly; only high-risk or large/cross-cutting corrections require another full coder → critic cycle.
 8. **Acceptance check.** The orchestrator runs the tests and gates the phase declares.
 9. **Append-only phase log.** `LOG.md` records open and close with evidence.
 10. **Human evaluation.** *You* decide whether each sub-phase is done. The agent does not.
@@ -148,7 +148,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── four-canonical-agents.md
 │   ├── role-models.md              ← role routing and fail-closed preflight
 │   ├── role-timeouts.md            ← first-event/idle/hard execution budgets
-│   ├── review-lanes.md             ← risk-adaptive review intensity
+│   ├── review-lanes.md             ← review intensity + proportional follow-ups
 │   ├── project-isolation.md        ← isolate deliverable under project/
 │   └── greenfield-until-released.md ← no backward-compat shims pre-release
 ├── bin/                            ← deterministic methodology executables
@@ -205,7 +205,7 @@ Phase status lives in **`plan/INDEX.md`** and nowhere else. The legend is:
 
 ## The four canonical agents
 
-Every phase passes through four roles. Their names are load-bearing — `kickoff` calls them by name.
+Every initial implementation uses the four canonical roles, subject to the declared review lane; proportional follow-ups may invoke only the roles their risk and size justify. The role names are load-bearing — `kickoff` calls them by name.
 
 | Role | Tools | Writes code | Job |
 |---|---|---|---|

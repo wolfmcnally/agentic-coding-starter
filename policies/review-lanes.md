@@ -1,15 +1,15 @@
-# Policy: Review Lanes — Risk-Adaptive Review Intensity
+# Policy: Review Lanes and Proportional Follow-ups
 
-Every phase pays for the review it needs, not the review some other phase needed. The four-role loop ([`four-canonical-agents.md`](four-canonical-agents.md)) is the default and the right shape for any phase that makes decisions; for purely mechanical phases, a first-cycle `APPROVED` with zero findings is review that found nothing — pure cost. This policy lets a phase declare that up front, with the code critic as the backstop.
+Every phase pays for the review it needs, not the review some other phase needed. The four-role loop ([`four-canonical-agents.md`](four-canonical-agents.md)) is the default initial pipeline and the right shape for any phase that makes decisions; for purely mechanical phases, a first-cycle `APPROVED` with zero findings is review that found nothing — pure cost. This policy adapts both the initial lane and later correction route, with empirical validation as the backstop.
 
-## The two lanes
+## The two initial lanes
 
 | Lane | Pipeline | When |
 |---|---|---|
-| `full` (default) | planner → plan-reviewer → coder → code-critic | Any phase that decides anything. When in doubt, this. |
-| `light` | planner → coder → code-critic | Mechanical phases only (eligibility below). Plan review (kickoff Step 4) is skipped. |
+| `full` (default) | planner → plan-reviewer → coder → code-critic | Any initial phase implementation that decides anything. When in doubt, this. |
+| `light` | planner → coder → code-critic | Mechanical initial implementations only (eligibility below). Plan review (kickoff Step 4) is skipped. |
 
-There is no lane with zero review. The **code critic runs in every lane** — that is non-negotiable. The planner also runs in every lane: a file-level plan is cheap and the coder needs it; `light` removes only the plan-review stage.
+There is no **initial implementation** lane with zero review. The code critic runs on the initial implementation in every lane; the planner does too, because a file-level plan is cheap and the coder needs it. `light` removes only the initial plan-review stage. Later test- or user-driven corrections follow the proportional routing rule below and do not automatically repeat the coder → critic cycle.
 
 ## Declaration
 
@@ -64,13 +64,32 @@ Escalate: full lane — <one-line reason>
 
 On escalation, the orchestrator runs the skipped plan review retroactively against the plan as-built (same venue rules as kickoff Step 4), routes its outcome through the normal revision loops, and the phase finishes in the full lane. The END block records `light → full (escalated: <reason>)`.
 
+## Follow-up revisions are proportional
+
+After the initial implementation has passed code review, a correction prompted by a build/test/acceptance failure or by concrete user feedback is a **follow-up revision**. Before changing code, the orchestrator classifies both its **risk** and its **size**. The initial phase lane does not force the follow-up route.
+
+A full coder → critic cycle is required when **either** dimension is high:
+
+- **High risk:** the correction touches a public API, schema or persisted state, concurrency or ordering, security-sensitive behavior, an architectural boundary, or ambiguous product behavior; weak or missing test coverage also makes the correction high risk.
+- **Large or cross-cutting:** the correction spans multiple subsystems or user-visible surfaces, forces a broad call-site update, or produces a diff too large to inspect confidently as one focused change.
+
+When neither condition holds, use the least ceremony that safely completes the correction:
+
+1. **Direct fix** — for a small, localized correction whose intended shape is already determined by a diagnostic or explicit user instruction. The orchestrator may edit the code itself.
+2. **Coder only** — for a low-risk correction that benefits from implementation delegation but is not large or cross-cutting. Invoke `phase-coder`; do not invoke `code-critic` merely because a coder ran.
+3. **Full cycle** — for any high-risk or large/cross-cutting correction. Invoke `phase-coder`, then `code-critic`, using the normal revision loop.
+
+Validation is never proportionalized away. Every route reruns the failing check first, then the focused tests and full touched-surface build/acceptance gates needed to show the final state is green. If a direct or coder-only correction grows beyond its classification, exposes an architectural question, or lacks convincing validation, upgrade it immediately to the full cycle.
+
+The orchestrator reports the selected route, the risk/size reason, files changed, and validation evidence. This is a routing decision, not a new `review_lane:` value and not permission to skip the initial code review.
+
 ## Why this is capability-indexed
 
-The stronger the coder model, the larger the fraction of mechanical phases whose reviews approve first-cycle with nothing to say — and the more the uniform four-role loop overpays. Lanes recover that cost exactly where risk is low, while the phases that benefit from review — the ones making decisions — keep the full loop. As coder capability grows, expect more phases to qualify for `light`, not weaker review on the phases that stay `full`. See also [`briefs/methodology.md`](../briefs/methodology.md) §6 on capability-indexed phase sizing — the same calibration, applied to bite size instead of review depth.
+The stronger the coder model, the larger the fraction of mechanical phases whose initial reviews approve first-cycle with nothing to say — and the more the uniform four-role loop overpays. Lanes recover that cost at phase scale; proportional follow-up routing recovers it at correction scale. Work that makes decisions or carries significant blast radius still gets independent review. See also [`briefs/methodology.md`](../briefs/methodology.md) §6 on capability-indexed phase sizing — the same calibration, applied to bite size instead of review depth.
 
 ## Relationship to other policies
 
-- [`four-canonical-agents.md`](four-canonical-agents.md) — the roles, tool stances, verdict headers, and cycle caps are unchanged. `light` skips one *invocation* of `plan-reviewer`; it changes nothing about the role.
-- [`role-models.md`](role-models.md) — lane and venue are orthogonal. In the light lane, the code critique (the only review that runs) still executes in the resolved venue — and venue diversity matters *more* there, since it is the sole independent check.
+- [`four-canonical-agents.md`](four-canonical-agents.md) — the roles, tool stances, verdict headers, and cycle caps are unchanged. `light` skips one initial *invocation* of `plan-reviewer`; follow-up routing may omit role invocations without changing the roles themselves.
+- [`role-models.md`](role-models.md) — lane and venue are orthogonal. In the light lane, the initial code critique (the only initial review that runs) still executes in the resolved venue — and venue diversity matters *more* there, since it is the sole independent check.
 - [`phase-status.md`](phase-status.md) — `review_lane` is a phase property, not a status. It lives in per-phase frontmatter; status still lives only in `plan/INDEX.md`.
-- [`human-in-the-loop.md`](human-in-the-loop.md) — unchanged. The lane is named in the opening report and END block precisely so the human can veto a `light` declaration before or after the fact.
+- [`human-in-the-loop.md`](human-in-the-loop.md) — the human may request a concrete correction after a phase closes without reopening its historical status; new scope still requires a new phase.

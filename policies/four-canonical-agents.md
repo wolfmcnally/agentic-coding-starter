@@ -23,7 +23,7 @@ So do **not** assume any role runs as an in-harness subagent on the session mode
 
 ## Execution cadence: review lanes
 
-Whether *both* reviewer roles run on a given phase is governed by [`review-lanes.md`](review-lanes.md). The default `full` lane runs all four roles; a `light` lane (mechanical phases only, declared in the phase file's frontmatter) skips the `plan-reviewer` invocation and gives `code-critic` one additional duty — judging whether the work actually stayed mechanical, with an `Escalate: full lane — <reason>` Required Change when it did not. The role definitions, tool stances, and verdict headers are identical in both lanes. The code critic is never skipped in any lane.
+Whether *both* reviewer roles run on a phase's initial implementation is governed by [`review-lanes.md`](review-lanes.md). The default `full` lane runs all four roles; a `light` lane (mechanical phases only, declared in the phase file's frontmatter) skips the initial `plan-reviewer` invocation and gives `code-critic` one additional duty — judging whether the work actually stayed mechanical, with an `Escalate: full lane — <reason>` Required Change when it did not. The code critic runs on every initial implementation. Later test- or user-driven corrections may use a direct-fix or coder-only route when both risk and change size are low; this omits an invocation, not a role from the canonical set.
 
 ## What each role does
 
@@ -60,11 +60,13 @@ Followed in the `REVISE` case by a `### Required Changes` section listing specif
 - **Converging — continue.** The set of Required Changes is shrinking, their severity is trending down (blocking → minor → nit), each round resolves prior findings without raising equal-or-worse new ones, and the reviewer's verdict is moving toward approval.
 - **Stalled or diverging — escalate.** The same finding recurs across rounds (the fix didn't take, or the reviewer keeps re-raising it); new findings of equal or greater severity keep appearing (whack-a-mole); the loop oscillates (fixing A re-breaks B); or a finding rests on a product or architecture disagreement the agents cannot resolve among themselves. Surface the cycle history and the sticking point to the human.
 
-The same judgment governs all three loops:
+The same judgment governs the full review loops:
 
 - **Plan review** (planner → reviewer): continue while the reviewer's objections are narrowing; escalate when they stall.
 - **Code review** (coder → critic): continue while findings shrink in count and severity; escalate on recurrence or whack-a-mole.
-- **Build-gate failure** (coder → gate): converging means each fix knocks down failures and the error surface shrinks; stalled means the same failure recurs or each fix trades one break for another.
+- **Full-cycle build-gate failure** (coder → critic → gate): converging means each fix knocks down failures and review findings; stalled means the same failure recurs or each fix trades one break for another.
+
+Low-risk, bounded follow-up corrections do not enter a review loop by default. They get one direct-fix or coder-only attempt with focused and touched-surface validation. A failed attempt upgrades to the full loop above; see [`review-lanes.md`](review-lanes.md).
 
 **Runaway backstop.** Independent of the convergence read, no single loop runs past **5 cycles** without surfacing to the human. This is a runaway guard, not a budget — the same philosophy as the `--max-turns` cap in [`role-timeouts.md`](role-timeouts.md): a healthy converging loop almost never reaches it, and a loop that does has by definition failed to converge. When the backstop trips, escalate exactly as for a stall.
 
