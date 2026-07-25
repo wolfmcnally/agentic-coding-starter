@@ -31,6 +31,7 @@ This repo is also a working project in its own right. Open it in either supporte
 In addition to the universal methodology briefs (see Methodology Contract below):
 
 - [`BRIEF.md`](briefs/BRIEF.md) — entry-point brief for *this* repo: thesis, what the template provides, when to use it, the two operating modes (template-stamp vs. self-build), and acceptance criteria.
+- [`eacp-pattern-map.md`](briefs/eacp-pattern-map.md) — maps this repo's structures onto named patterns from the Encyclopedia of Agentic Coding Patterns, with file-level evidence: the orchestration spine, durable state, feedforward controls, feedback sensors, governance and provenance; plus the patterns deliberately declined, the antipatterns structurally guarded against, where the repo extends the corpus, and the gaps.
 
 ## Project surfaces
 
