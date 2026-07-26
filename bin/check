@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# Canonical repository build-gate entry point.
+
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+project_root="$repo_root/project"
+
+usage() {
+  cat <<'EOF'
+Usage: ./bin/check [all|lint|format|test|policy]
+
+Run the repository's canonical build gates. The default mode is "all".
+EOF
+}
+
+if [[ $# -gt 1 ]]; then
+  usage >&2
+  exit 2
+fi
+
+gate_mode="${1:-all}"
+case "$gate_mode" in
+  all|lint|format|test|policy) ;;
+  --help|-h)
+    usage
+    exit 0
+    ;;
+  *)
+    echo "CHECK ERROR unknown mode: $gate_mode" >&2
+    usage >&2
+    exit 2
+    ;;
+esac
+
+if ! command -v uv >/dev/null 2>&1; then
+  echo "CHECK ERROR missing prerequisite: uv" >&2
+  exit 1
+fi
+
+for required_path in "$project_root/pyproject.toml" "$project_root/uv.lock"; do
+  if [[ ! -f "$required_path" ]]; then
+    echo "CHECK ERROR missing required file: ${required_path#"$repo_root/"}" >&2
+    exit 1
+  fi
+done
+
+run_gate() {
+  local gate_name="$1"
+  shift
+  echo "CHECK $gate_name START"
+  if "$@"; then
+    echo "CHECK $gate_name PASS"
+  else
+    local command_exit=$?
+    echo "CHECK $gate_name FAIL (exit $command_exit)" >&2
+    return "$command_exit"
+  fi
+}
+
+run_lint() {
+  (
+    cd "$project_root"
+    run_gate lint uv run --locked ruff check \
+      example tests ../bin/kickoff-config ../tests
+  )
+}
+
+run_format() {
+  (
+    cd "$project_root"
+    run_gate format uv run --locked ruff format --check \
+      example tests ../bin/kickoff-config ../tests
+  )
+}
+
+run_test() {
+  (
+    cd "$project_root"
+    run_gate test uv run --locked pytest -q tests ../tests
+  )
+}
+
+run_policy() {
+  (
+    cd "$repo_root"
+    check_instructions() {
+      [[ -L AGENTS.md ]] && [[ "$(readlink AGENTS.md)" == "CLAUDE.md" ]]
+    }
+    run_gate policy-instructions check_instructions
+    run_gate policy-config ./bin/kickoff-config show
+    run_gate policy-anonymization ./bin/check-anonymization.sh
+    echo "CHECK policy PASS"
+  )
+}
+
+case "$gate_mode" in
+  lint) run_lint ;;
+  format) run_format ;;
+  test) run_test ;;
+  policy) run_policy ;;
+  all)
+    run_lint
+    run_format
+    run_test
+    run_policy
+    echo "CHECK ALL PASS"
+    ;;
+esac

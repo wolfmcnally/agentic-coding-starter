@@ -172,6 +172,13 @@ Files touched: <count>
 ```
 ```
 
+When this repo has an external-reference anonymization policy, render the
+proposed committed entry through it at plan time: use `Donor A` (or the
+policy's equivalent), replace the external SHA with `<sha withheld>` or an
+allowed fingerprint, and omit proprietary donor paths and identifiers. The
+conversation plan may identify the donor for the user; the committed LOG entry
+may not violate the destination's publication policy.
+
 End the plan with one line: **"Approve this plan to apply, ask for revisions, or reject."**
 
 ## Stage 4 — Approve (gate)
@@ -197,7 +204,7 @@ Once approved, apply the approved items. Order:
    - If a new `.claude/skills/<name>/SKILL.md` was added, add the matching `.agents/skills/<name>` directory symlink for Codex discovery.
    - See [`policies/cross-harness-parity.md`](../../../policies/cross-harness-parity.md).
 5. Update `CLAUDE.md`'s catalogs (briefs catalog, policies catalog) so every new file is indexed.
-6. Run the build gates (the same ones the template's `kickoff` would run) to confirm nothing regressed. Currently for this repo: `cd project && uv run ruff check example tests ../bin/kickoff-config ../tests && uv run ruff format --check example tests ../bin/kickoff-config ../tests && uv run pytest -q tests ../tests`.
+6. Run the repository's canonical full gate to confirm nothing regressed. For this repo: `./bin/check all`. If an older methodology-following destination has no canonical gate yet, run the exact build commands declared by its current `kickoff` and flag the missing entry point as a learning candidate.
 7. Append the LEARN entry to `LOG.md`. Format as proposed in the plan.
 
 **Do not auto-commit.** Per [`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md), the human owns commits. Report the file list, the build-gate status, and any unresolved manual steps so the user can review and commit.

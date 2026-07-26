@@ -129,13 +129,17 @@ For each:
 - **User Demo**: a `User Demo:` block per `policies/user-demo-protocols.md` (entry point, suggested inputs, what to look for, variations to explore) when this phase touches a user-facing surface AND there is something meaningful to try interactively. Otherwise, a `User Demo: N/A — <reason>` line. Address the policy explicitly either way; do not fabricate a contrived demo to fill the slot.
 
 ## Build Gate Sequence
-List the exact shell commands the orchestrator should run after implementation, in order. These come from the project's CLAUDE.md (conventions) and the phase file's surface list. Typical Python project example:
-- `uv run ruff check <pkg> tests`
-- `uv run ruff format --check <pkg> tests`
-- `uv run pytest -q`
-- [project-specific smokes]
+List the exact shell commands the orchestrator should run after implementation,
+in order. Start with focused checks or smokes justified by the touched surface,
+then end with the repository-owned full gate:
 
-If the project is non-Python, substitute the equivalents: `npm run lint` / `cargo clippy` / `go vet`, etc.
+- [focused test/lint/smoke commands]
+- `./bin/check all`
+
+Read `policies/build-gates.md` and inspect `bin/check`; do not copy a generic
+Python/Node/Rust command list over a repository-defined entry point. If the
+repository genuinely lacks `bin/check`, list its actual metadata-declared
+commands and flag the missing canonical entry point under Open Questions.
 
 ## Open Questions
 [Ambiguities the implementer should resolve. Flag here rather than guess. Include both technical ambiguities and product/architecture decisions that should escalate to the reviewer for user confirmation.]
@@ -150,4 +154,6 @@ If the project is non-Python, substitute the equivalents: `npm run lint` / `carg
 - Uphold invariants explicitly in the Invariant Checks section.
 - Prefer simplicity over new abstractions. A new helper module is premature unless two existing call sites already need it.
 - Flag ambiguities in Open Questions instead of guessing.
-- Plan in the language the project actually uses. If `pyproject.toml` exists, use `uv run` / `pytest` / `ruff` defaults. If `package.json` exists, use `npm` / `pnpm` defaults. If `Cargo.toml` exists, use `cargo` defaults. Look at the repo before naming a tool.
+- Plan in the language and toolchain the project actually uses. Prefer its
+  repository-owned `bin/check`; inspect metadata and lockfiles before naming
+  any focused native command.

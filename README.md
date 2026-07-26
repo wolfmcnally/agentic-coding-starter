@@ -91,6 +91,23 @@ $kickoff
 
 The first `kickoff` run will pick up Phase 1 (currently a placeholder for "decide what you're building"), walk you through the planner → reviewer → coder → critic loop, and write a START/END pair to `LOG.md`. Edit the brief, edit the plan, then invoke `/kickoff` again in Claude Code or `$kickoff` again in Codex. The example Python project under `example/` exists so build gates have something to lint and test from the very first run.
 
+### Verify the checkout
+
+Every repository stamped from this template owns one canonical, cwd-independent
+gate command:
+
+```bash
+./bin/check
+```
+
+This starter runs its locked Python lint, format, and test gates plus its
+repository-policy checks. Optional tracked Git hooks use the same entry point;
+opt in for the current checkout with:
+
+```bash
+./bin/install-hooks
+```
+
 ---
 
 ## The eleven-step methodology
@@ -152,10 +169,16 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── project-isolation.md        ← isolate deliverable under project/
 │   └── greenfield-until-released.md ← no backward-compat shims pre-release
 ├── bin/                            ← deterministic methodology executables
+│   ├── check                       ← canonical locked lint/format/test/policy gate
+│   ├── install-hooks               ← opt in to tracked lifecycle hooks
 │   ├── kickoff-config              ← round-trip config, preflight, watchdog
-│   └── check-anonymization.sh       ← starter-only public-repo leak guard
+│   └── check-anonymization.sh      ← starter-only public-repo leak guard
+├── .githooks/
+│   └── pre-push                    ← optional; calls the canonical full gate
 ├── tests/                          ← universal methodology machinery tests
-│   └── test_kickoff_config.py       ← config/watchdog behavioral coverage
+│   ├── test_check.py               ← canonical gate behavioral coverage
+│   ├── test_install_hooks.py       ← opt-in hook installer coverage
+│   └── test_kickoff_config.py      ← config/watchdog behavioral coverage
 ├── plan/                           ← phased execution plan
 │   ├── INDEX.md                    ←   phase ledger (status lives ONLY here)
 │   └── phase-1.md                  ←   first phase (a stub you replace)

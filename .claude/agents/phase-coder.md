@@ -65,40 +65,17 @@ Check that:
 
 ### 5. Run the build gate
 
-Run the **Build Gate Sequence** from the plan, in order. Examples by ecosystem:
+Run the **Build Gate Sequence** from the plan in order: focused checks first,
+then the repository-owned `./bin/check all` full suite. Read
+`policies/build-gates.md` and the actual `bin/check`; do not substitute a
+generic ecosystem command list for an existing canonical entry point.
 
-**Python (uv + pyproject.toml):**
-```
-uv run ruff check <pkg> tests
-uv run ruff format --check <pkg> tests
-uv run pytest -q
-```
-(If `mypy` is in dev deps: `uv run mypy <pkg>`. If `uv` is not adopted, fall back to `pytest` / `ruff check` directly.)
-
-**Node / TypeScript:**
-```
-npm run lint
-npm run typecheck   # if present
-npm test
-```
-(Substitute `pnpm` / `yarn` as appropriate.)
-
-**Rust:**
-```
-cargo fmt --all -- --check
-cargo build --workspace
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
-```
-
-**Go:**
-```
-gofmt -l .   # must print nothing
-go vet ./...
-go test ./...
-```
-
-If the project's primary language is not one of the above, use the equivalent commands the project's CLAUDE.md or pyproject/package/Cargo file declares.
+Native commands are appropriate for focused iteration, but they use the
+repository's committed metadata and lock-preserving mode (`uv run --locked`,
+Cargo `--locked`, Go `-mod=readonly`, or the selected Node package manager's
+frozen-lockfile contract). If the repository has no canonical gate, use the
+exact commands declared by its current tooling and report the missing entry
+point in Notes.
 
 If a build step requires a system tool that isn't available in this environment, report the gap explicitly in Notes rather than skipping silently.
 

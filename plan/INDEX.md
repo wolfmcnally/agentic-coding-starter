@@ -50,6 +50,7 @@ These are the universals the template ships with. A project derived from this te
 - **Policies are the law.** Every phase honors every file under `policies/`. A policy violation blocks acceptance.
 - **Status lives in one place.** `plan/INDEX.md`'s phase table is the single source of truth for `⏳ / ⬅️ / 🚧 / ✅`. Per-phase frontmatter does not carry `status:`.
 - **Acceptance is empirical** (see [`../policies/acceptance-empirical.md`](../policies/acceptance-empirical.md)). Verifiable shell commands and named manual checks — not "the code compiles."
+- **Repository-owned gates** (see [`../policies/build-gates.md`](../policies/build-gates.md)). Focused phase checks may be additive, but every final full-suite claim ends with the cwd-independent `./bin/check all` backed by committed metadata and lockfiles.
 - **Repo-relative paths only** in any file committed to this repo (see [`../policies/repo-relative-paths.md`](../policies/repo-relative-paths.md)). Bash invocations may use absolute paths.
 - **Cross-harness parity** (see [`../policies/cross-harness-parity.md`](../policies/cross-harness-parity.md)). The same canonical files drive Claude Code, Codex CLI, and any other harness. Mirrors do not get hand-edited.
 - **Human decides done** (see [`../policies/human-in-the-loop.md`](../policies/human-in-the-loop.md)). `kickoff` never auto-commits, never advances past unresolved gates, never claims subjective acceptance.
@@ -64,6 +65,8 @@ These are the universals the template ships with. A project derived from this te
 | Bootstrap a new project              | [`../briefs/agentic-bootstrap.md`](../briefs/agentic-bootstrap.md) |
 | Top-level agent guidance             | [`../CLAUDE.md`](../CLAUDE.md)                            |
 | Activity log                         | [`../LOG.md`](../LOG.md)                                  |
+| Canonical build gate                | [`../bin/check`](../bin/check), [`../policies/build-gates.md`](../policies/build-gates.md) |
+| Optional tracked hooks              | [`../.githooks/pre-push`](../.githooks/pre-push), [`../bin/install-hooks`](../bin/install-hooks) |
 | Phase orchestrator                   | [`../.claude/skills/kickoff/SKILL.md`](../.claude/skills/kickoff/SKILL.md) |
 | New-project bootstrapper             | [`../.claude/skills/stamp/SKILL.md`](../.claude/skills/stamp/SKILL.md) |
 | Methodology skill                    | [`../.claude/skills/methodology/SKILL.md`](../.claude/skills/methodology/SKILL.md) |

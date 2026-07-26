@@ -148,3 +148,9 @@ Files touched in target: 2
 
 Teaching: added the Monotonic Progress architectural invariant to `CLAUDE.md`.
 Patterns to feed back via `/learn`: none identified.
+
+## 2026-07-26 17:47 — LEARN
+Donor: Donor A @ <sha withheld>
+Items absorbed: 4, by tier T1=3/T2=1/T3=0/T4=0
+Stale-in-light-of-learning migrations: 19 AUTO; 0 DECIDE; 0 DEFER
+Files touched: 26

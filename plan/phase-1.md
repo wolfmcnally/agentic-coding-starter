@@ -73,7 +73,7 @@ For Option B:
 
 - `head -1 ../briefs/BRIEF.md` shows the user's project title, not "Agentic Coding Starter Template".
 - `head -3 plan/phase-1.md` shows the user's real Phase 1 title in the frontmatter.
-- The starter's gates still pass (`cd project && uv run ruff check example tests ../bin/kickoff-config ../tests && uv run ruff format --check example tests ../bin/kickoff-config ../tests && uv run pytest -q tests ../tests`), unless the user has replaced the example deliverable with a different surface — in which case its gates plus the root methodology tests pass.
+- The repository-owned full gate (`./bin/check all`) still passes, unless the user has replaced the example deliverable with a different surface — in which case `bin/check` is adapted in the same phase to run that surface's locked gates plus the root methodology tests.
 - `/kickoff phase 1` in Claude Code or `$kickoff phase 1` in Codex, invoked after the rewrite, picks up the user's real Phase 1 and walks through plan → plan-review → code → code-review → build for it.
 
 ## Brief refs

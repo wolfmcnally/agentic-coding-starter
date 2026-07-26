@@ -217,15 +217,15 @@ Wait for the coder. Collect the list of files created or modified, the Build Sta
 
 After the initial implementation or any follow-up correction, run the build commands in the orchestrator context to guarantee the resulting state is green. Build commands depend on the surfaces the phase touched.
 
-Identify "touched surfaces" from the files changed by the selected route plus `git status`. Then run the gates declared in the plan's **Build Gate Sequence** section, in order.
+Identify "touched surfaces" from the files changed by the selected route plus `git status`. Then run the gates declared in the plan's **Build Gate Sequence** section, in order. Focused surface checks come first; the repository-owned full gate comes last.
 
-The project's primary build gates come from the project's actual tooling. For the **Agentic Coding Starter Template itself**, the example Python project lives under `project/` per [`policies/project-isolation.md`](../../../policies/project-isolation.md), so the gates are:
+Every methodology-following repository owns a cwd-independent canonical entry point per [`policies/build-gates.md`](../../../policies/build-gates.md). For the **Agentic Coding Starter Template itself**:
 
 ```
-cd project && uv run ruff check example tests ../bin/kickoff-config ../tests && uv run ruff format --check example tests ../bin/kickoff-config ../tests && uv run pytest -q tests ../tests
+./bin/check all
 ```
 
-The `cd project && ...` pattern is the canonical shape (single executable line; uniform across language ecosystems). Projects that opt out of the `project/` convention put the metadata at the root and drop the `cd project &&` prefix. A project derived from this template via `stamp` may have different gates — Node, Rust, Go, polyglot. The planner is responsible for listing them; the orchestrator runs whatever the planner listed.
+`bin/check` owns the locked Python commands, enters `project/`, includes the root methodology tests and policy checks, and preserves the failing child status. A project derived via `stamp` keeps the same entry-point name while its implementation uses that project's real toolchain. The planner may add project-specific focused checks or smokes before it; it must not replace an existing canonical full gate with a copied raw command list.
 
 If any build gate fails:
 

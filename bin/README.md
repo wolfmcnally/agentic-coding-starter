@@ -11,6 +11,47 @@
 
 ## Scripts
 
+### `check` — canonical repository build gate
+
+The single authoritative entry point for automated repository checks. It
+resolves the repo root from its own location, validates the `uv` prerequisite
+and committed Python metadata/lockfile, then runs the selected named mode with
+`uv run --locked`. `all` runs lint, format verification, tests, and deterministic
+policy checks in order. Child failures retain their exact status and emit a
+terminal `CHECK <name> FAIL`; success ends with `CHECK ALL PASS`.
+
+```bash
+./bin/check
+```
+
+```bash
+./bin/check test
+```
+
+Universal contract: [`policies/build-gates.md`](../policies/build-gates.md).
+`stamp` preserves the interface and rewrites its command mapping to the
+destination's language, metadata, and lockfile. Behavioral coverage lives in
+`tests/test_check.py`.
+
+### `install-hooks` — opt in to tracked Git hooks
+
+Configures only the current checkout's `core.hooksPath` to `.githooks`, whose
+pre-push hook calls `./bin/check all`. Installation is explicit and
+idempotent. A different existing hooks path is preserved and reported; only
+`--force` replaces it. `--dry-run` reports the proposed change without writing
+Git configuration.
+
+```bash
+./bin/install-hooks --dry-run
+```
+
+```bash
+./bin/install-hooks
+```
+
+Universal contract: [`policies/build-gates.md`](../policies/build-gates.md).
+Behavioral coverage lives in `tests/test_install_hooks.py`.
+
 ### `kickoff-config` — human-editable `kickoff` configuration and enforcement
 
 Validates and safely edits repo-root `kickoff.yaml`, whose `role_models` and `role_timeouts` sections hold separate model/effort fields and execution budgets. Round-trip YAML handling preserves human comments, ordering, quoting, and data under `extensions`; strict known sections reject typos; scoped resets never overwrite the other section; every write validates first and atomically replaces the file. The same manager performs fail-closed live venue preflight, routing-verified and progress-aware subprocess supervision, fresh-artifact enforcement, gitignored telemetry, and evidence-based timeout recommendations. A Python script run via `uv` with PEP 723 `ruamel.yaml`. Governed by [`policies/role-models.md`](../policies/role-models.md) and [`policies/role-timeouts.md`](../policies/role-timeouts.md).
@@ -39,7 +80,9 @@ Validates and safely edits repo-root `kickoff.yaml`, whose `role_models` and `ro
 ./bin/kickoff-config recommend-timeouts
 ```
 
-Behavioral coverage lives in `tests/test_kickoff_config.py`; this starter's build gate lints and format-checks both the manager and its tests, then runs them alongside the isolated example package tests.
+Behavioral coverage lives in `tests/test_kickoff_config.py`; `./bin/check all`
+lints and format-checks the manager and runs its tests alongside the canonical
+gate/hook tests and isolated example package tests.
 
 Universal: `stamp` and `teach` carry the manager, policies, tests, and seed config. Target values, comments, `extensions` data, and raw `.kickoff/` telemetry stay target-owned.
 

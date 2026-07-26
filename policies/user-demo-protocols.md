@@ -57,7 +57,7 @@ A minimal, well-formed protocol for a hypothetical CLI subcommand:
 User Demo: `kiln render` subcommand
 
 Entry point:
-  cd project && uv run kiln render score-bump-small
+  cd project && uv run --locked kiln render score-bump-small
 
 Suggested inputs:
 - `score-bump-small` — the canonical happy-path recipe; should render in ~2s.

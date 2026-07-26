@@ -368,7 +368,7 @@ If the brief surfaces only Phase 1 (a small, single-phase project), no sketches 
 
 The template's example is Python. The new project may be Python, TypeScript, Rust, Go, Swift, Kotlin, a polyglot, or pure documentation.
 
-**Decide first whether to adopt the `project/` convention** ([`../policies/project-isolation.md`](../policies/project-isolation.md)). The default for a single-deliverable project is opt-in: the artifact goes under `project/` and the build gates run as `cd project && <commands>`. The default for polyglot or multi-deliverable repos is opt-out: deliverable directories live at the repo root as siblings.
+**Decide first whether to adopt the `project/` convention** ([`../policies/project-isolation.md`](../policies/project-isolation.md)). The default for a single-deliverable project is opt-in: the artifact goes under `project/` and the repository-owned gate enters it internally. The default for polyglot or multi-deliverable repos is opt-out: deliverable directories live at the repo root as siblings.
 
 Lay down (paths assume `project_isolation` enabled — prefix with `project/`; drop the prefix when disabled):
 
@@ -378,9 +378,18 @@ Lay down (paths assume `project_isolation` enabled — prefix with `project/`; d
 - The test directory with one trivial test that passes (so the build gate has something to run on first kickoff).
 - A `.gitignore` clause at the repo root for the language's build artifacts.
 
-Build gates the orchestrator should run are whatever the language ecosystem provides: lint (e.g., `ruff check` / `eslint` / `cargo clippy`), format check (e.g., `ruff format --check` / `prettier --check` / `cargo fmt --check`), test (e.g., `pytest -q` / `npm test` / `cargo test`).
+Build gates use whatever the language ecosystem provides—lint, format check,
+type/build checks, and tests—but the repository owns their authoritative
+composition in `bin/check`. The wrapper invokes the committed lockfile in
+immutable mode (`uv run --locked`, frozen Node installs, Cargo `--locked`, Go
+`-mod=readonly`, or the ecosystem equivalent), resolves the root from its own
+location, and preserves failures.
 
-Adapt the `kickoff` skill's "Final build gate" section to call these commands for the surfaces this project actually has. Use the `cd project && <cmd>` shape when `project_isolation` is enabled.
+Generate `bin/check` with the universal `all|lint|format|test|policy` interface
+from [`../policies/build-gates.md`](../policies/build-gates.md), then make
+`kickoff`, the canonical agents, CLAUDE.md, and phase acceptance call
+`./bin/check all`. The wrapper uses `cd project && <locked command>` internally
+when project isolation is enabled; callers do not duplicate that command list.
 
 ### Step 10 — Sanity-check the bootstrap
 
@@ -393,11 +402,11 @@ Before declaring the bootstrap complete, verify:
 - `ls .claude/skills/kickoff/` contains `SKILL.md`.
 - `ls .claude/skills/methodology/` contains `SKILL.md`.
 - `bin/kickoff-config show` succeeds and `kickoff.yaml` contains valid `role_models` and `role_timeouts` sections.
-- `uv run --with pytest pytest -q tests/test_kickoff_config.py` passes before any live venue probe.
+- The repository's `bin/check test` mode runs the universal gate/config tests before any live venue probe.
 - The new `CLAUDE.md`'s "Briefs catalog" section lists every file in `briefs/`, and every file in `briefs/` is referenced from the catalog (no orphans either way).
 - The new `CLAUDE.md`'s "Policies catalog" section lists every file in `policies/`, and every file in `policies/` is referenced from the catalog (no orphans either way).
 - `plan/phase-1.md`'s `Brief refs` section lists at least one brief, and each listed brief exists.
-- The project's primary build gate runs clean on the trivial seeded code (e.g., `pytest -q` exits 0 with at least one passing test).
+- `bin/check all` runs from outside the repository root and passes on the trivial seeded code, including the universal methodology tests.
 
 The first `kickoff` invocation should pick up Phase 1's `⬅️` row, flip it to `🚧`, and append a START block to `LOG.md`. If any of those three actions fails, the bootstrap is incomplete — a path mismatch or a missing skill is the typical culprit.
 
@@ -410,7 +419,7 @@ The bootstrap is the same shape every time. The variation is in:
 | Axis                          | Examples of project-specific choices                          |
 | ----------------------------- | ------------------------------------------------------------- |
 | **Surfaces**                  | web + back-end + IaC; pure Python lib; mobile + API; docs     |
-| **Build gate commands**       | `pytest`, `npm test`, `cargo test`, `go test`, etc.           |
+| **Build gate implementation** | repository-owned `bin/check` using locked/frozen ecosystem commands |
 | **Languages in play**         | Python / TS / Rust / Go / Swift / Kotlin / polyglot           |
 | **Deployment story**          | AWS / Cloudflare / Vercel / app stores / static / none        |
 | **Per-project invariants**    | Cost ceilings; license policy; privacy boundaries; FOSS-only  |
@@ -421,8 +430,8 @@ When adapting, edit these files (and only these) to reflect those choices:
 
 - `CLAUDE.md` — reflects all of them.
 - `plan/INDEX.md` Cross-Cutting Concerns — duplicates the invariants from `CLAUDE.md`.
-- `.claude/skills/kickoff/SKILL.md` Final build gate section — the surface → command mapping.
-- `.claude/agents/phase-planner.md` and `phase-coder.md` — the surface list and build-gate templates inside.
+- `bin/check` — the sole surface → locked-command mapping.
+- `.claude/skills/kickoff/SKILL.md` and the four canonical agents — call the canonical mapping and may name only additive focused checks.
 
 Anything else that needs to change probably indicates a bootstrap deviation that should be questioned, not normalized.
 
@@ -485,12 +494,15 @@ Bootstrap is complete when **all** of the following hold:
 [ ] .agents/skills/stamp does NOT exist (starter-only, must not propagate)
 [ ] bin/kickoff-config is executable; kickoff.yaml validates; scoped updates
     preserve human comments and `extensions` data; `.kickoff/` is gitignored
-[ ] tests/test_kickoff_config.py passes through `uv run --with pytest pytest`
+[ ] bin/check and bin/install-hooks are executable; .githooks/pre-push calls
+    bin/check; hook installation remains explicit and opt-in
+[ ] tests/test_check.py, tests/test_install_hooks.py, and
+    tests/test_kickoff_config.py pass through the root methodology test runner
 [ ] Every file in policies/ from the template exists, with project-name
     references updated
 [ ] No template-specific skills, briefs, or example code remain in the new
     repo (no example/, no .claude/skills/stamp/)
-[ ] The project's primary build gate runs clean on the seeded code
+[ ] ./bin/check all runs from outside the repo and passes on the seeded code
 [ ] First `kickoff` invocation (`/kickoff` in Claude Code; `$kickoff` in Codex)
     successfully picks up Phase 1's ⬅️ row,
     flips it to 🚧, and appends a START block to LOG.md

@@ -42,6 +42,73 @@ When acceptance leans on a test suite:
 - **Tests must exercise behavior, not type signatures.** A test that constructs a class and asserts it is not `None` is not a test. A test that calls the function and asserts on its output is.
 - **Hit real boundaries when feasible.** Integration tests that hit a real database, a real file system, or a real subprocess catch failures that mocks miss. Save mocking for genuinely external dependencies (network APIs, large datasets).
 
+## A check must be able to fail
+
+A gate, test, or verification instrument earns trust only if it can report the
+failure it claims to guard against. Most silent false results trace to a check
+that structurally cannot fail in one direction.
+
+Common false greens include:
+
+- **A pipe masks the real status.** `cmd | tail`, `cmd | head`, and
+  `cmd | grep` report the final formatter's status unless `pipefail` is
+  enabled or the upstream status is captured explicitly.
+- **A swallowed failure becomes a default success.** `|| true`, a
+  `2>/dev/null` collapsed into an empty value, or a failed query replaced with
+  `"in_progress"` turns error or absence into reassurance.
+- **A proxy replaces the real assertion.** File presence does not prove a
+  parser can load the file; a directory or symlink may remain after the
+  dependency it names has been reaped; key-set equality does not prove byte
+  equality.
+- **The wrapper loses the child status.** A gate that prints `FAIL` and then
+  exits zero is worse than no wrapper because it creates machine-readable
+  false evidence.
+
+False reds are corrosive too. Integrity checks must exclude volatile artifacts
+such as SQLite `-wal`/`-shm` files, caches, mtimes, and nondeterministic output
+ordering unless those properties are the contract. Comparisons use a fixed
+baseline captured at operation start, not a moving reference such as
+`origin/master` or "now."
+
+For every new gate, state what makes it fail and demonstrate the failure.
+Where practical, use mutation testing: temporarily remove or invert the guard,
+prove the test fails for the intended reason, then restore it. Exception tests
+name the message or state transition they expect; a bare
+`pytest.raises(SomeType)` may pass because an unrelated guard raised the same
+type.
+
+The repository-owned wrapper itself is tested like product code. See
+[`build-gates.md`](build-gates.md): cwd independence, locked toolchain
+invocation, missing-prerequisite behavior, command ordering, and exact status
+propagation are all executable contracts.
+
+## Evidence is scoped to its environment
+
+A result is never merely "the gate passes." It is "the gate passed here, with
+these capabilities exercised." Sandboxes, missing local services, different
+toolchains, and injected test doubles can all narrow what a green run proves.
+
+- **Report the scope.** If a delegated sandbox could not reach a local service,
+  say that service-backed tests skipped; do not report the bare pass count as
+  host evidence.
+- **Distinguish three states.** A dependency is absent, present but unusable in
+  this environment, or present and working. Collapsing the middle state into
+  either neighbor sends the next reader to the wrong conclusion.
+- **A skip is not a pass.** Capability-gated tests skip honestly when the real
+  service is absent. They never assert the behavior of the broken or missing
+  capability as though it were product behavior.
+- **The orchestrator owns host verification.** When acceptance depends on a
+  local daemon, browser, device, credential, or network boundary, the
+  orchestrator runs that check on the host. A delegated role's report is not
+  evidence for it in either direction.
+- **Durable dependencies live in durable locations.** Nothing a later session
+  must find is installed only in an agent scratch directory. Verify durability
+  with a load or run probe, not `test -e`.
+
+Committed metadata and lockfiles define the toolchain used by the canonical
+gate. A missing bootstrap executable or stale lockfile fails visibly; it never
+falls back to ambient packages and calls the result equivalent.
+
 ## When acceptance can't be automated
 
 Some phases produce output that only a human can evaluate: perceptual audio quality, visual design judgment, UX flow, the readability of a document. For those phases:

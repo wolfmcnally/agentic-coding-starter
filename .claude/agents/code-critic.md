@@ -84,6 +84,7 @@ Evaluate in priority order:
 - Tests don't depend on side effects from earlier tests in the same file (state is isolated via fixtures or `beforeEach`-style setup).
 - Tests assert against the brief's contract, not just "the function returns a value."
 - The Build Gate Sequence's test command would actually exercise the new code.
+- When the repo owns `bin/check`, the sequence ends with `./bin/check all`; the wrapper uses committed metadata/lockfiles, can fail visibly, and preserves child statuses.
 
 **Simplicity**
 - No new abstractions, generics, base classes, or helpers introduced without need.

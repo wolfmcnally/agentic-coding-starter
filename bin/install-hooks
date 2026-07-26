@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Opt in to this repository's tracked Git hooks.
+
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+usage() {
+  cat <<'EOF'
+Usage: ./bin/install-hooks [--dry-run] [--force]
+
+Configure this checkout to use the tracked hooks under .githooks/.
+Refuses to replace a different core.hooksPath unless --force is explicit.
+EOF
+}
+
+dry_run=0
+force=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --dry-run) dry_run=1 ;;
+    --force) force=1 ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "INSTALL-HOOKS ERROR unknown argument: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
+
+if ! git -C "$repo_root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "INSTALL-HOOKS ERROR not a Git worktree: $repo_root" >&2
+  exit 1
+fi
+
+if [[ ! -x "$repo_root/.githooks/pre-push" ]]; then
+  echo "INSTALL-HOOKS ERROR missing executable: .githooks/pre-push" >&2
+  exit 1
+fi
+
+configured_path="$(git -C "$repo_root" config --local --get core.hooksPath || true)"
+if [[ -n "$configured_path" && "$configured_path" != ".githooks" && "$force" -ne 1 ]]; then
+  echo "INSTALL-HOOKS REFUSED core.hooksPath is already '$configured_path'" >&2
+  echo "Re-run with --force to replace it with .githooks." >&2
+  exit 1
+fi
+
+if [[ "$dry_run" -eq 1 ]]; then
+  if [[ "$configured_path" == ".githooks" ]]; then
+    echo "INSTALL-HOOKS DRY-RUN already configured: .githooks"
+  else
+    echo "INSTALL-HOOKS DRY-RUN would set core.hooksPath=.githooks"
+  fi
+  exit 0
+fi
+
+git -C "$repo_root" config --local core.hooksPath .githooks
+echo "INSTALL-HOOKS OK core.hooksPath=.githooks"

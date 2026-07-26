@@ -143,6 +143,9 @@ Copy these files **from this template** into the new project, then run a name su
 - `briefs/agentic-bootstrap.md` (verbatim — so the next bootstrap from this project is possible)
 - `briefs/cross-agent-invocation.md` (verbatim — the cross-CLI invocation BCPs that `policies/role-models.md` cites are universal)
 - `briefs/deterministic-orchestration.md` (verbatim — universal draft brief: decision criteria for a deterministic kickoff loop once every supported harness has a parity workflow primitive)
+- `.githooks/pre-push` (verbatim — optional hook; it delegates to the canonical gate and is inert until explicitly installed)
+- `bin/check` and `bin/install-hooks` (`install-hooks` verbatim; `check` is adapted in Step 5)
+- `tests/test_check.py` (adapted with the gate in Step 5) and `tests/test_install_hooks.py` (verbatim)
 - `tests/test_kickoff_config.py` (verbatim — universal behavioral coverage for the manager/watchdog contract)
 
 Then create the `.agents/skills/` **directory symlinks** for Codex CLI's native skill discovery. Each is a relative symlink whose target is the canonical skill *directory* (not the SKILL.md file inside it — Codex doesn't follow file-level symlinks inside a skill dir per [openai/codex#11314](https://github.com/openai/codex/issues/11314), but does traverse a symlinked skill directory):
@@ -161,7 +164,15 @@ Verify each `readlink <dest>/.agents/skills/<name>` returns the expected target 
 
 **Do not** copy `.claude/skills/stamp/` (this skill itself), create `.agents/skills/stamp` in the destination, or copy `policies/anonymize-log-references.md`, `bin/check-anonymization.sh`, or `bin/anonymization-denylist.local.example` (and drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`). The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too, and the anonymization rule (and its enforcement script) doesn't apply to private downstream projects. The `learn` and `teach` skills *are* carried over — they are universal cross-repo skills that benefit every methodology-following project.
 
-The `bin/` directory, its `bin/README.md` convention preamble, and `policies/mechanistic-vs-intelligence.md` **are** carried over. The universal `bin/kickoff-config` manager and human-editable `kickoff.yaml` carry over too. Seed both config sections by running `<dest>/bin/kickoff-config reset all`; this preserves data under `extensions` if the destination already has it. The manager runs via `uv` with PEP 723 `ruamel.yaml`, so the destination needs `uv` on PATH. Keep its script entry in `bin/README.md`; delete only the starter-only anonymization entry.
+The `bin/` directory, its `bin/README.md` convention preamble, and
+`policies/mechanistic-vs-intelligence.md` **are** carried over. The universal
+`bin/check`, `bin/install-hooks`, `bin/kickoff-config`, tracked pre-push hook,
+and human-editable `kickoff.yaml` carry over too. Seed both config sections by
+running `<dest>/bin/kickoff-config reset all`; this preserves data under
+`extensions` if the destination already has it. The manager runs via `uv` with
+PEP 723 `ruamel.yaml`, so the destination needs `uv` on PATH. Keep these
+universal script entries in `bin/README.md`; delete only the starter-specific
+anonymization entry and remove its call from the copied `bin/check`.
 
 Because the anonymization policy and its script are starter-only but `code-critic.md` is copied verbatim (above), the adaptation pass must **delete the "External / private-repo references" bullet** from the destination's `.claude/agents/code-critic.md` — it references `bin/check-anonymization.sh` and `policies/anonymize-log-references.md`, neither of which the new project will have.
 
@@ -247,9 +258,43 @@ The artifact's `README.md` is short and self-contained (no `..` references) per 
 
 When `project_isolation` is disabled (polyglot), there is no `project/.gitignore`; all language entries live at the repo root in a single combined `.gitignore`.
 
-### Step 5 — Customize the kickoff skill's build gates
+### Step 5 — Generate the repository-owned build gate
 
-Open `<dest>/.claude/skills/kickoff/SKILL.md` and replace the **Final build gate** example commands with the project's actual gates. The template's defaults reference the Python `project/example/` package; adapt to the project's primary language. Keep the `cd project && ...` prefix when `project_isolation` is enabled; drop it otherwise.
+Adapt `<dest>/bin/check` as the target's canonical cwd-independent interface
+defined by `policies/build-gates.md`. Preserve the modes
+`all|lint|format|test|policy`, root resolution, strict argument handling,
+fail-closed prerequisite checks, exact child-status propagation, and stable
+PASS/FAIL lines. Replace the starter's package names and policy-only
+anonymization call with the target's real surfaces.
+
+Use committed lock-preserving commands:
+
+| Language | Gate commands |
+|---|---|
+| Python | `uv run --locked ruff check ...`; `uv run --locked ruff format --check ...`; `uv run --locked pytest -q ...` |
+| TypeScript / Node | the package manager selected by the committed lockfile; its `lint`, `format`/`format:check`, `typecheck`, and `test` scripts after frozen/immutable dependency setup |
+| Rust | `cargo fmt --all -- --check`; `cargo build --workspace --locked`; `cargo clippy --workspace --all-targets --locked -- -D warnings`; `cargo test --workspace --locked` |
+| Go | formatting check plus `go vet -mod=readonly ./...` and `go test -mod=readonly ./...` |
+
+When `project_isolation` is enabled, each language gate runs from
+`<dest>/project`; otherwise it runs from `<dest>`. The `policy` mode must check
+at least the universal instruction/config invariants (`AGENTS.md` resolves to
+`CLAUDE.md`; `bin/kickoff-config show` succeeds) and any target-specific
+deterministic policy gates. It must not be an unconditional pass.
+
+For a non-Python deliverable, create a small committed governance-tooling
+environment (metadata plus lockfile) for the Python-based universal manager and
+root tests; `bin/check` invokes it in locked mode. Do not use an unpinned
+`uv run --with pytest` escape hatch merely because the deliverable itself is
+Node, Rust, or Go. For a Python deliverable, its committed dev dependency group
+and lockfile may cover both deliverable and root methodology tests.
+
+Adapt `<dest>/tests/test_check.py` in the same step so its fake toolchain
+expects the target's exact locked commands and proves the universal wrapper
+contract. Then change the **Final build gate** examples in `kickoff`, the four
+canonical agents, `CLAUDE.md`, the brief, and Phase 1 to `./bin/check all`.
+Focused native commands may remain as phase-specific examples; no copied raw
+full-suite list may remain.
 
 ### Step 6 — Initialize git
 
@@ -278,16 +323,14 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - `<dest>/.agents/skills/stamp` does **not** exist (starter-only, must not propagate).
 - The new `CLAUDE.md`'s catalogs reference every file in `briefs/` and `policies/`.
 - `<dest>kickoff.yaml` exists; `show` prints the seeded cross-vendor model routing and portable timeout values; a scoped model edit preserves timeout comments/values; `<dest>/.gitignore` includes `.kickoff/`; the two role policies and invocation brief exist.
-- `cd <dest> && uv run --with pytest pytest -q tests/test_kickoff_config.py` passes independently of the deliverable's language/toolchain.
-- The project's primary build gate runs clean on the seeded code.
+- `<dest>/bin/check test` runs `tests/test_check.py`, `tests/test_install_hooks.py`, `tests/test_kickoff_config.py`, and the deliverable tests through committed locked environments (adapt the gate fixture, not its universal assertions).
+- `<dest>/bin/check all` runs from outside `<dest>` and passes on the seeded code.
 
-Run the language-specific gate to confirm. For example, for Python with `project_isolation` enabled:
+Run the repository-owned gate to confirm:
 
 ```
-cd <dest>/project && uv sync && uv run ruff check <slug> tests && uv run ruff format --check <slug> tests && uv run pytest -q
+<dest>/bin/check all
 ```
-
-When `project_isolation` is disabled, drop the `/project` segment.
 
 If any step fails, surface the failure and let the user fix it before declaring the bootstrap complete.
 

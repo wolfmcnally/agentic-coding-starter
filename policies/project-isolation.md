@@ -66,25 +66,40 @@ Cross-boundary references in the *other* direction (root referencing `project/`)
 
 - `CLAUDE.md` says "the project lives under `project/`".
 - `plan/phase-1.md` says "modify `project/example/cli.py`".
-- The kickoff skill's build gate commands say `cd project && uv run pytest`.
+- The root `bin/check` gate enters `project/` to invoke its native toolchain.
 
 ## Build gates from the root
 
-Build gate commands invoke into `project/` from the root with a `cd` subshell pattern, which works across every language ecosystem:
+The repository owns one canonical full-suite entry point:
 
 ```bash
-cd project && uv run ruff check example tests && uv run ruff format --check example tests && uv run pytest -q
+./bin/check
 ```
 
-This shape is preferred because:
+`bin/check` resolves the repository root from its own location, then invokes
+the deliverable through a `cd project && <locked command>` subshell. That
+internal shape works across uv, npm/pnpm, Cargo, Go, and other ecosystems
+without relying on a language-specific `--project` option.
 
-- It works in any tool (uv, npm, cargo, go, just, make).
-- It is a single executable line that copy-pastes cleanly.
-- It does not assume any language-specific `--project` flag.
+The root wrapper is preferred because:
 
-The `kickoff` skill's "Final build gate" section uses this shape. The four canonical agents follow suit.
+- every human, agent, hook, and CI job calls the same checked-in interface;
+- the command works from any current directory;
+- lockfile enforcement, gate ordering, and failure reporting live in one place;
+- root methodology tests and deliverable tests cannot drift into separate
+  undocumented command lists.
 
-Root-level methodology machinery is a separate surface, not part of the isolated deliverable. In this starter, `tests/test_kickoff_config.py` exercises `bin/kickoff-config`; the starter build gate runs that test in addition to the `project/` gates. Derived projects carry the test and may run it with `uv run --with pytest pytest -q tests/test_kickoff_config.py` regardless of the deliverable's language.
+Focused implementation checks may still run directly inside `project/`, for
+example `cd project && uv run --locked pytest -q tests/test_cli.py`. After
+`project/` is extracted into its own repository, those native commands remain
+its independent gates; the parent repository's `bin/check` is governance
+metadata and intentionally stays outside the deliverable.
+
+Root-level methodology machinery is a separate surface, not part of the
+isolated deliverable. In this starter, root `tests/` exercises `bin/check`,
+`bin/install-hooks`, and `bin/kickoff-config`; the canonical gate runs those
+tests alongside `project/tests/`. Derived projects carry the universal
+machinery tests and adapt their own `bin/check` during `stamp`.
 
 ## Extracting `project/` as a submodule
 
@@ -113,8 +128,8 @@ grep -RIn '\.\./\(briefs\|policies\|plan\|LOG\|CLAUDE\|AGENTS\|README\)' \
 ls project/pyproject.toml project/package.json project/Cargo.toml project/go.mod 2>/dev/null | head -1 \
   || echo "no metadata file in project/"
 
-# Build gates pass from inside project/
-(cd project && uv run pytest -q) && echo "gates OK"
+# The repository-owned full gate passes
+./bin/check
 ```
 
 ## When to opt out
