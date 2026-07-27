@@ -72,7 +72,12 @@ Build a structural map of the donor. **Do not** open every file; do targeted rea
    hooks, and workflow callers as one bundle. Note generalizable interface and
    failure-handling mechanics, including whether an explicit runtime override
    is authoritative and whether candidate selection is proven by a real
-   dependency-chain load/run probe. Treat donor
+   dependency-chain load/run probe. Inventory dependency-bearing operational
+   callers, generated commands, tracked hooks, and active instructions; verify
+   that format coverage includes staged, unstaged, and nonignored untracked
+   candidates; and identify hot loops, mutation gates, and detached processes
+   that must resolve the repository interpreter once rather than reprobe per
+   call. Treat donor
    language/version/package-manager choices as donor state, not defaults to
    copy.
 8. **Anti-patterns.** Note where the donor *violates* something the template considers a load-bearing invariant (status field in phase frontmatter; absolute paths; LOG.md hand-edits). Those are not for learning; mention them as confirmation the starter's rules are correct.
@@ -168,6 +173,9 @@ importing a single donor file is not complete. The same rule applies to the
 repository-owned toolchain contract: any proposal touching setup, tests,
 gates, runtime selection, metadata, or locking must enumerate the complete
 bundle and classify partial existing adoption as stale.
+The proposed tests must execute the adapted entry points with controlled
+toolchain stubs; source-text assertions alone do not satisfy the behavioral
+coverage floor.
 
 ## Proposed write set (will only be applied after approval)
 
@@ -224,7 +232,13 @@ Once approved, apply the approved items. Order:
    atomic toolchain contract, run the exact commands declared by its current
    metadata and `kickoff`, and flag every missing contract member as a learning
    candidate.
-7. Append the LEARN entry to `LOG.md`. Format as proposed in the plan.
+7. Re-run the caller inventory and verify that format checking covers staged,
+   unstaged, and nonignored untracked candidates. For any repeated,
+   mutation-sensitive, generated, or detached workflow, prove that the
+   underlying repository interpreter is resolved once and reused.
+8. Append the LEARN entry to `LOG.md`. Format as proposed in the plan and
+   apply this repository's anonymization policy because this write lands in
+   Starter.
 
 **Do not auto-commit.** Per [`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md), the human owns commits. Report the file list, the build-gate status, and any unresolved manual steps so the user can review and commit.
 
@@ -247,5 +261,11 @@ Once approved, apply the approved items. Order:
   default runtime, package manager, dependency set, and lockfile resolution.
   Explicit overrides are authoritative and candidate runtimes are validated
   through the target's real dependency chain, not a version or existence
-  check. Partial adoption is stale and blocking.
+  check. Every dependency-bearing operational caller, generated command,
+  tracked hook, and active instruction uses the repository runtime. Format
+  coverage includes staged, unstaged, and nonignored untracked candidates.
+  Hot loops, mutation gates, and detached processes resolve the underlying
+  interpreter once and reuse it. Behavioral entrypoint tests are the minimum
+  coverage floor; source-text checks may supplement but never replace them.
+  Partial adoption is stale and blocking.
 - **Skill-exclusion list.** `stamp` and the starter template's `example/` Python project are starter-only and never transferred. `learn` and `teach` themselves are universal — if the donor has a more evolved version, treat it like any other candidate; if this repo lacks them and the donor has them, propose adding them (the bootstrap procedure expects them in every methodology-following project).

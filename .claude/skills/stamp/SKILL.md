@@ -285,6 +285,12 @@ Adapt the complete atomic bundle defined by `policies/build-gates.md`:
   probe before the wrappers proceed;
 - the runtime pin, manifest, lockfile, behavioral tests, hook, docs, `kickoff`,
   and four canonical agents all agree with those entry points.
+- every dependency-bearing operational caller, generated command, tracked
+  hook, and active instruction uses the destination's repository runtime;
+- format checking covers staged, unstaged, and nonignored untracked candidate
+  files without rewriting them;
+- hot loops, mutation gates, generated multi-command workflows, and detached
+  processes resolve the underlying repository interpreter once and reuse it.
 
 Preserve cwd independence, strict argument handling, fail-closed prerequisite,
 bundle-member, and authoritative-override checks, exact child-status
@@ -320,7 +326,12 @@ Adapt `<dest>/tests/test_toolchain_entrypoints.py` and
 `<dest>/tests/test_check.py` in the same step so their fake toolchains expect
 the target's exact setup, dependency probe, full/focused test, runtime, and
 locked-gate commands. Prove valid override selection, invalid override refusal,
-probe-failure status propagation, and no fallback. Then change the **Final
+unsupported and self-referential override refusal, probe-failure status
+propagation, exact gate ordering/delegation, cwd independence, child-status
+propagation, and no fallback. These tests must execute the entrypoints with
+controlled stubs; source-text assertions alone do not meet the behavioral
+coverage floor. Prove format failures in staged, unstaged, and nonignored
+untracked candidates. Then change the **Final
 build gate** examples in `kickoff`, the four canonical agents, `CLAUDE.md`, the
 brief, and Phase 1 to use `./bin/test ...` for focused tests and
 `./bin/check all` for the authoritative suite. No copied raw full-suite list
@@ -365,6 +376,10 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - `<dest>/bin/check all` runs from outside `<dest>` and passes on the seeded code.
 - A valid explicit runtime override drives every Python entry point; an invalid
   or probe-failing override exits nonzero without fallback.
+- Staged, unstaged, and nonignored untracked format failures are each rejected
+  without rewriting the candidate.
+- A hot loop, mutation gate, generated multi-command workflow, or detached
+  process resolves its underlying repository interpreter once and reuses it.
 
 Run the repository-owned gate to confirm:
 

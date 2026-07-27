@@ -2,6 +2,12 @@
 
 **This policy applies only to this repository** — the agentic-coding-starter-template. Projects derived from this template via `stamp`, and projects retrofitted via `teach`, do **not** inherit this policy. Their `LOG.md` files and other documents are their own business; their references to external work are theirs to disclose or not.
 
+The boundary follows the destination of the write, not the repository that
+originated the command. A `learn` entry written into this Starter must be
+anonymized. A `teach` entry written into a target follows the target's own LOG
+policy and the provenance/count template the target approved; Starter's
+anonymization rule must not erase an approved target source name or SHA.
+
 The reason for the asymmetry: **this repository is intended to be public**. Every commit, every `LOG.md` entry, and every committed file will be readable by anyone with the repo URL. A public template must not leak the private context of the projects it absorbs patterns from (via `learn`) or teaches them to (via `teach`).
 
 ## Scope: every committed file, not just `LOG.md`

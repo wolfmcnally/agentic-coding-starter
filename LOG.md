@@ -160,3 +160,18 @@ Donor: Donor A @ <sha withheld>
 Items absorbed: 1, by tier T1=0/T2=1/T3=0/T4=0
 Stale-in-light-of-learning migrations: 16 AUTO; 0 DECIDE; 0 DEFER
 Files touched: 17
+
+## 2026-07-26 20:36 — LEARN
+Donor: Donor A @ <sha withheld>
+Items absorbed: 1, by tier T1=1/T2=0/T3=0/T4=0
+Stale-in-light-of-learning migrations: 5 AUTO; 0 DECIDE; 0 DEFER
+Files touched: 7
+
+Generalized correction: atomic toolchain adoption now has an explicit
+behavioral coverage floor; inventories every dependency-bearing operational
+caller, generated command, tracked hook, and active instruction; checks staged,
+unstaged, and nonignored untracked candidates; and resolves the selected
+interpreter once for hot loops, mutation gates, generated multi-command
+workflows, and detached processes. The three transfer skills carry the same
+requirements. Starter-only anonymization is now explicitly scoped by write
+destination so a target's approved LOG provenance remains target-owned.

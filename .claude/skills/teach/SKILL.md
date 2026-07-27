@@ -84,6 +84,11 @@ Build a structural map of the target. Mirror Stage 1 of `learn`, but from the op
    lock resolution; it never imports Starter's Python values as defaults.
    Inspect whether any explicit runtime override is authoritative and whether
    selection is proven with a target-specific dependency-chain load/run probe.
+   Inventory dependency-bearing operational callers, generated commands,
+   tracked hooks, and active instructions; verify format coverage includes
+   staged, unstaged, and nonignored untracked candidates; and identify hot
+   loops, mutation gates, and detached processes that must resolve the selected
+   interpreter once.
 7. **Active work signals.** Read the target's `LOG.md` if present. A phase in `🚧` is a clear "do not stomp" signal — the teaching apply step waits for that phase or limits itself to additive, non-conflicting changes.
 8. **Kickoff configuration contract.** Inspect `kickoff.yaml`, `bin/kickoff-config`, `tests/test_kickoff_config.py`, both role policies, `roles`, `kickoff` Steps 0a–0c and invocation call sites, `.gitignore`, and the invocation brief as one bundle. Note target values, comments, `extensions` data, and local `.kickoff/` telemetry as preservation-only state; never read or transfer raw telemetry.
 
@@ -150,8 +155,14 @@ For each proposed addition or update, ask:
   bundle in the stale sweep. Preserve target-owned language/version/package
   choices and adapt the universal interface to them. Any explicit runtime
   override is authoritative, and a target-adapted dependency-chain load/run
-  probe validates the selected runtime before success. Partial adoption is
-  stale and blocking.
+  probe validates the selected runtime before success. The adapted behavioral
+  suite must execute every supported entrypoint mode and override branch with
+  controlled toolchain stubs; source-text assertions alone do not meet the
+  coverage floor. Every dependency-bearing caller, generated command, hook,
+  and active instruction uses the target runtime; format mode covers staged,
+  unstaged, and nonignored untracked candidates; hot loops, mutation gates, and
+  detached processes resolve the underlying interpreter once. Partial adoption
+  is stale and blocking.
 - **Review-lane and follow-up-routing adoption.** Does the target's `kickoff` SKILL.md carry the Step 1 lane resolution, the Step 4 light-lane skip, the Step 6 lane-fit input and `Escalate: full lane` handling, Step 7's direct/coder-only/full correction routing, and the END-block `Review lane:` plus `Follow-up route:` lines — with `policies/review-lanes.md` in its `policies/` and the lane-fit duty in its `.claude/agents/code-critic.md`? Porting is mechanical — AUTO. **No phase-file migration is needed**: absent `review_lane:` frontmatter means `full`, so every existing drafted phase keeps its current initial-review behavior; follow-up routing is runtime classification, not frontmatter.
 
 Each stale item gets one of three classifications:
@@ -302,7 +313,13 @@ Once approved, apply the approved items to the target. Order:
    real dependency chain; preserve fail-closed authoritative overrides without
    copying Starter's interpreter path, package names, or dependency list, and
    reject overrides inside an environment the target's package manager may
-   replace.
+   replace. Migrate every dependency-bearing operational caller, generated
+   command, tracked hook, and active instruction to the target runtime. Make
+   format checking deterministic across staged, unstaged, and nonignored
+   untracked candidates. Resolve the selected underlying interpreter once for
+   hot loops, mutation gates, generated multi-command workflows, and detached
+   processes. Adapt behavioral tests by executing the target entrypoints with
+   controlled stubs; do not reduce them to source-text checks.
    Otherwise preserve the complete target-owned bundle and adapt only stale
    copied examples. Never replace target language/version/package-manager
    choices with this template's Python values.
@@ -313,7 +330,10 @@ Once approved, apply the approved items to the target. Order:
     `./bin/test`, and canonical full gate (`./bin/check all`) when the contract
     is present. Otherwise run the exact setup/test/gate commands declared by
     its current package metadata and flag every missing contract member.
-11. Append the TAUGHT FROM TEMPLATE entry to the target's `LOG.md` (create the file with the standard header if it doesn't exist). The entry lists the transferred items, the **parity heals applied** (separately from transferred items), the stale items migrated, the parity-heal and stale-sweep items surfaced for user decision, and the patterns to feed back via `learn`.
+11. Independently search the target for stale operational caller commands and
+    prove that staged, unstaged, and nonignored untracked format failures are
+    all detected.
+12. Append the TAUGHT FROM TEMPLATE entry to the target's `LOG.md` (create the file with the standard header if it doesn't exist). The entry lists the transferred items, the **parity heals applied** (separately from transferred items), the stale items migrated, the parity-heal and stale-sweep items surfaced for user decision, and the patterns to feed back via `learn`. Follow the target's LOG/provenance policy and the approved teaching-plan template. Starter's starter-only anonymization policy governs writes to Starter, not writes to the target.
 
 **Do not auto-commit in the target.** The target's owner owns commits. Report the file list, build-gate status, and any unresolved manual steps.
 
@@ -329,7 +349,13 @@ Once approved, apply the approved items to the target. Order:
   full-gate, runtime-selection, metadata/lock, behavioral-test, policy, hook,
   and caller bundle together. Preserve target-owned language, runtime,
   package-manager, dependency, and lock choices. Validate focused routing from
-  outside the repo, then run the target's full gate.
+  outside the repo, execute behavioral coverage for every supported check mode
+  and runtime-selection branch, then run the target's full gate. Source-text
+  tests are supplemental only. Every dependency-bearing operational caller,
+  generated command, hook, and active instruction uses the target runtime;
+  format covers staged, unstaged, and nonignored untracked candidates; hot
+  loops, mutation gates, and detached processes resolve the selected
+  interpreter once and reuse it.
 - **Mechanical parity heals always run, independent of `<desc>` scope.** Every `teach` invocation scans the target's parity surfaces and surfaces known-broken shapes (per the catalog in Stage 1 step 9) for repair. Even a narrow `teach` pass — "just bring policies up to date" — heals an `AGENTS.md`-as-file, a file-level `.agents/skills/<name>/SKILL.md`, or a stray `.agents/skills/stamp` it finds along the way. This is what closes the gap where broken parity shapes lingered because the teach pass didn't otherwise touch them.
 - **This repo is read-only.** Never write to this repository during `teach`. The starter learns via `learn`, not as a side effect of `teach`.
 - **Generality first.** Default to Tier 1+2 transfers. Specialize only when those are exhausted or the user's `<desc>` requested it.
@@ -338,6 +364,9 @@ Once approved, apply the approved items to the target. Order:
 - **Cross-harness parity carries to the target.** Any agent or skill transfer updates both surfaces in the target's tree.
 - **Adapt to the target's language.** Build-gate commands, language metadata, surface names — all get rewritten to the target's stack before the apply finishes.
 - **Catalog drift is forbidden.** Target's `CLAUDE.md` catalogs reflect every file in the target's `briefs/` and `policies/` after apply.
-- **One LOG entry per `teach` run.** Aggregate, in the target's `LOG.md`. This repo's `LOG.md` is not touched.
+- **One LOG entry per `teach` run.** Aggregate, in the target's `LOG.md`, using
+  the target's approved provenance/count template and disclosure policy. This
+  repo's `LOG.md` is not touched, so Starter's starter-only anonymization
+  policy does not rewrite target provenance.
 - **Refuse on active-phase conflicts.** If a proposed change touches a file the target's plan marks `🚧`, drop it from the apply set and report it as a manual follow-up the target's owner should resolve via `kickoff` first.
 - **`stamp` and the starter template's `example/` are never taught.** They live only in the starter template. The corresponding `.agents/skills/stamp` mirror is also starter-only — if a target somehow acquired it (e.g., from a buggy Codex import), remove it as part of the apply. `learn` and `teach` are universal and may be transferred to a target that lacks them, with the user's approval.
