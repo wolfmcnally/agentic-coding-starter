@@ -149,8 +149,8 @@ Copy these files **from this template** into the new project, then run a name su
 - `bin/setup`, `bin/test`, `bin/check`, and `bin/install-hooks`
   (`install-hooks` verbatim; the toolchain entry points are adapted together
   in Step 5)
-- `bin/python` for a Python target (adapted in Step 5; omit it when Python is
-  not a deliverable runtime)
+- `bin/_python-toolchain` and `bin/python` for a Python target (adapted in
+  Step 5; omit both when Python is not a deliverable runtime)
 - `tests/test_toolchain_entrypoints.py` and `tests/test_check.py` (adapted with
   the toolchain in Step 5), plus `tests/test_install_hooks.py` (verbatim)
 - `tests/test_kickoff_config.py` (verbatim — universal behavioral coverage for the manager/watchdog contract)
@@ -279,21 +279,26 @@ Adapt the complete atomic bundle defined by `policies/build-gates.md`:
   arguments with paths rooted at `<dest>`;
 - `<dest>/bin/check` preserves `all|lint|format|test|policy`, delegates `test`
   to `bin/test`, and runs every authoritative gate;
-- a Python target gets `<dest>/bin/python`, selecting the same managed,
-  locked interpreter for one-off commands;
+- a Python target gets `<dest>/bin/_python-toolchain` plus
+  `<dest>/bin/python`; the shared helper selects the managed default or a
+  fail-closed authoritative override and runs a target-adapted real dependency
+  probe before the wrappers proceed;
 - the runtime pin, manifest, lockfile, behavioral tests, hook, docs, `kickoff`,
   and four canonical agents all agree with those entry points.
 
-Preserve cwd independence, strict argument handling, fail-closed prerequisite
-and bundle-member checks, exact child-status propagation, and stable PASS/FAIL
-lines. Replace Starter's package names and policy-only anonymization call with
-the target's real surfaces.
+Preserve cwd independence, strict argument handling, fail-closed prerequisite,
+bundle-member, and authoritative-override checks, exact child-status
+propagation, and stable PASS/FAIL lines. Apply identical runtime-selection
+arguments to synchronization, probing, and execution, and reject an override
+inside an environment the package manager may replace. Replace Starter's
+package names, dependency probe, and policy-only anonymization call with the
+target's real surfaces.
 
 Use the target's committed language profile:
 
 | Language | Setup / test / gate implementation |
 |---|---|
-| Python | `.python-version` + `pyproject.toml` + `uv.lock`; `uv sync --locked --managed-python`; `uv run --locked --managed-python`; recurring tools in the dev dependency group |
+| Python | `.python-version` + `pyproject.toml` + `uv.lock`; managed default plus an authoritative absolute-path compatibility override; locked sync/run; a real deliverable-and-tool load/run probe; recurring tools in the dev dependency group |
 | TypeScript / Node | package-manager/version metadata plus the selected lockfile; frozen/immutable setup; package scripts behind `bin/test` and `bin/check` |
 | Rust | declared/pinned toolchain when applicable; dependency fetch/build/test with Cargo `--locked` |
 | Go | declared Go version; dependency and test commands with module reads `-mod=readonly` |
@@ -313,11 +318,13 @@ and lockfile may cover both deliverable and root methodology tests.
 
 Adapt `<dest>/tests/test_toolchain_entrypoints.py` and
 `<dest>/tests/test_check.py` in the same step so their fake toolchains expect
-the target's exact setup, full/focused test, runtime, and locked-gate commands.
-Then change the **Final build gate** examples in `kickoff`, the four canonical
-agents, `CLAUDE.md`, the brief, and Phase 1 to use `./bin/test ...` for focused
-tests and `./bin/check all` for the authoritative suite. No copied raw
-full-suite list may remain.
+the target's exact setup, dependency probe, full/focused test, runtime, and
+locked-gate commands. Prove valid override selection, invalid override refusal,
+probe-failure status propagation, and no fallback. Then change the **Final
+build gate** examples in `kickoff`, the four canonical agents, `CLAUDE.md`, the
+brief, and Phase 1 to use `./bin/test ...` for focused tests and
+`./bin/check all` for the authoritative suite. No copied raw full-suite list
+may remain.
 
 ### Step 6 — Initialize git
 
@@ -347,7 +354,8 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - The new `CLAUDE.md`'s catalogs reference every file in `briefs/` and `policies/`.
 - `<dest>kickoff.yaml` exists; `show` prints the seeded cross-vendor model routing and portable timeout values; a scoped model edit preserves timeout comments/values; `<dest>/.gitignore` includes `.kickoff/`; the two role policies and invocation brief exist.
 - `<dest>/bin/setup` succeeds from outside `<dest>` and provisions only the
-  committed runtime/dependencies.
+  committed runtime/dependencies, then passes the target-adapted dependency
+  probe.
 - `<dest>/bin/test` runs `tests/test_toolchain_entrypoints.py`,
   `tests/test_check.py`, `tests/test_install_hooks.py`,
   `tests/test_kickoff_config.py`, and the deliverable tests through committed
@@ -355,6 +363,8 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
   selection.
 - `<dest>/bin/check test` delegates to `<dest>/bin/test`.
 - `<dest>/bin/check all` runs from outside `<dest>` and passes on the seeded code.
+- A valid explicit runtime override drives every Python entry point; an invalid
+  or probe-failing override exits nonzero without fallback.
 
 Run the repository-owned gate to confirm:
 

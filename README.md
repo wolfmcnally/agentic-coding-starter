@@ -110,8 +110,14 @@ contract:
 ```
 
 The host only needs `uv`; Starter selects a managed Python from
-`project/.python-version` and uses `project/uv.lock`. Optional tracked Git
-hooks use the same full-gate entry point; opt in for the current checkout with:
+`project/.python-version`, uses `project/uv.lock`, and verifies the real
+project/test/lint dependency chain before each entry point proceeds. For a
+deliberate compatibility check,
+`TOOLCHAIN_PYTHON=/absolute/path/to/python ./bin/check all` makes that
+base interpreter authoritative; it must live outside `project/.venv`, and
+failure never falls back to the managed default.
+Optional tracked Git hooks use the same full-gate entry point; opt in for the
+current checkout with:
 
 ```bash
 ./bin/install-hooks

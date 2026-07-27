@@ -19,6 +19,8 @@ The contract is one unit:
 
 - `bin/setup`, `bin/test`, and `bin/check`;
 - any runtime entry point such as `bin/python`;
+- any shared runtime resolver or dependency-chain probe used by those entry
+  points;
 - the runtime-version file, package manifest, and lockfile;
 - behavioral tests for the entry points;
 - this policy and every workflow, agent, hook, and document that calls them.
@@ -42,8 +44,18 @@ and so on). The repository owns:
 
 No caller assumes a versioned runtime executable such as `python3.12` is on
 `PATH`. If the bootstrap manager is unavailable, an entry point reports that
-exact prerequisite failure. An invalid explicit tool override fails rather
-than falling through to an ambient executable.
+exact prerequisite failure. A language profile may expose an explicit runtime
+override for compatibility testing. That override is authoritative: an invalid
+executable, incompatible runtime, environment-sync failure, or dependency
+probe failure stops the command without falling through to the repository
+default or an ambient executable.
+
+Runtime resolution validates capability, not identity. A version string or
+executable bit is insufficient: before an entry point makes a success claim,
+it runs a target-adapted load/run probe through the selected locked environment
+that exercises the deliverable import or startup path and its recurring test
+and gate dependencies. The probe and the real command receive identical
+runtime-selection arguments.
 
 ## Interface
 
@@ -52,7 +64,8 @@ than falling through to an ambient executable.
 `./bin/setup` provisions or synchronizes the committed environment in
 lock-preserving mode. It is cwd-independent, idempotent, rejects unexpected
 arguments, and fails if required metadata, the runtime pin, or the lockfile is
-missing or stale.
+missing or stale. After synchronization, it runs the dependency-chain probe;
+`SETUP PASS` means both provisioning and the probe succeeded.
 
 ### `bin/test`
 
@@ -88,13 +101,25 @@ entry point selects the same pinned, locked environment. In this starter,
 callers to request the project interpreter. It never assumes `python`,
 `python3`, or a minor-version binary on the host `PATH`.
 
+The Python profile accepts `TOOLCHAIN_PYTHON=/absolute/path/to/python` for
+deliberate compatibility testing. Without it, the committed `.python-version`
+selects a uv-managed interpreter. With it, every wrapper uses only that
+executable and fails closed if the executable or its locked dependency chain
+is unusable. The
+override names a base interpreter outside `project/.venv`; pointing into the
+environment that uv may replace during synchronization is self-referential and
+fails before uv runs.
+
 ## Language profiles
 
 The interface is universal; implementations are language-specific:
 
 - Python/uv: committed `.python-version`, `pyproject.toml`, and `uv.lock`;
   `uv sync --locked --managed-python` for setup and
-  `uv run --locked --managed-python` for execution;
+  `uv run --locked --managed-python` for default execution; an authoritative
+  explicit interpreter is normalized by uv and uses `--python
+  <resolved-path>` plus the matching managed/system preference, with the same
+  selection applied to synchronization, probing, and execution;
 - Node: the package manager selected by the committed lockfile, with
   immutable/frozen dependency setup and package scripts behind the wrappers;
 - Rust: the pinned toolchain when applicable and Cargo commands with
@@ -134,6 +159,9 @@ Behavioral tests prove:
 - invocation from outside the repository root;
 - exact setup, full-test, focused-test, runtime, and gate mappings;
 - pinned runtime and locked/frozen toolchain invocation;
+- a real dependency-chain load/run probe before success;
+- authoritative override selection, invalid-override refusal, and no fallback
+  after an override or probe failure;
 - clear failure when prerequisites or any bundle member is absent;
 - exact child-status propagation;
 - strict argument handling and stable terminal output;

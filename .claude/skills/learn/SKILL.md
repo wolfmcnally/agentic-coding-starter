@@ -70,8 +70,11 @@ Build a structural map of the donor. **Do not** open every file; do targeted rea
    `bin/test`, `bin/check`, any runtime wrapper (`bin/python` or equivalent),
    runtime-version file, language metadata, lockfile, behavioral tests, policy,
    hooks, and workflow callers as one bundle. Note generalizable interface and
-   failure-handling mechanics. Treat donor language/version/package-manager
-   choices as donor state, not defaults to copy.
+   failure-handling mechanics, including whether an explicit runtime override
+   is authoritative and whether candidate selection is proven by a real
+   dependency-chain load/run probe. Treat donor
+   language/version/package-manager choices as donor state, not defaults to
+   copy.
 8. **Anti-patterns.** Note where the donor *violates* something the template considers a load-bearing invariant (status field in phase frontmatter; absolute paths; LOG.md hand-edits). Those are not for learning; mention them as confirmation the starter's rules are correct.
 9. **Unified kickoff configuration.** Inspect the donor's schema shape, round-trip manager, behavioral tests, both role policies, `roles`, `kickoff` call sites, invocation brief, gitignore, and reporting contract as one bundle. Learn only generalizable mechanics, schema, algorithms, and defensible universal defaults. Never read, copy, or summarize raw telemetry, percentiles, model/effort choices, calibrated values, comments, `extensions` data, or project overrides.
 
@@ -242,5 +245,7 @@ Once approved, apply the approved items. Order:
   policy, hooks, and callers together. Adopt generalizable mechanics while
   preserving this repository's language, supported runtime range, selected
   default runtime, package manager, dependency set, and lockfile resolution.
-  Partial adoption is stale and blocking.
+  Explicit overrides are authoritative and candidate runtimes are validated
+  through the target's real dependency chain, not a version or existence
+  check. Partial adoption is stale and blocking.
 - **Skill-exclusion list.** `stamp` and the starter template's `example/` Python project are starter-only and never transferred. `learn` and `teach` themselves are universal — if the donor has a more evolved version, treat it like any other candidate; if this repo lacks them and the donor has them, propose adding them (the bootstrap procedure expects them in every methodology-following project).

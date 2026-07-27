@@ -400,7 +400,13 @@ authoritative gates as one bundle. Generate `bin/setup`, `bin/test`, and
 `bin/check` with the universal interface from
 [`../policies/build-gates.md`](../policies/build-gates.md); add a runtime
 wrapper such as `bin/python` when appropriate. Back them with the target's
-version declaration, committed manifest, lockfile, and behavioral tests.
+version declaration, committed manifest, lockfile, and behavioral tests. A
+profile that permits an explicit runtime override treats it as authoritative:
+the override either passes a target-adapted dependency-chain load/run probe or
+the command fails without fallback. Default and override paths apply identical
+runtime selection to the probe and the real command. A mutable environment must
+reject an override that points inside itself, because synchronization may
+replace that interpreter while selecting it.
 
 `bin/check` preserves `all|lint|format|test|policy` and delegates `test` to
 `bin/test`. Immutable ecosystem modes include `uv --locked
@@ -421,10 +427,14 @@ Before declaring the bootstrap complete, verify:
 - `ls .claude/skills/methodology/` contains `SKILL.md`.
 - `bin/kickoff-config show` succeeds and `kickoff.yaml` contains valid `role_models` and `role_timeouts` sections.
 - `bin/setup` works from outside the repository and provisions only the
-  committed runtime and dependencies.
+  committed runtime and dependencies, then passes a real deliverable-and-tool
+  dependency-chain probe.
 - `bin/test` runs deliverable and universal tooling tests; a focused
   repo-relative selection runs only that selection.
 - `bin/check test` delegates to `bin/test` before any live venue probe.
+- A valid explicit runtime override drives setup, probing, testing, gates, and
+  the runtime wrapper; an invalid or probe-failing override exits nonzero
+  without trying the repository default or an ambient runtime.
 - The new `CLAUDE.md`'s "Briefs catalog" section lists every file in `briefs/`, and every file in `briefs/` is referenced from the catalog (no orphans either way).
 - The new `CLAUDE.md`'s "Policies catalog" section lists every file in `policies/`, and every file in `policies/` is referenced from the catalog (no orphans either way).
 - `plan/phase-1.md`'s `Brief refs` section lists at least one brief, and each listed brief exists.

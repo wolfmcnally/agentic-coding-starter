@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# Shared Python runtime selection and dependency-chain probe.
+#
+# Source this file after defining repo_root and project_root, then call
+# python_toolchain_init with the entry point's diagnostic prefix.
+
+python_toolchain_init() {
+  python_toolchain_prefix="$1"
+
+  if ! command -v uv >/dev/null 2>&1; then
+    echo "$python_toolchain_prefix ERROR missing prerequisite: uv" >&2
+    return 1
+  fi
+
+  local required_path
+  for required_path in \
+    "$project_root/.python-version" \
+    "$project_root/pyproject.toml" \
+    "$project_root/uv.lock"; do
+    if [[ ! -f "$required_path" ]]; then
+      echo \
+        "$python_toolchain_prefix ERROR missing required file: ${required_path#"$repo_root/"}" \
+        >&2
+      return 1
+    fi
+  done
+
+  python_toolchain_uv_args=(--managed-python)
+  python_toolchain_runtime_description="managed runtime from project/.python-version"
+
+  if [[ -n "${TOOLCHAIN_PYTHON:-}" ]]; then
+    local command_exit
+    local managed_python_root
+    local resolved_python
+    if [[ "$TOOLCHAIN_PYTHON" != /* || ! -x "$TOOLCHAIN_PYTHON" ]]; then
+      echo \
+        "$python_toolchain_prefix ERROR authoritative TOOLCHAIN_PYTHON must be an executable absolute path: $TOOLCHAIN_PYTHON" \
+        >&2
+      echo "$python_toolchain_prefix ERROR no runtime fallback was attempted" >&2
+      return 1
+    fi
+    if resolved_python=$(uv python find --no-project "$TOOLCHAIN_PYTHON"); then
+      :
+    else
+      command_exit=$?
+      echo \
+        "$python_toolchain_prefix ERROR uv could not resolve authoritative TOOLCHAIN_PYTHON: $TOOLCHAIN_PYTHON (exit $command_exit)" \
+        >&2
+      echo "$python_toolchain_prefix ERROR no runtime fallback was attempted" >&2
+      return "$command_exit"
+    fi
+    if [[ "$resolved_python" != /* || ! -x "$resolved_python" ]]; then
+      echo \
+        "$python_toolchain_prefix ERROR authoritative TOOLCHAIN_PYTHON did not resolve to an executable absolute path: $TOOLCHAIN_PYTHON" \
+        >&2
+      echo "$python_toolchain_prefix ERROR no runtime fallback was attempted" >&2
+      return 1
+    fi
+    if "$resolved_python" -c 'import sys' >/dev/null 2>&1; then
+      :
+    else
+      command_exit=$?
+      echo \
+        "$python_toolchain_prefix ERROR authoritative TOOLCHAIN_PYTHON is not a usable Python interpreter: $resolved_python (exit $command_exit)" \
+        >&2
+      echo "$python_toolchain_prefix ERROR no runtime fallback was attempted" >&2
+      return "$command_exit"
+    fi
+    if [[ "$resolved_python" == "$project_root/.venv/"* ]]; then
+      echo \
+        "$python_toolchain_prefix ERROR authoritative TOOLCHAIN_PYTHON cannot point inside project/.venv: $TOOLCHAIN_PYTHON" \
+        >&2
+      echo "$python_toolchain_prefix ERROR select a base interpreter outside the managed project environment" >&2
+      echo "$python_toolchain_prefix ERROR no runtime fallback was attempted" >&2
+      return 1
+    fi
+    if managed_python_root=$(uv python dir); then
+      :
+    else
+      command_exit=$?
+      echo \
+        "$python_toolchain_prefix ERROR uv could not identify its managed Python directory (exit $command_exit)" \
+        >&2
+      echo "$python_toolchain_prefix ERROR no runtime fallback was attempted" >&2
+      return "$command_exit"
+    fi
+    if [[ "$resolved_python" == "$managed_python_root/"* ]]; then
+      python_toolchain_uv_args=(--python "$resolved_python" --managed-python)
+    else
+      python_toolchain_uv_args=(--python "$resolved_python" --no-managed-python)
+    fi
+    python_toolchain_runtime_description="authoritative TOOLCHAIN_PYTHON=$TOOLCHAIN_PYTHON (resolved to $resolved_python)"
+  fi
+}
+
+python_toolchain_probe() {
+  local probe
+  local command_exit
+  probe="import example.cli, pytest, subprocess; subprocess.run(['ruff','--version'], check=True, stdout=subprocess.DEVNULL)"
+
+  if uv run --project "$project_root" --locked \
+    "${python_toolchain_uv_args[@]}" python -c "$probe"; then
+    return 0
+  else
+    command_exit=$?
+  fi
+
+  echo \
+    "$python_toolchain_prefix ERROR dependency-chain probe failed with $python_toolchain_runtime_description (exit $command_exit)" \
+    >&2
+  if [[ -n "${TOOLCHAIN_PYTHON:-}" ]]; then
+    echo "$python_toolchain_prefix ERROR no runtime fallback was attempted" >&2
+  fi
+  return "$command_exit"
+}

@@ -79,8 +79,10 @@ type.
 
 The repository-owned toolchain wrappers are tested like product code. See
 [`build-gates.md`](build-gates.md): cwd independence, runtime selection,
-locked setup, full/focused test routing, missing-bundle behavior, command
-ordering, delegation, and exact status propagation are executable contracts.
+locked setup, authoritative-override refusal without fallback, a real
+project-and-tool dependency-chain probe, full/focused test routing,
+missing-bundle behavior, command ordering, delegation, and exact status
+propagation are executable contracts.
 
 ## Evidence is scoped to its environment
 
@@ -107,7 +109,10 @@ toolchains, and injected test doubles can all narrow what a green run proves.
 
 Committed metadata and lockfiles define the toolchain used by the canonical
 gate. A missing bootstrap executable or stale lockfile fails visibly; it never
-falls back to ambient packages and calls the result equivalent.
+falls back to ambient packages and calls the result equivalent. When a human
+explicitly overrides the runtime for compatibility testing, the override is
+the only candidate: validate it with the repository's load/run probe and fail
+if it cannot exercise the real dependency chain.
 
 ## When acceptance can't be automated
 

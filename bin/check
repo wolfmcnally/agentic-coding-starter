@@ -33,20 +33,13 @@ case "$gate_mode" in
     ;;
 esac
 
-if ! command -v uv >/dev/null 2>&1; then
-  echo "CHECK ERROR missing prerequisite: uv" >&2
+toolchain_helper="$repo_root/bin/_python-toolchain"
+if [[ ! -r "$toolchain_helper" ]]; then
+  echo "CHECK ERROR missing required file: bin/_python-toolchain" >&2
   exit 1
 fi
-
-for required_path in \
-  "$project_root/.python-version" \
-  "$project_root/pyproject.toml" \
-  "$project_root/uv.lock"; do
-  if [[ ! -f "$required_path" ]]; then
-    echo "CHECK ERROR missing required file: ${required_path#"$repo_root/"}" >&2
-    exit 1
-  fi
-done
+source "$toolchain_helper"
+python_toolchain_init CHECK
 
 if [[ ! -x "$repo_root/bin/test" ]]; then
   echo "CHECK ERROR missing required executable: bin/test" >&2
@@ -69,7 +62,7 @@ run_gate() {
 run_lint() {
   (
     cd "$project_root"
-    run_gate lint uv run --locked --managed-python ruff check \
+    run_gate lint uv run --locked "${python_toolchain_uv_args[@]}" ruff check \
       example tests ../bin/kickoff-config ../tests
   )
 }
@@ -77,7 +70,7 @@ run_lint() {
 run_format() {
   (
     cd "$project_root"
-    run_gate format uv run --locked --managed-python ruff format --check \
+    run_gate format uv run --locked "${python_toolchain_uv_args[@]}" ruff format --check \
       example tests ../bin/kickoff-config ../tests
   )
 }
@@ -98,6 +91,9 @@ run_policy() {
     echo "CHECK policy PASS"
   )
 }
+
+cd "$repo_root"
+python_toolchain_probe
 
 case "$gate_mode" in
   lint) run_lint ;;

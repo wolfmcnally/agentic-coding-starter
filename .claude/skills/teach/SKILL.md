@@ -82,6 +82,8 @@ Build a structural map of the target. Mirror Stage 1 of `learn`, but from the op
    bundle. The apply step preserves the target's primary language, supported
    runtime range, selected default runtime, package manager, dependencies, and
    lock resolution; it never imports Starter's Python values as defaults.
+   Inspect whether any explicit runtime override is authoritative and whether
+   selection is proven with a target-specific dependency-chain load/run probe.
 7. **Active work signals.** Read the target's `LOG.md` if present. A phase in `🚧` is a clear "do not stomp" signal — the teaching apply step waits for that phase or limits itself to additive, non-conflicting changes.
 8. **Kickoff configuration contract.** Inspect `kickoff.yaml`, `bin/kickoff-config`, `tests/test_kickoff_config.py`, both role policies, `roles`, `kickoff` Steps 0a–0c and invocation call sites, `.gitignore`, and the invocation brief as one bundle. Note target values, comments, `extensions` data, and local `.kickoff/` telemetry as preservation-only state; never read or transfer raw telemetry.
 
@@ -146,8 +148,10 @@ For each proposed addition or update, ask:
   behavioral tests, `policies/build-gates.md`, hooks, and every workflow caller
   as one atomic contract. If any member is proposed, enumerate the whole
   bundle in the stale sweep. Preserve target-owned language/version/package
-  choices and adapt the universal interface to them. Partial adoption is stale
-  and blocking.
+  choices and adapt the universal interface to them. Any explicit runtime
+  override is authoritative, and a target-adapted dependency-chain load/run
+  probe validates the selected runtime before success. Partial adoption is
+  stale and blocking.
 - **Review-lane and follow-up-routing adoption.** Does the target's `kickoff` SKILL.md carry the Step 1 lane resolution, the Step 4 light-lane skip, the Step 6 lane-fit input and `Escalate: full lane` handling, Step 7's direct/coder-only/full correction routing, and the END-block `Review lane:` plus `Follow-up route:` lines — with `policies/review-lanes.md` in its `policies/` and the lane-fit duty in its `.claude/agents/code-critic.md`? Porting is mechanical — AUTO. **No phase-file migration is needed**: absent `review_lane:` frontmatter means `full`, so every existing drafted phase keeps its current initial-review behavior; follow-up routing is runtime classification, not frontmatter.
 
 Each stale item gets one of three classifications:
@@ -293,7 +297,12 @@ Once approved, apply the approved items to the target. Order:
    an appropriate runtime wrapper when the target exposes one. Reconcile the
    target's runtime pin, manifest, lockfile, behavioral tests, hook, `kickoff`,
    and four canonical agents in the same step. `bin/check test` delegates to
-   `bin/test`; no caller assumes a versioned runtime binary on `PATH`.
+   `bin/test`; no caller assumes a versioned runtime binary on `PATH`. Adapt
+   the source profile's shared resolver/probe to the target's ecosystem and
+   real dependency chain; preserve fail-closed authoritative overrides without
+   copying Starter's interpreter path, package names, or dependency list, and
+   reject overrides inside an environment the target's package manager may
+   replace.
    Otherwise preserve the complete target-owned bundle and adapt only stale
    copied examples. Never replace target language/version/package-manager
    choices with this template's Python values.

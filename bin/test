@@ -20,26 +20,20 @@ if [[ $# -eq 1 && ( "$1" == "--help" || "$1" == "-h" ) ]]; then
   exit 0
 fi
 
-if ! command -v uv >/dev/null 2>&1; then
-  echo "TEST ERROR missing prerequisite: uv" >&2
+toolchain_helper="$repo_root/bin/_python-toolchain"
+if [[ ! -r "$toolchain_helper" ]]; then
+  echo "TEST ERROR missing required file: bin/_python-toolchain" >&2
   exit 1
 fi
-
-for required_path in \
-  "$project_root/.python-version" \
-  "$project_root/pyproject.toml" \
-  "$project_root/uv.lock"; do
-  if [[ ! -f "$required_path" ]]; then
-    echo "TEST ERROR missing required file: ${required_path#"$repo_root/"}" >&2
-    exit 1
-  fi
-done
+source "$toolchain_helper"
+python_toolchain_init TEST
 
 cd "$repo_root"
+python_toolchain_probe
 if [[ $# -eq 0 ]]; then
-  exec uv run --project "$project_root" --locked --managed-python \
+  exec uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" \
     python -m pytest -q project/tests tests
 fi
 
-exec uv run --project "$project_root" --locked --managed-python \
+exec uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" \
   python -m pytest "$@"

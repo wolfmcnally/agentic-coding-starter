@@ -54,7 +54,9 @@ In addition to the universal methodology briefs (see Methodology Contract below)
   provisions the locked environment, `./bin/test [args...]` runs full or
   focused tests, `./bin/check all` is the authoritative suite, and
   `./bin/python` selects the project interpreter. Callers never assume
-  `python3.12` or another versioned binary is on `PATH`.
+  `python3.12` or another versioned binary is on `PATH`. Each wrapper uses the
+  shared real-dependency probe; `TOOLCHAIN_PYTHON=/absolute/path/to/python` is
+  an authoritative compatibility-test override and never falls back.
 - **`project/pyproject.toml` is the single source of truth** for Python tooling configuration (ruff, pytest, mypy if used) in this repo.
 
 ## Model & review venue

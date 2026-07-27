@@ -27,25 +27,24 @@ if [[ $# -gt 0 ]]; then
   exit 2
 fi
 
-if ! command -v uv >/dev/null 2>&1; then
-  echo "SETUP ERROR missing prerequisite: uv" >&2
+toolchain_helper="$repo_root/bin/_python-toolchain"
+if [[ ! -r "$toolchain_helper" ]]; then
+  echo "SETUP ERROR missing required file: bin/_python-toolchain" >&2
   exit 1
 fi
-
-for required_path in \
-  "$project_root/.python-version" \
-  "$project_root/pyproject.toml" \
-  "$project_root/uv.lock"; do
-  if [[ ! -f "$required_path" ]]; then
-    echo "SETUP ERROR missing required file: ${required_path#"$repo_root/"}" >&2
-    exit 1
-  fi
-done
+source "$toolchain_helper"
+python_toolchain_init SETUP
 
 echo "SETUP START"
 cd "$repo_root"
-if uv sync --project "$project_root" --locked --managed-python; then
-  echo "SETUP PASS"
+if uv sync --project "$project_root" --locked "${python_toolchain_uv_args[@]}"; then
+  if python_toolchain_probe; then
+    echo "SETUP PASS"
+  else
+    command_exit=$?
+    echo "SETUP FAIL (exit $command_exit)" >&2
+    exit "$command_exit"
+  fi
 else
   command_exit=$?
   echo "SETUP FAIL (exit $command_exit)" >&2

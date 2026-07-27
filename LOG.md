@@ -154,3 +154,9 @@ Donor: Donor A @ <sha withheld>
 Items absorbed: 4, by tier T1=3/T2=1/T3=0/T4=0
 Stale-in-light-of-learning migrations: 19 AUTO; 0 DECIDE; 0 DEFER
 Files touched: 26
+
+## 2026-07-26 18:44 — LEARN
+Donor: Donor A @ <sha withheld>
+Items absorbed: 1, by tier T1=0/T2=1/T3=0/T4=0
+Stale-in-light-of-learning migrations: 16 AUTO; 0 DECIDE; 0 DEFER
+Files touched: 17

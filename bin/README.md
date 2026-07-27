@@ -14,8 +14,10 @@
 ### `setup` — provision the pinned, locked environment
 
 Validates the `uv` prerequisite and the complete Python profile, then
-synchronizes the managed interpreter and exact locked dependencies. It works
-from any current directory and refuses a stale or missing lockfile.
+synchronizes the selected interpreter and exact locked dependencies. Before
+reporting success it imports the example package and pytest and runs
+`ruff --version` inside that environment. It works from any current directory
+and refuses a stale or missing lockfile.
 
 ```bash
 ./bin/setup
@@ -36,18 +38,40 @@ are stable from any caller directory.
 
 Runs Python from the same managed, locked environment as setup and the gates.
 Use it for one-off scripts and diagnostics instead of assuming a host
-`python3.x` executable.
+`python3.x` executable. The shared dependency-chain probe runs before the
+requested command.
 
 ```bash
 ./bin/python --version
 ./bin/python -c 'print("hello")'
 ```
 
+The managed interpreter from `project/.python-version` is the default. To test
+one specific interpreter deliberately, set an executable absolute path:
+
+```bash
+TOOLCHAIN_PYTHON=/absolute/path/to/python ./bin/check all
+```
+
+That override is authoritative. An invalid path, incompatible interpreter, or
+failed dependency probe stops the command; no managed or ambient fallback is
+tried. Select a base interpreter outside `project/.venv`; an interpreter inside
+the environment uv manages is rejected before synchronization can replace it.
+
+### `_python-toolchain` — shared runtime resolver and probe
+
+Source-only helper used by `setup`, `test`, `check`, and `python`. It validates
+the Python bundle, resolves the managed default or authoritative override, and
+runs the real project-and-tool dependency probe with the same selection
+arguments used by the eventual command. It is part of the atomic toolchain
+contract and is not invoked directly.
+
 ### `check` — authoritative repository build gate
 
 The single authoritative entry point for automated repository checks. It
 resolves the repo root from its own location, validates the complete toolchain
-bundle, then runs the selected named mode in the managed, locked environment.
+bundle, probes the selected locked environment, then runs the selected named
+mode with the identical runtime selection.
 Its `test` mode delegates to `bin/test`. `all` runs lint, format verification,
 tests, and deterministic policy checks in order. Child failures retain their
 exact status and emit a terminal `CHECK <name> FAIL`; success ends with
