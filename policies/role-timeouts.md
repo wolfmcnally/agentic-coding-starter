@@ -27,9 +27,18 @@ External CLI roles run through `bin/kickoff-config watch`. The wrapper:
 4. truncates named result artifacts before launch and requires the current call to repopulate them;
 5. verifies that the actual CLI/model/effort flags match the recorded routing metadata;
 6. terminates the entire process group on timeout, preserving artifacts and any session identifier already emitted; and
-7. returns 124 on timeout, 65 on a stream/artifact protocol failure, or the child's status otherwise.
+7. records child status, artifact freshness, and terminal stream completeness
+   independently; and
+8. returns 124 on timeout, 65 on an unrecoverable protocol failure, 66 when a
+   fresh artifact requires explicit verification after an incomplete terminal
+   stream, or the child's status otherwise.
 
-Codex runs with JSONL events and names its `--output-last-message` path as the watchdog's required output. Claude runs with `--output-format stream-json --verbose`; the wrapper extracts and requires the final `result` event. The role-shape gate in [`role-models.md`](role-models.md) still applies after the process exits.
+Codex runs with JSONL events, requires a terminal `turn.completed`, and names
+its `--output-last-message` path as the watchdog's required output. Claude runs
+with `--output-format stream-json --verbose`; the wrapper normally extracts
+the final `result` event and can preserve the last assistant text for exit 66.
+The role-shape and candidate-bound evidence gates in
+[`role-models.md`](role-models.md) still apply after the process exits.
 
 Native roles use the same role-specific hard and idle budgets through the orchestrating harness's sub-agent wait/status mechanism. If the harness cannot expose structured progress or an idle watchdog, enforce the hard deadline and report that idle telemetry was unavailable; do not invent activity. The orchestrator remains responsive and gives the user a progress update at least every 60 seconds while it waits.
 
@@ -37,7 +46,19 @@ One max-turn rescue is allowed only for a review role that completed investigati
 
 ## Local telemetry and recalibration
 
-Every watched invocation appends one JSON object to `.kickoff/role-timings.jsonl`, which is local runtime state and must not be committed. Records include separate model and effort fields alongside phase, role, venue, timestamps, duration, first-event latency, longest idle gap, best-effort turns/tokens, outcome, timeout kind, and exit code. The END block summarizes timings for the phase; raw records stay local.
+Every watched invocation appends one JSON object to
+`.kickoff/role-timings.jsonl`, which is local runtime state and must not be
+committed. Records include separate model and effort fields alongside phase,
+role, venue, timestamps, duration, first-event latency, longest idle gap,
+best-effort turns/tokens, outcome, timeout kind, wrapper exit code, child exit
+code, artifact status, and stream status. The END block summarizes timings and
+verified protocol recoveries for the phase; raw records stay local.
+
+The run-scoped evidence ledgers separately record packet bytes and source
+hashes, candidate ids, changed-path counts, finding states/reopenings/
+classifications, and gate results. Do not infer nested reasoning, repository
+read, test, idle-cause, or critical-path spans when a venue does not emit them;
+record unavailable data as `unknown`.
 
 `bin/kickoff-config recommend-timeouts` groups successful records by `(role, venue, model, effort)`. It emits a recommendation only after at least 30 successful samples in a group:
 

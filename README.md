@@ -28,6 +28,12 @@ The template ships with:
 - **`learn` and `teach` skills** (universal — carried into every derived project) for moving patterns *between* methodology-following repos. `learn` absorbs patterns from another repo into the current one; `teach` sends patterns from the current repo out to a target. Both are plan-first: the user approves before any file changes.
 - **Human-editable kickoff configuration.** One `kickoff.yaml` contains harness-aware role routing and execution budgets. Model and effort are separate fields. Edit it directly or use the `roles` skill; the round-trip-safe manager rejects schema typos while preserving comments and project-specific data under `extensions`.
 - **Fail-fast readiness and progress-aware timeouts.** `kickoff` live-validates every required non-orchestrator CLI/model/auth path before it mutates phase state. Production role calls then use per-role first-event, idle, and hard deadlines from the same config; local gitignored telemetry supports evidence-based recalibration. See [`policies/role-models.md`](policies/role-models.md) and [`policies/role-timeouts.md`](policies/role-timeouts.md).
+- **Candidate-bound incremental assurance.** Complete first reviews produce
+  stable findings; later rounds receive causal revision packets and widen when
+  authority, scope, risk, or continuity changes. Focused checks accelerate
+  convergence, then one complete final gate proves the unchanged approved
+  candidate. See
+  [`briefs/incremental-orchestration.md`](briefs/incremental-orchestration.md).
 - A **`plan/` ledger** (status table, dependency graph, cross-cutting concerns) where work is tracked phase by phase.
 - A **`briefs/` library** for durable design decisions and methodology notes.
 - A **`policies/` library** for the rules every phase must respect.
@@ -135,8 +141,8 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 4. **Repo-level policies.** Codify the non-negotiables. Lives under `policies/`.
 5. **Brief + architecture → phased plan.** Break the work into incremental, testable phases.
 6. **Sub-phase breakdown at phase start.** Decompose each major phase only when you start it.
-7. **Orchestrator-driven sub-phase execution.** `kickoff` runs initial work through planner → reviewer → coder → critic, with bounded revision loops. Small low-risk follow-ups may be fixed directly; only high-risk or large/cross-cutting corrections require another full coder → critic cycle.
-8. **Acceptance check.** The orchestrator runs the tests and gates the phase declares.
+7. **Orchestrator-driven sub-phase execution.** `kickoff` runs initial work through planner → reviewer → coder → critic. Complete first reviews establish stable findings; bounded revision rounds receive candidate-bound causal packets. Small low-risk follow-ups may be fixed directly; only high-risk or large/cross-cutting corrections require another full coder → critic cycle.
+8. **Acceptance check.** Focused checks run while work converges. After critic approval, the orchestrator runs the complete phase-prescribed sequence and one authoritative full gate against the unchanged approved candidate.
 9. **Append-only phase log.** `LOG.md` records open and close with evidence.
 10. **Human evaluation.** *You* decide whether each sub-phase is done. The agent does not.
 11. **Stay agile.** Add or split phases as the problem gets clearer.
@@ -168,6 +174,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── methodology.md              ←   the eleven-step methodology
 │   ├── agentic-bootstrap.md        ←   how to stand up a new project
 │   ├── cross-agent-invocation.md   ←   cross-CLI invocation BCPs
+│   ├── incremental-orchestration.md ← candidate-bound incremental assurance
 │   └── deterministic-orchestration.md ← draft: deterministic kickoff loop
 ├── policies/                       ← non-negotiable rules every phase honors
 │   ├── README.md
@@ -181,6 +188,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── four-canonical-agents.md
 │   ├── role-models.md              ← role routing and fail-closed preflight
 │   ├── role-timeouts.md            ← first-event/idle/hard execution budgets
+│   ├── orchestration-evidence.md   ← candidate/revision/gate evidence
 │   ├── review-lanes.md             ← review intensity + proportional follow-ups
 │   ├── build-gates.md              ← atomic repository toolchain contract
 │   ├── project-isolation.md        ← isolate deliverable under project/
@@ -192,6 +200,8 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── python                      ← selected managed Python interpreter
 │   ├── install-hooks               ← opt in to tracked lifecycle hooks
 │   ├── kickoff-config              ← round-trip config, preflight, watchdog
+│   ├── kickoff-tree-id             ← complete review candidate identity
+│   ├── kickoff-evidence            ← authority/change/finding/gate records
 │   └── check-anonymization.sh      ← starter-only public-repo leak guard
 ├── .githooks/
 │   └── pre-push                    ← optional; calls the canonical full gate
@@ -199,7 +209,9 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── test_toolchain_entrypoints.py ← setup/test/runtime behavior
 │   ├── test_check.py               ← canonical gate behavioral coverage
 │   ├── test_install_hooks.py       ← opt-in hook installer coverage
-│   └── test_kickoff_config.py      ← config/watchdog behavioral coverage
+│   ├── test_kickoff_config.py      ← config/watchdog behavioral coverage
+│   ├── test_kickoff_tree_id.py     ← candidate identity coverage
+│   └── test_kickoff_evidence.py    ← evidence/packet/gate coverage
 ├── plan/                           ← phased execution plan
 │   ├── INDEX.md                    ←   phase ledger (status lives ONLY here)
 │   └── phase-1.md                  ←   first phase (a stub you replace)
@@ -258,7 +270,9 @@ Every initial implementation uses the four canonical roles, subject to the decla
 | `phase-coder` | Read, Write, Edit, Grep, Glob, Bash | Yes | Implement the approved plan |
 | `code-critic` | Read, Grep, Glob | No | Approve the code or send it back for revision |
 
-`kickoff` itself does *not* write code. Its job is to delegate, watch verdicts, run build gates, and write `LOG.md`.
+`kickoff` normally delegates implementation; it may directly apply only an
+eligible small, low-risk follow-up correction. It owns candidate identity,
+evidence validation, the final gate, status, and `LOG.md`.
 
 ---
 

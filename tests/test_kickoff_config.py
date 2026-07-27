@@ -188,9 +188,47 @@ def test_watch_extracts_fresh_claude_result_and_telemetry(tmp_path: Path) -> Non
     assert result_path.read_text() == "FRESH"
     record = read_record(telemetry)
     assert record["outcome"] == "success"
+    assert record["schema_version"] == 2
+    assert record["child_exit_code"] == 0
+    assert record["artifact_status"] == "fresh"
+    assert record["stream_status"] == "complete"
     assert record["program"] == "claude"
     assert record["input_tokens"] == 3
     assert record["output_tokens"] == 2
+
+
+def test_watch_preserves_claude_artifact_when_terminal_stream_is_incomplete(
+    tmp_path: Path,
+) -> None:
+    config = seeded_config(tmp_path)
+    result_path = tmp_path / "result.txt"
+    telemetry = tmp_path / "timings.jsonl"
+    cli = fake_cli(
+        tmp_path,
+        "claude",
+        "printf '%s\\n' "
+        """'{"type":"assistant","message":{"content":[{"type":"text","text":"RECOVER"}]}}'""",
+    )
+    arguments = watch_arguments(
+        tmp_path,
+        cli,
+        extra_watch=("--result-file", str(result_path)),
+    )
+
+    result = run_manager(
+        config,
+        *arguments,
+        extra_env={"KICKOFF_TIMING_LOG": str(telemetry)},
+    )
+
+    assert result.returncode == 66
+    assert result_path.read_text() == "RECOVER"
+    assert "explicit artifact verification required" in result.stderr
+    record = read_record(telemetry)
+    assert record["outcome"] == "completed_unverified_protocol"
+    assert record["child_exit_code"] == 0
+    assert record["artifact_status"] == "fresh"
+    assert record["stream_status"] == "incomplete"
 
 
 def test_watch_rejects_fast_exit_without_structured_event_and_clears_result(
@@ -216,7 +254,8 @@ def test_watch_rejects_fast_exit_without_structured_event_and_clears_result(
     assert result.returncode == 65
     assert result_path.read_text() == ""
     assert "no structured stdout event" in result.stderr
-    assert "stream result event missing or empty" in result.stderr
+    assert "required output artifact missing or empty" in result.stderr
+    assert "terminal stream event missing or empty" in result.stderr
     record = read_record(telemetry)
     assert record["outcome"] == "error"
     assert record["protocol_error"]
@@ -257,6 +296,7 @@ def test_watch_accepts_matching_explicit_codex_routing(tmp_path: Path) -> None:
         tmp_path,
         "codex",
         f"printf '%s\\n' '{{\"type\":\"thread.started\"}}'\n"
+        f"printf '%s\\n' '{{\"type\":\"turn.completed\"}}'\n"
         f"printf '%s' 'CODEX FRESH' > {output_path}",
     )
     arguments = watch_arguments(
@@ -282,7 +322,77 @@ def test_watch_accepts_matching_explicit_codex_routing(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     assert output_path.read_text() == "CODEX FRESH"
-    assert read_record(telemetry)["program"] == "codex"
+    record = read_record(telemetry)
+    assert record["program"] == "codex"
+    assert record["stream_status"] == "complete"
+
+
+def test_watch_preserves_codex_artifact_when_terminal_stream_is_incomplete(
+    tmp_path: Path,
+) -> None:
+    config = seeded_config(tmp_path)
+    output_path = tmp_path / "last-message.txt"
+    telemetry = tmp_path / "timings.jsonl"
+    cli = fake_cli(
+        tmp_path,
+        "codex",
+        f"printf '%s\\n' '{{\"type\":\"thread.started\"}}'\n"
+        f"printf '%s' 'CODEX RECOVER' > {output_path}",
+    )
+    arguments = watch_arguments(
+        tmp_path,
+        cli,
+        venue="codex",
+        model="codex",
+        effort="default",
+        extra_watch=("--required-output-file", str(output_path)),
+        cli_arguments=(),
+    )
+
+    result = run_manager(
+        config,
+        *arguments,
+        extra_env={"KICKOFF_TIMING_LOG": str(telemetry)},
+    )
+
+    assert result.returncode == 66
+    assert output_path.read_text() == "CODEX RECOVER"
+    record = read_record(telemetry)
+    assert record["outcome"] == "completed_unverified_protocol"
+    assert record["artifact_status"] == "fresh"
+    assert record["stream_status"] == "incomplete"
+
+
+def test_watch_preserves_nonzero_child_status_even_with_valid_artifact(
+    tmp_path: Path,
+) -> None:
+    config = seeded_config(tmp_path)
+    result_path = tmp_path / "result.txt"
+    telemetry = tmp_path / "timings.jsonl"
+    cli = fake_cli(
+        tmp_path,
+        "claude",
+        """printf '%s\\n' '{"type":"result","result":"FAILED RESULT"}'\nexit 23""",
+    )
+    arguments = watch_arguments(
+        tmp_path,
+        cli,
+        extra_watch=("--result-file", str(result_path)),
+    )
+
+    result = run_manager(
+        config,
+        *arguments,
+        extra_env={"KICKOFF_TIMING_LOG": str(telemetry)},
+    )
+
+    assert result.returncode == 23
+    assert result_path.read_text() == "FAILED RESULT"
+    record = read_record(telemetry)
+    assert record["outcome"] == "error"
+    assert record["child_exit_code"] == 23
+    assert record["artifact_status"] == "fresh"
+    assert record["stream_status"] == "complete"
 
 
 def test_watch_rejects_routing_metadata_that_child_flags_do_not_apply(tmp_path: Path) -> None:
@@ -331,6 +441,7 @@ def test_watch_enforces_first_event_timeout(tmp_path: Path) -> None:
     assert result.returncode == 124
     record = read_record(telemetry)
     assert record["timeout_kind"] == "first-event"
+    assert record["child_exit_code"] is None
 
 
 def test_watch_enforces_idle_timeout_after_first_event(tmp_path: Path) -> None:
@@ -353,6 +464,7 @@ def test_watch_enforces_idle_timeout_after_first_event(tmp_path: Path) -> None:
     assert result.returncode == 124
     record = read_record(telemetry)
     assert record["timeout_kind"] == "idle"
+    assert record["child_exit_code"] is None
 
 
 def test_recommend_timeouts_reads_successful_records_without_rewriting_config(

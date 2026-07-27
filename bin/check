@@ -46,6 +46,13 @@ if [[ ! -x "$repo_root/bin/test" ]]; then
   exit 1
 fi
 
+for evidence_executable in kickoff-tree-id kickoff-evidence; do
+  if [[ ! -x "$repo_root/bin/$evidence_executable" ]]; then
+    echo "CHECK ERROR missing required executable: bin/$evidence_executable" >&2
+    exit 1
+  fi
+done
+
 run_gate() {
   local gate_name="$1"
   shift
@@ -63,7 +70,8 @@ run_lint() {
   (
     cd "$project_root"
     run_gate lint uv run --locked "${python_toolchain_uv_args[@]}" ruff check \
-      example tests ../bin/kickoff-config ../tests
+      example tests ../bin/kickoff-config ../bin/kickoff-evidence \
+      ../bin/kickoff-tree-id ../tests
   )
 }
 
@@ -71,7 +79,8 @@ run_format() {
   (
     cd "$project_root"
     run_gate format uv run --locked "${python_toolchain_uv_args[@]}" ruff format --check \
-      example tests ../bin/kickoff-config ../tests
+      example tests ../bin/kickoff-config ../bin/kickoff-evidence \
+      ../bin/kickoff-tree-id ../tests
   )
 }
 

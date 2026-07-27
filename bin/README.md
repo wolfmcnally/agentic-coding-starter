@@ -142,7 +142,58 @@ Behavioral coverage lives in `tests/test_kickoff_config.py`; `./bin/check all`
 lints and format-checks the manager and runs its tests alongside the canonical
 gate/hook tests and isolated example package tests.
 
+The watcher records child-process status, fresh artifact status, and terminal
+event-stream completeness independently. Ordinary success requires all three.
+Exit 66 preserves a fresh artifact from a successful child whose stream was
+incomplete so `kickoff` can explicitly validate its role shape, evidence, and
+candidate before accepting it; exit 65 remains an unrecoverable protocol
+failure.
+
 Universal: `stamp` and `teach` carry the manager, policies, tests, and seed config. Target values, comments, `extensions` data, and raw `.kickoff/` telemetry stay target-owned.
+
+### `kickoff-tree-id` — complete review candidate identity
+
+Hashes the complete reviewable Git working tree: tracked content whether
+staged or unstaged, deletions, normalized executable modes, symlink targets,
+and nonignored untracked files. Ignored runtime state is excluded, and staging
+alone does not change the identity. With `--json`, emits the ordered
+path/mode/content-hash manifest without source contents. Escaping symlinks and
+unsupported entry types fail closed. A clean submodule contributes its checked
+out commit; a dirty submodule fails closed because one superproject hash
+cannot safely summarize its unresolved candidate.
+
+```bash
+./bin/kickoff-tree-id
+```
+
+```bash
+./bin/kickoff-tree-id --json
+```
+
+Governed by
+[`policies/orchestration-evidence.md`](../policies/orchestration-evidence.md);
+behavioral coverage lives in `tests/test_kickoff_tree_id.py`.
+
+### `kickoff-evidence` — run-scoped review and gate evidence
+
+Initializes and validates the authority, change, finding, packet, and gate
+records for one `kickoff` run. It extracts exact JSON evidence blocks from role
+artifacts, enforces stable finding identity and state transitions, detects
+authority/risk rebases, compiles deterministic plan/code revision packets, and
+rejects gate records for stale candidates. Run `--help` or a subcommand's
+`--help` for the full schema-driven interface.
+
+```bash
+./bin/kickoff-evidence --help
+```
+
+```bash
+./bin/kickoff-evidence validate --run-dir /absolute/run/directory --require-final
+```
+
+Governed by
+[`policies/orchestration-evidence.md`](../policies/orchestration-evidence.md);
+behavioral coverage lives in `tests/test_kickoff_evidence.py`.
 
 ### `check-anonymization.sh` — pre-publish leak guard *(starter-only)*
 

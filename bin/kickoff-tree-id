@@ -1,0 +1,133 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Identify the complete Git candidate tree used by kickoff evidence."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import stat
+import subprocess
+from pathlib import Path
+from typing import Any
+
+NAMESPACE = b"agentic-kickoff-candidate-v1\0"
+
+
+def git(root: Path, *arguments: str) -> bytes:
+    try:
+        return subprocess.check_output(
+            ["git", "-C", str(root), *arguments],
+            stderr=subprocess.PIPE,
+        )
+    except subprocess.CalledProcessError as exc:
+        detail = exc.stderr.decode("utf-8", errors="replace").strip()
+        raise ValueError(detail or "Git command failed") from exc
+
+
+def repository_root(start: Path) -> Path:
+    output = git(start, "rev-parse", "--show-toplevel")
+    return Path(os.fsdecode(output).strip()).resolve()
+
+
+def candidate_paths(root: Path) -> list[Path]:
+    tracked = git(root, "ls-files", "--cached", "-z").split(b"\0")
+    untracked = git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
+    paths = {Path(os.fsdecode(raw)) for raw in (*tracked, *untracked) if raw}
+    return sorted(paths, key=lambda item: os.fsencode(item.as_posix()))
+
+
+def mode_and_content(path: Path, root: Path) -> tuple[str, bytes]:
+    try:
+        mode = path.lstat().st_mode
+    except FileNotFoundError:
+        return "missing", b""
+    if stat.S_ISLNK(mode):
+        target = os.readlink(path)
+        target_path = Path(target)
+        resolved = (path.parent / target_path).resolve(strict=False)
+        if target_path.is_absolute() or not resolved.is_relative_to(root):
+            raise ValueError(f"candidate symlink escapes repository: {path.relative_to(root)}")
+        return "120000", os.fsencode(target)
+    if stat.S_ISREG(mode):
+        normalized = "100755" if mode & 0o111 else "100644"
+        return normalized, path.read_bytes()
+    if stat.S_ISDIR(mode):
+        gitlink = git(root, "ls-files", "--stage", "--", path.relative_to(root).as_posix())
+        fields = gitlink.decode("utf-8", errors="replace").split()
+        if fields and fields[0] == "160000" and len(fields) >= 2:
+            head = git(path, "rev-parse", "HEAD").strip()
+            if git(path, "status", "--porcelain=v1", "-z", "--untracked-files=all"):
+                raise ValueError(
+                    f"dirty submodule cannot be represented safely: {path.relative_to(root)}"
+                )
+            return "160000", head
+    raise ValueError(f"unsupported candidate entry type: {path.relative_to(root)}")
+
+
+def candidate_manifest(root: Path) -> dict[str, Any]:
+    digest = hashlib.sha256(NAMESPACE)
+    entries: list[dict[str, str]] = []
+    for relative in candidate_paths(root):
+        mode, content = mode_and_content(root / relative, root)
+        path_bytes = os.fsencode(relative.as_posix())
+        content_hash = hashlib.sha256(content).hexdigest()
+        digest.update(len(path_bytes).to_bytes(8, "big"))
+        digest.update(path_bytes)
+        digest.update(mode.encode("ascii") + b"\0")
+        digest.update(bytes.fromhex(content_hash))
+        entries.append(
+            {
+                "path": relative.as_posix(),
+                "mode": mode,
+                "content_sha256": content_hash,
+            }
+        )
+    return {
+        "schema_version": 1,
+        "candidate_id": digest.hexdigest(),
+        "path_count": len(entries),
+        "entries": entries,
+    }
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Hash tracked plus nonignored-untracked candidate state."
+    )
+    parser.add_argument(
+        "--root",
+        type=Path,
+        default=Path.cwd(),
+        help="path inside the Git repository (default: current directory)",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="emit the candidate manifest instead of only its identifier",
+    )
+    return parser
+
+
+def main() -> int:
+    arguments = build_parser().parse_args()
+    try:
+        root = repository_root(arguments.root.resolve())
+        manifest = candidate_manifest(root)
+    except (OSError, ValueError) as exc:
+        print(f"kickoff-tree-id: {exc}", file=os.sys.stderr)
+        return 2
+    if arguments.json:
+        json.dump(manifest, os.sys.stdout, sort_keys=True, separators=(",", ":"))
+        print()
+    else:
+        print(manifest["candidate_id"])
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

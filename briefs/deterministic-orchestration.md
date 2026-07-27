@@ -9,6 +9,12 @@ scope: Design and decision criteria for encoding kickoff's delegate → verdict 
 
 This brief proposes — and deliberately defers — moving `kickoff`'s control flow from prose executed by the orchestrating model to a deterministic workflow program executed by the harness. It exists so the decision can be made quickly when its trigger condition lands, rather than re-derived from scratch.
 
+The candidate-bound evidence plane in
+[`incremental-orchestration.md`](incremental-orchestration.md) is implemented
+independently of this deferral. Authority, change, finding, gate, packet, and
+protocol records are the data plane a future workflow program should consume;
+they do not require moving today's control flow out of prose.
+
 ## 1. Problem
 
 `kickoff` is a state machine written in prose. The orchestrating model reads `.claude/skills/kickoff/SKILL.md` and *performs* the machine: classify initial work versus a follow-up correction, resolve venue (Step 0a), resolve phase and lane (Step 1), decompose (Step 1a), delegate to the needed roles, parse verdicts by string match, route follow-ups by risk and size, run convergence-based full revision loops (a judgment call — iterate while objections narrow, escalate on stall or divergence — bounded by a deterministic 5-cycle runaway backstop), run the cross-harness fallback state machine, run the ripple pass, assemble the END block.
@@ -21,6 +27,9 @@ Field use across this template and its derived projects shows the prose machine 
 - **Schema-validated verdicts.** A structured-output contract (`{verdict: "APPROVED" | "REVISE", required_changes: [...]}`) replaces string matching. The reviewer model is *forced* into the shape; malformed verdicts become retries at the tool layer instead of orchestration breaks.
 - **Resumability.** A journaled workflow re-runs from the first changed step after an interruption, instead of the human reconstructing where the prose machine stopped.
 - **Cheaper orchestration.** The orchestrating model spends judgment on content (what the critic found, what ripples mean) rather than bookkeeping (which step, which count, which venue).
+- **Native consumption of existing evidence.** The program validates and
+  routes the already-shipped candidate, finding, gate, and protocol records
+  instead of inventing a second workflow-specific state format.
 
 ## 3. What stays model-driven
 

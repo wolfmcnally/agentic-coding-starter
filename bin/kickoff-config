@@ -15,7 +15,8 @@
 Section updates use ruamel.yaml round-trip mode: comments, ordering, quoting,
 and data under `extensions` survive. Known schemas are strict. All writes
 validate first and use atomic replacement. `watch` returns the child status,
-65 on a protocol failure, or 124 on timeout.
+65 on an unrecoverable protocol failure, 66 when a fresh artifact needs
+explicit verification after an incomplete stream, or 124 on timeout.
 """
 
 from __future__ import annotations
@@ -46,6 +47,7 @@ CONFIG = Path(os.environ.get("KICKOFF_CONFIG_FILE", "kickoff.yaml"))
 DEFAULT_TELEMETRY = ".kickoff/role-timings.jsonl"
 TIMEOUT_EXIT = 124
 PROTOCOL_EXIT = 65
+RECOVERABLE_PROTOCOL_EXIT = 66
 PREFLIGHT_SENTINEL = "KICKOFF_PREFLIGHT_OK"
 PREFLIGHT_TIMEOUT_SECONDS = 120
 
@@ -739,11 +741,37 @@ def numbers_from_usage(value: Any) -> tuple[int, int]:
     )
 
 
-def parse_events(data: bytes) -> tuple[int | None, int | None, int | None, str | None]:
+def event_text(event: dict[str, Any]) -> str | None:
+    candidates: list[Any] = [event.get("content")]
+    message = event.get("message")
+    if isinstance(message, dict):
+        candidates.append(message.get("content"))
+    for candidate in candidates:
+        if isinstance(candidate, str) and candidate.strip():
+            return candidate
+        if isinstance(candidate, list):
+            parts = [
+                item.get("text")
+                for item in candidate
+                if isinstance(item, dict)
+                and item.get("type") in {None, "text"}
+                and isinstance(item.get("text"), str)
+            ]
+            text = "\n".join(part for part in parts if part.strip())
+            if text.strip():
+                return text
+    return None
+
+
+def parse_events(
+    data: bytes,
+) -> tuple[int | None, int | None, int | None, str | None, str | None, set[str]]:
     turns = 0
     input_tokens = 0
     output_tokens = 0
     result: str | None = None
+    assistant_text: str | None = None
+    event_types: set[str] = set()
     parsed = False
     for raw_line in data.decode("utf-8", errors="replace").splitlines():
         try:
@@ -754,6 +782,7 @@ def parse_events(data: bytes) -> tuple[int | None, int | None, int | None, str |
             continue
         parsed = True
         event_type = str(event.get("type", ""))
+        event_types.add(event_type)
         if event_type in {"turn.started", "assistant"}:
             turns += 1
         usage_candidates = [event.get("usage")]
@@ -766,11 +795,17 @@ def parse_events(data: bytes) -> tuple[int | None, int | None, int | None, str |
             output_tokens = max(output_tokens, seen_output)
         if event_type == "result" and isinstance(event.get("result"), str):
             result = event["result"]
+        if event_type in {"assistant", "item.completed"}:
+            observed_text = event_text(event)
+            if observed_text:
+                assistant_text = observed_text
     return (
         turns if parsed else None,
         input_tokens if parsed else None,
         output_tokens if parsed else None,
         result,
+        assistant_text,
+        event_types,
     )
 
 
@@ -923,24 +958,56 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
 
     ended = time.monotonic()
     longest_idle = max(longest_idle, max(0.0, ended - last_activity))
-    turns, input_tokens, output_tokens, result = parse_events(bytes(stdout_data))
+    child_exit_code = None if timeout_kind else return_code
+    turns, input_tokens, output_tokens, result, assistant_text, event_types = parse_events(
+        bytes(stdout_data)
+    )
     protocol_errors: list[str] = []
+    artifact_requested = result_path is not None or required_output_path is not None
+    artifact_status = "not-requested"
+    if result_path is not None:
+        artifact = result if result and result.strip() else assistant_text
+        if artifact and artifact.strip():
+            result_path.write_text(artifact)
+            artifact_status = "fresh"
+        else:
+            artifact_status = "missing"
+    if required_output_path is not None:
+        artifact_status = (
+            "fresh"
+            if required_output_path.exists() and required_output_path.stat().st_size > 0
+            else "missing"
+        )
+    if arguments.venue == "claude":
+        stream_complete = "result" in event_types and bool(result and result.strip())
+    else:
+        stream_complete = "turn.completed" in event_types
+    stream_status = "complete" if stream_complete else "incomplete"
     if not timeout_kind and first_event_at is None:
         protocol_errors.append("no structured stdout event")
-    if result_path is not None:
-        if result is None or not result.strip():
-            protocol_errors.append("stream result event missing or empty")
-        else:
-            result_path.write_text(result)
-    if required_output_path is not None:
-        if not required_output_path.exists() or required_output_path.stat().st_size == 0:
-            protocol_errors.append("required output artifact missing or empty")
-    if protocol_errors and return_code == 0:
+    if artifact_requested and artifact_status != "fresh":
+        protocol_errors.append("required output artifact missing or empty")
+    if not stream_complete:
+        protocol_errors.append("terminal stream event missing or empty")
+
+    if timeout_kind:
+        return_code = TIMEOUT_EXIT
+        outcome = "timeout"
+    elif child_exit_code != 0:
+        return_code = child_exit_code
+        outcome = "error"
+    elif artifact_status == "fresh" and not stream_complete:
+        return_code = RECOVERABLE_PROTOCOL_EXIT
+        outcome = "completed_unverified_protocol"
+    elif protocol_errors:
         return_code = PROTOCOL_EXIT
-    outcome = "timeout" if timeout_kind else ("success" if return_code == 0 else "error")
+        outcome = "error"
+    else:
+        return_code = 0
+        outcome = "success"
     append_record(
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "phase": arguments.phase,
             "role": arguments.role,
             "venue": arguments.venue,
@@ -960,6 +1027,9 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
             "timeout_kind": timeout_kind,
             "protocol_error": "; ".join(protocol_errors) if protocol_errors else None,
             "exit_code": return_code,
+            "child_exit_code": child_exit_code,
+            "artifact_status": artifact_status,
+            "stream_status": stream_status,
             "program": Path(command[program_index]).name,
         },
         os.environ.get("KICKOFF_TIMING_LOG", DEFAULT_TELEMETRY),
@@ -968,6 +1038,12 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
         print(
             f"kickoff-config: {arguments.role} timed out ({timeout_kind}) after "
             f"{ended - started:.1f}s",
+            file=sys.stderr,
+        )
+    elif outcome == "completed_unverified_protocol":
+        print(
+            f"kickoff-config: {arguments.role} produced a fresh artifact but its "
+            "terminal stream event is incomplete; explicit artifact verification required",
             file=sys.stderr,
         )
     elif protocol_errors:

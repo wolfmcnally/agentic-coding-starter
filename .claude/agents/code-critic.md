@@ -20,6 +20,10 @@ You will receive via your task prompt:
 - Any minor corrections from the plan reviewer.
 - The list of files the implementer created or modified.
 - The phase's review lane, when it is `light` (per `policies/review-lanes.md`).
+- The reviewed/current candidate ids, change manifest, and evidence run
+  directory.
+- On revision rounds, the prior finding ledger and deterministic code-revision
+  packet.
 
 ## Procedure
 
@@ -38,6 +42,14 @@ Do **not** read every phase file.
 ### 2. Read the code
 
 Read every file listed as created or modified. Read immediate neighboring files only when needed to verify integration.
+
+The first critique is complete at the lane's declared intensity and batches
+every blocking issue. On a revision pass, decide prior `CODE-FNNN` findings
+first, then inspect the candidate-bound causal change and affected dependency
+surface. Rebase to a complete critique when the packet reports authority/scope
+drift, a new risk class, a changed public/persisted/security/concurrency/
+irreversible boundary, broad dispersion, an invalidated acceptance claim, or
+lost trustworthy continuity.
 
 ### 3. Review
 
@@ -86,8 +98,10 @@ Evaluate in priority order:
 - The Build Gate Sequence's `./bin/test` selection would actually exercise the
   new code.
 - When the repo owns the toolchain contract, focused tests use `bin/test`, the
-  sequence ends with `./bin/check all`, and the wrappers agree with the runtime
-  pin, committed metadata, and lockfile while preserving child statuses.
+  coder's evidence covers the iteration/revision-close sequence, the planned
+  acceptance-close sequence ends with `./bin/check all`, and the wrappers
+  agree with the runtime pin, committed metadata, and lockfile while
+  preserving child statuses.
 
 **Simplicity**
 - No new abstractions, generics, base classes, or helpers introduced without need.
@@ -97,7 +111,28 @@ Evaluate in priority order:
 - When the prompt declares `review_lane: light`, additionally judge whether the diff stayed within the mechanical scope `policies/review-lanes.md` defines (docs, renames, catalogs, mirrors, ripple application, gate-green dependency bumps, pattern-following config). This phase skipped plan review on the strength of that declaration.
 - If the work exceeded mechanical scope — any new/changed public API, schema or persisted-state change, concurrency, security-sensitive surface, architectural decision, or non-wording behavior change — the verdict is `REVISE` and the **first** Required Change is exactly: `Escalate: full lane — <one-line reason>`. List any other findings after it as usual.
 
-### 4. Issue the verdict
+### 4. Emit finding evidence
+
+Immediately before the verdict block, emit exactly one `## Finding Evidence`
+section containing a fenced JSON object with a `findings` array accepted by
+`bin/kickoff-evidence ingest-findings`.
+
+- New ids are sequential `CODE-FNNN`.
+- First-pass findings use classification `initial`.
+- Revision-only findings use `introduced-by-revision`,
+  `newly-exposed-by-resolution`, or `missed-in-full-pass`.
+- Carry every prior unresolved finding with its updated state; ids, authority,
+  required outcome, and `introduced_in` remain stable.
+- `verified`, `closed`, `rejected-with-evidence`, and `superseded` require the
+  resolving candidate id.
+- An approving verdict has no blocking finding left `open` or `addressed`.
+- Use an empty array when there are no findings.
+
+Each finding object has: `id`, `severity`, `authority`, `evidence`,
+`affected_paths`, `required_outcome`, `introduced_in`, `resolved_in`, `state`,
+`classification`, and `disposition`.
+
+### 5. Issue the verdict
 
 Your final output MUST end with exactly one of these two headers as the first line of the verdict block.
 
@@ -134,3 +169,4 @@ Your final output MUST end with exactly one of these two headers as the first li
 - Be specific in `REVISE` feedback — name the exact file, line range, and the change required.
 - Review only; do not rewrite the implementation.
 - Do a single focused review pass.
+- Do not omit or renumber prior findings on a revision pass.

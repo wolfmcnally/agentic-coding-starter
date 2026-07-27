@@ -73,13 +73,25 @@ A full coder → critic cycle is required when **either** dimension is high:
 - **High risk:** the correction touches a public API, schema or persisted state, concurrency or ordering, security-sensitive behavior, an architectural boundary, or ambiguous product behavior; weak or missing test coverage also makes the correction high risk.
 - **Large or cross-cutting:** the correction spans multiple subsystems or user-visible surfaces, forces a broad call-site update, or produces a diff too large to inspect confidently as one focused change.
 
+Risk tags are recorded in the candidate-bound change manifest governed by
+[`orchestration-evidence.md`](orchestration-evidence.md). A revision that adds
+a risk tag not present in the reviewed snapshot rebases to a complete review;
+it is not eligible for a delta-only pass. Authority or scope drift, lost
+review continuity, or indeterminate impact has the same fail-closed result.
+
 When neither condition holds, use the least ceremony that safely completes the correction:
 
 1. **Direct fix** — for a small, localized correction whose intended shape is already determined by a diagnostic or explicit user instruction. The orchestrator may edit the code itself.
 2. **Coder only** — for a low-risk correction that benefits from implementation delegation but is not large or cross-cutting. Invoke `phase-coder`; do not invoke `code-critic` merely because a coder ran.
 3. **Full cycle** — for any high-risk or large/cross-cutting correction. Invoke `phase-coder`, then `code-critic`, using the normal revision loop.
 
-Validation is never proportionalized away. Every route reruns the failing check first, then the focused tests and full touched-surface build/acceptance gates needed to show the final state is green. If a direct or coder-only correction grows beyond its classification, exposes an architectural question, or lacks convincing validation, upgrade it immediately to the full cycle.
+Validation is never proportionalized away. Every route reruns the failing
+check first, then the focused tests and affected revision-close gates. After
+code-critic approval, the orchestrator runs the complete acceptance-close
+sequence and `./bin/check all` once against the unchanged candidate. If a
+direct or coder-only correction grows beyond its classification, exposes an
+architectural question, or lacks convincing validation, upgrade it immediately
+to the full cycle.
 
 The orchestrator reports the selected route, the risk/size reason, files changed, and validation evidence. This is a routing decision, not a new `review_lane:` value and not permission to skip the initial code review.
 

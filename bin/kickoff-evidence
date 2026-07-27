@@ -1,0 +1,1011 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Create and validate run-scoped evidence for incremental kickoff review."""
+
+from __future__ import annotations
+
+import argparse
+import difflib
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+SCHEMA_VERSION = 1
+CANDIDATE_NAMESPACE = b"agentic-kickoff-candidate-v1\0"
+FINDING_ID = re.compile(r"^(PLAN|CODE)-F[0-9]{3}$")
+CANDIDATE_ID = re.compile(r"^[0-9a-f]{64}$")
+SEVERITIES = {"blocking", "high", "medium", "low", "nit"}
+STATES = {
+    "open",
+    "addressed",
+    "verified",
+    "closed",
+    "rejected-with-evidence",
+    "blocked-owner",
+    "superseded",
+}
+CLASSIFICATIONS = {
+    "initial",
+    "introduced-by-revision",
+    "newly-exposed-by-resolution",
+    "missed-in-full-pass",
+}
+RISK_TAGS = {
+    "public-api",
+    "persisted-state",
+    "schema",
+    "security",
+    "privacy",
+    "concurrency",
+    "ordering",
+    "irreversible-state",
+    "cross-repository",
+    "deploy",
+    "authority-corruption",
+    "user-visible",
+    "weak-coverage",
+}
+ALLOWED_TRANSITIONS = {
+    "open": {
+        "open",
+        "addressed",
+        "blocked-owner",
+        "rejected-with-evidence",
+        "superseded",
+    },
+    "addressed": {"addressed", "verified", "open", "blocked-owner", "superseded"},
+    "verified": {"verified", "closed", "open"},
+    "closed": {"closed", "open"},
+    "blocked-owner": {"blocked-owner", "open", "addressed", "superseded"},
+    "rejected-with-evidence": {"rejected-with-evidence", "open", "superseded"},
+    "superseded": {"superseded"},
+}
+UNRESOLVED_STATES = {"open", "addressed", "verified", "blocked-owner"}
+
+
+class EvidenceError(ValueError):
+    """A fail-closed evidence validation error."""
+
+
+def now() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+def atomic_json(path: Path, value: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    temporary.write_text(json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
+    temporary.replace(path)
+
+
+def append_jsonl(path: Path, value: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a") as handle:
+        json.dump(value, handle, sort_keys=True, separators=(",", ":"))
+        handle.write("\n")
+
+
+def load_json(path: Path) -> Any:
+    try:
+        return json.loads(path.read_text())
+    except FileNotFoundError as exc:
+        raise EvidenceError(f"missing evidence file: {path.name}") from exc
+    except json.JSONDecodeError as exc:
+        raise EvidenceError(f"invalid JSON in {path.name}: {exc}") from exc
+
+
+def extract_json_block(path: Path, heading: str) -> Any:
+    try:
+        text = path.read_text()
+    except FileNotFoundError as exc:
+        raise EvidenceError(f"missing role artifact: {path}") from exc
+    pattern = re.compile(
+        rf"^{re.escape(heading)}[ \t]*\n```json[ \t]*\n(.*?)\n```[ \t]*$",
+        re.MULTILINE | re.DOTALL,
+    )
+    matches = pattern.findall(text)
+    if len(matches) != 1:
+        raise EvidenceError(f"{path.name} must contain exactly one {heading} fenced JSON block")
+    try:
+        return json.loads(matches[0])
+    except json.JSONDecodeError as exc:
+        raise EvidenceError(f"invalid JSON under {heading}: {exc}") from exc
+
+
+def git_root(start: Path) -> Path:
+    process = subprocess.run(
+        ["git", "-C", str(start), "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if process.returncode != 0:
+        raise EvidenceError(process.stderr.strip() or "not inside a Git repository")
+    return Path(process.stdout.strip()).resolve()
+
+
+def tree_manifest(root: Path) -> dict[str, Any]:
+    executable = Path(__file__).resolve().with_name("kickoff-tree-id")
+    process = subprocess.run(
+        [str(executable), "--root", str(root), "--json"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if process.returncode != 0:
+        raise EvidenceError(process.stderr.strip() or "candidate identification failed")
+    value = json.loads(process.stdout)
+    validate_candidate_manifest(value)
+    return value
+
+
+def validate_candidate_id(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not CANDIDATE_ID.fullmatch(value):
+        raise EvidenceError(f"{label} must be a lowercase SHA-256 identifier")
+    return value
+
+
+def validate_string_list(value: Any, label: str) -> list[str]:
+    if not isinstance(value, list) or not all(
+        isinstance(item, str) and item.strip() for item in value
+    ):
+        raise EvidenceError(f"{label} must be a string array")
+    return value
+
+
+def validate_relative_paths(value: Any, label: str) -> list[str]:
+    paths = validate_string_list(value, label)
+    if any(Path(item).is_absolute() or ".." in Path(item).parts for item in paths):
+        raise EvidenceError(f"{label} must contain repository-relative paths")
+    return paths
+
+
+def validate_candidate_manifest(value: Any) -> None:
+    if not isinstance(value, dict) or value.get("schema_version") != SCHEMA_VERSION:
+        raise EvidenceError("invalid candidate manifest schema")
+    validate_candidate_id(value.get("candidate_id"), "candidate_id")
+    entries = value.get("entries")
+    if not isinstance(entries, list) or value.get("path_count") != len(entries):
+        raise EvidenceError("candidate manifest path count does not match entries")
+    prior: bytes | None = None
+    digest = hashlib.sha256(CANDIDATE_NAMESPACE)
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise EvidenceError("candidate entry must be an object")
+        path = entry.get("path")
+        if (
+            not isinstance(path, str)
+            or not path
+            or Path(path).is_absolute()
+            or ".." in Path(path).parts
+        ):
+            raise EvidenceError("candidate entry path must be repository-relative")
+        encoded = os.fsencode(path)
+        if prior is not None and encoded <= prior:
+            raise EvidenceError("candidate entries are not uniquely bytewise ordered")
+        prior = encoded
+        mode = entry.get("mode")
+        if mode not in {"missing", "100644", "100755", "120000", "160000"}:
+            raise EvidenceError(f"candidate entry {path} has invalid mode")
+        content_hash = validate_candidate_id(
+            entry.get("content_sha256"), f"content hash for {path}"
+        )
+        digest.update(len(encoded).to_bytes(8, "big"))
+        digest.update(encoded)
+        digest.update(mode.encode("ascii") + b"\0")
+        digest.update(bytes.fromhex(content_hash))
+    if digest.hexdigest() != value["candidate_id"]:
+        raise EvidenceError("candidate manifest identifier does not match its entries")
+
+
+def validate_run_dir(run_dir: Path) -> dict[str, Any]:
+    run = load_json(run_dir / "run.json")
+    if not isinstance(run, dict) or run.get("schema_version") != SCHEMA_VERSION:
+        raise EvidenceError("invalid run metadata schema")
+    root = Path(str(run.get("repository_root", "")))
+    if not root.is_absolute() or not (root / ".git").exists():
+        raise EvidenceError("run metadata has no valid repository root")
+    validate_candidate_id(run.get("initial_candidate_id"), "initial_candidate_id")
+    return run
+
+
+def parse_authority_spec(specification: str, root: Path, priority: int) -> dict[str, Any]:
+    path_text, separator, locator = specification.partition("::")
+    relative = Path(path_text)
+    if relative.is_absolute() or ".." in relative.parts or not path_text:
+        raise EvidenceError(f"authority path must be repository-relative: {path_text}")
+    target = (root / relative).resolve()
+    if not target.is_relative_to(root) or not target.is_file():
+        raise EvidenceError(f"authority file does not exist: {path_text}")
+    return {
+        "path": relative.as_posix(),
+        "content_sha256": hashlib.sha256(target.read_bytes()).hexdigest(),
+        "locator": locator if separator and locator else None,
+        "priority": priority,
+    }
+
+
+def command_init(arguments: argparse.Namespace) -> None:
+    root = git_root(arguments.root.resolve())
+    run_dir = arguments.run_dir.resolve()
+    if run_dir.exists() and any(run_dir.iterdir()):
+        raise EvidenceError(f"run directory is not empty: {run_dir}")
+    run_dir.mkdir(parents=True, exist_ok=True)
+    candidate = tree_manifest(root)
+    authorities = [
+        parse_authority_spec(specification, root, priority)
+        for priority, specification in enumerate(arguments.authority, 1)
+    ]
+    if not authorities:
+        raise EvidenceError("at least one --authority is required")
+    created_at = now()
+    atomic_json(
+        run_dir / "run.json",
+        {
+            "schema_version": SCHEMA_VERSION,
+            "phase": arguments.phase,
+            "repository_root": str(root),
+            "created_at": created_at,
+            "initial_candidate_id": candidate["candidate_id"],
+        },
+    )
+    atomic_json(
+        run_dir / "authority.json",
+        {
+            "schema_version": SCHEMA_VERSION,
+            "captured_at": created_at,
+            "authorities": authorities,
+        },
+    )
+    atomic_json(run_dir / "reviewed-candidate.json", candidate)
+    atomic_json(
+        run_dir / "findings.json",
+        {
+            "schema_version": SCHEMA_VERSION,
+            "updated_at": created_at,
+            "reopened_count": 0,
+            "findings": [],
+        },
+    )
+    (run_dir / "gates.jsonl").touch()
+    (run_dir / "packets.jsonl").touch()
+    print(candidate["candidate_id"])
+
+
+def manifest_map(manifest: dict[str, Any]) -> dict[str, dict[str, str]]:
+    return {entry["path"]: entry for entry in manifest["entries"]}
+
+
+def changed_entries(reviewed: dict[str, Any], current: dict[str, Any]) -> list[dict[str, Any]]:
+    before = manifest_map(reviewed)
+    after = manifest_map(current)
+    changes: list[dict[str, Any]] = []
+    for path in sorted(before.keys() | after.keys(), key=os.fsencode):
+        old = before.get(path)
+        new = after.get(path)
+        if old == new:
+            continue
+        if old is None:
+            change = "added"
+        elif new is None or new["mode"] == "missing":
+            change = "deleted"
+        elif old["mode"] != new["mode"] and old["content_sha256"] == new["content_sha256"]:
+            change = "mode-changed"
+        else:
+            change = "modified"
+        changes.append(
+            {
+                "path": path,
+                "change": change,
+                "before_mode": old["mode"] if old else None,
+                "before_sha256": old["content_sha256"] if old else None,
+                "after_mode": new["mode"] if new else None,
+                "after_sha256": new["content_sha256"] if new else None,
+            }
+        )
+    return changes
+
+
+def authority_drift(run_dir: Path, root: Path) -> list[dict[str, str]]:
+    manifest = load_json(run_dir / "authority.json")
+    drift: list[dict[str, str]] = []
+    for authority in manifest["authorities"]:
+        target = root / authority["path"]
+        current = hashlib.sha256(target.read_bytes()).hexdigest() if target.is_file() else "missing"
+        if current != authority["content_sha256"]:
+            drift.append(
+                {
+                    "path": authority["path"],
+                    "captured_sha256": authority["content_sha256"],
+                    "current_sha256": current,
+                }
+            )
+    return drift
+
+
+def command_capture_change(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    root = Path(run["repository_root"])
+    reviewed = load_json(arguments.run_dir / "reviewed-candidate.json")
+    validate_candidate_manifest(reviewed)
+    current = tree_manifest(root)
+    drift = authority_drift(arguments.run_dir, root)
+    metadata = {
+        "risk_tags": arguments.risk_tag,
+        "selected_tests": arguments.test,
+        "selection_reason": arguments.selection_reason,
+        "intentionally_unchanged": arguments.unchanged,
+        "rebase_reasons": arguments.rebase_reason,
+    }
+    if arguments.metadata or arguments.metadata_artifact:
+        supplied = (
+            load_json(arguments.metadata)
+            if arguments.metadata
+            else extract_json_block(arguments.metadata_artifact, "### Change Evidence")
+        )
+        expected_fields = set(metadata)
+        if not isinstance(supplied, dict) or set(supplied) != expected_fields:
+            raise EvidenceError(
+                "change metadata must contain exactly: " + ", ".join(sorted(expected_fields))
+            )
+        metadata = supplied
+    for field in (
+        "risk_tags",
+        "selected_tests",
+        "rebase_reasons",
+    ):
+        validate_string_list(metadata[field], f"change metadata {field}")
+    validate_relative_paths(
+        metadata["intentionally_unchanged"],
+        "change metadata intentionally_unchanged",
+    )
+    if (
+        not isinstance(metadata["selection_reason"], str)
+        or not metadata["selection_reason"].strip()
+    ):
+        raise EvidenceError("change metadata selection_reason must be nonempty text")
+    risk_tags = sorted(set(metadata["risk_tags"]))
+    invalid_tags = [
+        tag for tag in risk_tags if tag not in RISK_TAGS and not tag.startswith("project:")
+    ]
+    if invalid_tags:
+        raise EvidenceError(f"unknown risk tag(s): {', '.join(invalid_tags)}")
+    reviewed_change_path = arguments.run_dir / "reviewed-change.json"
+    prior_risk_tags = (
+        set(load_json(reviewed_change_path).get("risk_tags", []))
+        if reviewed_change_path.exists()
+        else set()
+    )
+    new_risk_tags = sorted(set(risk_tags) - prior_risk_tags)
+    change = {
+        "schema_version": SCHEMA_VERSION,
+        "captured_at": now(),
+        "reviewed_candidate_id": reviewed["candidate_id"],
+        "candidate_id": current["candidate_id"],
+        "changed_files": changed_entries(reviewed, current),
+        "risk_tags": risk_tags,
+        "new_risk_tags": new_risk_tags,
+        "selected_tests": sorted(set(metadata["selected_tests"])),
+        "selection_reason": metadata["selection_reason"].strip(),
+        "intentionally_unchanged": sorted(
+            set(metadata["intentionally_unchanged"]), key=os.fsencode
+        ),
+        "authority_drift": drift,
+        "rebase_required": bool(drift)
+        or bool(metadata["rebase_reasons"])
+        or bool(prior_risk_tags and new_risk_tags),
+        "rebase_reasons": sorted(set(metadata["rebase_reasons"])),
+    }
+    atomic_json(arguments.run_dir / "change.json", change)
+    atomic_json(arguments.run_dir / "candidate.json", current)
+    print(current["candidate_id"])
+
+
+def command_mark_reviewed(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    root = Path(run["repository_root"])
+    current = tree_manifest(root)
+    if arguments.expected_candidate:
+        expected = validate_candidate_id(arguments.expected_candidate, "expected candidate")
+        if current["candidate_id"] != expected:
+            raise EvidenceError(
+                f"candidate mismatch: expected {expected}, found {current['candidate_id']}"
+            )
+    atomic_json(arguments.run_dir / "reviewed-candidate.json", current)
+    change_path = arguments.run_dir / "change.json"
+    if change_path.exists():
+        atomic_json(
+            arguments.run_dir / "reviewed-change.json",
+            load_json(change_path),
+        )
+    print(current["candidate_id"])
+
+
+def command_capture_plan(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    root = Path(run["repository_root"])
+    if not arguments.plan.is_file():
+        raise EvidenceError(f"plan artifact does not exist: {arguments.plan}")
+    current_text = arguments.plan.read_text()
+    reviewed_path = arguments.run_dir / "reviewed-plan.md"
+    reviewed_text = reviewed_path.read_text() if reviewed_path.exists() else current_text
+    if not reviewed_path.exists():
+        reviewed_path.write_text(current_text)
+    delta = "".join(
+        difflib.unified_diff(
+            reviewed_text.splitlines(keepends=True),
+            current_text.splitlines(keepends=True),
+            fromfile="reviewed-plan",
+            tofile="current-plan",
+        )
+    )
+    delta_path = arguments.run_dir / "plan-change.patch"
+    delta_path.write_text(delta)
+    candidate = tree_manifest(root)
+    drift = authority_drift(arguments.run_dir, root)
+    manifest = {
+        "schema_version": SCHEMA_VERSION,
+        "captured_at": now(),
+        "candidate_id": candidate["candidate_id"],
+        "reviewed_plan_sha256": hashlib.sha256(reviewed_text.encode()).hexdigest(),
+        "plan_sha256": hashlib.sha256(current_text.encode()).hexdigest(),
+        "changed": reviewed_text != current_text,
+        "delta_sha256": hashlib.sha256(delta.encode()).hexdigest(),
+        "delta_bytes": len(delta.encode()),
+        "authority_drift": drift,
+        "rebase_required": bool(drift) or bool(arguments.rebase_reason),
+        "rebase_reasons": sorted(set(arguments.rebase_reason)),
+    }
+    atomic_json(arguments.run_dir / "plan-change.json", manifest)
+    atomic_json(arguments.run_dir / "candidate.json", candidate)
+    print(manifest["plan_sha256"])
+
+
+def command_mark_plan_reviewed(arguments: argparse.Namespace) -> None:
+    validate_run_dir(arguments.run_dir)
+    if not arguments.plan.is_file():
+        raise EvidenceError(f"plan artifact does not exist: {arguments.plan}")
+    current_text = arguments.plan.read_text()
+    expected = arguments.expected_plan
+    actual = hashlib.sha256(current_text.encode()).hexdigest()
+    if expected and validate_candidate_id(expected, "expected plan hash") != actual:
+        raise EvidenceError(f"plan mismatch: expected {expected}, found {actual}")
+    (arguments.run_dir / "reviewed-plan.md").write_text(current_text)
+    print(actual)
+
+
+def require_text(value: Any, field: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise EvidenceError(f"finding {field} must be nonempty text")
+    return value.strip()
+
+
+def validate_finding(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise EvidenceError("each finding must be an object")
+    finding_id = require_text(value.get("id"), "id")
+    if not FINDING_ID.fullmatch(finding_id):
+        raise EvidenceError(f"invalid finding id: {finding_id}")
+    severity = require_text(value.get("severity"), "severity")
+    state = require_text(value.get("state"), "state")
+    classification = require_text(value.get("classification"), "classification")
+    if severity not in SEVERITIES:
+        raise EvidenceError(f"{finding_id} has invalid severity: {severity}")
+    if state not in STATES:
+        raise EvidenceError(f"{finding_id} has invalid state: {state}")
+    if classification not in CLASSIFICATIONS:
+        raise EvidenceError(f"{finding_id} has invalid classification: {classification}")
+    affected_paths = value.get("affected_paths")
+    if not isinstance(affected_paths, list):
+        raise EvidenceError(f"{finding_id} affected_paths must be an array")
+    if affected_paths:
+        validate_relative_paths(affected_paths, f"{finding_id} affected_paths")
+    introduced_in = validate_candidate_id(value.get("introduced_in"), "introduced_in")
+    resolved_value = value.get("resolved_in")
+    resolved_in = (
+        validate_candidate_id(resolved_value, "resolved_in") if resolved_value is not None else None
+    )
+    if state in {"verified", "closed", "rejected-with-evidence", "superseded"} and not resolved_in:
+        raise EvidenceError(f"{finding_id} state {state} requires resolved_in")
+    return {
+        "id": finding_id,
+        "severity": severity,
+        "authority": require_text(value.get("authority"), "authority"),
+        "evidence": require_text(value.get("evidence"), "evidence"),
+        "affected_paths": sorted(set(affected_paths), key=os.fsencode),
+        "required_outcome": require_text(value.get("required_outcome"), "required_outcome"),
+        "introduced_in": introduced_in,
+        "resolved_in": resolved_in,
+        "state": state,
+        "classification": classification,
+        "disposition": (
+            require_text(value.get("disposition"), "disposition")
+            if value.get("disposition") is not None
+            else None
+        ),
+    }
+
+
+def command_ingest_findings(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    current = tree_manifest(Path(run["repository_root"]))
+    expected_candidate = validate_candidate_id(arguments.candidate, "finding candidate")
+    if current["candidate_id"] != expected_candidate:
+        raise EvidenceError(
+            f"candidate mismatch: expected {expected_candidate}, found {current['candidate_id']}"
+        )
+    incoming_document = (
+        load_json(arguments.input)
+        if arguments.input
+        else extract_json_block(arguments.artifact, "## Finding Evidence")
+    )
+    if not isinstance(incoming_document, dict) or not isinstance(
+        incoming_document.get("findings"), list
+    ):
+        raise EvidenceError("finding input must be an object with a findings array")
+    incoming = [validate_finding(item) for item in incoming_document["findings"]]
+    if len({item["id"] for item in incoming}) != len(incoming):
+        raise EvidenceError("finding input contains duplicate ids")
+    ledger = load_json(arguments.run_dir / "findings.json")
+    existing = {item["id"]: item for item in ledger["findings"]}
+    reopened = int(ledger.get("reopened_count", 0))
+    for finding in incoming:
+        expected_prefix = f"{arguments.kind.upper()}-"
+        if not finding["id"].startswith(expected_prefix):
+            raise EvidenceError(
+                f"{arguments.kind} finding must use the {expected_prefix}FNNN namespace"
+            )
+        prior = existing.get(finding["id"])
+        if prior is None and finding["introduced_in"] != expected_candidate:
+            raise EvidenceError(
+                f"{finding['id']} introduced_in does not match the reviewed candidate"
+            )
+        if finding["resolved_in"] is not None and finding["resolved_in"] != expected_candidate:
+            raise EvidenceError(
+                f"{finding['id']} resolved_in does not match the reviewed candidate"
+            )
+        if prior:
+            for immutable in ("authority", "required_outcome", "introduced_in"):
+                if prior[immutable] != finding[immutable]:
+                    raise EvidenceError(f"{finding['id']} changes immutable field {immutable}")
+            if finding["state"] not in ALLOWED_TRANSITIONS[prior["state"]]:
+                raise EvidenceError(
+                    f"invalid transition for {finding['id']}: "
+                    f"{prior['state']} -> {finding['state']}"
+                )
+            if (
+                prior["state"] in {"closed", "verified", "rejected-with-evidence"}
+                and finding["state"] == "open"
+            ):
+                reopened += 1
+        existing[finding["id"]] = finding
+    updated = {
+        "schema_version": SCHEMA_VERSION,
+        "updated_at": now(),
+        "reopened_count": reopened,
+        "findings": [existing[key] for key in sorted(existing)],
+    }
+    atomic_json(arguments.run_dir / "findings.json", updated)
+    print(len(updated["findings"]))
+
+
+def command_record_gate(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    root = Path(run["repository_root"])
+    current = tree_manifest(root)
+    expected = validate_candidate_id(arguments.candidate, "gate candidate")
+    if current["candidate_id"] != expected:
+        raise EvidenceError(
+            f"candidate mismatch: expected {expected}, found {current['candidate_id']}"
+        )
+    artifact_digest = None
+    if not arguments.command.strip():
+        raise EvidenceError("gate command must be nonempty")
+    if not arguments.selection_reason.strip():
+        raise EvidenceError("gate selection reason must be nonempty")
+    if arguments.warning_count < 0:
+        raise EvidenceError("gate warning count cannot be negative")
+    if arguments.artifact:
+        if not arguments.artifact.is_file():
+            raise EvidenceError(f"gate artifact does not exist: {arguments.artifact}")
+        artifact_digest = hashlib.sha256(arguments.artifact.read_bytes()).hexdigest()
+    record = {
+        "schema_version": SCHEMA_VERSION,
+        "recorded_at": now(),
+        "candidate_id": expected,
+        "command": arguments.command.strip(),
+        "selection_reason": arguments.selection_reason.strip(),
+        "exit_code": arguments.exit_code,
+        "warning_count": arguments.warning_count,
+        "artifact_sha256": artifact_digest,
+        "final": arguments.final,
+    }
+    append_jsonl(arguments.run_dir / "gates.jsonl", record)
+    print("recorded")
+
+
+def source_digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def command_packet(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    authority = load_json(arguments.run_dir / "authority.json")
+    findings = load_json(arguments.run_dir / "findings.json")
+    gates_path = arguments.run_dir / "gates.jsonl"
+    gates = [json.loads(line) for line in gates_path.read_text().splitlines() if line.strip()]
+    unresolved = [item for item in findings["findings"] if item["state"] in UNRESOLVED_STATES]
+    if arguments.kind == "plan":
+        plan_change = load_json(arguments.run_dir / "plan-change.json")
+        candidate_id = plan_change["candidate_id"]
+        lines = [
+            f"# Plan Revision Packet — {run['phase']}",
+            "",
+            "## Plan snapshot",
+            "",
+            f"- Candidate: `{candidate_id}`",
+            f"- Reviewed plan: `{plan_change['reviewed_plan_sha256']}`",
+            f"- Current plan: `{plan_change['plan_sha256']}`",
+            f"- Rebase required: `{'yes' if plan_change['rebase_required'] else 'no'}`",
+            "",
+            "## Authority",
+            "",
+        ]
+        authority_change = plan_change["authority_drift"]
+        causal_lines = [
+            "",
+            "## Causal plan change",
+            "",
+            (arguments.run_dir / "plan-change.patch").read_text() or "No plan-text change.",
+        ]
+        risk_lines: list[str] = []
+        source_change_path = arguments.run_dir / "plan-change.json"
+    else:
+        change = load_json(arguments.run_dir / "change.json")
+        candidate_id = change["candidate_id"]
+        lines = [
+            f"# Code Revision Packet — {run['phase']}",
+            "",
+            "## Candidate",
+            "",
+            f"- Reviewed: `{change['reviewed_candidate_id']}`",
+            f"- Current: `{candidate_id}`",
+            f"- Rebase required: `{'yes' if change['rebase_required'] else 'no'}`",
+            "",
+            "## Authority",
+            "",
+        ]
+        authority_change = change["authority_drift"]
+        causal_lines = ["", "## Causal change", ""]
+        if change["changed_files"]:
+            for item in change["changed_files"]:
+                causal_lines.append(
+                    f"- `{item['path']}` — {item['change']} "
+                    f"(`{item['before_sha256'] or 'absent'}` → "
+                    f"`{item['after_sha256'] or 'absent'}`)"
+                )
+        else:
+            causal_lines.append("- None.")
+        risk_lines = [
+            "",
+            f"- Risk tags: {', '.join(change['risk_tags']) or 'none declared'}",
+            f"- New risk tags: {', '.join(change['new_risk_tags']) or 'none'}",
+            f"- Selected tests: {', '.join(change['selected_tests']) or 'none recorded'}",
+            f"- Selection reason: {change['selection_reason']}",
+        ]
+        source_change_path = arguments.run_dir / "change.json"
+    for item in authority["authorities"]:
+        locator = f" — {item['locator']}" if item["locator"] else ""
+        lines.append(f"- `{item['path']}` @ `{item['content_sha256']}`{locator}")
+    if authority_change:
+        lines.extend(["", "### Authority drift"])
+        for item in authority_change:
+            lines.append(
+                f"- `{item['path']}`: `{item['captured_sha256']}` → `{item['current_sha256']}`"
+            )
+    lines.extend(causal_lines)
+    lines.extend(risk_lines)
+    lines.extend(["", "## Unresolved findings", ""])
+    if unresolved:
+        for item in unresolved:
+            lines.extend(
+                [
+                    f"### {item['id']} — {item['severity']} / {item['state']}",
+                    "",
+                    f"- Authority: {item['authority']}",
+                    f"- Evidence: {item['evidence']}",
+                    f"- Required outcome: {item['required_outcome']}",
+                    f"- Affected paths: {', '.join(item['affected_paths']) or 'none'}",
+                    f"- Classification: {item['classification']}",
+                    "",
+                ]
+            )
+    else:
+        lines.append("- None.")
+    lines.extend(["", "## Gate evidence", ""])
+    if gates:
+        for gate in gates:
+            lines.append(
+                f"- `{gate['command']}` @ `{gate['candidate_id']}`: "
+                f"exit {gate['exit_code']}, warnings {gate['warning_count']}"
+            )
+    else:
+        lines.append("- None recorded.")
+    lines.extend(
+        [
+            "",
+            "## Omission rules",
+            "",
+            "- Closed, rejected-with-evidence, and superseded findings are omitted.",
+            "- Unchanged authority content is referenced by path, locator, and hash.",
+            "- Unchanged candidate files are omitted.",
+            "- Original repository files remain authoritative and may be read on demand.",
+            "",
+        ]
+    )
+    text = "\n".join(lines)
+    arguments.output.parent.mkdir(parents=True, exist_ok=True)
+    arguments.output.write_text(text)
+    packet_record = {
+        "schema_version": SCHEMA_VERSION,
+        "created_at": now(),
+        "kind": arguments.kind,
+        "candidate_id": candidate_id,
+        "bytes": len(text.encode()),
+        "sha256": hashlib.sha256(text.encode()).hexdigest(),
+        "source_sha256": {
+            "authority": source_digest(arguments.run_dir / "authority.json"),
+            "change": source_digest(source_change_path),
+            "findings": source_digest(arguments.run_dir / "findings.json"),
+            "gates": source_digest(gates_path),
+        },
+        "unresolved_findings": len(unresolved),
+    }
+    append_jsonl(arguments.run_dir / "packets.jsonl", packet_record)
+    print(packet_record["sha256"])
+
+
+def command_validate(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    root = Path(run["repository_root"])
+    authority = load_json(arguments.run_dir / "authority.json")
+    if (
+        not isinstance(authority, dict)
+        or authority.get("schema_version") != SCHEMA_VERSION
+        or not isinstance(authority.get("authorities"), list)
+    ):
+        raise EvidenceError("invalid authority manifest schema")
+    for priority, item in enumerate(authority["authorities"], 1):
+        if not isinstance(item, dict) or item.get("priority") != priority:
+            raise EvidenceError("authority entries must have contiguous priority")
+        authority_path = item.get("path")
+        if (
+            not isinstance(authority_path, str)
+            or not authority_path
+            or Path(authority_path).is_absolute()
+            or ".." in Path(authority_path).parts
+        ):
+            raise EvidenceError("authority path must be repository-relative")
+        validate_candidate_id(item.get("content_sha256"), f"authority hash for {authority_path}")
+    validate_candidate_manifest(load_json(arguments.run_dir / "reviewed-candidate.json"))
+    findings = load_json(arguments.run_dir / "findings.json")
+    if (
+        not isinstance(findings, dict)
+        or findings.get("schema_version") != SCHEMA_VERSION
+        or not isinstance(findings.get("findings"), list)
+        or not isinstance(findings.get("reopened_count"), int)
+        or findings["reopened_count"] < 0
+    ):
+        raise EvidenceError("invalid finding ledger schema")
+    for item in findings.get("findings", []):
+        validate_finding(item)
+    change_path = arguments.run_dir / "change.json"
+    if change_path.exists():
+        change = load_json(change_path)
+        if (
+            not isinstance(change, dict)
+            or change.get("schema_version") != SCHEMA_VERSION
+            or not isinstance(change.get("changed_files"), list)
+            or not isinstance(change.get("rebase_required"), bool)
+        ):
+            raise EvidenceError("invalid change manifest schema")
+        validate_candidate_id(change.get("reviewed_candidate_id"), "reviewed candidate")
+        validate_candidate_id(change.get("candidate_id"), "candidate")
+        validate_string_list(change.get("risk_tags"), "change risk_tags")
+        validate_string_list(change.get("new_risk_tags"), "change new_risk_tags")
+        validate_string_list(change.get("selected_tests"), "change selected_tests")
+        validate_relative_paths(
+            change.get("intentionally_unchanged"),
+            "change intentionally_unchanged",
+        )
+        if (
+            not isinstance(change.get("selection_reason"), str)
+            or not change["selection_reason"].strip()
+        ):
+            raise EvidenceError("change selection_reason must be nonempty text")
+        for changed_file in change["changed_files"]:
+            if not isinstance(changed_file, dict) or changed_file.get("change") not in {
+                "added",
+                "modified",
+                "mode-changed",
+                "deleted",
+            }:
+                raise EvidenceError("invalid changed-file record")
+            validate_relative_paths([changed_file.get("path")], "changed-file path")
+    plan_change_path = arguments.run_dir / "plan-change.json"
+    if plan_change_path.exists():
+        plan_change = load_json(plan_change_path)
+        if plan_change.get("schema_version") != SCHEMA_VERSION:
+            raise EvidenceError("invalid plan-change schema")
+        validate_candidate_id(plan_change.get("candidate_id"), "plan candidate")
+        validate_candidate_id(plan_change.get("reviewed_plan_sha256"), "reviewed plan hash")
+        validate_candidate_id(plan_change.get("plan_sha256"), "plan hash")
+        validate_candidate_id(plan_change.get("delta_sha256"), "plan delta hash")
+    ledgers: dict[str, list[dict[str, Any]]] = {}
+    for ledger_name in ("gates.jsonl", "packets.jsonl"):
+        records: list[dict[str, Any]] = []
+        for line_number, line in enumerate(
+            (arguments.run_dir / ledger_name).read_text().splitlines(), 1
+        ):
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise EvidenceError(
+                    f"invalid JSON in {ledger_name} line {line_number}: {exc}"
+                ) from exc
+            if not isinstance(record, dict) or record.get("schema_version") != SCHEMA_VERSION:
+                raise EvidenceError(f"invalid record schema in {ledger_name} line {line_number}")
+            validate_candidate_id(
+                record.get("candidate_id"),
+                f"candidate in {ledger_name} line {line_number}",
+            )
+            records.append(record)
+        ledgers[ledger_name] = records
+    for line_number, gate in enumerate(ledgers["gates.jsonl"], 1):
+        if (
+            not isinstance(gate.get("command"), str)
+            or not gate["command"].strip()
+            or not isinstance(gate.get("selection_reason"), str)
+            or not gate["selection_reason"].strip()
+            or not isinstance(gate.get("exit_code"), int)
+            or not isinstance(gate.get("warning_count"), int)
+            or gate["warning_count"] < 0
+            or not isinstance(gate.get("final"), bool)
+        ):
+            raise EvidenceError(f"invalid gate record in gates.jsonl line {line_number}")
+        artifact_hash = gate.get("artifact_sha256")
+        if artifact_hash is not None:
+            validate_candidate_id(artifact_hash, f"artifact hash in gates.jsonl line {line_number}")
+    for line_number, packet in enumerate(ledgers["packets.jsonl"], 1):
+        if (
+            packet.get("kind") not in {"plan", "code"}
+            or not isinstance(packet.get("bytes"), int)
+            or packet["bytes"] < 0
+            or not isinstance(packet.get("unresolved_findings"), int)
+            or packet["unresolved_findings"] < 0
+        ):
+            raise EvidenceError(f"invalid packet record in packets.jsonl line {line_number}")
+        validate_candidate_id(packet.get("sha256"), "packet hash")
+        source_hashes = packet.get("source_sha256")
+        if not isinstance(source_hashes, dict):
+            raise EvidenceError(f"invalid packet sources in packets.jsonl line {line_number}")
+        for label, source_hash in source_hashes.items():
+            validate_candidate_id(source_hash, f"packet source hash {label}")
+    if root != git_root(root):
+        raise EvidenceError("recorded repository root no longer resolves to itself")
+    if arguments.require_final:
+        current_id = tree_manifest(root)["candidate_id"]
+        successful_final = [
+            gate
+            for gate in ledgers["gates.jsonl"]
+            if gate["final"] and gate["candidate_id"] == current_id and gate["exit_code"] == 0
+        ]
+        if not successful_final:
+            raise EvidenceError("no successful final gate is recorded for the current candidate")
+        if arguments.required_final_command and not any(
+            gate["command"] == arguments.required_final_command for gate in successful_final
+        ):
+            raise EvidenceError(
+                "required final command is not recorded successfully for the current candidate"
+            )
+    print("EVIDENCE VALID")
+
+
+def add_run_dir(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--run-dir", type=Path, required=True)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    subparsers = parser.add_subparsers(dest="action", required=True)
+
+    init = subparsers.add_parser("init")
+    init.add_argument("--run-dir", type=Path, required=True)
+    init.add_argument("--root", type=Path, default=Path.cwd())
+    init.add_argument("--phase", required=True)
+    init.add_argument("--authority", action="append", default=[])
+    init.set_defaults(handler=command_init)
+
+    capture = subparsers.add_parser("capture-change")
+    add_run_dir(capture)
+    capture.add_argument("--risk-tag", action="append", default=[])
+    capture.add_argument("--test", action="append", default=[])
+    capture.add_argument("--unchanged", action="append", default=[])
+    capture.add_argument("--rebase-reason", action="append", default=[])
+    capture.add_argument("--selection-reason")
+    capture_metadata = capture.add_mutually_exclusive_group()
+    capture_metadata.add_argument("--metadata", type=Path)
+    capture_metadata.add_argument("--metadata-artifact", type=Path)
+    capture.set_defaults(handler=command_capture_change)
+
+    reviewed = subparsers.add_parser("mark-reviewed")
+    add_run_dir(reviewed)
+    reviewed.add_argument("--expected-candidate")
+    reviewed.set_defaults(handler=command_mark_reviewed)
+
+    plan = subparsers.add_parser("capture-plan")
+    add_run_dir(plan)
+    plan.add_argument("--plan", type=Path, required=True)
+    plan.add_argument("--rebase-reason", action="append", default=[])
+    plan.set_defaults(handler=command_capture_plan)
+
+    plan_reviewed = subparsers.add_parser("mark-plan-reviewed")
+    add_run_dir(plan_reviewed)
+    plan_reviewed.add_argument("--plan", type=Path, required=True)
+    plan_reviewed.add_argument("--expected-plan")
+    plan_reviewed.set_defaults(handler=command_mark_plan_reviewed)
+
+    findings = subparsers.add_parser("ingest-findings")
+    add_run_dir(findings)
+    findings.add_argument("--kind", choices=("plan", "code"), required=True)
+    findings.add_argument("--candidate", required=True)
+    finding_source = findings.add_mutually_exclusive_group(required=True)
+    finding_source.add_argument("--input", type=Path)
+    finding_source.add_argument("--artifact", type=Path)
+    findings.set_defaults(handler=command_ingest_findings)
+
+    gate = subparsers.add_parser("record-gate")
+    add_run_dir(gate)
+    gate.add_argument("--candidate", required=True)
+    gate.add_argument("--command", required=True)
+    gate.add_argument("--selection-reason", required=True)
+    gate.add_argument("--exit-code", type=int, required=True)
+    gate.add_argument("--warning-count", type=int, required=True)
+    gate.add_argument("--artifact", type=Path)
+    gate.add_argument("--final", action="store_true")
+    gate.set_defaults(handler=command_record_gate)
+
+    packet = subparsers.add_parser("packet")
+    add_run_dir(packet)
+    packet.add_argument("--kind", choices=("plan", "code"), required=True)
+    packet.add_argument("--output", type=Path, required=True)
+    packet.set_defaults(handler=command_packet)
+
+    validate = subparsers.add_parser("validate")
+    add_run_dir(validate)
+    validate.add_argument("--require-final", action="store_true")
+    validate.add_argument("--required-final-command")
+    validate.set_defaults(handler=command_validate)
+    return parser
+
+
+def main() -> int:
+    arguments = build_parser().parse_args()
+    try:
+        arguments.handler(arguments)
+    except (AttributeError, EvidenceError, KeyError, OSError, TypeError) as exc:
+        print(f"kickoff-evidence: {exc}", file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

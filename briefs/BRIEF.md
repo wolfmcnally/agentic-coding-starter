@@ -25,6 +25,11 @@ See [`CLAUDE.md` — Briefs catalog](../CLAUDE.md#briefs-catalog) for the index 
 
 - **A methodology.** An eleven-step pipeline from vague idea to shipped code. Authoritative source: [`methodology.md`](methodology.md).
 - **A `kickoff` skill.** A phase orchestrator that delegates to four specialist agents and writes `LOG.md`. Invoke it as `/kickoff` in Claude Code or `$kickoff` in Codex. Authoritative source: `.claude/skills/kickoff/SKILL.md`.
+- **Candidate-bound orchestration evidence.** Complete first reviews,
+  deterministic revision packets, stable finding identities, focused
+  convergence checks, and one complete final gate against the unchanged
+  approved candidate. Authoritative source:
+  [`incremental-orchestration.md`](incremental-orchestration.md).
 - **Four canonical agent roles.** `phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`. Names are load-bearing; `kickoff` invokes them by name. Defined under `.claude/agents/` and mirrored to `.codex/agents/`.
 - **A `stamp` skill.** Stamps out a new project from this template into a different directory, with light configuration. Invoke it as `/stamp` in Claude Code or `$stamp` in Codex.
 - **A `plan/` ledger.** Phase table, dependency graph, cross-cutting concerns, critical-files map. Status lives only here.
@@ -93,6 +98,9 @@ These are the rules the template assumes about itself. A project derived from th
 - **Policies are the law.** Every phase honors every policy. A policy violation blocks acceptance.
 - **Status lives in one place.** `plan/INDEX.md`'s phase table is the single source of truth for phase status.
 - **Acceptance is empirical.** Verifiable shell commands and named manual checks — not "the code compiles."
+- **Assurance is candidate-bound.** Review, finding, and gate evidence names
+  the exact complete working-tree candidate it describes; a changed candidate
+  invalidates earlier gates.
 - **Repo-relative paths only** in committed files.
 - **Cross-harness parity.** Canonical files have one home; mirrors are symlinks or thin wrappers.
 - **Human decides done.** The orchestrator never auto-commits and never claims subjective acceptance.
@@ -107,6 +115,9 @@ The template is acceptable when:
   `./bin/setup`, `./bin/test`, `./bin/check`, and `./bin/python` interface
   works from any directory using `project/.python-version`,
   `project/pyproject.toml`, and `project/uv.lock`.
+- `bin/kickoff-tree-id` identifies tracked, deleted, mode-changed, symlinked,
+  and nonignored-untracked candidate state; `bin/kickoff-evidence` validates
+  run-scoped authority, change, finding, packet, and final-gate evidence.
 - No file in this repo references Wolf McNally, his email, his other projects, or any third-party PII. The template is distributable.
 - Every file under `briefs/` is listed in `CLAUDE.md`'s Briefs catalog, and every file in the catalog exists. No orphans either way.
 - Every file under `policies/` is listed in `CLAUDE.md`'s Policies catalog, and every file in the catalog exists. No orphans either way.

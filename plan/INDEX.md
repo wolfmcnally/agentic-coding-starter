@@ -50,6 +50,12 @@ These are the universals the template ships with. A project derived from this te
 - **Policies are the law.** Every phase honors every file under `policies/`. A policy violation blocks acceptance.
 - **Status lives in one place.** `plan/INDEX.md`'s phase table is the single source of truth for `⏳ / ⬅️ / 🚧 / ✅`. Per-phase frontmatter does not carry `status:`.
 - **Acceptance is empirical** (see [`../policies/acceptance-empirical.md`](../policies/acceptance-empirical.md)). Verifiable shell commands and named manual checks — not "the code compiles."
+- **Assurance is candidate-bound** (see
+  [`../policies/orchestration-evidence.md`](../policies/orchestration-evidence.md)).
+  Complete first reviews produce stable findings; revision reviews receive
+  causal packets and rebase when authority, risk, scope, or continuity
+  changes. Iteration uses focused checks; acceptance ends with one complete
+  final gate against the unchanged approved candidate.
 - **Repository-owned toolchain contract** (see
   [`../policies/build-gates.md`](../policies/build-gates.md)). Setup,
   full/focused testing, runtime selection, metadata, locking, tests, and callers
@@ -66,12 +72,14 @@ These are the universals the template ships with. A project derived from this te
 |--------------------------------------|-----------------------------------------------------------|
 | Entry-point brief                    | [`../briefs/BRIEF.md`](../briefs/BRIEF.md)                |
 | Methodology                          | [`../briefs/methodology.md`](../briefs/methodology.md)    |
+| Incremental orchestration            | [`../briefs/incremental-orchestration.md`](../briefs/incremental-orchestration.md), [`../policies/orchestration-evidence.md`](../policies/orchestration-evidence.md) |
 | Bootstrap a new project              | [`../briefs/agentic-bootstrap.md`](../briefs/agentic-bootstrap.md) |
 | Top-level agent guidance             | [`../CLAUDE.md`](../CLAUDE.md)                            |
 | Activity log                         | [`../LOG.md`](../LOG.md)                                  |
 | Toolchain contract                  | [`../bin/setup`](../bin/setup), [`../bin/test`](../bin/test), [`../bin/check`](../bin/check), [`../bin/python`](../bin/python), [`../policies/build-gates.md`](../policies/build-gates.md) |
 | Optional tracked hooks              | [`../.githooks/pre-push`](../.githooks/pre-push), [`../bin/install-hooks`](../bin/install-hooks) |
 | Phase orchestrator                   | [`../.claude/skills/kickoff/SKILL.md`](../.claude/skills/kickoff/SKILL.md) |
+| Candidate and evidence managers      | [`../bin/kickoff-tree-id`](../bin/kickoff-tree-id), [`../bin/kickoff-evidence`](../bin/kickoff-evidence) |
 | New-project bootstrapper             | [`../.claude/skills/stamp/SKILL.md`](../.claude/skills/stamp/SKILL.md) |
 | Methodology skill                    | [`../.claude/skills/methodology/SKILL.md`](../.claude/skills/methodology/SKILL.md) |
 | `phase-planner` agent (canonical)    | [`../.claude/agents/phase-planner.md`](../.claude/agents/phase-planner.md) |

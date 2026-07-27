@@ -12,7 +12,11 @@ description: >-
 
 # Kickoff: Single-Phase Session
 
-Orchestrate a full initial implementation of one phase under `plan/`, from plan through working code, following the plan → plan-review → code → code-review → build pipeline. Route later test- or user-driven corrections proportionally instead of replaying that full pipeline by default.
+Orchestrate a full initial implementation of one phase under `plan/`, from
+plan through working code, following the plan → plan-review → code →
+code-review → build pipeline. Own candidate-bound authority, change, finding,
+packet, and gate evidence throughout. Route later test- or user-driven
+corrections proportionally instead of replaying that full pipeline by default.
 
 This skill is language- and surface-agnostic. The project's `CLAUDE.md` declares the conventions; the phase file declares the deliverables; the planner picks the build gates; the orchestrator runs them.
 
@@ -42,6 +46,12 @@ A follow-up revision exists only after the affected implementation has received 
 For a delegated follow-up, use the concrete diagnostic or user instruction, the phase file, and the prior END block as the correction brief for Steps 5–6; do not depend on an ephemeral plan from an earlier session. If those sources do not determine the correction safely, classify it as high risk and re-run planning.
 
 Do not turn an uncertain correction into a direct fix: uncertainty about behavior, blast radius, or validation makes it high risk. For a follow-up during an active phase, continue through the normal Steps 9–10 after validation. If the prior phase is already `✅`, skip Steps 2 and 9 and do not emit the normal Step 10 END block; preserve its status and historical END block, then append an `END (correction)` block and report the route and evidence per [`policies/log-discipline.md`](../../../policies/log-discipline.md). A concrete correction does not reopen the phase, while genuinely new scope belongs in a new phase.
+
+Every route still initializes Step 1b evidence. For a direct fix, the
+orchestrator writes the same exact Change Evidence JSON object the coder would
+have reported and passes it to `capture-change --metadata`; direct authorship
+does not bypass candidate identity, risk tags, selection rationale, or final
+gate records.
 
 ## Workflow
 
@@ -89,7 +99,26 @@ For an initial implementation or delegated follow-up, run `./bin/kickoff-config 
 - critic — 2,700 s hard / 600 s idle / 50 turns;
 - every role — first structured event within 120 s.
 
-For every external CLI call, including resumes and the one permitted max-turn rescue, invoke the production command through `./bin/kickoff-config watch` with `--role`, resolved `--venue`, `--model`, `--effort`, phase id, and named stdout/stderr/result artifacts. Pass Claude's extracted result path as `--result-file`; pass Codex's `--output-last-message` path as `--required-output-file`. The wrapper closes stdin, verifies that the actual CLI/model/effort flags match its metadata, truncates result paths before launch, requires a structured event and fresh result, streams progress, terminates the whole process group on first-event/idle/hard timeout, returns 124 on timeout or 65 on a protocol failure, and appends local telemetry to `.kickoff/role-timings.jsonl`. Codex must emit JSONL with `--json`; Claude must emit JSONL with `--output-format stream-json --verbose`. Preserve each role's timing record for Step 10.
+For every external CLI call, including resumes and the one permitted max-turn
+rescue, invoke the production command through `./bin/kickoff-config watch`
+with `--role`, resolved `--venue`, `--model`, `--effort`, phase id, and named
+stdout/stderr/result artifacts. Pass Claude's extracted result path as
+`--result-file`; pass Codex's `--output-last-message` path as
+`--required-output-file`. The wrapper closes stdin, verifies routing flags,
+truncates result paths, streams progress, terminates the process group on
+first-event/idle/hard timeout, and appends local telemetry. It returns the
+child status, 124 on timeout, 65 on unrecoverable protocol failure, or 66
+(`completed-unverified-protocol`) when a successful child left a fresh
+artifact but no complete terminal stream.
+
+Exit 66 is not success. Preserve the artifact and verify the exact role shape,
+the expected candidate id, and its structured change/finding evidence through
+`bin/kickoff-evidence`. If all checks pass, continue without rerunning the
+intelligence work and record `[protocol recovered: terminal stream
+incomplete]` for Step 10. If any check fails, use the stage's normal native
+fallback and record a 🚨 disconnect. Codex emits JSONL with `--json`; Claude
+emits JSONL with `--output-format stream-json --verbose`. Preserve each role's
+timing record for Step 10.
 
 For native subagents, use the same role-specific hard and idle budgets through the harness's wait/status mechanism. Progress means a real agent event, status transition, or tool result; the orchestrator's own polling is not progress. If the harness cannot expose idle timing, enforce the hard deadline and record first-event/idle as `unavailable`. Keep the user informed at least every 60 seconds while waiting.
 
@@ -122,6 +151,32 @@ Surface the decomposition decision (or the choice to stay monolithic) to the use
 
 (Major-phase JIT does *not* happen here — every major phase the brief surfaces was sketched at bootstrap per [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md) §8. If a sketched `phase-N.md` is missing when `kickoff` reaches Phase N, that is a bootstrap-completeness failure to surface to the user, not a Step 1a responsibility.)
 
+### Step 1b: Initialize candidate-bound evidence
+
+Before changing phase state, allocate a **new** opaque run directory with
+`mktemp -d`; never reuse a path from an earlier or interrupted run. Initialize
+it through `./bin/kickoff-evidence init` per
+[`policies/orchestration-evidence.md`](../../../policies/orchestration-evidence.md).
+Pass these authorities in governing order:
+
+- `plan/INDEX.md`;
+- the target phase file and parent phase file when applicable;
+- every cited brief;
+- every frontmatter `depends_on` file;
+- the immediately preceding completed phase;
+- `CLAUDE.md`; and
+- every applicable policy.
+
+Use one `--authority <repo-relative-path>::<optional locator>` per entry.
+Retain the printed initial candidate id and the run directory for every later
+role, packet, finding, and gate operation. For a follow-up correction, create a
+fresh evidence run against the correction brief and current tree; do not reuse
+ephemeral evidence from the original phase.
+
+Initialization failure aborts before Step 2. Evidence lives only in the
+gitignored/run-scoped location and contains hashes and structured findings,
+not secrets or arbitrary source copies.
+
 ### Step 2: Flip marker and open the log
 
 Update `plan/INDEX.md` so the target row's status cell is `🚧`. **Do not edit the target `plan/phase-<id>.md` file's frontmatter or body** — status is stored only in `INDEX.md` (see [`policies/phase-status.md`](../../../policies/phase-status.md)).
@@ -146,11 +201,16 @@ Use the phase's "Deliverables" list from `plan/phase-<id>.md` verbatim (trimmed 
 
 - The phase identifier (e.g., `Phase 1.3`) and heading.
 - The full phase text from `plan/phase-<id>.md` (copy/paste, do not summarize).
+- The evidence run directory and current candidate id.
 - Nothing about the agent's own procedure — the role definition already covers the reading protocol and output format.
 
 **Delegated venue** (`claude`/`codex`/`opus`/`fable`/`sol`/`terra`/`luna`, with optional effort, per Step 0a): run the planner in that CLI per [`policies/role-models.md`](../../../policies/role-models.md), reusing the read-only recipe in [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md) with the resolved model/effort flags and `KICKOFF_DELEGATION_DEPTH=1` in the child environment, wrapped by `bin/kickoff-config watch` with the planner budget. The planner is read-only but needs its full tool stance — `--allowedTools "Read,Grep,Glob,WebSearch,WebFetch"` for claude; codex read-only sandbox. Instruct the external agent to read `.claude/agents/phase-planner.md` and adopt that role; pass the phase reference and full phase text via a temp file. Capture the session id for revision rounds (codex `--json` `thread_id`; claude stream event `session_id`) — the planner resumes across plan-revision rounds with the same resolved model and effort. If a later runtime call fails despite the successful preflight, fall back to the native `phase-planner` and record it for Step 10; that is a 🚨 disconnect.
 
-Wait for the plan.
+Wait for the plan. Write the exact plan artifact into the run directory and
+invoke `./bin/kickoff-evidence capture-plan --run-dir <run> --plan <artifact>`.
+The returned plan hash is the identity reviewed in Step 4. A malformed planner
+report or failed capture follows the planner stage's fallback rules; do not
+send unbound plan text to review.
 
 ### Step 4: Review the plan
 
@@ -161,27 +221,54 @@ Wait for the plan.
 - The phase reference and heading.
 - The full phase text from `plan/phase-<id>.md`.
 - The full plan text from Step 3.
+- The plan hash, current candidate id, and evidence run directory.
+- On revision rounds, the prior finding ledger and generated plan-revision
+  packet.
 
 **Delegated venue** (the non-`default` model `reviewer` resolved to in Step 0a): run the role in that CLI per [`policies/role-models.md`](../../../policies/role-models.md). The shipped `kickoff.yaml` resolves reviewer to the *other* harness (cross-vendor review); a project may resolve it anywhere. Add the resolved model and effort flags to the recipe below and preserve them on resume; everything else is identical. A later runtime failure despite the successful preflight falls back to native with a 🚨 in Step 10.
 
 1. Write the full phase text and the full plan text to temp files (e.g., `/tmp/kickoff-phase-<id>.md`, `/tmp/kickoff-plan-<id>.md`). Do not include the planner's own confidence statements or open-questions commentary beyond the plan text itself.
-2. Write a prompt file instructing the external agent to: read `.claude/agents/plan-reviewer.md` and adopt that role for this review; review the plan in `<plan temp file>` against the phase text in `<phase temp file>`; assume the planner was careful but missed something; end with the exact verdict header (`## Verdict: APPROVED` or `## Verdict: REVISE`). Note that `AskUserQuestion` is unavailable in this venue — an unresolved product decision becomes `REVISE` with the question stated. **Scope the reading mandate** — the reviewer has a read-only checkout and its own Read/Grep, so name the handful of load-bearing files to read (the sources the plan actually reshapes), not "read all the sources the plan touches." An unbounded "read everything" instruction on a large multi-file phase can exhaust the external reviewer's own context (and trip its internal compaction, which can fail on a network stall) before it reaches a verdict — see [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md) §4.
+2. Write a prompt file instructing the external agent to: read `.claude/agents/plan-reviewer.md` and adopt that role for this review; review the plan in `<plan temp file>` against the phase text in `<phase temp file>`; use the supplied plan hash, candidate id, evidence run directory, and revision packet/ledger when present; assume the planner was careful but missed something; emit the exact `## Finding Evidence` JSON block; and end with the exact verdict header (`## Verdict: APPROVED` or `## Verdict: REVISE`). Note that `AskUserQuestion` is unavailable in this venue — an unresolved product decision becomes `REVISE` with the question stated. **Scope the reading mandate** — the reviewer has a read-only checkout and its own Read/Grep, so name the handful of load-bearing files to read (the sources the plan actually reshapes), not "read all the sources the plan touches." An unbounded "read everything" instruction on a large multi-file phase can exhaust the external reviewer's own context (and trip its internal compaction, which can fail on a network stall) before it reaches a verdict — see [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md) §4.
 3. Invoke the recipe for the venue from [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md) through `bin/kickoff-config watch` with the reviewer budget and named event/diagnostic/result artifacts (codex emits `--json` and supplies `--required-output-file`; claude emits `--output-format stream-json --verbose` and supplies `--result-file`). Put the resolved model and effort flags on the actual child CLI command as well as the watchdog metadata; the watchdog rejects any mismatch before launch. The API-key scrubs are unconditional because a set key silently outranks subscription auth; the wrapper closes stdin. **Capture the session id for revision rounds**: for codex it is the first stdout event, `{"type":"thread.started","thread_id":"<uuid>"}`; for claude, read `session_id` from the stream. A flag-parse error from a churned CLI version counts as an invocation failure (next item).
-4. Gate on the three-signal check: output artifact non-empty, exactly one `## Verdict:` header, and execution inside all three clocks. Exception before falling back: a claude stream result with `subtype: "error_max_turns"` means the investigation finished but went unreported — **resume the session once** (`claude --resume <sid> -p "Conclude your review now: emit the exact verdict header and your essential findings only. Do not investigate further."`) and re-gate. On failure (including a failed rescue): perform this stage with the native `plan-reviewer` instead, record `[fallback: <reason>]` for the END block, and keep all remaining rounds of this stage native.
+4. Gate on ordinary three-signal success, or handle exit 66 through Step 0c's
+   explicit recovery. In either case, write the exact reviewer response to a
+   fresh artifact, require exactly one `## Verdict:` header, and run
+   `./bin/kickoff-evidence ingest-findings --run-dir <run> --kind plan
+   --candidate <current-candidate-id> --artifact <review-artifact>`. Failure
+   of role shape, finding schema/transition, or candidate identity triggers
+   native fallback. Exception before falling back:
+   a Claude `error_max_turns` result may resume once with the concise
+   “conclude now” instruction and re-gate. After ingesting the response, mark
+   the plan just reviewed through `mark-plan-reviewed --plan <plan-artifact>
+   --expected-plan <plan-hash>`.
 
 **If `APPROVED`**: proceed to Step 5. Show the user a brief summary plus any Minor Corrections (do not wait for explicit approval unless the user asked to review plans themselves).
 
-**If `REVISE`**: re-run `phase-planner` with the reviewer's feedback appended to the prompt, then re-review in the same venue — native re-runs `plan-reviewer`; external prefers session resume (`codex exec resume <sid>` / `claude --resume <sid> -p`), falling back to a fresh external call with the full updated plan re-passed. Use the policy's resume recipe, not the initial-call recipe with the prompt swapped: `codex exec resume` rejects `-s/--sandbox` and `-C/--cd` (set sandbox via `-c 'sandbox_mode="read-only"'`, `cd` into the repo instead of `-C`); see [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md) §2. Keep iterating only while the reviewer's objections are **converging on approval** (shrinking in count and severity, no finding re-raised, no equal-or-worse new findings); the moment the loop stalls or diverges — same objection recurring, whack-a-mole, or an unresolvable product/architecture disagreement — present the plans and the sticking point to the user for a manual decision. A 5-cycle runaway backstop applies per [`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md): never iterate past it without surfacing to the user.
+**If `REVISE`**: re-run `phase-planner` with the stable finding ledger and
+reviewer's narrative feedback. Capture the updated plan, then run
+`capture-plan` and generate a `--kind plan` revision packet. Re-review in the
+same venue with the packet, full updated plan, and ledger — external session
+resume is preferred; a fresh call receives all three. Use the venue's resume
+recipe, not its initial-call flags. Continue only while at least one blocking
+finding advances and no equal-or-worse finding reopens. Rebase to a complete
+review when the packet requires it. Escalate on recurrence, oscillation,
+authority disagreement, or two rounds without lower severity or uncertainty.
+The 5-cycle runaway backstop still applies.
 
 ### Step 5: Implement
 
 **Native venue** (coder unpinned, per Step 0a): delegate implementation to the `phase-coder` agent. Pass it:
 
 - The approved plan (full text, including any Minor Corrections from the plan-reviewer appended as a note).
+- The evidence run directory and current candidate id.
+- On revision rounds, the stable finding ledger and generated code-revision
+  packet.
 
 **Pinned venue** (any non-`default` model, per Step 0a): run the coder in that model's implied CLI per [`policies/role-models.md`](../../../policies/role-models.md), using the **write-enabled** recipe (the coder writes — unlike every read-only reviewer role):
 
-1. Instruct the external agent to read `.claude/agents/phase-coder.md` and adopt that role; pass the approved plan (full text) via a temp file.
+1. Instruct the external agent to read `.claude/agents/phase-coder.md` and
+   adopt that role; pass the approved plan, evidence run directory, current
+   candidate id, and any revision packet/finding ledger via temp files.
 2. Invoke the write-enabled recipe with `KICKOFF_DELEGATION_DEPTH=1` in the child environment:
    - **claude coder:** run `claude -p "$(cat "$PROMPTFILE")" --model <m> [--effort <effort>] --permission-mode dontAsk --allowedTools "Read,Grep,Glob,Write,Edit,Bash" --output-format stream-json --verbose --max-turns <coder claude_max_turns>` through `bin/kickoff-config watch`, with the credential scrubs and recursion guard from the invocation brief. The implementation loop uses the coder's larger budget; `.git`/`.claude` stay non-auto-approved under `dontAsk`, and the coder writes under the deliverable dir.
    - **codex coder:** the Step 4 codex recipe but `-s workspace-write` (initial) / `-c 'sandbox_mode="workspace-write"'` (resume), plus the resolved `--model gpt-5.6-<name>` and `model_reasoning_effort` overrides when present. **Never** `--yolo`/`danger-full-access`.
@@ -189,7 +276,20 @@ Wait for the plan.
 4. Capture the session id (codex `--json` `thread_id`; claude stream `session_id`) — the coder resumes across code-revision and build-fix rounds. Read the report (file list, Build Status, Manual Checks) from the watcher result artifact / codex `--output-last-message`; the file writes have already landed in the tree.
 5. **Fallback:** a later three-signal gate failure or timeout despite the successful preflight → fall back to the native `phase-coder`, record `[fallback: <reason>]`, and raise the 🚨 disconnect for Step 10. Do not attempt to repair the sandbox mid-run.
 
-Wait for the coder. Collect the list of files created or modified, the Build Status block, and the Manual Checks list.
+Wait for the coder. Write its exact report to a fresh artifact. Require the
+normal report shape plus exactly one `### Change Evidence` JSON block, then
+run:
+
+```
+./bin/kickoff-evidence capture-change --run-dir <run> --metadata-artifact <coder-artifact>
+```
+
+This binds the changed paths, declared risks, selected tests, selection reason,
+intentionally unchanged neighbors, and rebase reasons to the resulting
+candidate. Exit 66 is recoverable only if this validation and the report-shape
+gate both pass. Collect the file list, focused Build Status, Finding Resolution,
+and Manual Checks. The coder does not run or claim the acceptance-close
+sequence.
 
 ### Step 6: Review code
 
@@ -198,30 +298,61 @@ Wait for the coder. Collect the list of files created or modified, the Build Sta
 - The approved plan (full text).
 - Any Minor Corrections the plan-reviewer issued.
 - The list of files the coder created or modified.
+- The reviewed/current candidate ids, change manifest, and evidence run
+  directory.
+- On revision rounds, the prior finding ledger and generated code-revision
+  packet.
 - **Light lane only:** the lane declaration, with the instruction to additionally judge lane fit per [`policies/review-lanes.md`](../../../policies/review-lanes.md) — did the diff stay within mechanical scope?
 
 **Delegated venue** (the non-`default` model `critic` resolved to in Step 0a): run the role in that model's implied CLI per [`policies/role-models.md`](../../../policies/role-models.md). The shipped `kickoff.yaml` resolves critic to the *other* harness (cross-vendor review). Add the resolved model and effort flags and preserve them on resume; a later runtime failure despite the successful preflight falls back with a 🚨 in Step 10.
 
 1. Write the approved plan and the **changed-file list** to temp files, and capture `git diff --stat` (what changed and where). The external reviewer runs against a **read-only checkout** with its own Read/Grep, so hand it a map, not a payload: it pulls the specific files it wants. Inline a full diff into a temp file only when the change is small enough to read whole; for a large change the file list + `git diff --stat` *is* the handoff. **Never pre-materialize a monolithic diff and reject the venue because `git diff | wc -c` is large** — an on-disk artifact is not tokens-in-the-window; a reviewer with Read/Grep reads surgically, and delegation is discarded only on the three-signal gate below, never on a pre-computed size estimate. **Flag machine-regenerated blobs** in the file list (fixtures, snapshot JSON, lockfiles, golden files) as "spot-check structure, don't read line-by-line" — they dominate byte count but carry almost no review surface. **Redact the coder's self-assessment** — no Build Status block, no Manual Checks narrative, no "tests pass" framing. Cold artifacts review 3–4× deeper (see [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md) §§1, 4).
-2. Write a prompt file instructing the external agent to: read `.claude/agents/code-critic.md` and adopt that role for this review; review the changed files (listed in the file-list temp file; explore them via the read-only checkout) against the plan in the temp file; assume the implementer was careful but missed something; end with the exact verdict header.
+2. Write a prompt file instructing the external agent to: read
+   `.claude/agents/code-critic.md` and adopt that role; review the changed
+   files against the plan using the supplied candidate ids, change manifest,
+   evidence run directory, and revision packet/ledger when present; assume the
+   implementer was careful but missed something; emit exactly one
+   `## Finding Evidence` JSON block; and end with the exact verdict header.
 3. Invoke the policy's recipe for the venue through `bin/kickoff-config watch`, with `KICKOFF_DELEGATION_DEPTH=1` in the child environment and the critic budget from Step 0c. Capture the session id for revision rounds the same way as Step 4 (codex: `--json` first event `thread_id`; claude: stream `session_id`).
-4. Gate on the three-signal check (artifact non-empty; exactly one `## Verdict:` header; execution inside all three clocks). Exception before falling back: on `subtype: "error_max_turns"`, resume the session once with the "conclude now" instruction (as in Step 4) and re-gate. On failure (including a failed rescue): perform this stage with the native `code-critic` instead, record `[fallback: <reason>]` for the END block, and keep all remaining rounds of this stage native.
+4. Gate on ordinary three-signal success, or handle exit 66 through Step 0c.
+   Write the exact response to a fresh artifact, require exactly one verdict,
+   and run `./bin/kickoff-evidence ingest-findings --run-dir <run> --kind code
+   --candidate <current-candidate-id> --artifact <critic-artifact>` against
+   its `## Finding Evidence` block. Failure of role shape, evidence
+   schema/transition, or candidate identity triggers native fallback. The one
+   `error_max_turns` conclude-now rescue remains available. After ingesting
+   the response, mark the candidate just reviewed through
+   `bin/kickoff-evidence mark-reviewed --expected-candidate <id>`.
 
 **If `APPROVED`**: proceed to Step 7.
 
-**If `REVISE`**: re-run `phase-coder` with the critic's feedback, then re-review in the same venue (resume preferred externally, as in Step 4). Keep iterating only while the critic's findings are **converging on approval** (shrinking in count and severity, no finding re-raised, no equal-or-worse new findings); the moment the loop stalls or diverges — same finding recurring, whack-a-mole, or an unresolvable disagreement — present the issues to the user. A 5-cycle runaway backstop applies per [`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md): never iterate past it without surfacing to the user.
+**If `REVISE`**: re-run `phase-coder` with the stable finding ledger and
+critic narrative. Validate its new Change Evidence, then generate a
+`--kind code` revision packet and re-review in the same venue (resume
+preferred). Continue only while a blocking finding advances and no
+equal-or-worse finding reopens. When the change manifest requires rebasing,
+run a complete critique rather than a delta-only pass. Escalate on recurrence,
+oscillation, authority disagreement, or two rounds without reduced severity or
+uncertainty. The 5-cycle runaway backstop still applies.
 
 **If `REVISE` opens with `Escalate: full lane — <reason>`** (light lane only): the work exceeded mechanical scope. Run the skipped Step 4 plan review now, against the plan as-built (same venue rules), route its outcome through the normal revision loops, and finish the phase in the full lane. Record `light → full (escalated: <reason>)` for the END block. The lane escalation itself is not a stall signal and does not count toward the runaway backstop; the critic's other Required Changes do feed the convergence judgment.
 
-### Step 7: Final build gate
+### Step 7: Candidate-bound acceptance close
 
-After the initial implementation or any follow-up correction, run the build commands in the orchestrator context to guarantee the resulting state is green. Build commands depend on the surfaces the phase touched.
+After code-critic approval (or after an eligible direct/coder-only follow-up),
+capture the approved candidate id with `./bin/kickoff-tree-id`. Run the plan's
+complete **Acceptance Close** sequence in the orchestrator context: first
+every mechanically executable phase-specific check identified in Step 8, then
+the repository's authoritative full gate last. This is the one complete
+candidate-bound sequence; the coder's focused checks are not repeated merely
+as ceremony unless the plan includes them in acceptance.
 
-Identify "touched surfaces" from the files changed by the selected route plus
-`git status`. Then run the gates declared in the plan's **Build Gate Sequence**
-section, in order. Focused tests route through `./bin/test <arguments>` so they
-use the repository-selected environment; other focused surface checks come
-next; the repository-owned full gate comes last.
+For every command, retain its complete diagnostics, count warnings, and record
+the result through `bin/kickoff-evidence record-gate` with the approved
+candidate id, exact command, selection reason, exit code, optional diagnostic
+artifact, and `--final` for acceptance-close commands. The recorder rejects
+candidate drift. After the sequence, run `bin/kickoff-tree-id` again and
+require the same id; a gate that mutated the candidate fails.
 
 Every methodology-following repository owns the cwd-independent atomic
 interface defined by
@@ -242,7 +373,7 @@ planner may add project-specific focused checks or smokes before the full gate;
 it must not bypass an existing repository test entry point or replace the full
 gate with a copied raw command list.
 
-If any build gate fails:
+If any acceptance-close gate fails:
 
 1. Classify the failure source:
    - **Code error** — syntax, type mismatch, missing import, wrong signature, or failing test assertion.
@@ -253,17 +384,25 @@ If any build gate fails:
    - **Coder only** (low risk, but delegation is useful) → re-run `phase-coder` with the error output and plan.
    - **Full cycle** (high risk or large/cross-cutting) → re-run `phase-coder`, then `code-critic` under the Step 6 venue rules.
    A plan error is automatically a full-cycle correction: re-run `phase-planner`, then `phase-coder`, then `code-critic`.
-3. Re-run the failing check first. If it passes, run focused tests through
-   `./bin/test` plus the complete build/acceptance gates for every touched
-   surface.
+3. Re-run the failing check first through the iteration/revision-close ladder.
+   If a correction changes the candidate, prior final-gate evidence is
+   invalid. Route any required critique, then run the complete
+   acceptance-close sequence again against the new approved candidate.
 4. Do not invoke `code-critic` after a successful direct or coder-only correction merely as ceremony. Do invoke it if the correction grows beyond its classification, exposes a design question, lacks convincing validation, or otherwise crosses the full-cycle threshold.
 5. A direct or coder-only attempt gets one pass. If it fails validation or trades one break for another, upgrade to the full cycle. Once in the full cycle, keep iterating only while the gate and review findings are **converging**. Escalate on recurrence or oscillation; the 5-cycle runaway backstop in [`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md) applies to that full loop.
 
-### Step 8: Phase-specific acceptance gates
+### Step 8: Reconcile phase-specific acceptance
 
 Each phase declares its own empirical acceptance checks under `Acceptance` in `plan/phase-<id>.md`. The orchestrator runs whichever of those checks are mechanically executable (shell commands, smoke scripts, curl probes, deterministic comparisons) and reports the rest as **manual checks** for the user.
 
-A failed acceptance gate routes through Step 7's proportional follow-up classification and validation loop.
+Step 7 must already have included every mechanical check before its final full
+gate. Here, reconcile each criterion against the gate ledger and classify the
+rest as manual. Do not rerun a recorded check. If this reconciliation discovers
+an omitted mechanical check, the acceptance close was incomplete: run the
+missing check, then rerun the authoritative full gate against the same
+candidate and record both. Reconfirm candidate identity afterward. A failed
+acceptance gate or candidate mutation routes through Step 7's proportional
+follow-up classification and invalidation loop.
 
 Per [`policies/acceptance-empirical.md`](../../../policies/acceptance-empirical.md), every acceptance criterion is either executable or named manual. Treat ambiguous criteria as manual and flag them in the END block.
 
@@ -319,6 +458,12 @@ If no downstream major phase exists (project complete), Step 9b's ripple is a no
 
 ### Step 10: Close the log and report
 
+Run `./bin/kickoff-evidence validate --run-dir <run> --require-final
+--required-final-command "./bin/check all"` and require success before
+claiming evidence completeness. Read the JSON/JSONL records directly to
+compute the summary below; never substitute remembered counts or reassuring
+defaults when a record is absent.
+
 Append an END entry to `LOG.md`:
 
 ```
@@ -346,12 +491,21 @@ Role model/venue (per `policies/role-models.md`) — orchestrated by <claude|cod
 - Reviewer (plan review): model=<model> effort=<effort|default> venue=<native|claude|codex> | skipped (light lane) <same annotations>
 - Coder: model=<model> effort=<effort|default> venue=<native|claude|codex> <same annotations>
 - Critic (code review): model=<model> effort=<effort|default> venue=<native|claude|codex> <same annotations>
+<Annotate any exit-66 artifact accepted after explicit validation as
+"[protocol recovered: terminal stream incomplete]"; this is not a fallback.>
 
 Role timing (per `policies/role-timeouts.md`):
 - Planner: <duration>; first event <duration|unavailable>; longest idle <duration|unavailable>; <success|error|timeout(type)>
 - Reviewer (plan review): <same> | skipped (light lane)
 - Coder: <same>
 - Critic (code review): <same>
+
+Candidate-bound evidence (per `policies/orchestration-evidence.md`):
+- Candidate: initial=<id> approved=<id> final=<id>
+- Revision packets: <count>; <total bytes>; source hashes recorded
+- Findings: open=<n> addressed=<n> verified=<n> closed=<n> blocked=<n>; reopened=<n>; missed-in-full-pass=<n>
+- Gates: focused=<n> final=<n>; all recorded against final candidate=<yes|no>
+- Evidence validation: `bin/kickoff-evidence validate --require-final` <OK|failed>
 
 Manual checks for user:
 - <named check> | None
@@ -374,6 +528,8 @@ Then report to the user:
 - Which phase was completed and which is next (`⬅️`).
 - Files created/modified, grouped by surface.
 - Build and gate status.
+- Candidate identity, finding convergence, final-gate identity, and any
+  verified protocol recoveries.
 - Any Minor Corrections or Observations the reviewers noted that the user may want to track.
 - Manual checks the user needs to perform that the orchestrator couldn't.
 
@@ -388,6 +544,7 @@ Then report to the user:
 - Per-role model/venue ([`policies/role-models.md`](../../../policies/role-models.md)): `kickoff.yaml`'s human-editable `role_models` section (set directly or via `roles`) resolves each of the four roles to separate model and effort fields plus an implied venue at Step 0a, scoped by which harness is orchestrating. Step 0b live-validates every non-native CLI/model/access target and aborts before phase mutation on any upstream failure. The shipped default routes reviewer + critic to the *other* harness (cross-vendor review — there is no separate on/off token) and leaves planner + coder native; a project may resolve any role anywhere. A role resolving to a CLI is invoked there with the resolved model/effort overrides (write-enabled for the coder), resuming the same session across the role's rounds. Orchestration and build gates always run on the session model — never pinnable. A later runtime failure after successful preflight may still fall back per-stage and surfaces a 🚨 in the Step 10 report. The recursion guard env var is `KICKOFF_DELEGATION_DEPTH` (a delegated role never re-delegates). Recipes and handoff hygiene: [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md).
 - Per-role execution budgets ([`policies/role-timeouts.md`](../../../policies/role-timeouts.md)): Step 0c loads portable defaults from `kickoff.yaml`'s `role_timeouts` section. Every external initial/resume/rescue call runs through `bin/kickoff-config watch`; native calls use the same budgets through the harness wait mechanism. Raw telemetry is local under `.kickoff/`, and Step 10 records the human-readable timing summary.
 - Review lanes and follow-up routing ([`policies/review-lanes.md`](../../../policies/review-lanes.md)): a phase's `review_lane: light` frontmatter skips Step 4 for mechanical initial work. The code critic runs on every initial implementation and guards the light lane. Later test- or user-driven corrections use direct fix, coder-only, or full-cycle routing according to risk and size; only the full-cycle route repeats independent review.
+- Candidate-bound evidence ([`policies/orchestration-evidence.md`](../../../policies/orchestration-evidence.md)): every run uses a fresh isolated evidence directory; revisions use stable findings and deterministic packets; final gates name the unchanged approved candidate.
 - The ripple pass in Step 9a (sub-phase close) and Step 9b (major-phase close) is governed by [`policies/phase-ripple.md`](../../../policies/phase-ripple.md). AUTO ripples land in the same session; DECIDE ripples appear in the END block as named follow-ups.
 - Cross-harness: this same canonical skill drives both Claude Code and Codex. Claude Code invokes it as `kickoff`; Codex discovers it through `.agents/skills/kickoff` (a directory symlink to `.claude/skills/kickoff/`) and invokes it as `$kickoff`. Edit this canonical skill, not the mirror.
 - If your harness does not expose named subagents, perform the same role sequence locally by reading each `.claude/agents/<role>.md` directly and adopting that role's reading protocol and output format for the duration of the step.

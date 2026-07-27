@@ -19,6 +19,9 @@ You will receive via your task prompt:
 - The phase reference and heading.
 - The full phase text from `plan/phase-<id>.md`.
 - The implementation plan to review.
+- The current candidate id and evidence run directory.
+- On revision rounds, the prior finding ledger and deterministic plan-revision
+  packet.
 
 ## Procedure
 
@@ -35,6 +38,13 @@ You will receive via your task prompt:
 Do **not** read every phase file. `depends_on` is the contract.
 
 ### 2. Review the plan
+
+The first pass is complete at the declared lane's intensity and batches every
+blocking issue. On a revision pass, resolve prior `PLAN-FNNN` findings first,
+then inspect the candidate-bound causal change. Rebase to a complete review
+when the packet reports authority/scope drift, a new risk class, a changed
+public/persisted/security/concurrency/irreversible boundary, broad dispersion,
+an invalidated acceptance claim, or lost trustworthy continuity.
 
 Evaluate in priority order:
 
@@ -69,8 +79,9 @@ Evaluate in priority order:
 - Every new file has an exact path.
 - Every type, function, class, module, CLI subcommand, and schema field is named.
 - The Build Gate Sequence is executable as written, uses the repository's
-  canonical focused-test and full-gate entry points when present, and matches
-  the actual runtime pin, language, and locked tooling.
+  canonical focused-test and full-gate entry points when present, separates
+  iteration/revision-close gates from acceptance-close gates, and matches the
+  actual runtime pin, language, and locked tooling.
 
 **Simplicity**
 - The plan does not add abstractions or deliverables the phase did not ask for.
@@ -81,7 +92,28 @@ Evaluate in priority order:
 - If an Open Question is resolvable from `plan/`, the cited briefs, `policies/`, `CLAUDE.md`, or the current codebase, resolve it yourself and mention that in the verdict.
 - If the Open Question is a real product or architecture decision the planner couldn't make alone, use `AskUserQuestion` to escalate. Do not guess on user-facing UX, perceptual targets that require human judgment, license-policy edge cases, or invariant exceptions.
 
-### 4. Issue the verdict
+### 4. Emit finding evidence
+
+Immediately before the verdict block, emit exactly one `## Finding Evidence`
+section containing a fenced JSON object with a `findings` array accepted by
+`bin/kickoff-evidence ingest-findings`.
+
+- New ids are sequential `PLAN-FNNN`.
+- First-pass findings use classification `initial`.
+- Revision-only findings use `introduced-by-revision`,
+  `newly-exposed-by-resolution`, or `missed-in-full-pass`.
+- Carry every prior unresolved finding with its updated state; ids, authority,
+  required outcome, and `introduced_in` remain stable.
+- `verified`, `closed`, `rejected-with-evidence`, and `superseded` require the
+  resolving candidate id.
+- An approving verdict has no blocking finding left `open` or `addressed`.
+- Use an empty array when there are no findings.
+
+Each finding object has: `id`, `severity`, `authority`, `evidence`,
+`affected_paths`, `required_outcome`, `introduced_in`, `resolved_in`, `state`,
+`classification`, and `disposition`.
+
+### 5. Issue the verdict
 
 Your final output MUST end with exactly one of these two headers as the first line of the verdict block.
 
@@ -118,3 +150,4 @@ Plan is ready for implementation.
 - Be specific in `REVISE` feedback — name the exact section and the exact change needed.
 - Ask the user only for product decisions you cannot resolve yourself.
 - Perform a single review pass.
+- Do not omit or renumber prior findings on a revision pass.

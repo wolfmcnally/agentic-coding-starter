@@ -36,9 +36,18 @@ The authoritative source is [`briefs/methodology.md`](../../../briefs/methodolog
    - hands the plan to a **plan reviewer** (skipped when the phase declares the `light` review lane per `policies/review-lanes.md`),
    - hands the approved plan to a **coding agent**,
    - hands the result to a **code critic** (runs on every initial implementation; in `light`, it also guards the lane and can escalate back to `full`),
-   - on any critic's complaint, sends the work back to the relevant agent for revision (bounded loops).
+   - on any critic's complaint, sends the work back to the relevant agent with
+     stable findings and a candidate-bound causal revision packet (bounded,
+     fail-closed loops).
 
-8. **Acceptance check.** The orchestrator runs the tests and gates. Test- or user-driven follow-ups are routed by risk and size: direct fix, coder only, or the full coder → critic cycle. Validation always runs; a failed lightweight route upgrades to the full cycle.
+8. **Acceptance check.** While work converges, the coder runs the smallest
+   behavioral and affected checks that can falsify the change. After critic
+   approval, the orchestrator runs the complete phase-prescribed sequence and
+   one authoritative full gate against the unchanged approved candidate.
+   Test- or user-driven follow-ups are routed by risk and size: direct fix,
+   coder only, or the full coder → critic cycle. A changed candidate
+   invalidates prior gate evidence; a failed lightweight route upgrades to the
+   full cycle.
 
 9. **Append-only phase log.** `LOG.md` opens and closes work on every phase. Closing requires recording evidence of what happened and why the success criteria were met.
 
@@ -63,13 +72,16 @@ The orchestrator delegates to four specialist roles. Their names are load-bearin
 |---|---|---|---|
 | `phase-planner` | Briefs, plan, repo | No | Turn one phase into a file-level implementation plan |
 | `plan-reviewer` | Briefs, plan, repo, plan output | No | Approve the plan or send it back for revision |
-| `phase-coder` | Briefs, plan, repo, approved plan | Yes | Implement the approved plan and run build gates |
+| `phase-coder` | Briefs, plan, repo, approved plan | Yes | Implement the approved plan and run focused iteration checks |
 | `code-critic` | Briefs, plan, repo, code diff | No | Approve the code or send it back for revision |
 
 ## Non-negotiables
 
 - **Every completed phase is incremental and testable.**
 - **Every initial phase implementation passes the code critic; repeat review on follow-ups is risk- and size-based.**
+- **Review, findings, and gates are bound to exact candidate identity.**
+- **Revision rounds use causal packets and widen when continuity is uncertain.**
+- **The orchestrator, not the coder, owns the one complete acceptance-close gate.**
 - **The human decides when work is "done."**
 - **The orchestrator writes code only for eligible small, low-risk follow-up corrections.**
 - **Closing a phase requires recorded evidence.**

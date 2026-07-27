@@ -153,18 +153,35 @@ Recurring tools belong in committed development dependencies. Do not use
 ephemeral dependency injection such as an unpinned `uv run --with ...` for a
 repository-owned gate.
 
-## Focused gates and phase plans
+## Candidate-bound focused and final gates
 
-The planner's Build Gate Sequence starts with focused invocations through
-`./bin/test` or another repository-owned focused mode, then ends with
-`./bin/check all`. A raw ecosystem command is acceptable only for a narrow
-operation the repository interface does not represent; it must still use
-committed metadata and lock-preserving mode.
+The planner's Build Gate Sequence has two explicit parts:
 
-The coder may run focused checks repeatedly. The orchestrator independently
-runs the final sequence after review. Evidence from a delegated or sandboxed
-environment proves only that environment; host-dependent acceptance is
-verified on the host.
+1. **Iteration and revision-close gates** — focused invocations through
+   `./bin/test` or another repository-owned focused mode, plus affected
+   static/structural checks. The plan states why the selection exercises the
+   changed surface.
+2. **Acceptance-close gates** — the phase's complete prescribed checks,
+   ending with `./bin/check all`.
+
+A raw ecosystem command is acceptable only for a narrow operation the
+repository interface does not represent; it must still use committed metadata
+and lock-preserving mode.
+
+The coder runs the iteration/revision-close part as often as needed and reports
+that focused evidence. The orchestrator runs the acceptance-close part once
+after code-critic approval against the unchanged candidate. Evidence from a
+delegated or sandboxed environment proves only that environment;
+host-dependent acceptance is verified on the host.
+
+Every gate record names the candidate identifier from
+`bin/kickoff-tree-id`, its exact command, selection reason, exit status,
+warning count, and optional artifact digest, per
+[`orchestration-evidence.md`](orchestration-evidence.md). Verify the candidate
+before and after the final sequence. A relevant candidate change invalidates
+prior evidence; a gate that mutates the candidate fails. When the affected
+surface is indeterminate, select a broader suite rather than defaulting to a
+reassuring narrow one.
 
 ## Lifecycle hooks
 
@@ -203,3 +220,8 @@ contracts.
 After changing any bundle member or caller, run `./bin/test` for focused
 wrapper coverage, run `./bin/check all`, and search for stale raw setup or test
 commands that bypass the repository interface.
+
+When a formatting gate needs a mechanical rewrite, invoke the formatter from
+the same working directory and configuration boundary as `bin/check` uses.
+Formatting the same paths from another directory can select different tool
+configuration and still leave the authoritative check red.

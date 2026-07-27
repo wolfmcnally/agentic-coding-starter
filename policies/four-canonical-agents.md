@@ -55,10 +55,33 @@ Followed in the `REVISE` case by a `### Required Changes` section listing specif
 
 ## Revision loops
 
-`kickoff` keeps iterating a review or fix loop only while it is **converging on approval**, and escalates to the human the moment it stalls or diverges — rather than counting to a fixed cap. After each cycle the orchestrator compares the new verdict against the prior one and judges the trend:
+The first review batches every blocking finding. Plan-review findings receive
+stable `PLAN-FNNN` ids; code-review findings receive `CODE-FNNN` ids. Their
+states and candidate identities live in the finding ledger governed by
+[`orchestration-evidence.md`](orchestration-evidence.md).
 
-- **Converging — continue.** The set of Required Changes is shrinking, their severity is trending down (blocking → minor → nit), each round resolves prior findings without raising equal-or-worse new ones, and the reviewer's verdict is moving toward approval.
-- **Stalled or diverging — escalate.** The same finding recurs across rounds (the fix didn't take, or the reviewer keeps re-raising it); new findings of equal or greater severity keep appearing (whack-a-mole); the loop oscillates (fixing A re-breaks B); or a finding rests on a product or architecture disagreement the agents cannot resolve among themselves. Surface the cycle history and the sticking point to the human.
+`kickoff` keeps iterating a review or fix loop only while it is **converging on
+approval**, and escalates to the human the moment it stalls or diverges. After
+each cycle the orchestrator evaluates exact finding transitions rather than
+reconstructing continuity from prose:
+
+- **Converging — continue.** At least one blocking finding advances from
+  `open` toward `closed`, open severity or uncertainty falls, and no closed
+  finding reopens at equal or greater severity.
+- **Stalled or diverging — escalate.** A finding returns to `open`, a fix
+  creates an equal-or-higher-severity regression, the loop oscillates, a
+  finding rests on unresolved product/architecture authority, or two
+  consecutive rounds reduce neither open severity nor uncertainty. Surface
+  the ledger history and sticking point to the human.
+
+After the first full pass, a revision reviewer receives the prior ledger, the
+candidate-bound revision packet, mapped verification, and the new candidate
+id. It resolves prior findings first and then checks the causal change surface.
+New findings are classified `introduced-by-revision`,
+`newly-exposed-by-resolution`, or `missed-in-full-pass`. Authority/scope drift,
+a new risk class, public API or persisted-state changes, security, concurrency,
+irreversible-state boundaries, broad change dispersion, an invalidated
+acceptance claim, or lost trustworthy continuity rebases to a complete review.
 
 The same judgment governs the full review loops:
 

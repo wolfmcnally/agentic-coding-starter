@@ -46,6 +46,8 @@ If `<target-dir>` is missing or is an empty/non-existent directory, refuse with 
    - `.claude/skills/kickoff/SKILL.md` exists.
    - `.claude/skills/methodology/SKILL.md` exists.
    - `bin/kickoff-config` and `kickoff.yaml` exist; `show` validates both config sections.
+   - `bin/kickoff-tree-id` and `bin/kickoff-evidence` exist, are executable,
+     and have behavioral tests.
    - `briefs/`, `policies/`, `plan/` directories are present and non-empty.
    - `LOG.md` exists.
    If any fail, refuse before touching anything.
@@ -91,8 +93,13 @@ Build a structural map of the target. Mirror Stage 1 of `learn`, but from the op
    interpreter once.
 7. **Active work signals.** Read the target's `LOG.md` if present. A phase in `🚧` is a clear "do not stomp" signal — the teaching apply step waits for that phase or limits itself to additive, non-conflicting changes.
 8. **Kickoff configuration contract.** Inspect `kickoff.yaml`, `bin/kickoff-config`, `tests/test_kickoff_config.py`, both role policies, `roles`, `kickoff` Steps 0a–0c and invocation call sites, `.gitignore`, and the invocation brief as one bundle. Note target values, comments, `extensions` data, and local `.kickoff/` telemetry as preservation-only state; never read or transfer raw telemetry.
+9. **Candidate-bound orchestration evidence.** Inspect the target's candidate
+   identity, evidence schemas, role JSON blocks, revision packets,
+   focused/final verification split, watcher protocol outcomes, docs, and
+   tests as one atomic bundle. Preserve project-defined risk tags and
+   assurance additions; never read or transfer run-scoped evidence.
 
-9. **Mechanical parity-heal scan.** Walk the target's cross-harness parity surfaces and detect every shape that has *one canonical correct form and no judgment call*. These are auto-healable independent of whatever else this teach pass is carrying. **Always run this scan, regardless of `<desc>` scope.** The catalog of mechanical violations is:
+10. **Mechanical parity-heal scan.** Walk the target's cross-harness parity surfaces and detect every shape that has *one canonical correct form and no judgment call*. These are auto-healable independent of whatever else this teach pass is carrying. **Always run this scan, regardless of `<desc>` scope.** The catalog of mechanical violations is:
 
    - **`AGENTS.md` not a symlink.** If `<target>/CLAUDE.md` exists and `<target>/AGENTS.md` is either absent or is a regular file (not a symlink to `CLAUDE.md`). Heal: `rm -f <target>/AGENTS.md && ln -s CLAUDE.md <target>/AGENTS.md`. Exception: if the regular `AGENTS.md` content differs meaningfully from `CLAUDE.md`, downgrade to DECIDE — the target may be intentionally splitting them.
    - **`.agents/skills/<name>` in the broken file-symlink shape, or a non-symlink directory.** Codex's native skill loader does not follow file-level symlinks inside a skill dir ([openai/codex#11314](https://github.com/openai/codex/issues/11314)), so the file-level shape (`<target>/.agents/skills/<name>/SKILL.md` as a file symlink) is silently invisible to Codex. A non-symlink directory at `<target>/.agents/skills/<name>` is the buggy output of the Codex desktop "import settings" prompt — those mechanical search/replace bugs always need cleanup. The starter-only `stamp` skill must never appear here. Heal: for each universal skill that exists at `<target>/.claude/skills/<name>/`, `rm -rf <target>/.agents/skills/<name> && mkdir -p <target>/.agents/skills && ln -s ../../.claude/skills/<name> <target>/.agents/skills/<name>`. Also `rm -rf <target>/.agents/skills/stamp` if present.
@@ -123,7 +130,13 @@ For each candidate file or pattern, compare bidirectionally: starter → target 
 Same tiers as `learn`:
 
 - **Tier 1 — Methodology-level.** The four canonical agents, the orchestrator skill, the briefs/policies/plan triplet, the LOG.md contract.
-- **Tier 2 — Universal template content.** Every file under `policies/` (including both role policies), the universal briefs, `bin/kickoff-config`, human-editable `kickoff.yaml` schema and seed defaults, and cross-harness symlink conventions. The configuration machinery is universal; a target's values, comments, extensions, and telemetry are not.
+- **Tier 2 — Universal template content.** Every file under `policies/`
+  (including both role policies and orchestration evidence), the universal
+  briefs, `bin/kickoff-config`, `bin/kickoff-tree-id`,
+  `bin/kickoff-evidence`, human-editable `kickoff.yaml` schema and seed
+  defaults, and cross-harness symlink conventions. The mechanics are
+  universal; target values, comments, extensions, telemetry, and run evidence
+  are not.
 - **Tier 3 — Language/platform specializations.** Build-gate command lists for the target's language.
 - **Tier 4 — Domain specializations.** Only if a domain-specific extension lives in this starter (uncommon; this template aims to stay general).
 
@@ -164,6 +177,15 @@ For each proposed addition or update, ask:
   detached processes resolve the underlying interpreter once. Partial adoption
   is stale and blocking.
 - **Review-lane and follow-up-routing adoption.** Does the target's `kickoff` SKILL.md carry the Step 1 lane resolution, the Step 4 light-lane skip, the Step 6 lane-fit input and `Escalate: full lane` handling, Step 7's direct/coder-only/full correction routing, and the END-block `Review lane:` plus `Follow-up route:` lines — with `policies/review-lanes.md` in its `policies/` and the lane-fit duty in its `.claude/agents/code-critic.md`? Porting is mechanical — AUTO. **No phase-file migration is needed**: absent `review_lane:` frontmatter means `full`, so every existing drafted phase keeps its current initial-review behavior; follow-up routing is runtime classification, not frontmatter.
+- **Candidate-bound evidence adoption.** Treat
+  `briefs/incremental-orchestration.md`,
+  `policies/orchestration-evidence.md`, `bin/kickoff-tree-id`,
+  `bin/kickoff-evidence`, `tests/test_kickoff_tree_id.py`,
+  `tests/test_kickoff_evidence.py`, `kickoff`, all four roles, `bin/check`,
+  `bin/README.md`, and the CLAUDE/plan catalogs and glossary as one atomic
+  contract. Preserve target-defined risk tags and stricter assurance layers.
+  Never transfer run directories or their findings, candidates, hashes, gate
+  artifacts, or telemetry. Partial adoption is stale and blocking.
 
 Each stale item gets one of three classifications:
 
@@ -325,6 +347,9 @@ Once approved, apply the approved items to the target. Order:
    choices with this template's Python values.
 8. **Apply the stale-in-light-of-teaching migrations.** Walk the "Stale-in-light-of-teaching" section of the approved plan and execute every AUTO item (catalog entries, link additions, header restructures, file-shape migrations to richer conventions established by newly-added policies). DECIDE items get listed in the LOG entry as a manual follow-up for the target's owner. DEFER items get listed with their deferral condition.
    - For unified kickoff configuration, verify the final write set is atomic and all target-owned fields, comments, `extensions` data, and telemetry remain untouched. A new target gets seed defaults; an existing config changes values only when the approved plan explicitly names a human choice.
+   - For candidate-bound evidence, validate the complete transferred bundle,
+     confirm candidate identity covers tracked and nonignored-untracked state,
+     and keep all target run evidence untouched.
 9. Run the parity verification sweep from `policies/cross-harness-parity.md` §Verification against the target. **Expected outcome: clean** — only `AGENTS.md OK` printed, because parity heals ran first (step 1) and any new content was wired up correctly (step 4). Any remaining "not a symlink" / "wrong target" / "missing peer" line indicates either a heal that was downgraded to DECIDE and skipped, a violation discovered post-Apply that the scan in Stage 1 missed (file a learning to extend the heal catalog), or a regression in step 4. Re-confirm catalog and stale-sweep coverage at the same time.
 10. Run the target's `./bin/setup`, focused behavioral tests through
     `./bin/test`, and canonical full gate (`./bin/check all`) when the contract
@@ -344,6 +369,12 @@ Once approved, apply the approved items to the target. Order:
 - **Improvements only.** Every proposed change must be a strict improvement to the target. Never replace target content with source content that is less elaborated, less specialized, or less capable. When the target has surpassed the source, the right move is to surface it for a future `learn`, not to drag the target backward.
 - **Stale sweep is acceptance, not follow-up.** A `teach` run is not done when the new files have been copied in. It is done when every file in the target that went stale *because of* the apply has been migrated (AUTO), surfaced for a user decision (DECIDE), or named with a deferral reason (DEFER). Empty catalogs, orphan policies, and existing-file shapes that the new policies supersede are all stale-sweep targets.
 - **Kickoff-config transfer is atomic and state-preserving.** Never teach only one config section, policy, manager, test, skill, or invocation recipe. Transfer/update the bundle together, preserve target-local values, comments, `extensions` data, and telemetry, and validate with `bin/kickoff-config show`, the behavioral suite, scoped-reset preservation tests, and a bounded watchdog smoke test.
+- **Orchestration-evidence transfer is atomic and state-preserving.** Transfer
+  or update the candidate identity, evidence manager, policy, brief,
+  role/orchestrator contracts, gate integration, docs/catalogs, and behavioral
+  tests together. Preserve target risk extensions and stricter assurance
+  rules; never read or copy target run evidence. Candidate mismatch,
+  indeterminate impact, and incomplete final-gate evidence fail closed.
 - **Toolchain transfer is atomic and target-preserving.** Never teach only a
   gate wrapper or raw setup/test command. Transfer or update the setup, test,
   full-gate, runtime-selection, metadata/lock, behavioral-test, policy, hook,
@@ -356,7 +387,7 @@ Once approved, apply the approved items to the target. Order:
   format covers staged, unstaged, and nonignored untracked candidates; hot
   loops, mutation gates, and detached processes resolve the selected
   interpreter once and reuse it.
-- **Mechanical parity heals always run, independent of `<desc>` scope.** Every `teach` invocation scans the target's parity surfaces and surfaces known-broken shapes (per the catalog in Stage 1 step 9) for repair. Even a narrow `teach` pass — "just bring policies up to date" — heals an `AGENTS.md`-as-file, a file-level `.agents/skills/<name>/SKILL.md`, or a stray `.agents/skills/stamp` it finds along the way. This is what closes the gap where broken parity shapes lingered because the teach pass didn't otherwise touch them.
+- **Mechanical parity heals always run, independent of `<desc>` scope.** Every `teach` invocation scans the target's parity surfaces and surfaces known-broken shapes (per the catalog in Stage 1 step 10) for repair. Even a narrow `teach` pass — "just bring policies up to date" — heals an `AGENTS.md`-as-file, a file-level `.agents/skills/<name>/SKILL.md`, or a stray `.agents/skills/stamp` it finds along the way. This is what closes the gap where broken parity shapes lingered because the teach pass didn't otherwise touch them.
 - **This repo is read-only.** Never write to this repository during `teach`. The starter learns via `learn`, not as a side effect of `teach`.
 - **Generality first.** Default to Tier 1+2 transfers. Specialize only when those are exhausted or the user's `<desc>` requested it.
 - **Approval is mandatory.** No bytes change in the target before explicit approval.

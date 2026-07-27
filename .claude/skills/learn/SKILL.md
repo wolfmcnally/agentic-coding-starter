@@ -37,6 +37,9 @@ If `<donor-dir>` is missing or not a readable directory, refuse with `Usage: /le
    - `.claude/skills/kickoff/SKILL.md` exists.
    - `.claude/skills/methodology/SKILL.md` exists.
    - `bin/kickoff-config` and `kickoff.yaml` exist; `show` validates both config sections.
+   - If `policies/orchestration-evidence.md` exists, `bin/kickoff-tree-id`,
+     `bin/kickoff-evidence`, and their behavioral tests exist and the scripts
+     are executable.
    - `briefs/`, `policies/`, `plan/` directories are present and non-empty.
    - `LOG.md` exists.
    If any fail, refuse with a specific error and exit. (If this skill was invoked in a repo that hasn't been bootstrapped, run the bootstrap procedure in [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md) first, or invoke `/stamp` in Claude Code or `$stamp` in Codex from the starter template.)
@@ -82,6 +85,13 @@ Build a structural map of the donor. **Do not** open every file; do targeted rea
    copy.
 8. **Anti-patterns.** Note where the donor *violates* something the template considers a load-bearing invariant (status field in phase frontmatter; absolute paths; LOG.md hand-edits). Those are not for learning; mention them as confirmation the starter's rules are correct.
 9. **Unified kickoff configuration.** Inspect the donor's schema shape, round-trip manager, behavioral tests, both role policies, `roles`, `kickoff` call sites, invocation brief, gitignore, and reporting contract as one bundle. Learn only generalizable mechanics, schema, algorithms, and defensible universal defaults. Never read, copy, or summarize raw telemetry, percentiles, model/effort choices, calibrated values, comments, `extensions` data, or project overrides.
+10. **Candidate-bound orchestration evidence.** Inspect the donor's candidate
+    identity implementation, authority/change/finding/gate schemas, revision
+    packets, reviewer/coder evidence blocks, verification ladder,
+    final-candidate checks, watcher outcome classification, policy, brief,
+    docs, and behavioral tests as one bundle. Separate general mechanics from
+    project-specific risk tags, thresholds, dependency selectors, assurance
+    profiles, and private run artifacts.
 
 Output of Stage 1 is internal. The user sees Stage 3's plan.
 
@@ -253,6 +263,14 @@ Once approved, apply the approved items. Order:
 - **One LOG entry per `learn` run.** Not per item. The aggregate entry preserves the audit trail without flooding the log.
 - **Stale sweep is acceptance.** Every file made stale by an approved learning is migrated (AUTO), decided (DECIDE), or deferred with a named condition (DEFER) in the same plan and LOG entry.
 - **Kickoff-config learning is atomic and privacy-preserving.** Adopt generalizable policy/schema/round-trip manager/test/invocation/reporting improvements together. Never ingest donor raw telemetry, percentiles, values, comments, `extensions` data, overrides, model choices, or efforts; validate the local bundle with `bin/kickoff-config show`, the behavioral suite, scoped-update preservation tests, and a bounded watchdog smoke test.
+- **Orchestration-evidence learning is atomic and privacy-preserving.** Never
+  learn only a packet shape, candidate hash, finding block, watcher status, or
+  final-gate rule. Adopt the policy, brief, deterministic managers,
+  role/orchestrator contracts, docs/catalogs, and behavioral tests together.
+  Preserve this repository's risk vocabulary and never ingest donor run
+  directories, source copies, findings, hashes, gate artifacts, or telemetry.
+  Candidate mismatches and indeterminate impact fail closed; the
+  authoritative final gate remains mandatory.
 - **Toolchain learning is atomic and target-owned.** Never learn only a gate
   wrapper or a raw command. Assess `bin/setup`, `bin/test`, `bin/check`,
   runtime wrappers, the runtime pin, manifest, lockfile, behavioral tests,

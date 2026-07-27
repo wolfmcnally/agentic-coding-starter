@@ -175,3 +175,16 @@ interpreter once for hot loops, mutation gates, generated multi-command
 workflows, and detached processes. The three transfer skills carry the same
 requirements. Starter-only anonymization is now explicitly scoped by write
 destination so a target's approved LOG provenance remains target-owned.
+
+## 2026-07-27 02:00 — LEARN
+Donor: Donor A @ <sha withheld>
+Items absorbed: 3, by tier T1=3/T2=0/T3=0/T4=0
+Stale-in-light-of-learning migrations: 17 AUTO; 0 DECIDE; 0 DEFER
+Files touched: 36
+
+Generalized improvements: candidate-bound authority, change, finding, and gate
+evidence with deterministic revision packets; a focused-to-final verification
+ladder; and independent child, artifact, and stream supervision with explicit
+exit-66 recovery. Deliberately excluded the lower-ROI universal context
+compiler, nested critical-path spans, conditional role removal, and
+language-agnostic dependency/mutation selection pending direct evidence.

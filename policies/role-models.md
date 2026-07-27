@@ -78,17 +78,38 @@ Preflight is fail-closed. A missing CLI, unusable authentication, unavailable mo
 
 Production commands and auth traps live in [`briefs/cross-agent-invocation.md`](../briefs/cross-agent-invocation.md). Every external call runs through `bin/kickoff-config watch` under [`role-timeouts.md`](role-timeouts.md). Roles resume the same external session across revision rounds, repeating both model and effort flags.
 
-A delegated call succeeds only when all three hold:
+A delegated call is an ordinary success only when all three hold:
 
 1. its output artifact exists and is non-empty;
 2. it has the role's required output shape or exact verdict header; and
-3. it stayed inside its first-event, idle-progress, and hard deadlines.
+3. its child succeeded and its terminal event stream completed inside the
+   first-event, idle-progress, and hard deadlines.
 
-After successful preflight, a non-zero exit, timeout, network failure, missing artifact, or malformed output makes the rest of that stage native and produces a 🚨 disconnect. A Claude review that exhausts its turn cap may resume once only to emit its verdict. Fallback is per stage; once a stage falls back, it does not venue-thrash.
+The watchdog records child status, artifact freshness, and stream completeness
+independently. Exit 66 (`completed-unverified-protocol`) preserves a fresh
+artifact from a successful child whose terminal stream was incomplete. The
+orchestrator may use it only after validating the role shape, ingesting and
+validating any finding/change evidence, and confirming the expected candidate
+id per [`orchestration-evidence.md`](orchestration-evidence.md). It records the
+protocol recovery in the END block. Failed verification follows the normal
+fallback path.
+
+After successful preflight, a non-zero child, timeout, network failure, stale
+or missing artifact, malformed output, candidate mismatch, or unrecoverable
+protocol error makes the rest of that stage native and produces a 🚨
+disconnect. A Claude review that exhausts its turn cap may resume once only to
+emit its verdict. Fallback is per stage; once a stage falls back, it does not
+venue-thrash.
 
 ## END-block reporting
 
-Every END block records the preflight result, orchestrating harness, and each role's resolved model, effort, venue, and fallback status. It also carries the timing summary required by [`role-timeouts.md`](role-timeouts.md). Any post-preflight difference between configured and actual venue is repeated as a 🚨 in the user-facing summary.
+Every END block records the preflight result, orchestrating harness, and each
+role's resolved model, effort, venue, fallback status, and any verified
+protocol recovery. It also carries the timing and candidate-bound evidence
+summaries required by [`role-timeouts.md`](role-timeouts.md) and
+[`orchestration-evidence.md`](orchestration-evidence.md). Any post-preflight
+difference between configured and actual venue is repeated as a 🚨 in the
+user-facing summary.
 
 ## Propagation
 

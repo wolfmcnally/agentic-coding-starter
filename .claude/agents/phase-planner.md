@@ -86,6 +86,18 @@ Output this exact structure:
 - [For non-obvious choices, note the alternative considered and why rejected.]
 - [If you researched best practice in step 3, cite the finding.]
 
+## Risk and Evidence
+- **Risk tags**: choose every applicable universal tag from
+  `public-api`, `persisted-state`, `schema`, `security`, `privacy`,
+  `concurrency`, `ordering`, `irreversible-state`, `cross-repository`,
+  `deploy`, `authority-corruption`, `user-visible`, `weak-coverage`; use
+  `project:<name>` for a project-defined risk. State `none` only when none
+  apply.
+- **Intentionally unchanged neighbors**: name adjacent contracts or surfaces
+  whose non-change matters to the review.
+- **Review-rebase triggers**: identify which planned decisions would require a
+  complete review if a revision changed them.
+
 ## Invariant Checks
 Confirm explicitly how this plan respects the load-bearing invariants from
 CLAUDE.md and the policies in `policies/`:
@@ -129,12 +141,17 @@ For each:
 - **User Demo**: a `User Demo:` block per `policies/user-demo-protocols.md` (entry point, suggested inputs, what to look for, variations to explore) when this phase touches a user-facing surface AND there is something meaningful to try interactively. Otherwise, a `User Demo: N/A — <reason>` line. Address the policy explicitly either way; do not fabricate a contrived demo to fill the slot.
 
 ## Build Gate Sequence
-List the exact shell commands the orchestrator should run after implementation,
-in order. Start with focused checks or smokes justified by the touched surface,
-then end with the repository-owned full gate:
 
-- [`./bin/test <repo-relative selection>` for focused tests, then any other
-  focused lint/smoke commands]
+### Iteration and Revision Close
+List the exact focused commands the coder runs while converging. Begin with the
+smallest behavioral test or proof capable of falsifying the change, then add
+affected suites and structural/static checks. For every selection, state why
+it covers the changed surface. Uncertain impact selects a broader suite.
+
+### Acceptance Close
+List the complete phase-prescribed sequence the orchestrator runs once after
+code-critic approval. It ends with:
+
 - `./bin/check all`
 
 Read `policies/build-gates.md` and inspect the complete toolchain contract:
@@ -144,6 +161,10 @@ generic Python/Node/Rust command list over repository-defined entry points. If
 the repository genuinely lacks the contract, list its actual
 metadata-declared commands and flag the missing canonical interface under Open
 Questions.
+
+Every gate will be recorded against the candidate id under
+`policies/orchestration-evidence.md`. Do not use a prior green result as
+evidence for a changed candidate.
 
 ## Open Questions
 [Ambiguities the implementer should resolve. Flag here rather than guess. Include both technical ambiguities and product/architecture decisions that should escalate to the reviewer for user confirmation.]

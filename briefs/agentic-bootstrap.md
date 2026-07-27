@@ -36,18 +36,23 @@ A project derived from this template contains the following **portable structure
     <runtime>              # Optional selected runtime (for example, python)
     install-hooks          # Explicit opt-in to tracked Git hooks
     kickoff-config         # Round-trip editor, preflight, watchdog, calibration
+    kickoff-tree-id        # Complete review candidate identity
+    kickoff-evidence       # Authority/change/finding/packet/gate records
 
   tests/
     test_toolchain_entrypoints.py # Setup/test/runtime behavioral coverage
     test_check.py          # Full-gate behavioral coverage
     test_install_hooks.py  # Hook-installer behavioral coverage
     test_kickoff_config.py # Universal manager/watchdog behavioral coverage
+    test_kickoff_tree_id.py # Candidate identity behavioral coverage
+    test_kickoff_evidence.py # Evidence/packet/gate behavioral coverage
 
   briefs/
     BRIEF.md               # Entry-point brief, project-specific
     methodology.md         # The eleven steps (copied verbatim)
     agentic-bootstrap.md   # This brief (copied verbatim, for the next bootstrap)
     cross-agent-invocation.md  # Cross-CLI invocation BCPs (copied verbatim)
+    incremental-orchestration.md # Candidate-bound incremental assurance
     deterministic-orchestration.md  # Draft: deterministic kickoff loop (copied verbatim)
     <topic>.md             # Project-specific topic briefs as they appear
 
@@ -58,6 +63,7 @@ A project derived from this template contains the following **portable structure
     four-canonical-agents.md
     role-models.md
     role-timeouts.md
+    orchestration-evidence.md
     review-lanes.md
     phase-status.md
     acceptance-empirical.md
@@ -165,9 +171,15 @@ These files encode the methodology itself, not any particular product. Copy them
 - Every file under `policies/` (these are universal by design)
 - `bin/kickoff-config` (universal Python/uv round-trip config manager, fail-closed venue preflight, execution watchdog, and telemetry calibrator), plus human-editable `kickoff.yaml` seeded via `bin/kickoff-config reset all`
 - `tests/test_kickoff_config.py` (universal manager/watchdog behavioral coverage; run independently of the deliverable's language)
+- `bin/kickoff-tree-id` and `bin/kickoff-evidence` (universal candidate
+  identity and run-evidence managers)
+- `tests/test_kickoff_tree_id.py` and `tests/test_kickoff_evidence.py`
+  (universal behavioral coverage for candidate/evidence mechanics)
 - `briefs/methodology.md`
 - `briefs/agentic-bootstrap.md` (this file, so the next bootstrap is possible)
 - `briefs/cross-agent-invocation.md` (the cross-CLI invocation BCPs cited by `policies/role-models.md`)
+- `briefs/incremental-orchestration.md` (candidate-bound review, revision,
+  verification, and protocol-recovery design)
 - `briefs/deterministic-orchestration.md` (draft universal brief: decision criteria for a deterministic kickoff loop, so the derived project can act when its harnesses gain parity workflow primitives)
 - The skeletal headings/structure of `plan/INDEX.md`
 - The skeletal frontmatter shape for `plan/phase-*.md` (`id`, `title`, `depends_on`, `informs`, optional `review_lane` per `policies/review-lanes.md`)
@@ -466,6 +478,9 @@ When adapting, edit these files (and only these) to reflect those choices:
   manifest, lockfile, and their behavioral tests — one atomic implementation.
 - `.claude/skills/kickoff/SKILL.md` and the four canonical agents — call the
   canonical focused/full mappings.
+- `bin/kickoff-tree-id`, `bin/kickoff-evidence`, and
+  `policies/orchestration-evidence.md` — preserve candidate-bound review,
+  revision packets, and final-gate evidence.
 
 Anything else that needs to change probably indicates a bootstrap deviation that should be questioned, not normalized.
 
@@ -528,14 +543,17 @@ Bootstrap is complete when **all** of the following hold:
 [ ] .agents/skills/stamp does NOT exist (starter-only, must not propagate)
 [ ] bin/kickoff-config is executable; kickoff.yaml validates; scoped updates
     preserve human comments and `extensions` data; `.kickoff/` is gitignored
+[ ] bin/kickoff-tree-id and bin/kickoff-evidence are executable; candidate
+    identity and run-scoped evidence behavioral tests pass
 [ ] bin/setup, bin/test, bin/check, and bin/install-hooks are executable;
     the language runtime wrapper exists when applicable; .githooks/pre-push
     calls bin/check; hook installation remains explicit and opt-in
 [ ] Runtime version metadata, package manifest, and lockfile form a complete
     language profile; no workflow assumes a versioned runtime binary on PATH
 [ ] tests/test_toolchain_entrypoints.py, tests/test_check.py,
-    tests/test_install_hooks.py, and tests/test_kickoff_config.py pass through
-    bin/test
+    tests/test_install_hooks.py, tests/test_kickoff_config.py,
+    tests/test_kickoff_tree_id.py, and tests/test_kickoff_evidence.py pass
+    through bin/test
 [ ] Every file in policies/ from the template exists, with project-name
     references updated
 [ ] No template-specific skills, briefs, or example code remain in the new

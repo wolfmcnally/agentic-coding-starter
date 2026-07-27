@@ -30,19 +30,29 @@ A methodology for writing software with AI coding agents in a way that scales be
 
    Net effect: the major-phase roadmap is visible at bootstrap; the orchestrator works one sub-phase at a time with each predecessor's outcomes baked in; the downstream sketches stay fresh as work proceeds rather than diverging from reality.
 
-7. **Orchestrator-driven sub-phase execution.** Use a high-level orchestrator skill (`kickoff`) that delegates the initial implementation. It:
+7. **Orchestrator-driven sub-phase execution.** Use a high-level orchestrator skill (`kickoff`) that delegates the initial implementation and owns candidate-bound evidence. It:
    - determines the current phase,
    - invokes a **planning agent** to turn the current sub-phase into a file-level plan,
    - hands the plan to a **plan-reviewer agent**,
    - hands the (possibly revised) plan to a **coding agent**,
    - hands the result to a **code-critic agent**,
-   - on any critic's complaint, sends the work back to the relevant agent for revision (with bounded loops).
+   - on any critic's complaint, assigns stable finding ids and sends the work
+     back to the relevant agent with a deterministic revision packet;
+   - binds review and gate records to the exact candidate tree.
 
    *One step, a lot happening. Each of those four roles is a specialist with its own tool stance, reading protocol, and verdict format.*
 
    Review intensity is risk-adaptive: a phase may declare a **review lane** ([`../policies/review-lanes.md`](../policies/review-lanes.md)). The default `full` lane runs all four roles; a `light` lane — mechanical phases only — skips initial plan review while keeping the initial code critic, who also guards the lane and escalates back to `full` when the work exceeded mechanical scope.
 
-8. **Acceptance check.** The orchestrator runs the tests and build gates that the sub-phase declares. A failure or concrete user correction is routed proportionally: the orchestrator may apply a small low-risk fix directly, use the coder alone for a low-risk delegated fix, or repeat the coder → critic cycle when risk is high or the change is large/cross-cutting. Every route reruns focused and touched-surface validation; a failed lightweight attempt upgrades to the full cycle.
+8. **Acceptance check.** During convergence, the coder runs the smallest
+   falsifying tests and affected revision-close gates. After code-critic
+   approval, the orchestrator runs the complete phase-prescribed sequence and
+   `./bin/check all` once against the unchanged candidate. A failure or
+   concrete user correction is routed proportionally: the orchestrator may
+   apply a small low-risk fix directly, use the coder alone for a low-risk
+   delegated fix, or repeat the coder → critic cycle when risk is high or the
+   change is large/cross-cutting. A failed lightweight attempt upgrades to the
+   full cycle; every relevant change invalidates prior gate evidence.
 
 9. **Append-only phase log.** Use an append-only log (`LOG.md`) to **open and close** work on every phase. Closing requires recording the **evidence** of what happened and **why** the orchestrator believes the success criteria were met. The human reads the END block before accepting the phase.
 
@@ -69,10 +79,13 @@ The methodology's orchestrator delegates to four specialist roles. Their names a
 |---|---|---|---|
 | `phase-planner` | Briefs, plan, repo | No | Turn one phase into a file-level implementation plan |
 | `plan-reviewer` | Briefs, plan, repo, plan output | No | Approve the plan or send it back for revision |
-| `phase-coder` | Briefs, plan, repo, approved plan | Yes | Implement the approved plan and run build gates |
+| `phase-coder` | Briefs, plan, repo, approved plan | Yes | Implement the approved plan and run focused/revision-close gates |
 | `code-critic` | Briefs, plan, repo, code diff | No | Approve the code or send it back for revision |
 
-The orchestrator (`kickoff`) is the fifth participant. It delegates initial implementation and handles verdicts, build gates, and `LOG.md`; it may write code only for a small, low-risk follow-up correction whose intended shape is already determined.
+The orchestrator (`kickoff`) is the fifth participant. It delegates initial
+implementation; owns authority, change, finding, and gate evidence; handles
+verdicts, final gates, and `LOG.md`; and may write code only for a small,
+low-risk follow-up correction whose intended shape is already determined.
 
 ## Non-negotiables
 

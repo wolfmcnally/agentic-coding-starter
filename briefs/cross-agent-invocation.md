@@ -1,6 +1,6 @@
 ---
 title: "Cross-Agent CLI Invocation — Best Current Practices"
-date: 2026-06-03
+date: 2026-07-27
 status: methodology
 scope: BCPs for invoking one coding-agent CLI from inside another (Claude Code ↔ Codex CLI), and the design rationale for the per-role model/venue feature (harness-aware cross-vendor review and pinning).
 ---
@@ -59,7 +59,12 @@ Flag-by-flag rationale:
   explicit pin; `EFFORT_ARGS` is empty or
   `(-c 'model_reasoning_effort="<effort>"')`. The watchdog verifies that these
   actual CLI flags match its `--model` / `--effort` metadata before it spawns.
-- **Exit codes are not a documented contract** for `codex exec`. Gate success on three signals together: the `-o` artifact exists and is non-empty, it contains the expected verdict header, and the call stayed inside the execution budget from [`policies/role-timeouts.md`](../policies/role-timeouts.md).
+- **Exit codes are not the whole contract** for `codex exec`. Ordinary success
+  requires a successful child, a fresh `-o` artifact with the expected role
+  shape, a terminal `turn.completed` event, and execution inside the budget.
+  The watchdog records those signals separately. A successful child plus a
+  fresh artifact but no terminal event returns 66; the artifact is usable only
+  after explicit role-shape, evidence, and candidate verification.
 - **Revision rounds: `codex exec resume <session-id> ...`** preserves the reviewer's context across rounds. **The `resume` subcommand has a different flag surface than `exec` — `-s/--sandbox` and `-C/--cd` do not exist on it** (codex-cli 0.136.0 rejects `-s` with `error: unexpected argument '-s' found`, exit 2 — empirically verified). Set the sandbox through a config override instead, and `cd` into the repo rather than passing `-C` (resume filters recorded sessions by cwd). `--model` and `-c model_reasoning_effort=...` are accepted on resume (re-verified with codex-cli 0.144.0) and must be repeated for an explicit pin:
 
   ```
@@ -90,7 +95,15 @@ Flag-by-flag rationale:
 - **`--permission-mode dontAsk` is the correct headless mode — never `--dangerously-skip-permissions`.** The "dangerous" bypass still parks on a one-time *interactive* consent dialog with no pre-accept flag; with no TTY it hangs forever (anthropics/claude-code#52506). `dontAsk` is fully non-interactive: pre-approved tools run, everything else is *denied* rather than prompted, and protected paths (`.git`, `.claude`, shell rc files) are never auto-approved — exactly the posture a delegated reviewer should have.
 - **`--allowedTools "Read,Grep,Glob"`** mirrors the canonical reviewer tool stance. (`AskUserQuestion` is omitted: escalation cannot reach the human through a nested CLI — an unresolved product question becomes a `REVISE` verdict stating the question, which the orchestrator surfaces.)
 - **Scrub `CLAUDECODE` and `CLAUDE_CODE_ENTRYPOINT` from the child environment.** Claude Code sets `CLAUDECODE=1` in every child process and a `claude` launch that sees it refuses to start — even in `-p` mode. Codex itself doesn't set it, but a claude → codex → claude chain inherits it through codex, so the bridge always scrubs.
-- **`--output-format stream-json --verbose` is required for progress-aware supervision.** It exposes startup and ongoing events so first-event and idle guards measure real activity. `bin/kickoff-config` truncates the result path before launch, preserves the stream for the orchestrator to read `session_id`, and requires a fresh non-empty final `result` event before returning success. A one-shot `json` envelope is acceptable for the minimal preflight probe only; it cannot support an idle watchdog during production work.
+- **`--output-format stream-json --verbose` is required for progress-aware
+  supervision.** It exposes startup and ongoing events so first-event and idle
+  guards measure real activity. `bin/kickoff-config` truncates the result path,
+  preserves the stream for `session_id`, and requires a fresh final `result`
+  event for ordinary success. If the child succeeds and its last assistant
+  message is fresh but the final event is absent, the watcher preserves that
+  message and returns 66 for explicit role-shape, evidence, and candidate
+  verification. A one-shot `json` envelope is acceptable for preflight only;
+  it cannot support an idle watchdog during production work.
 - **`--model <alias|id>` selects the model.** Omit it for the CLI's configured default (the review-role norm). Pass it for a deliberate per-role pin ([`policies/role-models.md`](../policies/role-models.md)): `--model opus` / `--model fable` by alias, falling back to the full ids `claude-opus-4-8` / `claude-fable-5` if an alias is unrecognized in a given CLI version.
 - **`--effort <level>` selects Claude Code reasoning effort.** The headless CLI
   accepts `low`, `medium`, `high`, `xhigh`, and `max` on fresh and resumed
@@ -110,6 +123,12 @@ Flag-by-flag rationale:
 
 - **Live-preflight every non-native target before mutating phase state.** Resolve the phase's external roles first, group them by unique `(CLI, model, effort, access mode)`, and make one minimal sentinel call per group using the production auth scrubs, flags, stdin closure, and read-only/write-enabled posture. Run the probe in an empty temporary working directory: upstream readiness does not need repository context, and the check should neither ingest that token load nor risk touching the tree. Codex therefore needs `--skip-git-repo-check` on this probe alone; the production checkout invocation does not. Require the exact sentinel and a bounded return. CLI presence, auth-status output, and credential files do not prove that precedence, entitlement, network, and the headless invocation all work together. Any preflight failure is an upstream prerequisite failure: abort before status/log mutation rather than silently weakening the configured role topology. `kickoff` encodes this mechanically as `./bin/kickoff-config preflight`.
 - **Redact the implementer's self-assessment** from review handoffs. Pass the raw artifact (plan text; diff or, for large changes, the changed-file list + `git diff --stat`) and the requirements, adversarially framed ("assume the implementer was careful but missed something"). Never include "all tests pass" or the coder's build-status narrative — it measurably degrades review depth (§1).
+- **After the first full pass, send a candidate-bound revision packet.** The
+  packet carries unresolved stable findings, reviewed/current candidate ids,
+  causal path/hash changes, authority drift, mapped verification, prior gates,
+  and explicit omissions. Original files remain readable. Rebase to a complete
+  review when authority, scope, risk class, or trustworthy continuity changes;
+  do not make a resumed reviewer reconstruct state from the transcript.
 - **Hand the reviewer a map, not a payload — and never reject the venue on diff size.** The external reviewer runs against a read-only checkout with its own Read/Grep (same as the native subagent). So the handoff for a large change is the changed-file list + `git diff --stat`, from which it pulls the files it wants; inline a full diff only when it is small enough to read whole. The failure to avoid: computing `git diff | wc -c`, seeing hundreds of KB, and falling back to native *without ever making the external call* — conflating an on-disk artifact with tokens-in-the-context-window. A reviewer never loads the whole diff at once. Delegation is discarded only on the three-signal gate (missing artifact, malformed verdict, timeout/error), never on a pre-computed size estimate. Flag machine-regenerated blobs (fixtures, snapshot JSON, lockfiles) as "spot-check, don't read line-by-line" so a diff dominated by regenerated data doesn't *read* as unreviewably big. (Observed: a large, fixture-dominated diff pre-rejected on byte count with zero external calls; and, symmetrically, an unbounded "read all the sources" plan-review mandate on a big multi-file phase exhausted the external reviewer's own context and tripped a failed internal compaction before any verdict.)
 - **Verdict sentinel.** Require the reviewer to end with the exact verdict header; parse by string match; treat a missing/malformed verdict as a failed invocation, not a lenient pass.
 - **Bound revision rounds by convergence.** Unbounded agent-to-agent loops burn quota and don't converge; iterate only while the reviewer's objections are narrowing, and surface to the human the moment the loop stalls or diverges. A generous numeric backstop catches pathological loops regardless. (Ours: convergence judgment under a 5-cycle runaway backstop, per [`policies/four-canonical-agents.md`](../policies/four-canonical-agents.md).)

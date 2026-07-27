@@ -37,11 +37,14 @@ Before changing anything, verify:
    - `.claude/agents/` contains exactly `phase-planner.md`, `plan-reviewer.md`, `phase-coder.md`, `code-critic.md`.
    - `.claude/skills/kickoff/SKILL.md`, `.claude/skills/methodology/SKILL.md`, and `.claude/skills/roles/SKILL.md` exist.
    - `bin/kickoff-config` exists and is executable.
+   - `bin/kickoff-tree-id` and `bin/kickoff-evidence` exist and are executable.
    - `bin/setup`, `bin/test`, and `bin/check` exist and are executable; the
      Python profile also has executable `bin/python`.
    - `kickoff.yaml` exists and `./bin/kickoff-config show` validates both sections.
    - `.codex/agents/*.toml` has one TOML file per canonical agent.
-   - `briefs/BRIEF.md`, `briefs/methodology.md`, `briefs/agentic-bootstrap.md` exist.
+   - `briefs/BRIEF.md`, `briefs/methodology.md`,
+     `briefs/agentic-bootstrap.md`, and
+     `briefs/incremental-orchestration.md` exist.
    - `plan/INDEX.md` and `plan/phase-1.md` exist.
    - Every file under `policies/` is non-empty.
    If any check fails, refuse with a specific error naming the missing file and exit.
@@ -144,6 +147,7 @@ Copy these files **from this template** into the new project, then run a name su
 - `briefs/methodology.md` (verbatim — methodology is universal)
 - `briefs/agentic-bootstrap.md` (verbatim — so the next bootstrap from this project is possible)
 - `briefs/cross-agent-invocation.md` (verbatim — the cross-CLI invocation BCPs that `policies/role-models.md` cites are universal)
+- `briefs/incremental-orchestration.md` (verbatim — universal candidate-bound review, revision, verification, and protocol-recovery design)
 - `briefs/deterministic-orchestration.md` (verbatim — universal draft brief: decision criteria for a deterministic kickoff loop once every supported harness has a parity workflow primitive)
 - `.githooks/pre-push` (verbatim — optional hook; it delegates to the canonical gate and is inert until explicitly installed)
 - `bin/setup`, `bin/test`, `bin/check`, and `bin/install-hooks`
@@ -154,6 +158,10 @@ Copy these files **from this template** into the new project, then run a name su
 - `tests/test_toolchain_entrypoints.py` and `tests/test_check.py` (adapted with
   the toolchain in Step 5), plus `tests/test_install_hooks.py` (verbatim)
 - `tests/test_kickoff_config.py` (verbatim — universal behavioral coverage for the manager/watchdog contract)
+- `bin/kickoff-tree-id`, `bin/kickoff-evidence`,
+  `tests/test_kickoff_tree_id.py`, and `tests/test_kickoff_evidence.py`
+  (verbatim — universal candidate identity and orchestration-evidence
+  contract, governed by `policies/orchestration-evidence.md`)
 
 Then create the `.agents/skills/` **directory symlinks** for Codex CLI's native skill discovery. Each is a relative symlink whose target is the canonical skill *directory* (not the SKILL.md file inside it — Codex doesn't follow file-level symlinks inside a skill dir per [openai/codex#11314](https://github.com/openai/codex/issues/11314), but does traverse a symlinked skill directory):
 
@@ -174,13 +182,15 @@ Verify each `readlink <dest>/.agents/skills/<name>` returns the expected target 
 The `bin/` directory, its `bin/README.md` convention preamble, and
 `policies/mechanistic-vs-intelligence.md` **are** carried over. The universal
 `bin/setup`, `bin/test`, `bin/check`, `bin/install-hooks`,
-`bin/kickoff-config`, tracked pre-push hook, and human-editable `kickoff.yaml`
-carry over too; Python targets also carry `bin/python`. Seed both config sections by
-running `<dest>/bin/kickoff-config reset all`; this preserves data under
-`extensions` if the destination already has it. The manager runs via `uv` with
-PEP 723 `ruamel.yaml`, so the destination needs `uv` on PATH. Keep these
-universal script entries in `bin/README.md`; delete only the starter-specific
-anonymization entry and remove its call from the copied `bin/check`.
+`bin/kickoff-config`, `bin/kickoff-tree-id`, `bin/kickoff-evidence`, tracked
+pre-push hook, and human-editable `kickoff.yaml` carry over too; Python targets
+also carry `bin/python`. Seed both config sections by running
+`<dest>/bin/kickoff-config reset all`; this preserves data under `extensions`
+if the destination already has it. The managers run via `uv`; the destination
+therefore needs `uv` on PATH, and `kickoff-config` declares its PEP 723
+`ruamel.yaml` dependency. Keep these universal script entries in
+`bin/README.md`; delete only the starter-specific anonymization entry and
+remove its call from the copied `bin/check`.
 
 Because the anonymization policy and its script are starter-only but `code-critic.md` is copied verbatim (above), the adaptation pass must **delete the "External / private-repo references" bullet** from the destination's `.claude/agents/code-critic.md` — it references `bin/check-anonymization.sh` and `policies/anonymize-log-references.md`, neither of which the new project will have.
 
@@ -361,6 +371,8 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - `ls <dest>/.claude/skills/stamp/` does **not** exist (we did not transfer it).
 - For each name in {kickoff, methodology, learn, teach, roles}: `readlink <dest>/.agents/skills/<name>` returns `../../.claude/skills/<name>`, `test -L <dest>/.agents/skills/<name>` and `test -d <dest>/.agents/skills/<name>` both pass, and `<dest>/.agents/skills/<name>/SKILL.md` is reachable through the directory symlink.
 - `<dest>/bin/kickoff-config show` runs; `<dest>/bin/README.md` retains its universal entry but **not** the `### check-anonymization.sh` entry.
+- `<dest>/bin/kickoff-tree-id` and `<dest>/bin/kickoff-evidence` are
+  executable; their behavioral tests pass.
 - `<dest>/.agents/skills/stamp` does **not** exist (starter-only, must not propagate).
 - The new `CLAUDE.md`'s catalogs reference every file in `briefs/` and `policies/`.
 - `<dest>kickoff.yaml` exists; `show` prints the seeded cross-vendor model routing and portable timeout values; a scoped model edit preserves timeout comments/values; `<dest>/.gitignore` includes `.kickoff/`; the two role policies and invocation brief exist.
@@ -369,9 +381,10 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
   probe.
 - `<dest>/bin/test` runs `tests/test_toolchain_entrypoints.py`,
   `tests/test_check.py`, `tests/test_install_hooks.py`,
-  `tests/test_kickoff_config.py`, and the deliverable tests through committed
-  locked environments; a focused repo-relative test argument runs only that
-  selection.
+  `tests/test_kickoff_config.py`, `tests/test_kickoff_tree_id.py`,
+  `tests/test_kickoff_evidence.py`, and the deliverable tests through
+  committed locked environments; a focused repo-relative test argument runs
+  only that selection.
 - `<dest>/bin/check test` delegates to `<dest>/bin/test`.
 - `<dest>/bin/check all` runs from outside `<dest>` and passes on the seeded code.
 - A valid explicit runtime override drives every Python entry point; an invalid

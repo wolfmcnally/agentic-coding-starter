@@ -10,7 +10,9 @@ def _normalized(path: Path) -> str:
 
 
 POLICY = _normalized(REPO_ROOT / "policies" / "build-gates.md")
+ORCHESTRATION_POLICY = _normalized(REPO_ROOT / "policies" / "orchestration-evidence.md")
 ANONYMIZATION_POLICY = _normalized(REPO_ROOT / "policies" / "anonymize-log-references.md")
+KICKOFF = _normalized(REPO_ROOT / ".claude" / "skills" / "kickoff" / "SKILL.md")
 LEARN = _normalized(REPO_ROOT / ".claude" / "skills" / "learn" / "SKILL.md")
 TEACH = _normalized(REPO_ROOT / ".claude" / "skills" / "teach" / "SKILL.md")
 STAMP = _normalized(REPO_ROOT / ".claude" / "skills" / "stamp" / "SKILL.md")
@@ -57,3 +59,43 @@ def test_anonymization_boundary_follows_write_destination() -> None:
     assert "boundary follows the destination of the write" in ANONYMIZATION_POLICY
     assert "Starter's starter-only anonymization policy" in TEACH
     assert "target's approved provenance/count template" in TEACH
+
+
+def test_orchestration_contract_is_candidate_bound_and_incremental() -> None:
+    for document in (ORCHESTRATION_POLICY, KICKOFF):
+        assert "kickoff-tree-id" in document
+        assert "authority" in document
+        assert "drift" in document
+        assert "revision packet" in document
+        assert "focused" in document
+        assert "./bin/check all" in document
+        assert "unchanged approved candidate" in document
+
+
+def test_orchestration_contract_keeps_one_complete_final_gate() -> None:
+    assert "the complete phase-prescribed sequence" in ORCHESTRATION_POLICY
+    assert "once after code-critic approval" in ORCHESTRATION_POLICY
+    assert "--require-final" in ORCHESTRATION_POLICY
+    assert "authoritative full gate last" in KICKOFF
+
+
+def test_protocol_recovery_never_becomes_ordinary_success() -> None:
+    for document in (ORCHESTRATION_POLICY, KICKOFF):
+        assert "Exit 66" in document
+        assert "terminal stream" in document
+        assert "not success" in document or "Ordinary success requires" in document
+
+
+def test_candidate_evidence_bundle_propagates_atomically() -> None:
+    required = (
+        "briefs/incremental-orchestration.md",
+        "policies/orchestration-evidence.md",
+        "bin/kickoff-tree-id",
+        "bin/kickoff-evidence",
+        "tests/test_kickoff_tree_id.py",
+        "tests/test_kickoff_evidence.py",
+    )
+    for phrase in required:
+        assert phrase in STAMP
+        assert phrase in TEACH
+    assert "Orchestration-evidence learning is atomic" in LEARN

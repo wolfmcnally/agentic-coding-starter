@@ -38,6 +38,8 @@ def check_repo(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     shutil.copy2(CHECK_SOURCE, root / "bin" / "check")
     shutil.copy2(REPO_ROOT / "bin" / "_python-toolchain", root / "bin" / "_python-toolchain")
     shutil.copy2(REPO_ROOT / "bin" / "test", root / "bin" / "test")
+    shutil.copy2(REPO_ROOT / "bin" / "kickoff-evidence", root / "bin" / "kickoff-evidence")
+    shutil.copy2(REPO_ROOT / "bin" / "kickoff-tree-id", root / "bin" / "kickoff-tree-id")
     (root / "project" / "pyproject.toml").write_text("[project]\nname='fixture'\n")
     (root / "project" / "uv.lock").write_text("version = 1\n")
     (root / "project" / ".python-version").write_text("3.11\n")
@@ -112,11 +114,13 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
         ),
         (
             f"uv cwd={root / 'project'} args=run --locked --managed-python "
-            "ruff check example tests ../bin/kickoff-config ../tests"
+            "ruff check example tests ../bin/kickoff-config ../bin/kickoff-evidence "
+            "../bin/kickoff-tree-id ../tests"
         ),
         (
             f"uv cwd={root / 'project'} args=run --locked --managed-python ruff format --check "
-            "example tests ../bin/kickoff-config ../tests"
+            "example tests ../bin/kickoff-config ../bin/kickoff-evidence "
+            "../bin/kickoff-tree-id ../tests"
         ),
         (
             f"uv cwd={root} args=run --project {root / 'project'} --locked "
@@ -216,16 +220,17 @@ def test_missing_project_contract_fails_clearly(
     assert f"CHECK ERROR missing required file: {expected_path}" in result.stderr
 
 
-def test_missing_test_entrypoint_fails_clearly(
-    check_repo: tuple[Path, dict[str, str]],
+@pytest.mark.parametrize("executable", ["test", "kickoff-tree-id", "kickoff-evidence"])
+def test_missing_required_executable_fails_clearly(
+    check_repo: tuple[Path, dict[str, str]], executable: str
 ) -> None:
     root, environment = check_repo
-    (root / "bin" / "test").unlink()
+    (root / "bin" / executable).unlink()
 
     result = _run(root, environment)
 
     assert result.returncode == 1
-    assert "CHECK ERROR missing required executable: bin/test" in result.stderr
+    assert f"CHECK ERROR missing required executable: bin/{executable}" in result.stderr
 
 
 @pytest.mark.parametrize("arguments", [("bogus",), ("all", "extra")])
