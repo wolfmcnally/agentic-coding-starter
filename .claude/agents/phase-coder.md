@@ -65,17 +65,20 @@ Check that:
 
 ### 5. Run the build gate
 
-Run the **Build Gate Sequence** from the plan in order: focused checks first,
-then the repository-owned `./bin/check all` full suite. Read
-`policies/build-gates.md` and the actual `bin/check`; do not substitute a
-generic ecosystem command list for an existing canonical entry point.
+Run the **Build Gate Sequence** from the plan in order: focused tests through
+`./bin/test <arguments>`, other focused checks next, then the
+repository-owned `./bin/check all` full suite. Read
+`policies/build-gates.md` and the complete setup/test/check/runtime contract;
+do not substitute a generic ecosystem command list for existing repository
+entry points.
 
-Native commands are appropriate for focused iteration, but they use the
-repository's committed metadata and lock-preserving mode (`uv run --locked`,
-Cargo `--locked`, Go `-mod=readonly`, or the selected Node package manager's
-frozen-lockfile contract). If the repository has no canonical gate, use the
-exact commands declared by its current tooling and report the missing entry
-point in Notes.
+Repository-owned tests always route through `bin/test`. Native commands are
+appropriate for other narrow iteration the interface does not represent, but
+they use committed metadata and lock-preserving mode (`uv run --locked`, Cargo
+`--locked`, Go `-mod=readonly`, or the selected Node package manager's
+frozen-lockfile contract). If the repository lacks the contract, use the exact
+commands declared by its current tooling and report every missing entry point
+in Notes.
 
 If a build step requires a system tool that isn't available in this environment, report the gap explicitly in Notes rather than skipping silently.
 

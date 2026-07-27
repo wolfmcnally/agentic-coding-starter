@@ -73,7 +73,10 @@ For Option B:
 
 - `head -1 ../briefs/BRIEF.md` shows the user's project title, not "Agentic Coding Starter Template".
 - `head -3 plan/phase-1.md` shows the user's real Phase 1 title in the frontmatter.
-- The repository-owned full gate (`./bin/check all`) still passes, unless the user has replaced the example deliverable with a different surface — in which case `bin/check` is adapted in the same phase to run that surface's locked gates plus the root methodology tests.
+- `./bin/setup`, focused/full `./bin/test`, and `./bin/check all` still pass.
+  If the example deliverable is replaced with another surface, the runtime
+  metadata, lockfile, wrappers, behavioral tests, hook, and workflow callers
+  are adapted atomically to that surface in the same phase.
 - `/kickoff phase 1` in Claude Code or `$kickoff phase 1` in Codex, invoked after the rewrite, picks up the user's real Phase 1 and walks through plan → plan-review → code → code-review → build for it.
 
 ## Brief refs

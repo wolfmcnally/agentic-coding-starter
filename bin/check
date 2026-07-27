@@ -10,7 +10,7 @@ usage() {
   cat <<'EOF'
 Usage: ./bin/check [all|lint|format|test|policy]
 
-Run the repository's canonical build gates. The default mode is "all".
+Run the repository's authoritative build gates. The default mode is "all".
 EOF
 }
 
@@ -38,12 +38,20 @@ if ! command -v uv >/dev/null 2>&1; then
   exit 1
 fi
 
-for required_path in "$project_root/pyproject.toml" "$project_root/uv.lock"; do
+for required_path in \
+  "$project_root/.python-version" \
+  "$project_root/pyproject.toml" \
+  "$project_root/uv.lock"; do
   if [[ ! -f "$required_path" ]]; then
     echo "CHECK ERROR missing required file: ${required_path#"$repo_root/"}" >&2
     exit 1
   fi
 done
+
+if [[ ! -x "$repo_root/bin/test" ]]; then
+  echo "CHECK ERROR missing required executable: bin/test" >&2
+  exit 1
+fi
 
 run_gate() {
   local gate_name="$1"
@@ -61,7 +69,7 @@ run_gate() {
 run_lint() {
   (
     cd "$project_root"
-    run_gate lint uv run --locked ruff check \
+    run_gate lint uv run --locked --managed-python ruff check \
       example tests ../bin/kickoff-config ../tests
   )
 }
@@ -69,16 +77,13 @@ run_lint() {
 run_format() {
   (
     cd "$project_root"
-    run_gate format uv run --locked ruff format --check \
+    run_gate format uv run --locked --managed-python ruff format --check \
       example tests ../bin/kickoff-config ../tests
   )
 }
 
 run_test() {
-  (
-    cd "$project_root"
-    run_gate test uv run --locked pytest -q tests ../tests
-  )
+  run_gate test "$repo_root/bin/test"
 }
 
 run_policy() {

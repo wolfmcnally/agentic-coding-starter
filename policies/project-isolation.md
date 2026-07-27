@@ -25,6 +25,8 @@ For multi-deliverable repos, treat each top-level sibling like a `project/` for 
 Everything that is *the deliverable*:
 
 - The package metadata file (`pyproject.toml`, `package.json`, `Cargo.toml`, `go.mod`, …)
+- The runtime/toolchain version declaration (`.python-version`,
+  `rust-toolchain.toml`, `packageManager`, declared Go version, …)
 - The lockfile (`uv.lock`, `package-lock.json`, `Cargo.lock`, `go.sum`)
 - Source code (the package directory)
 - Tests (the test directory)
@@ -66,40 +68,43 @@ Cross-boundary references in the *other* direction (root referencing `project/`)
 
 - `CLAUDE.md` says "the project lives under `project/`".
 - `plan/phase-1.md` says "modify `project/example/cli.py`".
-- The root `bin/check` gate enters `project/` to invoke its native toolchain.
+- Root `bin/setup`, `bin/test`, `bin/check`, and any runtime wrapper select
+  `project/` and invoke its native toolchain.
 
-## Build gates from the root
+## Toolchain entry points from the root
 
-The repository owns one canonical full-suite entry point:
+The repository owns one atomic interface:
 
 ```bash
-./bin/check
+./bin/setup
+./bin/test [focused arguments...]
+./bin/check all
 ```
 
-`bin/check` resolves the repository root from its own location, then invokes
-the deliverable through a `cd project && <locked command>` subshell. That
-internal shape works across uv, npm/pnpm, Cargo, Go, and other ecosystems
-without relying on a language-specific `--project` option.
+The wrappers resolve the repository root from their own location, select the
+deliverable's runtime declaration, manifest, and lockfile, and invoke its
+native toolchain. They may use `cd project` or an ecosystem's explicit project
+selector; callers do not depend on that implementation detail.
 
 The root wrapper is preferred because:
 
-- every human, agent, hook, and CI job calls the same checked-in interface;
+- every human, agent, hook, and CI job calls the same checked-in mappings;
 - the command works from any current directory;
-- lockfile enforcement, gate ordering, and failure reporting live in one place;
+- setup, runtime selection, lock enforcement, gate ordering, and failure
+  reporting remain synchronized;
 - root methodology tests and deliverable tests cannot drift into separate
   undocumented command lists.
 
-Focused implementation checks may still run directly inside `project/`, for
-example `cd project && uv run --locked pytest -q tests/test_cli.py`. After
-`project/` is extracted into its own repository, those native commands remain
-its independent gates; the parent repository's `bin/check` is governance
-metadata and intentionally stays outside the deliverable.
+Focused repository tests use `./bin/test <repo-relative selection>`. A
+developer working on the independently extracted `project/` may use the
+artifact's documented native commands; the parent repository's wrappers are
+governance metadata and intentionally stay outside the deliverable.
 
 Root-level methodology machinery is a separate surface, not part of the
-isolated deliverable. In this starter, root `tests/` exercises `bin/check`,
-`bin/install-hooks`, and `bin/kickoff-config`; the canonical gate runs those
-tests alongside `project/tests/`. Derived projects carry the universal
-machinery tests and adapt their own `bin/check` during `stamp`.
+isolated deliverable. In this starter, root `tests/` exercises the atomic
+toolchain wrappers, `bin/install-hooks`, and `bin/kickoff-config`; `bin/test`
+runs those tests alongside `project/tests/`. Derived projects carry the
+universal machinery tests and adapt the complete contract during `stamp`.
 
 ## Extracting `project/` as a submodule
 

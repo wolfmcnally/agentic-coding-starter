@@ -217,15 +217,30 @@ Wait for the coder. Collect the list of files created or modified, the Build Sta
 
 After the initial implementation or any follow-up correction, run the build commands in the orchestrator context to guarantee the resulting state is green. Build commands depend on the surfaces the phase touched.
 
-Identify "touched surfaces" from the files changed by the selected route plus `git status`. Then run the gates declared in the plan's **Build Gate Sequence** section, in order. Focused surface checks come first; the repository-owned full gate comes last.
+Identify "touched surfaces" from the files changed by the selected route plus
+`git status`. Then run the gates declared in the plan's **Build Gate Sequence**
+section, in order. Focused tests route through `./bin/test <arguments>` so they
+use the repository-selected environment; other focused surface checks come
+next; the repository-owned full gate comes last.
 
-Every methodology-following repository owns a cwd-independent canonical entry point per [`policies/build-gates.md`](../../../policies/build-gates.md). For the **Agentic Coding Starter Template itself**:
+Every methodology-following repository owns the cwd-independent atomic
+interface defined by
+[`policies/build-gates.md`](../../../policies/build-gates.md). For the
+**Agentic Coding Starter Template itself**, the authoritative final command is:
 
 ```
 ./bin/check all
 ```
 
-`bin/check` owns the locked Python commands, enters `project/`, includes the root methodology tests and policy checks, and preserves the failing child status. A project derived via `stamp` keeps the same entry-point name while its implementation uses that project's real toolchain. The planner may add project-specific focused checks or smokes before it; it must not replace an existing canonical full gate with a copied raw command list.
+`bin/setup`, `bin/test`, `bin/check`, and `bin/python` plus the runtime pin,
+manifest, and lockfile form this repository's atomic toolchain contract.
+`bin/check test` delegates to `bin/test`; the full gate includes root
+methodology tests and policy checks and preserves failing child statuses. A
+project derived via `stamp` keeps the universal setup/test/check interface
+while adapting it to that project's real language and version choices. The
+planner may add project-specific focused checks or smokes before the full gate;
+it must not bypass an existing repository test entry point or replace the full
+gate with a copied raw command list.
 
 If any build gate fails:
 
@@ -238,7 +253,9 @@ If any build gate fails:
    - **Coder only** (low risk, but delegation is useful) → re-run `phase-coder` with the error output and plan.
    - **Full cycle** (high risk or large/cross-cutting) → re-run `phase-coder`, then `code-critic` under the Step 6 venue rules.
    A plan error is automatically a full-cycle correction: re-run `phase-planner`, then `phase-coder`, then `code-critic`.
-3. Re-run the failing check first. If it passes, run the focused tests plus the complete build/acceptance gates for every touched surface.
+3. Re-run the failing check first. If it passes, run focused tests through
+   `./bin/test` plus the complete build/acceptance gates for every touched
+   surface.
 4. Do not invoke `code-critic` after a successful direct or coder-only correction merely as ceremony. Do invoke it if the correction grows beyond its classification, exposes a design question, lacks convincing validation, or otherwise crosses the full-cycle threshold.
 5. A direct or coder-only attempt gets one pass. If it fails validation or trades one break for another, upgrade to the full cycle. Once in the full cycle, keep iterating only while the gate and review findings are **converging**. Escalate on recurrence or oscillation; the 5-cycle runaway backstop in [`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md) applies to that full loop.
 

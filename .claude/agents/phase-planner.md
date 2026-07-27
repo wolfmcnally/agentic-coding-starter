@@ -133,13 +133,17 @@ List the exact shell commands the orchestrator should run after implementation,
 in order. Start with focused checks or smokes justified by the touched surface,
 then end with the repository-owned full gate:
 
-- [focused test/lint/smoke commands]
+- [`./bin/test <repo-relative selection>` for focused tests, then any other
+  focused lint/smoke commands]
 - `./bin/check all`
 
-Read `policies/build-gates.md` and inspect `bin/check`; do not copy a generic
-Python/Node/Rust command list over a repository-defined entry point. If the
-repository genuinely lacks `bin/check`, list its actual metadata-declared
-commands and flag the missing canonical entry point under Open Questions.
+Read `policies/build-gates.md` and inspect the complete toolchain contract:
+`bin/setup`, `bin/test`, `bin/check`, any runtime wrapper, runtime pin,
+manifest, and lockfile. Route focused tests through `bin/test`; do not copy a
+generic Python/Node/Rust command list over repository-defined entry points. If
+the repository genuinely lacks the contract, list its actual
+metadata-declared commands and flag the missing canonical interface under Open
+Questions.
 
 ## Open Questions
 [Ambiguities the implementer should resolve. Flag here rather than guess. Include both technical ambiguities and product/architecture decisions that should escalate to the reviewer for user confirmation.]
@@ -155,5 +159,6 @@ commands and flag the missing canonical entry point under Open Questions.
 - Prefer simplicity over new abstractions. A new helper module is premature unless two existing call sites already need it.
 - Flag ambiguities in Open Questions instead of guessing.
 - Plan in the language and toolchain the project actually uses. Prefer its
-  repository-owned `bin/check`; inspect metadata and lockfiles before naming
-  any focused native command.
+  repository-owned `bin/test` for focused tests and `bin/check` for the full
+  gate; inspect runtime pins, metadata, and lockfiles before naming any focused
+  native command.

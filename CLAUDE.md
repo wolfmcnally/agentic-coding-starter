@@ -35,13 +35,26 @@ In addition to the universal methodology briefs (see Methodology Contract below)
 
 ## Project surfaces
 
-- `project/` — the deliverable: package metadata, source, tests, lockfile. Self-contained per [`policies/project-isolation.md`](policies/project-isolation.md) — nothing inside `project/` references anything above it. Currently holds a minimal Python example (`project/example/`, `project/tests/`, `project/pyproject.toml`) so the build gates have a real target from the first session.
+- `project/` — the deliverable: runtime pin, package metadata, source, tests,
+  and lockfile. Self-contained per
+  [`policies/project-isolation.md`](policies/project-isolation.md) — nothing
+  inside `project/` references anything above it. Currently holds a minimal
+  Python example so the toolchain contract has a real target from the first
+  session.
 
 ## Project conventions
 
-- **Python 3.11+** for the example package and any Python the template ships. Type hints on all new public functions; idiomatic stdlib where the difference is small.
-- **`uv` with `pyproject.toml` and `uv.lock`** owns the example project's Python environment. Gate invocations use `uv run --locked`.
-- **`./bin/check` is the canonical full build-gate entry point.** It resolves the repo root, enters `project/`, runs the locked lint/format/test suite plus root policy checks, and preserves failures. Direct `cd project && uv run --locked <cmd>` commands are for focused checks or the independently extracted deliverable.
+- **Python 3.11+** is the supported range; `project/.python-version` selects
+  Python 3.11 as Starter's reproducible managed default. Type hints on all new
+  public functions; idiomatic stdlib where the difference is small.
+- **`uv` with `.python-version`, `pyproject.toml`, and `uv.lock`** owns the
+  example environment. `tool.uv.python-preference = "only-managed"` prevents
+  an ambient system interpreter from silently winning.
+- **The repository-owned toolchain contract is atomic.** `./bin/setup`
+  provisions the locked environment, `./bin/test [args...]` runs full or
+  focused tests, `./bin/check all` is the authoritative suite, and
+  `./bin/python` selects the project interpreter. Callers never assume
+  `python3.12` or another versioned binary is on `PATH`.
 - **`project/pyproject.toml` is the single source of truth** for Python tooling configuration (ruff, pytest, mypy if used) in this repo.
 
 ## Model & review venue
@@ -79,7 +92,10 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 - [`role-models.md`](policies/role-models.md) — harness-aware per-role model/venue in `kickoff.yaml`, with separate model and effort fields. Direct edits and `roles` are both supported; `bin/kickoff-config` preserves comments and `extensions` data, preflights every non-native target before phase mutation, and owns runtime fallback/reporting mechanics.
 - [`role-timeouts.md`](policies/role-timeouts.md) — first-event, idle-progress, and hard deadlines under `kickoff.yaml`'s `role_timeouts`. The unified manager enforces external calls, records gitignored telemetry, and recommends evidence-based recalibration without rewriting values automatically.
 - [`mechanistic-vs-intelligence.md`](policies/mechanistic-vs-intelligence.md) — the triage rule: route each repeatable task to a deterministic script in `bin/` (consistency, determinism, repeatability) or to intelligence (synthesis, judgment, generativity). Don't burn a model on what a script does better, or script what needs judgment; split mixed tasks at the seam.
-- [`build-gates.md`](policies/build-gates.md) — every repo owns one cwd-independent `./bin/check` entry point backed by committed metadata and lockfiles; focused phase checks are additive, failures stay visible, and hook installation is opt-in.
+- [`build-gates.md`](policies/build-gates.md) — every repo owns an atomic,
+  cwd-independent setup/test/check contract backed by its runtime pin,
+  committed metadata, lockfile, behavioral tests, and callers; language values
+  remain repo-specific, failures stay visible, and hook installation is opt-in.
 - [`review-lanes.md`](policies/review-lanes.md) — risk-adaptive review intensity and proportional follow-up routing. A phase declares `review_lane: full` (default; all four roles) or `light` (mechanical initial work; plan review skipped). Every initial implementation gets a code critic; later test- or user-driven corrections use direct, coder-only, or full-cycle routing according to risk and size.
 - [`phase-status.md`](policies/phase-status.md) — status markers live only in `plan/INDEX.md`; no `status:` field in per-phase frontmatter; `kickoff` owns transitions.
 - [`phase-ripple.md`](policies/phase-ripple.md) — at phase close, pinned decisions from the closing phase propagate into downstream drafted phase files. AUTO ripples (mechanical) land in the same session; DECIDE ripples (judgment) surface as named follow-ups in the END block.
@@ -97,7 +113,11 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 
 - `briefs/` — durable design library. Each brief is markdown with YAML frontmatter (`title`, `date`, `status`, `scope`); brief-file lifecycle is governed by [`policies/briefs.md`](policies/briefs.md). See "Methodology briefs" above for the universal briefs, and "Project briefs" in Project Context for this repo's specifics.
 - `policies/` — non-negotiable rules. Full catalog above.
-- `bin/` — the repo's deterministic executables: the mechanistic half of the methodology (per [`policies/mechanistic-vs-intelligence.md`](policies/mechanistic-vs-intelligence.md)). Exact, repeatable, judgment-free work lives here as a plain script. [`bin/README.md`](bin/README.md) is the operator index. This repo ships the canonical `check` gate, opt-in `install-hooks`, universal `kickoff-config` manager, and starter-only `check-anonymization.sh` leak guard.
+- `bin/` — the repo's deterministic executables: the mechanistic half of the
+  methodology. [`bin/README.md`](bin/README.md) is the operator index. This
+  repo ships the atomic `setup`/`test`/`check`/`python` toolchain interface,
+  opt-in `install-hooks`, universal `kickoff-config` manager, and starter-only
+  `check-anonymization.sh` leak guard.
 - `tests/` — tests for universal methodology machinery outside the isolated deliverable: gate/hook contracts and `kickoff-config`. These are carried into derived projects and run in addition to the deliverable's own gates.
 - `.githooks/` — tracked optional lifecycle hooks. `bin/install-hooks` opts a checkout in; cloning or stamping never changes Git configuration silently.
 - `plan/` — phased execution plan. Entry point [`plan/INDEX.md`](plan/INDEX.md) (dependency graph, status table, cross-cutting concerns, critical-files map). Each `plan/phase-*.md` holds Goal / Deliverables / Acceptance / brief refs. **When `plan/` and a brief disagree, `plan/` wins.**
@@ -153,7 +173,11 @@ These are the universals every project derived from this template inherits. The 
 - **Status lives in one place.** `plan/INDEX.md`'s phase table is the single source of truth for which phase is `⬅️ / 🚧 / ✅`. Per-phase frontmatter never carries `status`.
 - **Acceptance is empirical.** Every phase's Acceptance section lists shell commands with verifiable results, named manual checks, or analyzer outputs that pass a quality gate. "The code compiles" is not acceptance.
 - **Mechanistic vs. intelligence.** Triage every repeatable task. Deterministic, exact, repeatable work is a script under `bin/`; synthesis, judgment, and generative work is an agent. Don't burn a model on what a script does better (cheaper, exact, harness-portable, testable), and don't script what needs judgment. Split mixed tasks at the seam — the agent decides *what*, a deterministic script does the mechanical *how*. See [`policies/mechanistic-vs-intelligence.md`](policies/mechanistic-vs-intelligence.md).
-- **Repository-owned gates.** The final full-suite claim goes through the repo's cwd-independent `./bin/check` entry point, backed by committed metadata and lockfiles. Phase-specific focused checks may precede it; copied raw full-suite command lists may not replace it. See [`policies/build-gates.md`](policies/build-gates.md).
+- **Repository-owned toolchain contract.** Setup, focused/full testing,
+  runtime selection, metadata, locking, behavioral tests, and callers are one
+  atomic bundle. Use `./bin/setup`, `./bin/test`, and `./bin/check all`;
+  language profiles may add a runtime wrapper such as `./bin/python`. See
+  [`policies/build-gates.md`](policies/build-gates.md).
 - **Repo-relative paths only** in any file committed to this repo. Bash invocations may use absolute paths.
 - **Cross-harness parity.** Skills and agent definitions have one canonical home (`.claude/` / repo-root `CLAUDE.md`) and harness-specific mirrors (`.codex/`, `.agents/`, `AGENTS.md`). Edit the canonical; refresh the mirror in the same commit.
 - **Human decides done.** `kickoff` never auto-commits. The human reviews each phase's END block and either accepts the work, asks for revisions, or commits.
@@ -181,7 +205,10 @@ Checkoff discipline: an agent may close an action only when *it personally* did 
 - **Repo-relative paths only** in committed files (also load-bearing per the invariants).
 - **Harness-specific skill invocation.** In harness-neutral prose, name a skill without a command prefix (for example, "the `kickoff` skill"). When showing an invocation, always give both forms: `/kickoff` for Claude Code and `$kickoff` for Codex. Never present Claude Code's `/name` syntax as universal.
 - **One executable command per fenced code block** when a code block is meant to be copy-pasted into a shell, so the user can copy individual commands one at a time without breaking on multi-line clipboards.
-- **Build gates have one repository entry point.** Use `./bin/check` for the authoritative suite. That root-owned wrapper enters the isolated deliverable with `cd <deliverable> && <locked command>`; focused native commands remain appropriate during implementation and after extracting `project/`.
+- **Toolchain commands belong to the repository.** Use `./bin/setup` for
+  provisioning, `./bin/test` for full or focused tests, and `./bin/check` for
+  the authoritative suite. The wrappers select the isolated deliverable's
+  pinned, locked environment; do not infer a runtime from host `PATH`.
 
 ## Glossary
 
@@ -195,7 +222,10 @@ Terms used consistently across briefs, skills, policies, and code. Mismatched us
 - **`learn`.** Universal cross-repo skill. Invoke it as `/learn` in Claude Code or `$learn` in Codex. Explores a donor repo and proposes which of its patterns to absorb into the current repo. Plan-first; user approves; then applies. The donor stays read-only.
 - **`teach`.** Universal cross-repo skill. Invoke it as `/teach` in Claude Code or `$teach` in Codex. Inverse of `learn`. Proposes which of the current repo's patterns to apply to a target repo. Plan-first; user approves; then applies to the target. The current repo stays read-only during teaching.
 - **The four canonical agents.** `phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`. Their names are load-bearing — `kickoff` invokes them by name. Their definitions live in `.claude/agents/` (canonical) and `.codex/agents/` (mirror).
-- **Build gate.** A deterministic check the orchestrator runs after the coder finishes. The authoritative full sequence is owned by `./bin/check`; a phase may add focused commands before it.
+- **Repository-owned toolchain contract.** The atomic setup, focused/full test,
+  runtime-selection, full-gate, metadata, lockfile, tests, and caller bundle.
+  The authoritative full sequence is `./bin/check all`; focused tests use
+  `./bin/test`.
 - **Mechanistic vs. intelligence triage.** The decision, made per repeatable task, between a deterministic script (mechanistic — consistency, determinism, repeatability) and an agent (intelligence — synthesis, judgment, generativity). Mechanistic code lives in `bin/`. Governed by `policies/mechanistic-vs-intelligence.md`.
 - **`bin/`.** The repo's home for deterministic executables — the mechanistic half of the methodology. Indexed by `bin/README.md`; one concern per script.
 - **Role-model pinning / cross-harness invocation.** `kickoff.yaml`'s `role_models` section selects separate model and effort fields per role and orchestrating harness. The model implies its CLI. `roles` is an optional validated editor; direct edits are supported. `bin/kickoff-config` resolves and fail-closed preflights non-native targets. Governed by `policies/role-models.md`.

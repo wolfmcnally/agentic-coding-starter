@@ -4,10 +4,10 @@ description: >-
   Stamp out a new project at <directory>, using this repository as the
   master template. Asks a small number of configuration questions only when
   the optional <description> doesn't make the answers obvious. Adapts
-  CLAUDE.md, README.md, briefs/BRIEF.md, the kickoff skill's build gates,
-  and the four canonical agents for the new project's name and primary
-  language. Invoke as /stamp <directory> [<description>] in Claude Code or
-  $stamp <directory> [<description>] in Codex.
+  CLAUDE.md, README.md, briefs/BRIEF.md, the atomic setup/test/check
+  toolchain contract, the kickoff skill, and the four canonical agents for
+  the new project's name and primary language. Invoke as /stamp <directory>
+  [<description>] in Claude Code or $stamp <directory> [<description>] in Codex.
 argument-hint: "<directory> [<description>]"
 ---
 
@@ -37,6 +37,8 @@ Before changing anything, verify:
    - `.claude/agents/` contains exactly `phase-planner.md`, `plan-reviewer.md`, `phase-coder.md`, `code-critic.md`.
    - `.claude/skills/kickoff/SKILL.md`, `.claude/skills/methodology/SKILL.md`, and `.claude/skills/roles/SKILL.md` exist.
    - `bin/kickoff-config` exists and is executable.
+   - `bin/setup`, `bin/test`, and `bin/check` exist and are executable; the
+     Python profile also has executable `bin/python`.
    - `kickoff.yaml` exists and `./bin/kickoff-config show` validates both sections.
    - `.codex/agents/*.toml` has one TOML file per canonical agent.
    - `briefs/BRIEF.md`, `briefs/methodology.md`, `briefs/agentic-bootstrap.md` exist.
@@ -144,8 +146,13 @@ Copy these files **from this template** into the new project, then run a name su
 - `briefs/cross-agent-invocation.md` (verbatim — the cross-CLI invocation BCPs that `policies/role-models.md` cites are universal)
 - `briefs/deterministic-orchestration.md` (verbatim — universal draft brief: decision criteria for a deterministic kickoff loop once every supported harness has a parity workflow primitive)
 - `.githooks/pre-push` (verbatim — optional hook; it delegates to the canonical gate and is inert until explicitly installed)
-- `bin/check` and `bin/install-hooks` (`install-hooks` verbatim; `check` is adapted in Step 5)
-- `tests/test_check.py` (adapted with the gate in Step 5) and `tests/test_install_hooks.py` (verbatim)
+- `bin/setup`, `bin/test`, `bin/check`, and `bin/install-hooks`
+  (`install-hooks` verbatim; the toolchain entry points are adapted together
+  in Step 5)
+- `bin/python` for a Python target (adapted in Step 5; omit it when Python is
+  not a deliverable runtime)
+- `tests/test_toolchain_entrypoints.py` and `tests/test_check.py` (adapted with
+  the toolchain in Step 5), plus `tests/test_install_hooks.py` (verbatim)
 - `tests/test_kickoff_config.py` (verbatim — universal behavioral coverage for the manager/watchdog contract)
 
 Then create the `.agents/skills/` **directory symlinks** for Codex CLI's native skill discovery. Each is a relative symlink whose target is the canonical skill *directory* (not the SKILL.md file inside it — Codex doesn't follow file-level symlinks inside a skill dir per [openai/codex#11314](https://github.com/openai/codex/issues/11314), but does traverse a symlinked skill directory):
@@ -166,8 +173,9 @@ Verify each `readlink <dest>/.agents/skills/<name>` returns the expected target 
 
 The `bin/` directory, its `bin/README.md` convention preamble, and
 `policies/mechanistic-vs-intelligence.md` **are** carried over. The universal
-`bin/check`, `bin/install-hooks`, `bin/kickoff-config`, tracked pre-push hook,
-and human-editable `kickoff.yaml` carry over too. Seed both config sections by
+`bin/setup`, `bin/test`, `bin/check`, `bin/install-hooks`,
+`bin/kickoff-config`, tracked pre-push hook, and human-editable `kickoff.yaml`
+carry over too; Python targets also carry `bin/python`. Seed both config sections by
 running `<dest>/bin/kickoff-config reset all`; this preserves data under
 `extensions` if the destination already has it. The manager runs via `uv` with
 PEP 723 `ruamel.yaml`, so the destination needs `uv` on PATH. Keep these
@@ -221,7 +229,11 @@ Write a minimal-but-runnable code skeleton in the project's primary language. Th
 **Path convention.** All paths below are written assuming `project_isolation` is enabled (the default for single-deliverable projects). Prefix every path with `project/` when laying files down. If `project_isolation` is disabled, drop the `project/` prefix and lay files at the repo root.
 
 **Python (paths inside `project/`):**
-- `pyproject.toml` with `[project]` metadata, `[tool.ruff]`, `[tool.pytest.ini_options]`, dev deps `ruff`, `pytest`.
+- `.python-version` selecting the repository's default managed interpreter.
+- `pyproject.toml` with `[project]` metadata, `[tool.uv]` managed-interpreter
+  policy, `[tool.ruff]`, `[tool.pytest.ini_options]`, and committed dev
+  dependencies `ruff`, `pytest`.
+- `uv.lock`, generated from that manifest and interpreter policy.
 - A concise `README.md` for the artifact (the repo's didactic README is at the root).
 - `<slug>/__init__.py` with version export.
 - `<slug>/cli.py` with an argparse entry point that responds to `--help` and a stub subcommand.
@@ -258,23 +270,33 @@ The artifact's `README.md` is short and self-contained (no `..` references) per 
 
 When `project_isolation` is disabled (polyglot), there is no `project/.gitignore`; all language entries live at the repo root in a single combined `.gitignore`.
 
-### Step 5 — Generate the repository-owned build gate
+### Step 5 — Generate the repository-owned toolchain contract
 
-Adapt `<dest>/bin/check` as the target's canonical cwd-independent interface
-defined by `policies/build-gates.md`. Preserve the modes
-`all|lint|format|test|policy`, root resolution, strict argument handling,
-fail-closed prerequisite checks, exact child-status propagation, and stable
-PASS/FAIL lines. Replace the starter's package names and policy-only
-anonymization call with the target's real surfaces.
+Adapt the complete atomic bundle defined by `policies/build-gates.md`:
 
-Use committed lock-preserving commands:
+- `<dest>/bin/setup` provisions the committed environment in immutable mode;
+- `<dest>/bin/test` runs all tests with no arguments and forwards focused
+  arguments with paths rooted at `<dest>`;
+- `<dest>/bin/check` preserves `all|lint|format|test|policy`, delegates `test`
+  to `bin/test`, and runs every authoritative gate;
+- a Python target gets `<dest>/bin/python`, selecting the same managed,
+  locked interpreter for one-off commands;
+- the runtime pin, manifest, lockfile, behavioral tests, hook, docs, `kickoff`,
+  and four canonical agents all agree with those entry points.
 
-| Language | Gate commands |
+Preserve cwd independence, strict argument handling, fail-closed prerequisite
+and bundle-member checks, exact child-status propagation, and stable PASS/FAIL
+lines. Replace Starter's package names and policy-only anonymization call with
+the target's real surfaces.
+
+Use the target's committed language profile:
+
+| Language | Setup / test / gate implementation |
 |---|---|
-| Python | `uv run --locked ruff check ...`; `uv run --locked ruff format --check ...`; `uv run --locked pytest -q ...` |
-| TypeScript / Node | the package manager selected by the committed lockfile; its `lint`, `format`/`format:check`, `typecheck`, and `test` scripts after frozen/immutable dependency setup |
-| Rust | `cargo fmt --all -- --check`; `cargo build --workspace --locked`; `cargo clippy --workspace --all-targets --locked -- -D warnings`; `cargo test --workspace --locked` |
-| Go | formatting check plus `go vet -mod=readonly ./...` and `go test -mod=readonly ./...` |
+| Python | `.python-version` + `pyproject.toml` + `uv.lock`; `uv sync --locked --managed-python`; `uv run --locked --managed-python`; recurring tools in the dev dependency group |
+| TypeScript / Node | package-manager/version metadata plus the selected lockfile; frozen/immutable setup; package scripts behind `bin/test` and `bin/check` |
+| Rust | declared/pinned toolchain when applicable; dependency fetch/build/test with Cargo `--locked` |
+| Go | declared Go version; dependency and test commands with module reads `-mod=readonly` |
 
 When `project_isolation` is enabled, each language gate runs from
 `<dest>/project`; otherwise it runs from `<dest>`. The `policy` mode must check
@@ -289,11 +311,12 @@ root tests; `bin/check` invokes it in locked mode. Do not use an unpinned
 Node, Rust, or Go. For a Python deliverable, its committed dev dependency group
 and lockfile may cover both deliverable and root methodology tests.
 
-Adapt `<dest>/tests/test_check.py` in the same step so its fake toolchain
-expects the target's exact locked commands and proves the universal wrapper
-contract. Then change the **Final build gate** examples in `kickoff`, the four
-canonical agents, `CLAUDE.md`, the brief, and Phase 1 to `./bin/check all`.
-Focused native commands may remain as phase-specific examples; no copied raw
+Adapt `<dest>/tests/test_toolchain_entrypoints.py` and
+`<dest>/tests/test_check.py` in the same step so their fake toolchains expect
+the target's exact setup, full/focused test, runtime, and locked-gate commands.
+Then change the **Final build gate** examples in `kickoff`, the four canonical
+agents, `CLAUDE.md`, the brief, and Phase 1 to use `./bin/test ...` for focused
+tests and `./bin/check all` for the authoritative suite. No copied raw
 full-suite list may remain.
 
 ### Step 6 — Initialize git
@@ -323,7 +346,14 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - `<dest>/.agents/skills/stamp` does **not** exist (starter-only, must not propagate).
 - The new `CLAUDE.md`'s catalogs reference every file in `briefs/` and `policies/`.
 - `<dest>kickoff.yaml` exists; `show` prints the seeded cross-vendor model routing and portable timeout values; a scoped model edit preserves timeout comments/values; `<dest>/.gitignore` includes `.kickoff/`; the two role policies and invocation brief exist.
-- `<dest>/bin/check test` runs `tests/test_check.py`, `tests/test_install_hooks.py`, `tests/test_kickoff_config.py`, and the deliverable tests through committed locked environments (adapt the gate fixture, not its universal assertions).
+- `<dest>/bin/setup` succeeds from outside `<dest>` and provisions only the
+  committed runtime/dependencies.
+- `<dest>/bin/test` runs `tests/test_toolchain_entrypoints.py`,
+  `tests/test_check.py`, `tests/test_install_hooks.py`,
+  `tests/test_kickoff_config.py`, and the deliverable tests through committed
+  locked environments; a focused repo-relative test argument runs only that
+  selection.
+- `<dest>/bin/check test` delegates to `<dest>/bin/test`.
 - `<dest>/bin/check all` runs from outside `<dest>` and passes on the seeded code.
 
 Run the repository-owned gate to confirm:

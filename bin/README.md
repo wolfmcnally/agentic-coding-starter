@@ -11,14 +11,47 @@
 
 ## Scripts
 
-### `check` — canonical repository build gate
+### `setup` — provision the pinned, locked environment
+
+Validates the `uv` prerequisite and the complete Python profile, then
+synchronizes the managed interpreter and exact locked dependencies. It works
+from any current directory and refuses a stale or missing lockfile.
+
+```bash
+./bin/setup
+```
+
+### `test` — full or focused repository tests
+
+With no arguments, runs the deliverable tests and root methodology tests.
+Arguments are forwarded to pytest from the repository root, so focused paths
+are stable from any caller directory.
+
+```bash
+./bin/test
+./bin/test tests/test_check.py -q
+```
+
+### `python` — repository-selected Python
+
+Runs Python from the same managed, locked environment as setup and the gates.
+Use it for one-off scripts and diagnostics instead of assuming a host
+`python3.x` executable.
+
+```bash
+./bin/python --version
+./bin/python -c 'print("hello")'
+```
+
+### `check` — authoritative repository build gate
 
 The single authoritative entry point for automated repository checks. It
-resolves the repo root from its own location, validates the `uv` prerequisite
-and committed Python metadata/lockfile, then runs the selected named mode with
-`uv run --locked`. `all` runs lint, format verification, tests, and deterministic
-policy checks in order. Child failures retain their exact status and emit a
-terminal `CHECK <name> FAIL`; success ends with `CHECK ALL PASS`.
+resolves the repo root from its own location, validates the complete toolchain
+bundle, then runs the selected named mode in the managed, locked environment.
+Its `test` mode delegates to `bin/test`. `all` runs lint, format verification,
+tests, and deterministic policy checks in order. Child failures retain their
+exact status and emit a terminal `CHECK <name> FAIL`; success ends with
+`CHECK ALL PASS`.
 
 ```bash
 ./bin/check
@@ -29,9 +62,10 @@ terminal `CHECK <name> FAIL`; success ends with `CHECK ALL PASS`.
 ```
 
 Universal contract: [`policies/build-gates.md`](../policies/build-gates.md).
-`stamp` preserves the interface and rewrites its command mapping to the
-destination's language, metadata, and lockfile. Behavioral coverage lives in
-`tests/test_check.py`.
+`stamp`, `learn`, and `teach` preserve the atomic interface while adapting its
+implementation to the destination's language, runtime policy, metadata, and
+lockfile. Behavioral coverage lives in
+`tests/test_toolchain_entrypoints.py` and `tests/test_check.py`.
 
 ### `install-hooks` — opt in to tracked Git hooks
 

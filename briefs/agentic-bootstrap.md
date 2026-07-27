@@ -30,9 +30,17 @@ A project derived from this template contains the following **portable structure
 
   bin/
     README.md              # Deterministic script operator index
+    setup                  # Provision pinned, locked dependencies
+    test                   # Full/focused repository test runner
+    check                  # Authoritative lint/format/test/policy gates
+    <runtime>              # Optional selected runtime (for example, python)
+    install-hooks          # Explicit opt-in to tracked Git hooks
     kickoff-config         # Round-trip editor, preflight, watchdog, calibration
 
   tests/
+    test_toolchain_entrypoints.py # Setup/test/runtime behavioral coverage
+    test_check.py          # Full-gate behavioral coverage
+    test_install_hooks.py  # Hook-installer behavioral coverage
     test_kickoff_config.py # Universal manager/watchdog behavioral coverage
 
   briefs/
@@ -103,7 +111,9 @@ A project derived from this template contains the following **portable structure
                            #   policies/project-isolation.md. Otherwise the
                            #   <language-skeleton> directories live at the
                            #   repo root as siblings.
+    .python-version        # (or the language's version declaration)
     pyproject.toml         # (or package.json / Cargo.toml / go.mod)
+    uv.lock                # (or the selected package manager's lockfile)
     README.md              # concise, artifact-only
     <slug>/                # package directory
     tests/
@@ -368,28 +378,36 @@ If the brief surfaces only Phase 1 (a small, single-phase project), no sketches 
 
 The template's example is Python. The new project may be Python, TypeScript, Rust, Go, Swift, Kotlin, a polyglot, or pure documentation.
 
-**Decide first whether to adopt the `project/` convention** ([`../policies/project-isolation.md`](../policies/project-isolation.md)). The default for a single-deliverable project is opt-in: the artifact goes under `project/` and the repository-owned gate enters it internally. The default for polyglot or multi-deliverable repos is opt-out: deliverable directories live at the repo root as siblings.
+**Decide first whether to adopt the `project/` convention**
+([`../policies/project-isolation.md`](../policies/project-isolation.md)). The
+default for a single-deliverable project is opt-in: the artifact goes under
+`project/` and the repository-owned toolchain wrappers select it internally.
+The default for polyglot or multi-deliverable repos is opt-out: deliverable
+directories live at the repo root as siblings.
 
 Lay down (paths assume `project_isolation` enabled — prefix with `project/`; drop the prefix when disabled):
 
-- The package-manager file (`pyproject.toml`, `package.json`, `Cargo.toml`, `go.mod`, etc.) with pinned tooling and minimum dependencies.
+- The runtime/toolchain version declaration, package-manager file
+  (`pyproject.toml`, `package.json`, `Cargo.toml`, `go.mod`, etc.), and
+  lockfile with pinned tooling and minimum dependencies.
 - A concise `README.md` for the artifact (self-contained, no `..` references).
 - The package directory with empty modules.
 - The test directory with one trivial test that passes (so the build gate has something to run on first kickoff).
 - A `.gitignore` clause at the repo root for the language's build artifacts.
 
-Build gates use whatever the language ecosystem provides—lint, format check,
-type/build checks, and tests—but the repository owns their authoritative
-composition in `bin/check`. The wrapper invokes the committed lockfile in
-immutable mode (`uv run --locked`, frozen Node installs, Cargo `--locked`, Go
-`-mod=readonly`, or the ecosystem equivalent), resolves the root from its own
-location, and preserves failures.
+The repository owns setup, focused/full testing, runtime selection, and
+authoritative gates as one bundle. Generate `bin/setup`, `bin/test`, and
+`bin/check` with the universal interface from
+[`../policies/build-gates.md`](../policies/build-gates.md); add a runtime
+wrapper such as `bin/python` when appropriate. Back them with the target's
+version declaration, committed manifest, lockfile, and behavioral tests.
 
-Generate `bin/check` with the universal `all|lint|format|test|policy` interface
-from [`../policies/build-gates.md`](../policies/build-gates.md), then make
-`kickoff`, the canonical agents, CLAUDE.md, and phase acceptance call
-`./bin/check all`. The wrapper uses `cd project && <locked command>` internally
-when project isolation is enabled; callers do not duplicate that command list.
+`bin/check` preserves `all|lint|format|test|policy` and delegates `test` to
+`bin/test`. Immutable ecosystem modes include `uv --locked
+--managed-python`, frozen Node installs, Cargo `--locked`, Go `-mod=readonly`,
+or their equivalent. Make `kickoff`, the canonical agents, CLAUDE.md, and phase
+acceptance use `./bin/test ...` for focused tests and `./bin/check all` for the
+full claim; callers do not duplicate the command mappings.
 
 ### Step 10 — Sanity-check the bootstrap
 
@@ -402,7 +420,11 @@ Before declaring the bootstrap complete, verify:
 - `ls .claude/skills/kickoff/` contains `SKILL.md`.
 - `ls .claude/skills/methodology/` contains `SKILL.md`.
 - `bin/kickoff-config show` succeeds and `kickoff.yaml` contains valid `role_models` and `role_timeouts` sections.
-- The repository's `bin/check test` mode runs the universal gate/config tests before any live venue probe.
+- `bin/setup` works from outside the repository and provisions only the
+  committed runtime and dependencies.
+- `bin/test` runs deliverable and universal tooling tests; a focused
+  repo-relative selection runs only that selection.
+- `bin/check test` delegates to `bin/test` before any live venue probe.
 - The new `CLAUDE.md`'s "Briefs catalog" section lists every file in `briefs/`, and every file in `briefs/` is referenced from the catalog (no orphans either way).
 - The new `CLAUDE.md`'s "Policies catalog" section lists every file in `policies/`, and every file in `policies/` is referenced from the catalog (no orphans either way).
 - `plan/phase-1.md`'s `Brief refs` section lists at least one brief, and each listed brief exists.
@@ -419,7 +441,7 @@ The bootstrap is the same shape every time. The variation is in:
 | Axis                          | Examples of project-specific choices                          |
 | ----------------------------- | ------------------------------------------------------------- |
 | **Surfaces**                  | web + back-end + IaC; pure Python lib; mobile + API; docs     |
-| **Build gate implementation** | repository-owned `bin/check` using locked/frozen ecosystem commands |
+| **Toolchain implementation**  | repository-owned setup/test/check/runtime bundle using pinned, locked ecosystem commands |
 | **Languages in play**         | Python / TS / Rust / Go / Swift / Kotlin / polyglot           |
 | **Deployment story**          | AWS / Cloudflare / Vercel / app stores / static / none        |
 | **Per-project invariants**    | Cost ceilings; license policy; privacy boundaries; FOSS-only  |
@@ -430,8 +452,10 @@ When adapting, edit these files (and only these) to reflect those choices:
 
 - `CLAUDE.md` — reflects all of them.
 - `plan/INDEX.md` Cross-Cutting Concerns — duplicates the invariants from `CLAUDE.md`.
-- `bin/check` — the sole surface → locked-command mapping.
-- `.claude/skills/kickoff/SKILL.md` and the four canonical agents — call the canonical mapping and may name only additive focused checks.
+- `bin/setup`, `bin/test`, `bin/check`, runtime wrapper, version declaration,
+  manifest, lockfile, and their behavioral tests — one atomic implementation.
+- `.claude/skills/kickoff/SKILL.md` and the four canonical agents — call the
+  canonical focused/full mappings.
 
 Anything else that needs to change probably indicates a bootstrap deviation that should be questioned, not normalized.
 
@@ -494,10 +518,14 @@ Bootstrap is complete when **all** of the following hold:
 [ ] .agents/skills/stamp does NOT exist (starter-only, must not propagate)
 [ ] bin/kickoff-config is executable; kickoff.yaml validates; scoped updates
     preserve human comments and `extensions` data; `.kickoff/` is gitignored
-[ ] bin/check and bin/install-hooks are executable; .githooks/pre-push calls
-    bin/check; hook installation remains explicit and opt-in
-[ ] tests/test_check.py, tests/test_install_hooks.py, and
-    tests/test_kickoff_config.py pass through the root methodology test runner
+[ ] bin/setup, bin/test, bin/check, and bin/install-hooks are executable;
+    the language runtime wrapper exists when applicable; .githooks/pre-push
+    calls bin/check; hook installation remains explicit and opt-in
+[ ] Runtime version metadata, package manifest, and lockfile form a complete
+    language profile; no workflow assumes a versioned runtime binary on PATH
+[ ] tests/test_toolchain_entrypoints.py, tests/test_check.py,
+    tests/test_install_hooks.py, and tests/test_kickoff_config.py pass through
+    bin/test
 [ ] Every file in policies/ from the template exists, with project-name
     references updated
 [ ] No template-specific skills, briefs, or example code remain in the new

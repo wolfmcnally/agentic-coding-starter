@@ -56,7 +56,10 @@ Evaluate in priority order:
 - **Policies are the law.** Every applicable policy is honored. A policy violation in the plan is a blocking issue.
 - **Status lives in one place.** The plan does not propose adding `status:` to per-phase frontmatter or recording status anywhere outside `plan/INDEX.md`.
 - **Acceptance is empirical.** Manual checks are flagged as such; every other acceptance item maps to a Build Gate Sequence command.
-- **Repository-owned gates.** When `policies/build-gates.md` and `bin/check` exist, the Build Gate Sequence ends with `./bin/check all`; focused commands may precede it but copied raw suite commands do not replace it.
+- **Repository-owned toolchain.** When `policies/build-gates.md` and its
+  entry points exist, focused tests use `./bin/test <arguments>` and the Build
+  Gate Sequence ends with `./bin/check all`; copied raw setup or suite commands
+  do not replace the atomic contract.
 - **User demo protocols.** Per `policies/user-demo-protocols.md`, every phase addresses the policy explicitly: either with a `User Demo:` block (entry point, suggested inputs, what to look for, variations) when the phase touches a user-facing surface AND has something interactive to try, or with a `User Demo: N/A — <reason>` line otherwise. Silence is blocking. A contrived or trivially-deterministic "demo" is blocking — push back and recommend `N/A` instead.
 - **Repo-relative paths only.** No absolute paths in any committed file path the plan proposes.
 - **Cross-harness parity.** If the plan touches `.claude/`, it also touches the matching `.codex/` (or other harness) mirror, or explicitly relies on a symlink that exists.
@@ -65,7 +68,9 @@ Evaluate in priority order:
 **Concreteness**
 - Every new file has an exact path.
 - Every type, function, class, module, CLI subcommand, and schema field is named.
-- The Build Gate Sequence is executable as written, uses the repository's canonical full gate when present, and names focused commands appropriate to the actual language and locked tooling.
+- The Build Gate Sequence is executable as written, uses the repository's
+  canonical focused-test and full-gate entry points when present, and matches
+  the actual runtime pin, language, and locked tooling.
 
 **Simplicity**
 - The plan does not add abstractions or deliverables the phase did not ask for.

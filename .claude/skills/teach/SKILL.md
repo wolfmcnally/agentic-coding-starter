@@ -76,7 +76,12 @@ Build a structural map of the target. Mirror Stage 1 of `learn`, but from the op
 3. **What the target already has from the template.** If any file in the target matches (by name and content shape) a file in this starter, mark it as "in sync," "diverged," or "absent." This is the structural diff that drives the plan.
 4. **What the target has that the starter doesn't.** Custom skills, custom agents, project-specific briefs and policies, domain conventions. **These are the target's specializations.** Treat them as load-bearing: never propose to remove or flatten them.
 5. **Phase plan shape.** If the target has a `plan/INDEX.md`, read it. Note which phase is `⬅️` (in-flight work the teaching must not stomp on).
-6. **Language & build gates.** Read the target's language metadata. The teaching's apply step will adapt build-gate commands to whatever the target's primary language is, not to Python defaults.
+6. **Repository-owned toolchain contract.** Inspect the target's `bin/setup`,
+   `bin/test`, `bin/check`, any runtime wrapper, runtime-version file, language
+   metadata, lockfile, behavioral tests, hooks, and workflow callers as one
+   bundle. The apply step preserves the target's primary language, supported
+   runtime range, selected default runtime, package manager, dependencies, and
+   lock resolution; it never imports Starter's Python values as defaults.
 7. **Active work signals.** Read the target's `LOG.md` if present. A phase in `🚧` is a clear "do not stomp" signal — the teaching apply step waits for that phase or limits itself to additive, non-conflicting changes.
 8. **Kickoff configuration contract.** Inspect `kickoff.yaml`, `bin/kickoff-config`, `tests/test_kickoff_config.py`, both role policies, `roles`, `kickoff` Steps 0a–0c and invocation call sites, `.gitignore`, and the invocation brief as one bundle. Note target values, comments, `extensions` data, and local `.kickoff/` telemetry as preservation-only state; never read or transfer raw telemetry.
 
@@ -136,6 +141,13 @@ For each proposed addition or update, ask:
 - **Phase-roadmap drift.** Does the target's `plan/INDEX.md` show every major phase the target's brief surfaces, each with a corresponding `plan/phase-N.md` sketch (per [`policies/phase-ripple.md`](../../../policies/phase-ripple.md) and [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md) §8)? If the target has only Phase 1 drafted while the brief surfaces more major phases, the gap is real but drafting them is a Wolf-level decision — surface as DECIDE with the list of missing sketches.
 - **Ripple-contract adoption.** Does the target's `kickoff` SKILL.md have a Step 9a *and* Step 9b with the AUTO/DECIDE ripple sub-step? If only Step 9a exists (today's earlier teach), the target needs Step 9b added and Step 9a's ripple sub-step appended. Mechanical — surface as AUTO.
 - **Unified kickoff-config adoption.** Treat `kickoff.yaml`, `bin/kickoff-config`, `tests/test_kickoff_config.py`, both role policies, `roles`, `kickoff` Steps 0a–0c plus every initial/resume/rescue call site, `.gitignore`, `bin/README.md`, the invocation brief, and CLAUDE catalog/glossary as one atomic contract. If absent, port the bundle and seed it with `reset all`. If present, round-trip-upgrade schema/mechanics and tests while preserving the target's model choices, separate effort fields, timeout values, comments, `extensions` data, overrides, and telemetry. Never copy or open raw telemetry. Partial adoption is stale and blocking.
+- **Repository-owned toolchain adoption.** Treat `bin/setup`, `bin/test`,
+  `bin/check`, runtime wrappers, the runtime pin, manifest, lockfile,
+  behavioral tests, `policies/build-gates.md`, hooks, and every workflow caller
+  as one atomic contract. If any member is proposed, enumerate the whole
+  bundle in the stale sweep. Preserve target-owned language/version/package
+  choices and adapt the universal interface to them. Partial adoption is stale
+  and blocking.
 - **Review-lane and follow-up-routing adoption.** Does the target's `kickoff` SKILL.md carry the Step 1 lane resolution, the Step 4 light-lane skip, the Step 6 lane-fit input and `Escalate: full lane` handling, Step 7's direct/coder-only/full correction routing, and the END-block `Review lane:` plus `Follow-up route:` lines — with `policies/review-lanes.md` in its `policies/` and the lane-fit duty in its `.claude/agents/code-critic.md`? Porting is mechanical — AUTO. **No phase-file migration is needed**: absent `review_lane:` frontmatter means `full`, so every existing drafted phase keeps its current initial-review behavior; follow-up routing is runtime classification, not frontmatter.
 
 Each stale item gets one of three classifications:
@@ -275,11 +287,23 @@ Once approved, apply the approved items to the target. Order:
    - **Agent roles** — `.claude/agents/<role>.md` ↔ `.codex/agents/<role>.toml` (thin wrapper TOML). For every agent .md added or modified, generate or refresh the .toml as a thin pointer: a `description` field plus a `developer_instructions` body that just says "Read .claude/agents/<role>.md and follow it."
 5. Update the target's `CLAUDE.md` catalogs (briefs catalog, policies catalog, critical-files map) so every new file is indexed. Add the catalog as a new section when the target lacks it.
 6. Substitute names in transferred files: `Agentic Coding Starter Template` → target's project name; `agentic-coding-starter-template` → target's slug; references to this template's `example/` package → target's primary surface.
-7. **Adapt the repository-owned build gate.** If the approved teaching includes `policies/build-gates.md`, create or update the target's cwd-independent `bin/check` so its named modes use the target's committed metadata, lockfile, and actual language tooling; update `kickoff` and the four canonical agents to call that entry point. Otherwise preserve an existing target-owned canonical gate and adapt only stale copied examples. Never replace a target's gate with this template's Python commands.
+7. **Adapt the repository-owned toolchain contract.** If the approved teaching
+   includes `policies/build-gates.md` or any contract member, create or update
+   the target's cwd-independent `bin/setup`, `bin/test`, and `bin/check`, plus
+   an appropriate runtime wrapper when the target exposes one. Reconcile the
+   target's runtime pin, manifest, lockfile, behavioral tests, hook, `kickoff`,
+   and four canonical agents in the same step. `bin/check test` delegates to
+   `bin/test`; no caller assumes a versioned runtime binary on `PATH`.
+   Otherwise preserve the complete target-owned bundle and adapt only stale
+   copied examples. Never replace target language/version/package-manager
+   choices with this template's Python values.
 8. **Apply the stale-in-light-of-teaching migrations.** Walk the "Stale-in-light-of-teaching" section of the approved plan and execute every AUTO item (catalog entries, link additions, header restructures, file-shape migrations to richer conventions established by newly-added policies). DECIDE items get listed in the LOG entry as a manual follow-up for the target's owner. DEFER items get listed with their deferral condition.
    - For unified kickoff configuration, verify the final write set is atomic and all target-owned fields, comments, `extensions` data, and telemetry remain untouched. A new target gets seed defaults; an existing config changes values only when the approved plan explicitly names a human choice.
 9. Run the parity verification sweep from `policies/cross-harness-parity.md` §Verification against the target. **Expected outcome: clean** — only `AGENTS.md OK` printed, because parity heals ran first (step 1) and any new content was wired up correctly (step 4). Any remaining "not a symlink" / "wrong target" / "missing peer" line indicates either a heal that was downgraded to DECIDE and skipped, a violation discovered post-Apply that the scan in Stage 1 missed (file a learning to extend the heal catalog), or a regression in step 4. Re-confirm catalog and stale-sweep coverage at the same time.
-10. Run the target's canonical full gate (`./bin/check all`) when present. Otherwise run the exact gates declared by its current package metadata and flag the missing repository entry point in the report.
+10. Run the target's `./bin/setup`, focused behavioral tests through
+    `./bin/test`, and canonical full gate (`./bin/check all`) when the contract
+    is present. Otherwise run the exact setup/test/gate commands declared by
+    its current package metadata and flag every missing contract member.
 11. Append the TAUGHT FROM TEMPLATE entry to the target's `LOG.md` (create the file with the standard header if it doesn't exist). The entry lists the transferred items, the **parity heals applied** (separately from transferred items), the stale items migrated, the parity-heal and stale-sweep items surfaced for user decision, and the patterns to feed back via `learn`.
 
 **Do not auto-commit in the target.** The target's owner owns commits. Report the file list, build-gate status, and any unresolved manual steps.
@@ -291,6 +315,12 @@ Once approved, apply the approved items to the target. Order:
 - **Improvements only.** Every proposed change must be a strict improvement to the target. Never replace target content with source content that is less elaborated, less specialized, or less capable. When the target has surpassed the source, the right move is to surface it for a future `learn`, not to drag the target backward.
 - **Stale sweep is acceptance, not follow-up.** A `teach` run is not done when the new files have been copied in. It is done when every file in the target that went stale *because of* the apply has been migrated (AUTO), surfaced for a user decision (DECIDE), or named with a deferral reason (DEFER). Empty catalogs, orphan policies, and existing-file shapes that the new policies supersede are all stale-sweep targets.
 - **Kickoff-config transfer is atomic and state-preserving.** Never teach only one config section, policy, manager, test, skill, or invocation recipe. Transfer/update the bundle together, preserve target-local values, comments, `extensions` data, and telemetry, and validate with `bin/kickoff-config show`, the behavioral suite, scoped-reset preservation tests, and a bounded watchdog smoke test.
+- **Toolchain transfer is atomic and target-preserving.** Never teach only a
+  gate wrapper or raw setup/test command. Transfer or update the setup, test,
+  full-gate, runtime-selection, metadata/lock, behavioral-test, policy, hook,
+  and caller bundle together. Preserve target-owned language, runtime,
+  package-manager, dependency, and lock choices. Validate focused routing from
+  outside the repo, then run the target's full gate.
 - **Mechanical parity heals always run, independent of `<desc>` scope.** Every `teach` invocation scans the target's parity surfaces and surfaces known-broken shapes (per the catalog in Stage 1 step 9) for repair. Even a narrow `teach` pass — "just bring policies up to date" — heals an `AGENTS.md`-as-file, a file-level `.agents/skills/<name>/SKILL.md`, or a stray `.agents/skills/stamp` it finds along the way. This is what closes the gap where broken parity shapes lingered because the teach pass didn't otherwise touch them.
 - **This repo is read-only.** Never write to this repository during `teach`. The starter learns via `learn`, not as a side effect of `teach`.
 - **Generality first.** Default to Tier 1+2 transfers. Specialize only when those are exhausted or the user's `<desc>` requested it.

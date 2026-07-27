@@ -5,16 +5,16 @@ A minimal Python package and CLI that exists so build gates have a real target f
 ## Quickstart
 
 ```bash
-uv sync
-uv run example --help
-uv run example hello
-uv run example hello Ada
+uv sync --locked --managed-python
+uv run --locked --managed-python example --help
+uv run --locked --managed-python example hello
+uv run --locked --managed-python example hello Ada
 ```
 
 ## Build gates
 
 ```bash
-uv run ruff check example tests
-uv run ruff format --check example tests
-uv run pytest -q
+uv run --locked --managed-python ruff check example tests
+uv run --locked --managed-python ruff format --check example tests
+uv run --locked --managed-python python -m pytest -q
 ```

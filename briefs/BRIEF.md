@@ -103,7 +103,10 @@ The template is acceptable when:
 
 - A user clones this repo and invokes `/kickoff` in Claude Code or `$kickoff` in Codex — and the orchestrator picks up Phase 1, walks through plan → plan-review → code → code-review → build → log, and produces a START/END pair in `LOG.md` with a non-empty Files changed section.
 - A user invokes `/stamp ~/some-new-dir "build a small CLI that fetches the time from an NTP server"` in Claude Code or `$stamp ~/some-new-dir "build a small CLI that fetches the time from an NTP server"` in Codex — and ends up with a populated new directory that itself satisfies the bullet above, with project-specific naming everywhere references appear.
-- The example Python project under `project/example/` exists, and the repository-owned `./bin/check` entry point passes from any working directory on first clone using `project/uv.lock`.
+- The example Python project exists, and the atomic repository-owned
+  `./bin/setup`, `./bin/test`, `./bin/check`, and `./bin/python` interface
+  works from any directory using `project/.python-version`,
+  `project/pyproject.toml`, and `project/uv.lock`.
 - No file in this repo references Wolf McNally, his email, his other projects, or any third-party PII. The template is distributable.
 - Every file under `briefs/` is listed in `CLAUDE.md`'s Briefs catalog, and every file in the catalog exists. No orphans either way.
 - Every file under `policies/` is listed in `CLAUDE.md`'s Policies catalog, and every file in the catalog exists. No orphans either way.

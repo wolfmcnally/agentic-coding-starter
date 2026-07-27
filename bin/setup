@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Provision the repository's locked development environment.
+
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+project_root="$repo_root/project"
+
+usage() {
+  cat <<'EOF'
+Usage: ./bin/setup
+
+Provision the repository's pinned, locked development environment.
+EOF
+}
+
+if [[ $# -gt 0 ]]; then
+  case "${1:-}" in
+    --help|-h)
+      if [[ $# -eq 1 ]]; then
+        usage
+        exit 0
+      fi
+      ;;
+  esac
+  usage >&2
+  exit 2
+fi
+
+if ! command -v uv >/dev/null 2>&1; then
+  echo "SETUP ERROR missing prerequisite: uv" >&2
+  exit 1
+fi
+
+for required_path in \
+  "$project_root/.python-version" \
+  "$project_root/pyproject.toml" \
+  "$project_root/uv.lock"; do
+  if [[ ! -f "$required_path" ]]; then
+    echo "SETUP ERROR missing required file: ${required_path#"$repo_root/"}" >&2
+    exit 1
+  fi
+done
+
+echo "SETUP START"
+cd "$repo_root"
+if uv sync --project "$project_root" --locked --managed-python; then
+  echo "SETUP PASS"
+else
+  command_exit=$?
+  echo "SETUP FAIL (exit $command_exit)" >&2
+  exit "$command_exit"
+fi

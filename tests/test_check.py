@@ -23,8 +23,10 @@ def check_repo(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     (root / "project").mkdir()
     (root / "tests").mkdir()
     shutil.copy2(CHECK_SOURCE, root / "bin" / "check")
+    shutil.copy2(REPO_ROOT / "bin" / "test", root / "bin" / "test")
     (root / "project" / "pyproject.toml").write_text("[project]\nname='fixture'\n")
     (root / "project" / "uv.lock").write_text("version = 1\n")
+    (root / "project" / ".python-version").write_text("3.11\n")
     (root / "AGENTS.md").symlink_to("CLAUDE.md")
     (root / "CLAUDE.md").write_text("# Fixture\n")
 
@@ -85,14 +87,17 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
     calls = Path(environment["CHECK_TEST_LOG"]).read_text().splitlines()
     assert calls == [
         (
-            f"uv cwd={root / 'project'} args=run --locked ruff check "
+            f"uv cwd={root / 'project'} args=run --locked --managed-python "
+            "ruff check example tests ../bin/kickoff-config ../tests"
+        ),
+        (
+            f"uv cwd={root / 'project'} args=run --locked --managed-python ruff format --check "
             "example tests ../bin/kickoff-config ../tests"
         ),
         (
-            f"uv cwd={root / 'project'} args=run --locked ruff format --check "
-            "example tests ../bin/kickoff-config ../tests"
+            f"uv cwd={root} args=run --project {root / 'project'} --locked "
+            "--managed-python python -m pytest -q project/tests tests"
         ),
-        f"uv cwd={root / 'project'} args=run --locked pytest -q tests ../tests",
         f"config cwd={root} args=show",
         f"policy cwd={root}",
     ]
@@ -153,7 +158,7 @@ def test_missing_uv_fails_clearly(
     assert "CHECK ERROR missing prerequisite: uv" in result.stderr
 
 
-@pytest.mark.parametrize("missing", ["pyproject.toml", "uv.lock"])
+@pytest.mark.parametrize("missing", [".python-version", "pyproject.toml", "uv.lock"])
 def test_missing_project_contract_fails_clearly(
     check_repo: tuple[Path, dict[str, str]], missing: str
 ) -> None:
@@ -164,6 +169,18 @@ def test_missing_project_contract_fails_clearly(
 
     assert result.returncode == 1
     assert f"CHECK ERROR missing required file: project/{missing}" in result.stderr
+
+
+def test_missing_test_entrypoint_fails_clearly(
+    check_repo: tuple[Path, dict[str, str]],
+) -> None:
+    root, environment = check_repo
+    (root / "bin" / "test").unlink()
+
+    result = _run(root, environment)
+
+    assert result.returncode == 1
+    assert "CHECK ERROR missing required executable: bin/test" in result.stderr
 
 
 @pytest.mark.parametrize("arguments", [("bogus",), ("all", "extra")])

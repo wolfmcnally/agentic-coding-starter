@@ -77,10 +77,10 @@ name the message or state transition they expect; a bare
 `pytest.raises(SomeType)` may pass because an unrelated guard raised the same
 type.
 
-The repository-owned wrapper itself is tested like product code. See
-[`build-gates.md`](build-gates.md): cwd independence, locked toolchain
-invocation, missing-prerequisite behavior, command ordering, and exact status
-propagation are all executable contracts.
+The repository-owned toolchain wrappers are tested like product code. See
+[`build-gates.md`](build-gates.md): cwd independence, runtime selection,
+locked setup, full/focused test routing, missing-bundle behavior, command
+ordering, delegation, and exact status propagation are executable contracts.
 
 ## Evidence is scoped to its environment
 

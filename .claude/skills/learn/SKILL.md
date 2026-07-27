@@ -66,7 +66,12 @@ Build a structural map of the donor. **Do not** open every file; do targeted rea
 4. **Briefs & policies.** `ls <donor>/briefs/` and `ls <donor>/policies/`. Read each one whose name doesn't already exist here. For names that *do* exist, do a structural diff (head + section list + line count) so the assessment knows whether the donor's version supersedes ours, diverges, or just paraphrases.
 5. **Phase plan shape.** If `<donor>/plan/INDEX.md` exists, read it. Look for cross-cutting concerns or critical-files-map patterns we don't have.
 6. **Language conventions.** Read `<donor>/CLAUDE.md` (or `AGENTS.md`) section by section. Note any architectural invariants, glossary entries, or conventions the donor pins that this starter doesn't.
-7. **Build gates.** Read the donor's language metadata (`pyproject.toml`, `package.json`, `Cargo.toml`, `go.mod`, etc.). Note pinned tooling, lockfile presence, gate command idioms.
+7. **Repository-owned toolchain contract.** Inspect the donor's `bin/setup`,
+   `bin/test`, `bin/check`, any runtime wrapper (`bin/python` or equivalent),
+   runtime-version file, language metadata, lockfile, behavioral tests, policy,
+   hooks, and workflow callers as one bundle. Note generalizable interface and
+   failure-handling mechanics. Treat donor language/version/package-manager
+   choices as donor state, not defaults to copy.
 8. **Anti-patterns.** Note where the donor *violates* something the template considers a load-bearing invariant (status field in phase frontmatter; absolute paths; LOG.md hand-edits). Those are not for learning; mention them as confirmation the starter's rules are correct.
 9. **Unified kickoff configuration.** Inspect the donor's schema shape, round-trip manager, behavioral tests, both role policies, `roles`, `kickoff` call sites, invocation brief, gitignore, and reporting contract as one bundle. Learn only generalizable mechanics, schema, algorithms, and defensible universal defaults. Never read, copy, or summarize raw telemetry, percentiles, model/effort choices, calibrated values, comments, `extensions` data, or project overrides.
 
@@ -154,7 +159,12 @@ For every approved learning, identify existing files in this repo made stale by 
 - **DECIDE** `<this-repo file>` — requires a project-specific or policy choice; ask during approval.
 - **DEFER** `<this-repo file>` — depends on a named later condition.
 
-If none, declare "None identified." A learned timeout improvement must list every member of the atomic timeout bundle here or in the proposal write set; importing a single donor file is not complete.
+If none, declare "None identified." A learned timeout improvement must list
+every member of the atomic timeout bundle here or in the proposal write set;
+importing a single donor file is not complete. The same rule applies to the
+repository-owned toolchain contract: any proposal touching setup, tests,
+gates, runtime selection, metadata, or locking must enumerate the complete
+bundle and classify partial existing adoption as stale.
 
 ## Proposed write set (will only be applied after approval)
 
@@ -204,7 +214,13 @@ Once approved, apply the approved items. Order:
    - If a new `.claude/skills/<name>/SKILL.md` was added, add the matching `.agents/skills/<name>` directory symlink for Codex discovery.
    - See [`policies/cross-harness-parity.md`](../../../policies/cross-harness-parity.md).
 5. Update `CLAUDE.md`'s catalogs (briefs catalog, policies catalog) so every new file is indexed.
-6. Run the repository's canonical full gate to confirm nothing regressed. For this repo: `./bin/check all`. If an older methodology-following destination has no canonical gate yet, run the exact build commands declared by its current `kickoff` and flag the missing entry point as a learning candidate.
+6. Run focused wrapper tests through `./bin/test
+   tests/test_toolchain_entrypoints.py tests/test_check.py -q`, then the
+   repository's canonical full gate to confirm nothing regressed:
+   `./bin/check all`. If an older methodology-following destination lacks the
+   atomic toolchain contract, run the exact commands declared by its current
+   metadata and `kickoff`, and flag every missing contract member as a learning
+   candidate.
 7. Append the LEARN entry to `LOG.md`. Format as proposed in the plan.
 
 **Do not auto-commit.** Per [`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md), the human owns commits. Report the file list, the build-gate status, and any unresolved manual steps so the user can review and commit.
@@ -220,4 +236,11 @@ Once approved, apply the approved items. Order:
 - **One LOG entry per `learn` run.** Not per item. The aggregate entry preserves the audit trail without flooding the log.
 - **Stale sweep is acceptance.** Every file made stale by an approved learning is migrated (AUTO), decided (DECIDE), or deferred with a named condition (DEFER) in the same plan and LOG entry.
 - **Kickoff-config learning is atomic and privacy-preserving.** Adopt generalizable policy/schema/round-trip manager/test/invocation/reporting improvements together. Never ingest donor raw telemetry, percentiles, values, comments, `extensions` data, overrides, model choices, or efforts; validate the local bundle with `bin/kickoff-config show`, the behavioral suite, scoped-update preservation tests, and a bounded watchdog smoke test.
+- **Toolchain learning is atomic and target-owned.** Never learn only a gate
+  wrapper or a raw command. Assess `bin/setup`, `bin/test`, `bin/check`,
+  runtime wrappers, the runtime pin, manifest, lockfile, behavioral tests,
+  policy, hooks, and callers together. Adopt generalizable mechanics while
+  preserving this repository's language, supported runtime range, selected
+  default runtime, package manager, dependency set, and lockfile resolution.
+  Partial adoption is stale and blocking.
 - **Skill-exclusion list.** `stamp` and the starter template's `example/` Python project are starter-only and never transferred. `learn` and `teach` themselves are universal — if the donor has a more evolved version, treat it like any other candidate; if this repo lacks them and the donor has them, propose adding them (the bootstrap procedure expects them in every methodology-following project).

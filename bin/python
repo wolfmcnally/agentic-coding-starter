@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Run the repository-selected Python interpreter.
+
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+project_root="$repo_root/project"
+
+if ! command -v uv >/dev/null 2>&1; then
+  echo "PYTHON ERROR missing prerequisite: uv" >&2
+  exit 1
+fi
+
+for required_path in \
+  "$project_root/.python-version" \
+  "$project_root/pyproject.toml" \
+  "$project_root/uv.lock"; do
+  if [[ ! -f "$required_path" ]]; then
+    echo "PYTHON ERROR missing required file: ${required_path#"$repo_root/"}" >&2
+    exit 1
+  fi
+done
+
+cd "$repo_root"
+exec uv run --project "$project_root" --locked --managed-python python "$@"

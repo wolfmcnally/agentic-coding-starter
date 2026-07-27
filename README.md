@@ -32,7 +32,8 @@ The template ships with:
 - A **`briefs/` library** for durable design decisions and methodology notes.
 - A **`policies/` library** for the rules every phase must respect.
 - A **`LOG.md`** activity log written by `kickoff` on phase open and close.
-- A minimal Python example project so the build gates have something real to chew on.
+- A minimal Python example project so the toolchain contract has a real target
+  from the first checkout.
 
 ---
 
@@ -89,20 +90,28 @@ Codex:
 $kickoff
 ```
 
-The first `kickoff` run will pick up Phase 1 (currently a placeholder for "decide what you're building"), walk you through the planner → reviewer → coder → critic loop, and write a START/END pair to `LOG.md`. Edit the brief, edit the plan, then invoke `/kickoff` again in Claude Code or `$kickoff` again in Codex. The example Python project under `example/` exists so build gates have something to lint and test from the very first run.
+The first `kickoff` run will pick up Phase 1 (currently a placeholder for
+"decide what you're building"), walk through the planner → reviewer → coder →
+critic loop, and write a START/END pair to `LOG.md`. Edit the brief and plan,
+then invoke `/kickoff` again in Claude Code or `$kickoff` again in Codex. The
+example under `project/example/` gives the toolchain a real target immediately.
 
 ### Verify the checkout
 
-Every repository stamped from this template owns one canonical, cwd-independent
-gate command:
+Every repository stamped from this template owns a cwd-independent toolchain
+contract:
 
 ```bash
-./bin/check
+./bin/setup                 # provision the pinned, locked environment
+./bin/test                  # run every test
+./bin/test tests/test_check.py -q  # focused repo-relative selection
+./bin/check all             # authoritative lint/format/test/policy suite
+./bin/python --version      # Python profile: selected project interpreter
 ```
 
-This starter runs its locked Python lint, format, and test gates plus its
-repository-policy checks. Optional tracked Git hooks use the same entry point;
-opt in for the current checkout with:
+The host only needs `uv`; Starter selects a managed Python from
+`project/.python-version` and uses `project/uv.lock`. Optional tracked Git
+hooks use the same full-gate entry point; opt in for the current checkout with:
 
 ```bash
 ./bin/install-hooks
@@ -139,8 +148,9 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 ├── kickoff.yaml                    ← human-editable role models/efforts/timeouts
 ├── project/                        ← the deliverable (self-contained per
 │   │                                  policies/project-isolation.md)
+│   ├── .python-version             ←   managed interpreter selection
 │   ├── pyproject.toml              ←   package metadata
-│   ├── uv.lock
+│   ├── uv.lock                     ←   exact dependency resolution
 │   ├── example/                    ←   source code
 │   │   ├── __init__.py
 │   │   └── cli.py
@@ -166,16 +176,21 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── role-models.md              ← role routing and fail-closed preflight
 │   ├── role-timeouts.md            ← first-event/idle/hard execution budgets
 │   ├── review-lanes.md             ← review intensity + proportional follow-ups
+│   ├── build-gates.md              ← atomic repository toolchain contract
 │   ├── project-isolation.md        ← isolate deliverable under project/
 │   └── greenfield-until-released.md ← no backward-compat shims pre-release
 ├── bin/                            ← deterministic methodology executables
-│   ├── check                       ← canonical locked lint/format/test/policy gate
+│   ├── setup                       ← provision pinned + locked environment
+│   ├── test                        ← full/focused canonical test runner
+│   ├── check                       ← authoritative lint/format/test/policy gate
+│   ├── python                      ← selected managed Python interpreter
 │   ├── install-hooks               ← opt in to tracked lifecycle hooks
 │   ├── kickoff-config              ← round-trip config, preflight, watchdog
 │   └── check-anonymization.sh      ← starter-only public-repo leak guard
 ├── .githooks/
 │   └── pre-push                    ← optional; calls the canonical full gate
 ├── tests/                          ← universal methodology machinery tests
+│   ├── test_toolchain_entrypoints.py ← setup/test/runtime behavior
 │   ├── test_check.py               ← canonical gate behavioral coverage
 │   ├── test_install_hooks.py       ← opt-in hook installer coverage
 │   └── test_kickoff_config.py      ← config/watchdog behavioral coverage
