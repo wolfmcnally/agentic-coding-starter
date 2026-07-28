@@ -188,3 +188,27 @@ ladder; and independent child, artifact, and stream supervision with explicit
 exit-66 recovery. Deliberately excluded the lower-ROI universal context
 compiler, nested critical-path spans, conditional role removal, and
 language-agnostic dependency/mutation selection pending direct evidence.
+
+## 2026-07-27 22:10 — TAUGHT FROM DONOR A
+Source: Donor A @ <sha withheld>
+Items applied: 1, by tier T1=1/T2=0/T3=0/T4=0
+Parity heals applied: 0 (AUTO); 0 surfaced as DECIDE
+Stale-in-light-of-teaching migrations: 0 (AUTO); 0 DECIDE; 0 DEFER
+Files touched in target: 11
+
+Teaching: made human wall-clock efficiency an ambient methodology priority.
+Agents now notice material latency in gates and other deterministic operations
+and make one bounded assessment when a substantial, low-risk reduction is
+reasonably apparent. The preferred seams are focused iteration, one-time
+invariant setup, safe parallel execution of genuinely independent units, and
+reuse backed by complete input identity.
+
+Explicit exclusions: no fixed time threshold, automatic hotspot classifier,
+telemetry without a decision, general ROI-learning loop, speculative
+parallelism, heroic micro-optimization, phase expansion, or reduction in
+correctness, coverage, determinism, review independence, diagnostics, failure
+propagation, candidate binding, or the complete final gate.
+
+Patterns to feed back via /learn: effectiveness-preserving operator-latency
+awareness as an architectural invariant and proportional duty shared by the
+planner, plan reviewer, coder, critic, and orchestrator.

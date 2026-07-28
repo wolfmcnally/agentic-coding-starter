@@ -19,6 +19,18 @@ The two are not ranked; they are different tools for different jobs. The failure
 
 3. **Split mixed tasks at the seam.** Most real tasks have both halves. The pattern is: the **agent decides _what_** (which proposals to act on, which files are in scope, what the change should be), and a **deterministic script does the _mechanical how_** (apply the rename across every call site, merge the results in a fixed order, regenerate the manifest). A donor project building exactly this seam describes its post-fan-out reconciler as *"a script, not a subagent — pure mechanics, no prose model, deterministic and harness-portable."* That sentence is the whole policy in one line. Keep the judgment in the agent and the mechanics in the script; don't let either bleed into the other.
 
+4. **Notice high-leverage wall-clock opportunities.** Human operators feel
+   elapsed waiting more directly than agents do. When a deterministic
+   operation materially dominates the work or is repeatedly paid, make one
+   bounded assessment of whether its time can be reduced substantially with a
+   clear, low-risk change: isolate and parallelize genuinely independent
+   units, hoist invariant setup, use focused iteration, or reuse results only
+   when their complete inputs are unchanged. This is an ambient priority, not
+   a fixed timer or an invitation to optimize everything. Do not spend heroic
+   effort shaving marginal time, weaken the operation's guarantees, or expand
+   the active phase to pursue a tangent. Use an existing safe acceleration
+   when available; otherwise surface one concrete opportunity and continue.
+
 ## Ties to other rules
 
 - **Cross-harness parity** (`policies/cross-harness-parity.md`). Scripts are the harness-invariant layer: a `bin/` executable runs identically under every CLI, while agent prose must be mirrored per harness. When a capability must behave the same everywhere, that is a strong signal to make it mechanistic.
@@ -29,3 +41,7 @@ The two are not ranked; they are different tools for different jobs. The failure
 
 - When a phase introduces or changes a capability, its plan **names which side of the triage the capability falls on and why** (one line is enough). "It's a deterministic check, so it's a `bin/` script" or "it needs to read intent, so it's an agent."
 - The plan reviewer and code critic **flag misrouting**: agent/model work that should be a deterministic script (and would be cheaper and more reliable as one), and scripted heuristics standing in for work that actually needs judgment. Either is a revision request, not a nitpick.
+- Plans, reviews, and implementation reports flag a conspicuous avoidable
+  wall-clock cost only when a substantial, effectiveness-preserving
+  improvement is reasonably apparent. They do not invent numeric thresholds,
+  demand speculative optimization, or treat microseconds saved as progress.

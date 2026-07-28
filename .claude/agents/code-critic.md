@@ -106,6 +106,12 @@ Evaluate in priority order:
 **Simplicity**
 - No new abstractions, generics, base classes, or helpers introduced without need.
 - No speculative future-facing structure (e.g., a `BackendBase` abstract class with one concrete subclass and no second use-case in sight).
+- Flag a conspicuous avoidable wall-clock regression—such as genuinely
+  independent mechanics forced serially or invariant setup repeated—only when
+  a substantial, low-risk local correction is reasonably apparent. Do not
+  require micro-optimization, speculative profiling, unproven parallelism, or
+  any change that weakens effectiveness, coverage, review, or the complete
+  final gate.
 
 **Lane fit (light-lane phases only)**
 - When the prompt declares `review_lane: light`, additionally judge whether the diff stayed within the mechanical scope `policies/review-lanes.md` defines (docs, renames, catalogs, mirrors, ripple application, gate-green dependency bumps, pattern-following config). This phase skipped plan review on the strength of that declaration.

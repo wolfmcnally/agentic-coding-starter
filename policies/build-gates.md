@@ -183,6 +183,30 @@ prior evidence; a gate that mutates the candidate fails. When the affected
 surface is indeterminate, select a broader suite rather than defaulting to a
 reassuring narrow one.
 
+## Human wall-clock efficiency
+
+Correctness and complete final assurance are fixed; avoidable waiting is not.
+Agents remain alert when a gate or related deterministic operation materially
+dominates the development critical path, especially when independent work runs
+serially, invariant setup repeats, or a full suite is being used repeatedly
+during iteration.
+
+When a substantial improvement appears reasonably achievable with little risk
+or effort, make one bounded execution assessment before blindly paying the
+same cost again. Consider existing focused selectors, one-time preflight,
+safe isolation and parallel execution of genuinely independent units, and
+reuse only when complete input identity proves the result unchanged. Use an
+already available safe mode. If a permanent improvement would expand the
+authorized phase, surface it once as a concrete opportunity rather than
+implementing the tangent.
+
+This rule has no fixed time threshold and does not mandate optimization. Do
+not spend heroic effort on marginal savings from an acceptable operation,
+collect telemetry without a concrete decision it can inform, or weaken
+coverage, determinism, diagnostics, failure propagation, candidate binding,
+or the complete final gate. An expensive operation with no obvious safe
+leverage may simply be reported and run.
+
 ## Lifecycle hooks
 
 Tracked hooks may call `./bin/check all`, but installation is opt-in. Hooks

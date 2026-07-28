@@ -166,6 +166,15 @@ Every gate will be recorded against the candidate id under
 `policies/orchestration-evidence.md`. Do not use a prior green result as
 evidence for a changed candidate.
 
+Plan with proportional attention to human wall-clock cost. When a known gate
+or deterministic operation materially dominates the phase and a substantial,
+low-risk improvement is reasonably apparent, name the safe execution
+mechanism: focused iteration, one-time invariant setup, isolation and
+parallelization of genuinely independent units, or input-identity-backed
+reuse. Do not invent numeric thresholds, prescribe speculative profiling or
+unproven parallelism, chase marginal savings, trade away coverage or the
+complete final gate, or expand the phase to pursue an optimization tangent.
+
 ## Open Questions
 [Ambiguities the implementer should resolve. Flag here rather than guess. Include both technical ambiguities and product/architecture decisions that should escalate to the reviewer for user confirmation.]
 ```

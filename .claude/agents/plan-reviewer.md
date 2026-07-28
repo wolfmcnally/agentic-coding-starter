@@ -86,6 +86,10 @@ Evaluate in priority order:
 **Simplicity**
 - The plan does not add abstractions or deliverables the phase did not ask for.
 - No premature factoring (e.g., a shared utility module before two call sites need it).
+- The plan does not ignore a known, conspicuous wall-clock cost when a
+  substantial, low-risk execution improvement is reasonably apparent. Do not
+  demand timing thresholds, speculative profiling, unproven parallelism, or
+  micro-optimization; do not reduce effectiveness or expand phase scope.
 
 ### 3. Resolve open questions
 

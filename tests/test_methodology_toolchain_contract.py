@@ -10,9 +10,16 @@ def _normalized(path: Path) -> str:
 
 
 POLICY = _normalized(REPO_ROOT / "policies" / "build-gates.md")
+MECHANISTIC_POLICY = _normalized(REPO_ROOT / "policies" / "mechanistic-vs-intelligence.md")
 ORCHESTRATION_POLICY = _normalized(REPO_ROOT / "policies" / "orchestration-evidence.md")
 ANONYMIZATION_POLICY = _normalized(REPO_ROOT / "policies" / "anonymize-log-references.md")
+INCREMENTAL_BRIEF = _normalized(REPO_ROOT / "briefs" / "incremental-orchestration.md")
+CLAUDE = _normalized(REPO_ROOT / "CLAUDE.md")
 KICKOFF = _normalized(REPO_ROOT / ".claude" / "skills" / "kickoff" / "SKILL.md")
+PLANNER = _normalized(REPO_ROOT / ".claude" / "agents" / "phase-planner.md")
+PLAN_REVIEWER = _normalized(REPO_ROOT / ".claude" / "agents" / "plan-reviewer.md")
+CODER = _normalized(REPO_ROOT / ".claude" / "agents" / "phase-coder.md")
+CODE_CRITIC = _normalized(REPO_ROOT / ".claude" / "agents" / "code-critic.md")
 LEARN = _normalized(REPO_ROOT / ".claude" / "skills" / "learn" / "SKILL.md")
 TEACH = _normalized(REPO_ROOT / ".claude" / "skills" / "teach" / "SKILL.md")
 STAMP = _normalized(REPO_ROOT / ".claude" / "skills" / "stamp" / "SKILL.md")
@@ -99,3 +106,30 @@ def test_candidate_evidence_bundle_propagates_atomically() -> None:
         assert phrase in STAMP
         assert phrase in TEACH
     assert "Orchestration-evidence learning is atomic" in LEARN
+
+
+def test_human_wall_clock_efficiency_is_ambient_and_effectiveness_preserving() -> None:
+    for document in (
+        CLAUDE,
+        POLICY,
+        MECHANISTIC_POLICY,
+        INCREMENTAL_BRIEF,
+        KICKOFF,
+    ):
+        assert "wall-clock" in document
+        assert "substantial" in document
+
+    for document in (POLICY, MECHANISTIC_POLICY, INCREMENTAL_BRIEF, KICKOFF, CODER):
+        assert "fixed" in document or "numeric" in document
+        assert "marginal" in document
+
+    for document in (CLAUDE, KICKOFF, PLANNER, CODER, CODE_CRITIC):
+        assert "complete final gate" in document
+
+
+def test_canonical_roles_apply_wall_clock_judgment_proportionally() -> None:
+    for role in (PLANNER, PLAN_REVIEWER, CODER, CODE_CRITIC):
+        assert "wall-clock" in role
+        assert "substantial" in role
+        assert "low-risk" in role
+        assert "micro-optimization" in role or "marginal" in role

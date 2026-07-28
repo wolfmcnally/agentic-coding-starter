@@ -354,6 +354,20 @@ artifact, and `--final` for acceptance-close commands. The recorder rejects
 candidate drift. After the sequence, run `bin/kickoff-tree-id` again and
 require the same id; a gate that mutated the candidate fails.
 
+Treat human wall-clock efficiency as an ambient priority throughout the run,
+not as a fixed timeout or telemetry program. Notice when a gate, build, index,
+generator, migration, repeated setup step, or other operation materially
+dominates the work. When a substantial reduction appears available through a
+clear, low-risk mechanism, make one bounded assessment before blindly
+repeating the cost: focused selection during iteration, invariant setup paid
+once, safe isolation and parallel execution of genuinely independent units,
+or reuse backed by complete input identity. Use an existing safe acceleration
+when available. If a permanent improvement expands the phase, surface it once
+and continue; do not pursue the tangent. Do not chase marginal savings, invent
+numeric thresholds, collect purposeless timing data, or weaken correctness,
+coverage, determinism, review independence, diagnostics, failure propagation,
+candidate binding, or the complete final gate.
+
 Every methodology-following repository owns the cwd-independent atomic
 interface defined by
 [`policies/build-gates.md`](../../../policies/build-gates.md). For the
@@ -507,6 +521,9 @@ Candidate-bound evidence (per `policies/orchestration-evidence.md`):
 - Gates: focused=<n> final=<n>; all recorded against final candidate=<yes|no>
 - Evidence validation: `bin/kickoff-evidence validate --require-final` <OK|failed>
 
+Wall-clock observations:
+- <material operation; substantial safe improvement used or surfaced; why guarantees were preserved> | None
+
 Manual checks for user:
 - <named check> | None
 
@@ -530,6 +547,9 @@ Then report to the user:
 - Build and gate status.
 - Candidate identity, finding convergence, final-gate identity, and any
   verified protocol recoveries.
+- Any material wall-clock opportunity used or surfaced, and how the unchanged
+  guarantees were preserved. Omit marginal timing noise and no-leverage
+  observations.
 - Any Minor Corrections or Observations the reviewers noted that the user may want to track.
 - Manual checks the user needs to perform that the orchestrator couldn't.
 
@@ -545,6 +565,9 @@ Then report to the user:
 - Per-role execution budgets ([`policies/role-timeouts.md`](../../../policies/role-timeouts.md)): Step 0c loads portable defaults from `kickoff.yaml`'s `role_timeouts` section. Every external initial/resume/rescue call runs through `bin/kickoff-config watch`; native calls use the same budgets through the harness wait mechanism. Raw telemetry is local under `.kickoff/`, and Step 10 records the human-readable timing summary.
 - Review lanes and follow-up routing ([`policies/review-lanes.md`](../../../policies/review-lanes.md)): a phase's `review_lane: light` frontmatter skips Step 4 for mechanical initial work. The code critic runs on every initial implementation and guards the light lane. Later test- or user-driven corrections use direct fix, coder-only, or full-cycle routing according to risk and size; only the full-cycle route repeats independent review.
 - Candidate-bound evidence ([`policies/orchestration-evidence.md`](../../../policies/orchestration-evidence.md)): every run uses a fresh isolated evidence directory; revisions use stable findings and deterministic packets; final gates name the unchanged approved candidate.
+- Human wall-clock efficiency is an ambient judgment, not a timer-driven
+  program: act or surface only when a substantial, low-risk gain is reasonably
+  apparent, never at the expense of effectiveness or the complete final gate.
 - The ripple pass in Step 9a (sub-phase close) and Step 9b (major-phase close) is governed by [`policies/phase-ripple.md`](../../../policies/phase-ripple.md). AUTO ripples land in the same session; DECIDE ripples appear in the END block as named follow-ups.
 - Cross-harness: this same canonical skill drives both Claude Code and Codex. Claude Code invokes it as `kickoff`; Codex discovers it through `.agents/skills/kickoff` (a directory symlink to `.claude/skills/kickoff/`) and invokes it as `$kickoff`. Edit this canonical skill, not the mirror.
 - If your harness does not expose named subagents, perform the same role sequence locally by reading each `.claude/agents/<role>.md` directly and adopting that role's reading protocol and output format for the duration of the step.

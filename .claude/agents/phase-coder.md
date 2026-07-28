@@ -93,6 +93,15 @@ If a build step requires a system tool that isn't available in this environment,
 Do not hand back broken code. A focused green result is evidence for its named
 surface, not a claim that the final full gate has passed.
 
+Remain sensitive to human wall-clock cost while implementing. If an operation
+materially dominates the work and a substantial, low-risk improvement is
+reasonably apparent, make one bounded assessment and use an existing safe
+acceleration when available. Otherwise surface the concrete opportunity once
+and continue. Do not pursue marginal savings, invent fixed thresholds, start
+speculative profiling, attempt unproven parallelism, expand the phase, or
+weaken effectiveness, coverage, determinism, review, or the complete final
+gate.
+
 ### 6. Report
 
 Use this structure:
@@ -146,7 +155,7 @@ orchestrator passes this object unchanged to
 - If the approved plan declared `User Demo: N/A — <reason>`, restate the line here.
 
 ### Notes
-- [Deviations from the plan with justification, assumptions made, or invariant-related judgments. Toolchain or environment gaps reported here rather than skipped silently.]
+- [Deviations from the plan with justification, assumptions made, or invariant-related judgments. Include one material wall-clock opportunity used or surfaced and how guarantees were preserved; omit marginal timing noise. Toolchain or environment gaps are reported here rather than skipped silently.]
 ```
 
 ## Rules

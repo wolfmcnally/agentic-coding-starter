@@ -34,6 +34,8 @@ The optimization target is therefore the marginal work after the first pass:
 - describe revisions relative to the snapshot actually reviewed;
 - bind every gate result to the exact candidate it exercised;
 - distinguish execution, artifact, and transport outcomes;
+- treat conspicuous, avoidable human wait as an optimization signal without
+  weakening assurance;
 - measure direct evidence rather than infer reassuring telemetry.
 
 ## 2. Candidate identity
@@ -184,11 +186,24 @@ The universal template does not yet add:
 - nested span or critical-path inference;
 - conditional removal of independent roles beyond the existing mechanical
   review lane;
+- fixed wall-clock thresholds, automatic hotspot classification, or a
+  general ROI-learning loop;
 - numeric thresholds without local calibration; or
 - named assurance profiles before a project needs more than one.
 
 Those additions remain eligible when direct evidence shows that their
 functional return exceeds their complexity and assurance risk.
+
+Human wall-clock efficiency does not require those systems. It is an ambient
+judgment rule: agents notice when an operation materially dominates the work
+and briefly assess only reasonably apparent, substantial, high-leverage,
+low-risk improvements. Common seams are independent units running serially,
+invariant setup repeated per unit, complete suites repeated during iteration,
+and unchanged work recomputed without an input-identity reason. Existing safe
+acceleration may be used; a nontrivial out-of-scope improvement is surfaced
+once and deferred. Marginal optimization, open-ended profiling, and any
+reduction in correctness, coverage, determinism, review independence, or final
+assurance are explicitly out of scope.
 
 ## 10. Acceptance properties
 
@@ -202,5 +217,7 @@ The design is realized when:
 - authority drift and named risk boundaries force a review rebase;
 - gate records reject stale candidates;
 - the authoritative full gate still closes every completed phase; and
+- obvious high-leverage wall-clock improvements are considered
+  proportionally without numeric tripwires or assurance loss; and
 - incomplete streams never become ordinary success, while independently valid
   artifacts are not discarded automatically.
