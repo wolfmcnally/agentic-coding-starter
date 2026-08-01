@@ -44,7 +44,19 @@ Native roles use the same role-specific hard and idle budgets through the orches
 
 One max-turn rescue is allowed only for a review role that completed investigation but failed to emit its verdict. Resume the existing session with the concise “conclude now” instruction. Do not automatically rerun a timed-out role from scratch: a timeout falls through the existing stage fallback state machine and is surfaced with a 🚨.
 
-## Local telemetry and recalibration
+## Authoritative and local telemetry
+
+The finalized shared trace governed by
+[`execution-telemetry.md`](execution-telemetry.md) is authoritative for phase
+timing. It uses monotonic nanoseconds, exact role/wait joins, and truthful
+timeout/interruption outcomes. Wait spans mirror delegated work and are never
+counted as additional work.
+
+The watcher also keeps local protocol diagnostics for timeout recalibration.
+Those rows are not a second execution ledger and cannot fill a missing shared
+span.
+
+## Local recalibration
 
 Every watched invocation appends one JSON object to
 `.kickoff/role-timings.jsonl`, which is local runtime state and must not be
@@ -76,6 +88,7 @@ The two policy sections, unified config schema and shipped defaults, manager, te
 ## Relationship to other policies
 
 - [`role-models.md`](role-models.md) resolves venue/model/effort, performs fail-closed preflight, gates artifacts, and owns runtime fallback.
+- [`execution-telemetry.md`](execution-telemetry.md) owns exact shared spans, aggregation, recovery, and the phase report.
 - [`four-canonical-agents.md`](four-canonical-agents.md) owns role semantics and the five-cycle convergence limit.
 - [`mechanistic-vs-intelligence.md`](mechanistic-vs-intelligence.md) places validation, enforcement, measurement, and percentile calculation in `bin/kickoff-config`; deciding whether evidence warrants a policy change remains human judgment.
 - [`human-in-the-loop.md`](human-in-the-loop.md) still governs completion: timing out or finishing within budget says nothing about subjective acceptance.

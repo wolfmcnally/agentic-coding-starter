@@ -1,7 +1,4 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# requires-python = ">=3.11"
-# ///
+#!/usr/bin/env python3
 """Create and validate run-scoped evidence for incremental kickoff review."""
 
 from __future__ import annotations
@@ -12,32 +9,51 @@ import hashlib
 import json
 import os
 import re
+import shlex
+import shutil
 import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 1
+SCRIPT_PATH = Path(__file__).resolve()
+TOOL_ROOT = SCRIPT_PATH.parent
+if (TOOL_ROOT / "lib" / "agentic_starter" / "finding_schema.py").is_file():
+    REPO_ROOT = Path(os.environ.get("KICKOFF_ENGINE_ROOT", Path.cwd())).resolve()
+    LIB_ROOT = TOOL_ROOT / "lib"
+else:
+    REPO_ROOT = SCRIPT_PATH.parents[1]
+    LIB_ROOT = REPO_ROOT / "lib"
+sys.path.insert(0, str(LIB_ROOT))
+
+# Sourced, not restated. `bin/kickoff-config` constrains generation from the
+# same definitions, so a second copy of the closed sets here would be exactly
+# the drift this arrangement exists to remove.
+from agentic_starter.execution_telemetry import (  # noqa: E402
+    TelemetryError,
+    attach_review_metrics,
+    closed_span,
+    closed_spans,
+    finalized_trace,
+    run_observed,
+    runtime_span_context,
+    trace_context,
+)
+from agentic_starter.finding_schema import (  # noqa: E402
+    CLASSIFICATIONS,
+    FINDING_ALIASES,
+    REVIEW_KINDS,
+    SEVERITIES,
+    STATES,
+    review_artifact_schema,
+)
+
+SCHEMA_VERSION = 3
+CANDIDATE_SCHEMA_VERSION = 1
 CANDIDATE_NAMESPACE = b"agentic-kickoff-candidate-v1\0"
 FINDING_ID = re.compile(r"^(PLAN|CODE)-F[0-9]{3}$")
 CANDIDATE_ID = re.compile(r"^[0-9a-f]{64}$")
-SEVERITIES = {"blocking", "high", "medium", "low", "nit"}
-STATES = {
-    "open",
-    "addressed",
-    "verified",
-    "closed",
-    "rejected-with-evidence",
-    "blocked-owner",
-    "superseded",
-}
-CLASSIFICATIONS = {
-    "initial",
-    "introduced-by-revision",
-    "newly-exposed-by-resolution",
-    "missed-in-full-pass",
-}
 RISK_TAGS = {
     "public-api",
     "persisted-state",
@@ -61,7 +77,19 @@ ALLOWED_TRANSITIONS = {
         "rejected-with-evidence",
         "superseded",
     },
-    "addressed": {"addressed", "verified", "open", "blocked-owner", "superseded"},
+    # `addressed -> rejected-with-evidence` is the reviewer accepting an
+    # implementer's counter-argument. Without it the ledger could only express
+    # rejection on a reviewer's *first* look, so a finding answered by evidence
+    # rather than by a change had no truthful terminal state and had to be
+    # walked back through `open` to reach one.
+    "addressed": {
+        "addressed",
+        "verified",
+        "open",
+        "blocked-owner",
+        "rejected-with-evidence",
+        "superseded",
+    },
     "verified": {"verified", "closed", "open"},
     "closed": {"closed", "open"},
     "blocked-owner": {"blocked-owner", "open", "addressed", "superseded"},
@@ -69,6 +97,24 @@ ALLOWED_TRANSITIONS = {
     "superseded": {"superseded"},
 }
 UNRESOLVED_STATES = {"open", "addressed", "verified", "blocked-owner"}
+ACTIONABLE_STATES = {"open", "addressed", "blocked-owner"}
+ROLE_OPERATIONS = {
+    "role.plan": "planner",
+    "role.plan-review": "reviewer",
+    "role.implement": "coder",
+    "role.code-review": "critic",
+}
+ROLE_REASONS = {"initial", "revision", "resume", "rescue", "reexecution", "fallback"}
+ROLE_HARNESSES = {"native", "claude", "codex"}
+REVIEW_LANES = {"full", "light"}
+FOLLOW_UP_ROUTES = {"initial", "direct-fix", "coder-only", "full-cycle"}
+ORCHESTRATION_OPERATIONS = (
+    "orchestration.setup",
+    "orchestration.planning",
+    "orchestration.implementation",
+    "orchestration.acceptance",
+    "orchestration.close",
+)
 
 
 class EvidenceError(ValueError):
@@ -107,17 +153,69 @@ def extract_json_block(path: Path, heading: str) -> Any:
         text = path.read_text()
     except FileNotFoundError as exc:
         raise EvidenceError(f"missing role artifact: {path}") from exc
+    heading_pattern = re.compile(rf"^{re.escape(heading)}[ \t]*$", re.MULTILINE)
+    headings = list(heading_pattern.finditer(text))
+    if not headings:
+        raise EvidenceError(f"no {heading} fenced JSON block found in {path.name}")
     pattern = re.compile(
-        rf"^{re.escape(heading)}[ \t]*\n```json[ \t]*\n(.*?)\n```[ \t]*$",
+        rf"^{re.escape(heading)}[ \t]*\n\s*```json[ \t]*\n(.*?)\n```[ \t]*$",
         re.MULTILINE | re.DOTALL,
     )
-    matches = pattern.findall(text)
+    matches = list(pattern.finditer(text))
     if len(matches) != 1:
-        raise EvidenceError(f"{path.name} must contain exactly one {heading} fenced JSON block")
+        if len(matches) > 1:
+            raise EvidenceError(f"multiple {heading} fenced JSON blocks found in {path.name}")
+        line = text.count("\n", 0, headings[0].start()) + 1
+        raise EvidenceError(
+            f"{heading} block found at {path.name}:{line} but malformed; "
+            "expected one fenced JSON object"
+        )
     try:
-        return json.loads(matches[0])
+        return json.loads(matches[0].group(1))
     except json.JSONDecodeError as exc:
-        raise EvidenceError(f"invalid JSON under {heading}: {exc}") from exc
+        line = text.count("\n", 0, matches[0].start()) + 1
+        raise EvidenceError(
+            f"{heading} block found at {path.name}:{line} but malformed JSON: {exc}"
+        ) from exc
+
+
+def read_role_artifact(path: Path) -> Any:
+    """Read a review artifact in either shape the venues produce.
+
+    A schema-constrained venue returns the whole document as JSON, so there is
+    no markdown envelope to find. A native subagent runs without a schema and
+    still emits the fenced `## Finding Evidence` block. Accepting both here is
+    what keeps the orchestrator from branching on venue — which would put the
+    invocation shape back in the caller's hands.
+
+    Bare JSON is tried first and only when it is an object carrying `findings`;
+    anything else falls through to the markdown reader, so a malformed
+    structured artifact still gets the fenced reader's specific diagnostic
+    rather than a generic parse error.
+    """
+    try:
+        text = path.read_text()
+    except FileNotFoundError as exc:
+        raise EvidenceError(f"missing role artifact: {path}") from exc
+    try:
+        document = json.loads(text)
+    except json.JSONDecodeError:
+        document = None
+    if isinstance(document, dict) and isinstance(document.get("findings"), list):
+        return document
+    return extract_json_block(path, "## Finding Evidence")
+
+
+def command_schema(arguments: argparse.Namespace) -> None:
+    """Emit the review-artifact schema derived from the closed sets."""
+    document = review_artifact_schema(arguments.kind)
+    rendered = json.dumps(document, indent=2, sort_keys=False) + "\n"
+    if arguments.output:
+        arguments.output.parent.mkdir(parents=True, exist_ok=True)
+        arguments.output.write_text(rendered, encoding="utf-8")
+        print(str(arguments.output))
+        return
+    sys.stdout.write(rendered)
 
 
 def git_root(start: Path) -> Path:
@@ -133,7 +231,7 @@ def git_root(start: Path) -> Path:
 
 
 def tree_manifest(root: Path) -> dict[str, Any]:
-    executable = Path(__file__).resolve().with_name("kickoff-tree-id")
+    executable = TOOL_ROOT / "kickoff-tree-id"
     process = subprocess.run(
         [str(executable), "--root", str(root), "--json"],
         capture_output=True,
@@ -169,7 +267,7 @@ def validate_relative_paths(value: Any, label: str) -> list[str]:
 
 
 def validate_candidate_manifest(value: Any) -> None:
-    if not isinstance(value, dict) or value.get("schema_version") != SCHEMA_VERSION:
+    if not isinstance(value, dict) or value.get("schema_version") != CANDIDATE_SCHEMA_VERSION:
         raise EvidenceError("invalid candidate manifest schema")
     validate_candidate_id(value.get("candidate_id"), "candidate_id")
     entries = value.get("entries")
@@ -214,7 +312,150 @@ def validate_run_dir(run_dir: Path) -> dict[str, Any]:
     if not root.is_absolute() or not (root / ".git").exists():
         raise EvidenceError("run metadata has no valid repository root")
     validate_candidate_id(run.get("initial_candidate_id"), "initial_candidate_id")
+    required = {
+        "schema_version",
+        "phase",
+        "repository_root",
+        "created_at",
+        "initial_candidate_id",
+        "telemetry_trace_id",
+        "telemetry_root_span_id",
+        "review_lane",
+        "follow_up_route",
+        "required_initial_role_operations",
+        "required_orchestration_operations",
+        "initial_orchestration_span_id",
+        "tool_bundle",
+    }
+    if set(run) != required:
+        raise EvidenceError("run metadata has unknown or missing fields")
+    pinned = (run_dir / "tools" / "kickoff-evidence").resolve()
+    if SCRIPT_PATH != pinned:
+        raise EvidenceError(f"active run must use pinned tool: {pinned}")
+    bundle = run.get("tool_bundle")
+    if (
+        not isinstance(bundle, dict)
+        or set(bundle) != {"schema_version", "manifest_sha256"}
+        or bundle["schema_version"] != 1
+    ):
+        raise EvidenceError("invalid pinned tool-bundle metadata")
+    manifest_path = run_dir / "tools" / "manifest.json"
+    if hashlib.sha256(manifest_path.read_bytes()).hexdigest() != bundle["manifest_sha256"]:
+        raise EvidenceError("pinned tool-bundle manifest changed")
+    manifest = load_json(manifest_path)
+    if (
+        not isinstance(manifest, dict)
+        or manifest.get("schema_version") != 1
+        or not isinstance(manifest.get("files"), list)
+    ):
+        raise EvidenceError("invalid pinned tool-bundle manifest")
+    for item in manifest["files"]:
+        if not isinstance(item, dict) or set(item) != {"path", "sha256"}:
+            raise EvidenceError("invalid pinned tool-bundle entry")
+        relative = Path(str(item["path"]))
+        if relative.is_absolute() or ".." in relative.parts:
+            raise EvidenceError("pinned tool-bundle path escapes bundle")
+        target = run_dir / "tools" / relative
+        if (
+            not target.is_file()
+            or hashlib.sha256(target.read_bytes()).hexdigest() != item["sha256"]
+        ):
+            raise EvidenceError(f"pinned tool changed: {relative.as_posix()}")
     return run
+
+
+def install_tool_bundle(run_dir: Path) -> dict[str, Any]:
+    """Pin the mechanics that must remain readable after the live tree changes."""
+    bundle = run_dir / "tools"
+    sources = {
+        "kickoff-evidence": SCRIPT_PATH,
+        "kickoff-tree-id": REPO_ROOT / "bin" / "kickoff-tree-id",
+        "execution-telemetry": REPO_ROOT / "bin" / "execution-telemetry",
+        "kickoff-config": REPO_ROOT / "bin" / "kickoff-config",
+        "kickoff.yaml": REPO_ROOT / "kickoff.yaml",
+        "lib/agentic_starter/__init__.py": REPO_ROOT / "lib" / "agentic_starter" / "__init__.py",
+        "lib/agentic_starter/finding_schema.py": (
+            REPO_ROOT / "lib" / "agentic_starter" / "finding_schema.py"
+        ),
+        "lib/agentic_starter/execution_telemetry.py": (
+            REPO_ROOT / "lib" / "agentic_starter" / "execution_telemetry.py"
+        ),
+        "lib/agentic_starter/execution_dashboard.py": (
+            REPO_ROOT / "lib" / "agentic_starter" / "execution_dashboard.py"
+        ),
+    }
+    manifest: list[dict[str, str]] = []
+    for relative, source in sources.items():
+        if not source.is_file():
+            raise EvidenceError(f"cannot pin missing kickoff tool: {relative}")
+        destination = bundle / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+        manifest.append(
+            {
+                "path": relative,
+                "sha256": hashlib.sha256(destination.read_bytes()).hexdigest(),
+            }
+        )
+    atomic_json(
+        bundle / "manifest.json",
+        {"schema_version": 1, "files": manifest},
+    )
+    return {
+        "schema_version": 1,
+        "manifest_sha256": hashlib.sha256((bundle / "manifest.json").read_bytes()).hexdigest(),
+    }
+
+
+def required_initial_roles(review_lane: str, route: str) -> list[str]:
+    if review_lane not in REVIEW_LANES or route not in FOLLOW_UP_ROUTES:
+        raise EvidenceError("invalid review lane or follow-up route")
+    if route == "direct-fix":
+        return []
+    if route == "coder-only":
+        return ["role.implement"]
+    if route == "full-cycle":
+        return ["role.code-review", "role.implement"]
+    roles = ["role.code-review", "role.implement", "role.plan"]
+    if review_lane == "full":
+        roles.append("role.plan-review")
+    return sorted(roles)
+
+
+def required_orchestration_operations(route: str) -> list[str]:
+    if route not in FOLLOW_UP_ROUTES:
+        raise EvidenceError("invalid follow-up route")
+    required = {
+        "orchestration.setup",
+        "orchestration.implementation",
+        "orchestration.acceptance",
+        "orchestration.close",
+    }
+    if route == "initial":
+        required.add("orchestration.planning")
+    return sorted(required)
+
+
+def validate_kickoff_context(
+    root: Path, phase: str, trace_id: str, root_span_id: str, *, open_required: bool
+) -> dict[str, Any]:
+    try:
+        context = trace_context(engine_root=root, trace_id=trace_id)
+    except TelemetryError as exc:
+        raise EvidenceError(f"invalid kickoff telemetry context: {exc}") from exc
+    expected = {
+        "root_span_id": root_span_id,
+        "scope": "engine",
+        "scope_id": "engine",
+        "run_type": "kickoff",
+        "operation": f"phase.{phase}",
+    }
+    for field, value in expected.items():
+        if context.get(field) != value:
+            raise EvidenceError(f"kickoff telemetry {field} does not match")
+    if open_required and context["state"] != "open":
+        raise EvidenceError("kickoff telemetry root must be open")
+    return context
 
 
 def parse_authority_spec(specification: str, root: Path, priority: int) -> dict[str, Any]:
@@ -239,6 +480,7 @@ def command_init(arguments: argparse.Namespace) -> None:
     if run_dir.exists() and any(run_dir.iterdir()):
         raise EvidenceError(f"run directory is not empty: {run_dir}")
     run_dir.mkdir(parents=True, exist_ok=True)
+    tool_bundle = install_tool_bundle(run_dir)
     candidate = tree_manifest(root)
     authorities = [
         parse_authority_spec(specification, root, priority)
@@ -247,6 +489,30 @@ def command_init(arguments: argparse.Namespace) -> None:
     if not authorities:
         raise EvidenceError("at least one --authority is required")
     created_at = now()
+    validate_kickoff_context(
+        root,
+        arguments.phase,
+        arguments.telemetry_trace_id,
+        arguments.telemetry_root_span_id,
+        open_required=True,
+    )
+    try:
+        setup_span = runtime_span_context(
+            engine_root=root,
+            trace_id=arguments.telemetry_trace_id,
+            span_id=arguments.initial_orchestration_span_id,
+        )
+    except TelemetryError as exc:
+        raise EvidenceError(f"invalid initial orchestration span: {exc}") from exc
+    expected_setup = {
+        "parent_span_id": arguments.telemetry_root_span_id,
+        "category": "reconciliation",
+        "operation": "orchestration.setup",
+        "attempt": 1,
+        "state": "open",
+    }
+    if any(setup_span.get(key) != value for key, value in expected_setup.items()):
+        raise EvidenceError("initial orchestration span does not match setup contract")
     atomic_json(
         run_dir / "run.json",
         {
@@ -255,6 +521,18 @@ def command_init(arguments: argparse.Namespace) -> None:
             "repository_root": str(root),
             "created_at": created_at,
             "initial_candidate_id": candidate["candidate_id"],
+            "telemetry_trace_id": arguments.telemetry_trace_id,
+            "telemetry_root_span_id": arguments.telemetry_root_span_id,
+            "review_lane": arguments.review_lane,
+            "follow_up_route": arguments.follow_up_route,
+            "required_initial_role_operations": required_initial_roles(
+                arguments.review_lane, arguments.follow_up_route
+            ),
+            "required_orchestration_operations": required_orchestration_operations(
+                arguments.follow_up_route
+            ),
+            "initial_orchestration_span_id": arguments.initial_orchestration_span_id,
+            "tool_bundle": tool_bundle,
         },
     )
     atomic_json(
@@ -276,8 +554,409 @@ def command_init(arguments: argparse.Namespace) -> None:
         },
     )
     (run_dir / "gates.jsonl").touch()
+    (run_dir / "role-attempts.jsonl").touch()
+    (run_dir / "role-dispatch.jsonl").touch()
     (run_dir / "packets.jsonl").touch()
+    (run_dir / "lineage.jsonl").touch()
+    record_lineage(run_dir, candidate["candidate_id"], "init")
     print(candidate["candidate_id"])
+
+
+def record_lineage(run_dir: Path, candidate_id: str, reason: str) -> bool:
+    """Append a candidate to this run's lineage. Returns True when it is new.
+
+    The lineage is what makes a finding's `introduced_in` checkable against
+    something other than the head of the tree. A run's candidate changes for
+    reasons that have nothing to do with the code under review — the status
+    marker and the START log block are both tracked files — so "the id the tree
+    has right now" is the wrong question to ask of a reviewer that observed the
+    tree minutes ago.
+    """
+    path = run_dir / "lineage.jsonl"
+    known = {item["candidate_id"] for item in load_jsonl(path)}
+    if candidate_id in known:
+        return False
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(
+            json.dumps(
+                {
+                    "schema_version": SCHEMA_VERSION,
+                    "candidate_id": candidate_id,
+                    "observed_at": now(),
+                    "reason": reason,
+                },
+                separators=(",", ":"),
+            )
+            + "\n"
+        )
+    return True
+
+
+def lineage_candidates(run_dir: Path) -> list[str]:
+    """Every candidate this run has recorded, oldest first."""
+    return [item["candidate_id"] for item in load_jsonl(run_dir / "lineage.jsonl")]
+
+
+def command_current_candidate(arguments: argparse.Namespace) -> None:
+    """Recompute the candidate now and record it, so nobody caches the old one.
+
+    `init` prints a candidate, and the very next orchestration steps — the
+    `plan/INDEX.md` marker flip and the START log block — change it. An
+    orchestrator that carried the init-time value into a role prompt handed
+    every role a value that was stale by construction, and the reviewer's
+    honestly-stamped findings were then rejected wholesale. Calling this
+    immediately before a dispatch is the mechanical answer.
+    """
+    run = validate_run_dir(arguments.run_dir)
+    current = tree_manifest(Path(run["repository_root"]))
+    candidate_id = current["candidate_id"]
+    if record_lineage(arguments.run_dir, candidate_id, arguments.reason):
+        print(
+            f"kickoff-evidence: candidate advanced to {candidate_id[:12]}… ({arguments.reason})",
+            file=sys.stderr,
+        )
+    print(candidate_id)
+
+
+def load_jsonl(file_path: Path) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    try:
+        lines = file_path.read_text().splitlines()
+    except FileNotFoundError as exc:
+        raise EvidenceError(f"missing evidence file: {file_path.name}") from exc
+    for number, line in enumerate(lines, 1):
+        if not line.strip():
+            continue
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise EvidenceError(f"invalid JSON in {file_path.name} line {number}") from exc
+        if not isinstance(value, dict):
+            raise EvidenceError(f"invalid record in {file_path.name} line {number}")
+        records.append(value)
+    return records
+
+
+def validate_role_record(record: dict[str, Any], run: dict[str, Any]) -> None:
+    required = {
+        "schema_version",
+        "registered_at",
+        "telemetry_trace_id",
+        "telemetry_root_span_id",
+        "operation",
+        "attempt",
+        "role",
+        "harness",
+        "model",
+        "effort",
+        "reason",
+    }
+    if set(record) != required or record.get("schema_version") != SCHEMA_VERSION:
+        raise EvidenceError("invalid role-attempt record schema")
+    operation = record.get("operation")
+    if operation not in ROLE_OPERATIONS or record.get("role") != ROLE_OPERATIONS[operation]:
+        raise EvidenceError("role-attempt operation and role do not agree")
+    if record.get("harness") not in ROLE_HARNESSES:
+        raise EvidenceError("invalid role-attempt harness")
+    if not isinstance(record.get("attempt"), int) or record["attempt"] < 1:
+        raise EvidenceError("role-attempt attempt must be a positive integer")
+    if record.get("reason") not in ROLE_REASONS:
+        raise EvidenceError("invalid role-attempt reason")
+    if record["telemetry_trace_id"] != run["telemetry_trace_id"] or (
+        record["telemetry_root_span_id"] != run["telemetry_root_span_id"]
+    ):
+        raise EvidenceError("role-attempt telemetry ownership does not match")
+    for field in ("model", "effort"):
+        if record[field] is not None and (
+            not isinstance(record[field], str) or not record[field].strip()
+        ):
+            raise EvidenceError(f"role-attempt {field} must be null or nonempty text")
+
+
+def command_register_role_attempt(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    if arguments.output.resolve().parent != arguments.run_dir.resolve():
+        # Name the directory. The constraint is deliberate — a handoff outside
+        # the run is a handoff the run cannot vouch for — but the natural
+        # reading is to keep role artifacts beside prompts and events in a
+        # scratch dir, so the refusal has to say where they belong instead of
+        # only that the chosen path is wrong.
+        raise EvidenceError(
+            "role-attempt handoff must be inside its run directory: expected a "
+            f"path directly under {arguments.run_dir.resolve()}, got "
+            f"{arguments.output.resolve()}"
+        )
+    validate_kickoff_context(
+        Path(run["repository_root"]),
+        run["phase"],
+        run["telemetry_trace_id"],
+        run["telemetry_root_span_id"],
+        open_required=True,
+    )
+    record = {
+        "schema_version": SCHEMA_VERSION,
+        "registered_at": now(),
+        "telemetry_trace_id": run["telemetry_trace_id"],
+        "telemetry_root_span_id": run["telemetry_root_span_id"],
+        "operation": arguments.operation,
+        "attempt": arguments.attempt,
+        "role": arguments.role,
+        "harness": arguments.harness,
+        "model": arguments.model,
+        "effort": arguments.effort,
+        "reason": arguments.reason,
+    }
+    validate_role_record(record, run)
+    existing = load_jsonl(arguments.run_dir / "role-attempts.jsonl")
+    if any(
+        item.get("operation") == record["operation"] and item.get("attempt") == record["attempt"]
+        for item in existing
+    ):
+        raise EvidenceError("duplicate role operation/attempt registration")
+    append_jsonl(arguments.run_dir / "role-attempts.jsonl", record)
+    atomic_json(arguments.output, record)
+    if arguments.harness == "native":
+        # An external dispatch gets its spans built by `kickoff-config watch`.
+        # A native one leaves the orchestrator to reproduce that recipe by
+        # hand, and a single omitted `--model` is unrecoverable once the span
+        # closes. Emit the exact argv instead of describing it.
+        recipe_path = Path(f"{arguments.output}.span-recipe.json")
+        atomic_json(recipe_path, native_span_recipe(record))
+        print("registered")
+        print(f"native span recipe: {recipe_path}")
+        return
+    print("registered")
+
+
+def native_span_recipe(record: dict[str, Any]) -> dict[str, Any]:
+    """The exact `execution-telemetry start` argv for a native attempt's spans.
+
+    Both spans carry the registration's routing metadata, because validation
+    joins them against it field by field. The wait span's parent is the
+    intelligence span, which does not exist until the first command has run, so
+    it travels as a named placeholder the caller substitutes.
+    """
+
+    def argv(category: str, parent: str) -> list[str]:
+        command = [
+            "./bin/python",
+            "bin/execution-telemetry",
+            "start",
+            "--trace-id",
+            record["telemetry_trace_id"],
+            "--parent-span-id",
+            parent,
+            "--category",
+            category,
+            "--operation",
+            record["operation"],
+            "--attempt",
+            str(record["attempt"]),
+            "--harness",
+            record["harness"],
+            "--role",
+            record["role"],
+        ]
+        if record["model"] is not None:
+            command.extend(["--model", record["model"]])
+        if record["effort"] is not None:
+            command.extend(["--effort", record["effort"]])
+        return command
+
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "operation": record["operation"],
+        "attempt": record["attempt"],
+        "intelligence": argv("intelligence", record["telemetry_root_span_id"]),
+        "wait": argv("wait", "<INTELLIGENCE_SPAN_ID>"),
+        "wait_parent_placeholder": "<INTELLIGENCE_SPAN_ID>",
+        "note": (
+            "Run `intelligence` first, then substitute its span id for "
+            "<INTELLIGENCE_SPAN_ID> in `wait`. Close wait before intelligence, "
+            "then record the pair with `record-role-dispatch`."
+        ),
+    }
+
+
+def command_span_recipe(arguments: argparse.Namespace) -> None:
+    validate_run_dir(arguments.run_dir)
+    record = load_json(arguments.registration)
+    if not isinstance(record, dict) or record.get("harness") != "native":
+        raise EvidenceError("span recipes exist only for native role attempts")
+    recipe = native_span_recipe(record)
+    if arguments.intelligence_span_id:
+        validate_span_identifier(arguments.intelligence_span_id, "intelligence span id")
+        recipe["wait"] = [
+            arguments.intelligence_span_id if item == recipe["wait_parent_placeholder"] else item
+            for item in recipe["wait"]
+        ]
+        recipe.pop("wait_parent_placeholder")
+    print(json.dumps(recipe, indent=2, sort_keys=True))
+
+
+def command_record_telemetry_incomplete(arguments: argparse.Namespace) -> None:
+    validate_run_dir(arguments.run_dir)
+    validate_span_identifier(arguments.span_id, "span id")
+    if not arguments.cause.strip():
+        raise EvidenceError("a telemetry-incompleteness record requires its cause")
+    record = {
+        "schema_version": SCHEMA_VERSION,
+        "recorded_at": now(),
+        "operation": arguments.operation,
+        "attempt": arguments.attempt,
+        "span_id": arguments.span_id,
+        "missing_fields": sorted(set(arguments.missing_field)),
+        "cause": arguments.cause.strip(),
+    }
+    path = arguments.run_dir / "telemetry-incomplete.jsonl"
+    existing = load_jsonl(path) if path.exists() else []
+    if any(
+        item.get("operation") == record["operation"] and item.get("attempt") == record["attempt"]
+        for item in existing
+    ):
+        raise EvidenceError("duplicate telemetry-incompleteness record")
+    append_jsonl(path, record)
+    print(f"telemetry-incomplete {record['operation']}#{record['attempt']}")
+
+
+def command_repin_tools(arguments: argparse.Namespace) -> None:
+    """Re-pin a run's tool bundle to the current tree.
+
+    The bundle is a same-run snapshot so an active run survives the tree
+    changing underneath it. That guarantee cuts the other way when the change
+    is a repair the run itself needs: the pinned copy keeps the defect. This
+    command is the recorded way across, and it is deliberately explicit — it
+    prints both digests so the swap is visible in whatever log invoked it.
+    """
+    run = load_json(arguments.run_dir / "run.json")
+    if not isinstance(run, dict) or run.get("schema_version") != SCHEMA_VERSION:
+        raise EvidenceError("invalid run metadata schema")
+    previous = run.get("tool_bundle", {}).get("manifest_sha256")
+    run["tool_bundle"] = install_tool_bundle(arguments.run_dir)
+    atomic_json(arguments.run_dir / "run.json", run)
+    print(f"repinned {previous} -> {run['tool_bundle']['manifest_sha256']}")
+
+
+def command_validate_role_attempt(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    registration = load_json(arguments.registration)
+    validate_role_record(registration, run)
+    matches = [
+        item
+        for item in load_jsonl(arguments.run_dir / "role-attempts.jsonl")
+        if item == registration
+    ]
+    if len(matches) != 1:
+        raise EvidenceError("role-attempt handoff is not the unique registered record")
+    print("ROLE ATTEMPT VALID")
+
+
+def validate_dispatch_span(
+    run: dict[str, Any],
+    registration: dict[str, Any],
+    span_id: str,
+    category: str,
+    parent_span_id: str,
+) -> None:
+    try:
+        span = runtime_span_context(
+            engine_root=Path(run["repository_root"]),
+            trace_id=run["telemetry_trace_id"],
+            span_id=span_id,
+        )
+    except TelemetryError as exc:
+        raise EvidenceError(f"{category} span is invalid at dispatch: {exc}") from exc
+    expected_shape = {
+        "category": category,
+        "operation": registration["operation"],
+        "attempt": registration["attempt"],
+        "parent_span_id": parent_span_id,
+    }
+    for field, expected in expected_shape.items():
+        observed = span.get(field)
+        if observed != expected:
+            raise EvidenceError(
+                f"{category} span {field} does not match dispatch: "
+                f"span={observed!r}, expected={expected!r}"
+            )
+    for field in ("role", "harness", "model", "effort"):
+        observed = span.get(field)
+        registered = registration[field]
+        if observed != registered:
+            raise EvidenceError(
+                f"{category} span {field} does not match registration: "
+                f"span={observed!r}, registration={registered!r}"
+            )
+
+
+def command_record_role_dispatch(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    registration = load_json(arguments.registration)
+    validate_role_record(registration, run)
+    if (
+        sum(item == registration for item in load_jsonl(arguments.run_dir / "role-attempts.jsonl"))
+        != 1
+    ):
+        raise EvidenceError("dispatch registration is not uniquely registered")
+    accepted = arguments.state == "accepted"
+    if accepted and arguments.wait_span_id is None:
+        # Record the truthful accepted topology even when wait telemetry failed.
+        pass
+    if not accepted and arguments.wait_span_id is not None:
+        raise EvidenceError("rejected dispatch cannot name a wait span")
+    if accepted and arguments.idle_telemetry == "not-dispatched":
+        raise EvidenceError("accepted dispatch must state idle telemetry availability")
+    if not accepted and arguments.idle_telemetry != "not-dispatched":
+        raise EvidenceError("rejected dispatch idle telemetry must be not-dispatched")
+    if arguments.intelligence_span_id is None:
+        # Validation requires exactly one closed intelligence span per registered
+        # attempt, rejections included: a refused attempt still consumed a
+        # registration and still has to be accounted for. Accepting a span-less
+        # record here writes an IMMUTABLE row that `validate` then refuses
+        # forever, and the run cannot be repaired afterwards -- creating the span
+        # late only moves the error to "dispatch and intelligence span ids do not
+        # agree". Refuse at write time, where the caller can still fix it.
+        raise EvidenceError(
+            "dispatch must name an intelligence span. A rejected dispatch opens "
+            "one and closes it error 127 at rejection time, with no wait span; "
+            "an accepted one names the span it dispatched into."
+        )
+    if arguments.intelligence_span_id is not None:
+        validate_dispatch_span(
+            run,
+            registration,
+            arguments.intelligence_span_id,
+            "intelligence",
+            run["telemetry_root_span_id"],
+        )
+    if arguments.wait_span_id is not None:
+        if arguments.intelligence_span_id is None:
+            raise EvidenceError("wait span requires an intelligence span id")
+        validate_dispatch_span(
+            run,
+            registration,
+            arguments.wait_span_id,
+            "wait",
+            arguments.intelligence_span_id,
+        )
+    record = {
+        "schema_version": SCHEMA_VERSION,
+        "recorded_at": now(),
+        "operation": registration["operation"],
+        "attempt": registration["attempt"],
+        "accepted": accepted,
+        "idle_telemetry": arguments.idle_telemetry,
+        "intelligence_span_id": arguments.intelligence_span_id,
+        "wait_span_id": arguments.wait_span_id,
+    }
+    existing = load_jsonl(arguments.run_dir / "role-dispatch.jsonl")
+    if any(
+        item.get("operation") == record["operation"] and item.get("attempt") == record["attempt"]
+        for item in existing
+    ):
+        raise EvidenceError("duplicate role dispatch result")
+    append_jsonl(arguments.run_dir / "role-dispatch.jsonl", record)
+    print("dispatch-recorded")
 
 
 def manifest_map(manifest: dict[str, Any]) -> dict[str, dict[str, str]]:
@@ -337,6 +1016,7 @@ def command_capture_change(arguments: argparse.Namespace) -> None:
     reviewed = load_json(arguments.run_dir / "reviewed-candidate.json")
     validate_candidate_manifest(reviewed)
     current = tree_manifest(root)
+    record_lineage(arguments.run_dir, current["candidate_id"], "capture-change")
     drift = authority_drift(arguments.run_dir, root)
     metadata = {
         "risk_tags": arguments.risk_tag,
@@ -413,6 +1093,7 @@ def command_mark_reviewed(arguments: argparse.Namespace) -> None:
     run = validate_run_dir(arguments.run_dir)
     root = Path(run["repository_root"])
     current = tree_manifest(root)
+    record_lineage(arguments.run_dir, current["candidate_id"], "mark-reviewed")
     if arguments.expected_candidate:
         expected = validate_candidate_id(arguments.expected_candidate, "expected candidate")
         if current["candidate_id"] != expected:
@@ -482,55 +1163,114 @@ def command_mark_plan_reviewed(arguments: argparse.Namespace) -> None:
     print(actual)
 
 
-def require_text(value: Any, field: str) -> str:
+def require_text(value: Any, finding_label: str, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
-        raise EvidenceError(f"finding {field} must be nonempty text")
+        raise EvidenceError(f"{finding_label} field {field} must be nonempty text")
     return value.strip()
 
 
-def validate_finding(value: Any) -> dict[str, Any]:
+def normalize_finding(value: Any, index: int) -> tuple[Any, list[tuple[str, str, str, str]]]:
     if not isinstance(value, dict):
-        raise EvidenceError("each finding must be an object")
-    finding_id = require_text(value.get("id"), "id")
-    if not FINDING_ID.fullmatch(finding_id):
-        raise EvidenceError(f"invalid finding id: {finding_id}")
-    severity = require_text(value.get("severity"), "severity")
-    state = require_text(value.get("state"), "state")
-    classification = require_text(value.get("classification"), "classification")
-    if severity not in SEVERITIES:
-        raise EvidenceError(f"{finding_id} has invalid severity: {severity}")
-    if state not in STATES:
-        raise EvidenceError(f"{finding_id} has invalid state: {state}")
-    if classification not in CLASSIFICATIONS:
-        raise EvidenceError(f"{finding_id} has invalid classification: {classification}")
+        return value, []
+    normalized = dict(value)
+    label_value = normalized.get("id")
+    label = (
+        label_value.strip()
+        if isinstance(label_value, str) and label_value.strip()
+        else f"finding[{index}]"
+    )
+    notices: list[tuple[str, str, str, str]] = []
+    for field, aliases in FINDING_ALIASES.items():
+        original = normalized.get(field)
+        if isinstance(original, str) and original in aliases:
+            replacement = aliases[original]
+            normalized[field] = replacement
+            notices.append((label, field, original, replacement))
+    return normalized, notices
+
+
+def validate_finding(value: Any, index: int) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise EvidenceError(f"finding[{index}] must be an object")
+    raw_id = value.get("id")
+    label = raw_id.strip() if isinstance(raw_id, str) and raw_id.strip() else f"finding[{index}]"
+    errors: list[str] = []
+
+    def text_field(field: str, *, optional: bool = False) -> str | None:
+        raw = value.get(field)
+        if optional and raw is None:
+            return None
+        try:
+            return require_text(raw, label, field)
+        except EvidenceError as exc:
+            errors.append(str(exc))
+            return None
+
+    finding_id = text_field("id") or label
+    if finding_id != label or isinstance(raw_id, str):
+        if not FINDING_ID.fullmatch(finding_id):
+            errors.append(f"{label} field id is invalid: {finding_id}")
+    severity = text_field("severity")
+    state = text_field("state")
+    classification = text_field("classification")
+    authority = text_field("authority")
+    evidence = text_field("evidence")
+    required_outcome = text_field("required_outcome")
+    disposition = text_field("disposition", optional=True)
+    if severity is not None and severity not in SEVERITIES:
+        errors.append(f"{label} field severity is invalid: {severity}")
+    if state is not None and state not in STATES:
+        errors.append(f"{label} field state is invalid: {state}")
+    if classification is not None and classification not in CLASSIFICATIONS:
+        errors.append(f"{label} field classification is invalid: {classification}")
     affected_paths = value.get("affected_paths")
     if not isinstance(affected_paths, list):
-        raise EvidenceError(f"{finding_id} affected_paths must be an array")
-    if affected_paths:
-        validate_relative_paths(affected_paths, f"{finding_id} affected_paths")
-    introduced_in = validate_candidate_id(value.get("introduced_in"), "introduced_in")
+        errors.append(f"{label} field affected_paths must be an array")
+        affected_paths = []
+    elif affected_paths:
+        try:
+            validate_relative_paths(affected_paths, f"{label} field affected_paths")
+        except EvidenceError as exc:
+            errors.append(str(exc))
+    introduced_in: str | None = None
+    try:
+        introduced_in = validate_candidate_id(
+            value.get("introduced_in"), f"{label} field introduced_in"
+        )
+    except EvidenceError as exc:
+        errors.append(str(exc))
     resolved_value = value.get("resolved_in")
-    resolved_in = (
-        validate_candidate_id(resolved_value, "resolved_in") if resolved_value is not None else None
-    )
+    resolved_in: str | None = None
+    if resolved_value is not None:
+        try:
+            resolved_in = validate_candidate_id(resolved_value, f"{label} field resolved_in")
+        except EvidenceError as exc:
+            errors.append(str(exc))
     if state in {"verified", "closed", "rejected-with-evidence", "superseded"} and not resolved_in:
-        raise EvidenceError(f"{finding_id} state {state} requires resolved_in")
+        errors.append(f"{label} field resolved_in is required for state {state}")
+    if errors:
+        raise EvidenceError("\n".join(errors))
+    assert (
+        severity is not None
+        and state is not None
+        and classification is not None
+        and authority is not None
+        and evidence is not None
+        and required_outcome is not None
+        and introduced_in is not None
+    )
     return {
         "id": finding_id,
         "severity": severity,
-        "authority": require_text(value.get("authority"), "authority"),
-        "evidence": require_text(value.get("evidence"), "evidence"),
+        "authority": authority,
+        "evidence": evidence,
         "affected_paths": sorted(set(affected_paths), key=os.fsencode),
-        "required_outcome": require_text(value.get("required_outcome"), "required_outcome"),
+        "required_outcome": required_outcome,
         "introduced_in": introduced_in,
         "resolved_in": resolved_in,
         "state": state,
         "classification": classification,
-        "disposition": (
-            require_text(value.get("disposition"), "disposition")
-            if value.get("disposition") is not None
-            else None
-        ),
+        "disposition": disposition,
     }
 
 
@@ -543,42 +1283,74 @@ def command_ingest_findings(arguments: argparse.Namespace) -> None:
             f"candidate mismatch: expected {expected_candidate}, found {current['candidate_id']}"
         )
     incoming_document = (
-        load_json(arguments.input)
-        if arguments.input
-        else extract_json_block(arguments.artifact, "## Finding Evidence")
+        load_json(arguments.input) if arguments.input else read_role_artifact(arguments.artifact)
     )
     if not isinstance(incoming_document, dict) or not isinstance(
         incoming_document.get("findings"), list
     ):
         raise EvidenceError("finding input must be an object with a findings array")
-    incoming = [validate_finding(item) for item in incoming_document["findings"]]
-    if len({item["id"] for item in incoming}) != len(incoming):
-        raise EvidenceError("finding input contains duplicate ids")
+    incoming: list[dict[str, Any]] = []
+    validation_errors: list[str] = []
+    normalization_notices: list[tuple[str, str, str, str]] = []
+    for index, raw_finding in enumerate(incoming_document["findings"]):
+        normalized, notices = normalize_finding(raw_finding, index)
+        normalization_notices.extend(notices)
+        try:
+            incoming.append(validate_finding(normalized, index))
+        except EvidenceError as exc:
+            validation_errors.extend(str(exc).splitlines())
+    for label, field, original, replacement in normalization_notices:
+        print(
+            f"kickoff-evidence: normalized {label} field {field}: {original} -> {replacement}",
+            file=sys.stderr,
+        )
+    duplicate_ids = sorted(
+        {
+            item["id"]
+            for item in incoming
+            if sum(candidate["id"] == item["id"] for candidate in incoming) > 1
+        }
+    )
+    if duplicate_ids:
+        validation_errors.append("duplicate field id: " + ", ".join(duplicate_ids))
     ledger = load_json(arguments.run_dir / "findings.json")
     existing = {item["id"]: item for item in ledger["findings"]}
     reopened = int(ledger.get("reopened_count", 0))
+    relationship_errors: list[str] = []
+    # A new finding's `introduced_in` may name any candidate this run recorded,
+    # not only the current head. The tree's identity changes for reasons that
+    # have nothing to do with the code under review — the status marker and the
+    # START log block are tracked files — so a reviewer that stamped the id it
+    # was actually given is telling the truth, and rejecting it discards correct
+    # work over the orchestrator's bookkeeping. The set stays closed: an id the
+    # run never observed is still refused.
+    accepted_lineage = set(lineage_candidates(arguments.run_dir))
+    accepted_lineage.add(expected_candidate)
     for finding in incoming:
         expected_prefix = f"{arguments.kind.upper()}-"
         if not finding["id"].startswith(expected_prefix):
-            raise EvidenceError(
-                f"{arguments.kind} finding must use the {expected_prefix}FNNN namespace"
+            relationship_errors.append(
+                f"{finding['id']} field id must use the {expected_prefix}FNNN namespace"
             )
         prior = existing.get(finding["id"])
-        if prior is None and finding["introduced_in"] != expected_candidate:
-            raise EvidenceError(
-                f"{finding['id']} introduced_in does not match the reviewed candidate"
+        if prior is None and finding["introduced_in"] not in accepted_lineage:
+            relationship_errors.append(
+                f"{finding['id']} field introduced_in {finding['introduced_in'][:12]}… "
+                "is not a candidate this run recorded"
             )
         if finding["resolved_in"] is not None and finding["resolved_in"] != expected_candidate:
-            raise EvidenceError(
-                f"{finding['id']} resolved_in does not match the reviewed candidate"
+            relationship_errors.append(
+                f"{finding['id']} field resolved_in does not match the reviewed candidate"
             )
         if prior:
             for immutable in ("authority", "required_outcome", "introduced_in"):
                 if prior[immutable] != finding[immutable]:
-                    raise EvidenceError(f"{finding['id']} changes immutable field {immutable}")
+                    relationship_errors.append(
+                        f"{finding['id']} changes immutable field {immutable}"
+                    )
             if finding["state"] not in ALLOWED_TRANSITIONS[prior["state"]]:
-                raise EvidenceError(
-                    f"invalid transition for {finding['id']}: "
+                relationship_errors.append(
+                    f"{finding['id']} field state has invalid transition: "
                     f"{prior['state']} -> {finding['state']}"
                 )
             if (
@@ -587,12 +1359,48 @@ def command_ingest_findings(arguments: argparse.Namespace) -> None:
             ):
                 reopened += 1
         existing[finding["id"]] = finding
+    all_errors = [*validation_errors, *relationship_errors]
+    if all_errors:
+        raise EvidenceError("finding validation failed:\n- " + "\n- ".join(all_errors))
     updated = {
         "schema_version": SCHEMA_VERSION,
         "updated_at": now(),
         "reopened_count": reopened,
         "findings": [existing[key] for key in sorted(existing)],
     }
+    if arguments.review_span_id is not None:
+        expected_operation = {
+            "plan": "role.plan-review",
+            "code": "role.code-review",
+        }[arguments.kind]
+        dispatches = [
+            item
+            for item in load_jsonl(arguments.run_dir / "role-dispatch.jsonl")
+            if item.get("intelligence_span_id") == arguments.review_span_id
+        ]
+        if (
+            len(dispatches) != 1
+            or not dispatches[0].get("accepted")
+            or dispatches[0].get("operation") != expected_operation
+        ):
+            raise EvidenceError(
+                "review finding metrics require the matching accepted review dispatch"
+            )
+        prefix = f"{arguments.kind.upper()}-"
+        actionable = sum(
+            item["id"].startswith(prefix) and item["state"] in ACTIONABLE_STATES
+            for item in updated["findings"]
+        )
+        try:
+            attach_review_metrics(
+                engine_root=Path(run["repository_root"]),
+                trace_id=run["telemetry_trace_id"],
+                span_id=arguments.review_span_id,
+                findings_reported=len(incoming),
+                actionable_findings=actionable,
+            )
+        except TelemetryError as exc:
+            raise EvidenceError(f"cannot attach review convergence metrics: {exc}") from exc
     atomic_json(arguments.run_dir / "findings.json", updated)
     print(len(updated["findings"]))
 
@@ -617,19 +1425,660 @@ def command_record_gate(arguments: argparse.Namespace) -> None:
         if not arguments.artifact.is_file():
             raise EvidenceError(f"gate artifact does not exist: {arguments.artifact}")
         artifact_digest = hashlib.sha256(arguments.artifact.read_bytes()).hexdigest()
+    if arguments.final:
+        raise EvidenceError("managed final gates must use run-gate")
     record = {
         "schema_version": SCHEMA_VERSION,
         "recorded_at": now(),
         "candidate_id": expected,
+        "candidate_after_id": expected,
+        "argv": [arguments.command.strip()],
         "command": arguments.command.strip(),
+        "operation": "gate.imported",
+        "attempt": 1,
         "selection_reason": arguments.selection_reason.strip(),
         "exit_code": arguments.exit_code,
+        "outcome": "success" if arguments.exit_code == 0 else "error",
         "warning_count": arguments.warning_count,
         "artifact_sha256": artifact_digest,
-        "final": arguments.final,
+        "final": False,
+        "telemetry_trace_id": run["telemetry_trace_id"],
+        "telemetry_span_id": None,
+        "duration_ns": None,
+        "telemetry_complete": False,
     }
     append_jsonl(arguments.run_dir / "gates.jsonl", record)
     print("recorded")
+
+
+def command_run_gate(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    root = Path(run["repository_root"])
+    expected = validate_candidate_id(arguments.candidate, "gate candidate")
+    before = tree_manifest(root)
+    if before["candidate_id"] != expected:
+        raise EvidenceError(
+            f"candidate mismatch: expected {expected}, found {before['candidate_id']}"
+        )
+    if arguments.warning_count < 0 or not arguments.selection_reason.strip():
+        raise EvidenceError("gate warning count/reason is invalid")
+    argv = list(arguments.argv)
+    if argv and argv[0] == "--":
+        argv = argv[1:]
+    if not argv or any(not isinstance(item, str) or not item for item in argv):
+        raise EvidenceError("run-gate requires exact argv after --")
+    original_directory = Path.cwd()
+    try:
+        os.chdir(root)
+        result = run_observed(
+            engine_root=root,
+            trace_id=run["telemetry_trace_id"],
+            parent_span_id=run["telemetry_root_span_id"],
+            category="gate",
+            operation=arguments.operation,
+            attempt=arguments.attempt,
+            timeout_seconds=arguments.timeout_seconds,
+            argv=argv,
+        )
+    finally:
+        os.chdir(original_directory)
+    after = tree_manifest(root)
+    artifact_digest = None
+    if arguments.artifact:
+        if not arguments.artifact.is_file():
+            raise EvidenceError(f"gate artifact does not exist: {arguments.artifact}")
+        artifact_digest = hashlib.sha256(arguments.artifact.read_bytes()).hexdigest()
+    span = None
+    if result.telemetry_complete and result.span_id:
+        try:
+            span = closed_span(
+                engine_root=root,
+                trace_id=run["telemetry_trace_id"],
+                span_id=result.span_id,
+            )
+        except TelemetryError:
+            span = None
+    telemetry_complete = span is not None
+    record = {
+        "schema_version": SCHEMA_VERSION,
+        "recorded_at": now(),
+        "candidate_id": expected,
+        "candidate_after_id": after["candidate_id"],
+        "argv": argv,
+        "command": shlex.join(argv),
+        "operation": arguments.operation,
+        "attempt": arguments.attempt,
+        "selection_reason": arguments.selection_reason.strip(),
+        "exit_code": result.exit_code,
+        "outcome": result.outcome,
+        "warning_count": arguments.warning_count,
+        "artifact_sha256": artifact_digest,
+        "final": arguments.final,
+        "telemetry_trace_id": run["telemetry_trace_id"],
+        "telemetry_span_id": result.span_id if telemetry_complete else None,
+        "duration_ns": span["duration_ns"] if span else None,
+        "telemetry_complete": telemetry_complete,
+    }
+    append_jsonl(arguments.run_dir / "gates.jsonl", record)
+    if after["candidate_id"] != expected:
+        print("kickoff-evidence: gate changed the candidate", file=sys.stderr)
+        raise SystemExit(2)
+    if not telemetry_complete:
+        print("kickoff-evidence: gate telemetry is incomplete", file=sys.stderr)
+        raise SystemExit(result.exit_code or 2)
+    raise SystemExit(result.exit_code)
+
+
+TELEMETRY_INCOMPLETE_FIELDS = ("role", "harness", "model", "effort")
+
+
+def validate_span_identifier(value: Any, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or len(value) != 32
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise EvidenceError(f"{label} must be a 32-character lowercase hex span id")
+    return value
+
+
+def load_telemetry_declarations(run_dir: Path) -> dict[tuple[str, int], dict[str, Any]]:
+    """Declared wait-join defects, keyed by the attempt that owns each one."""
+    declarations: dict[tuple[str, int], dict[str, Any]] = {}
+    path = run_dir / "telemetry-incomplete.jsonl"
+    # Absent is the ordinary case: a run that declared nothing has nothing to
+    # excuse, which is different from a run whose declarations are unreadable.
+    if not path.exists():
+        return declarations
+    for entry in load_jsonl(path):
+        required = {
+            "schema_version",
+            "recorded_at",
+            "operation",
+            "attempt",
+            "span_id",
+            "missing_fields",
+            "cause",
+        }
+        if (
+            set(entry) != required
+            or entry.get("schema_version") != SCHEMA_VERSION
+            or not isinstance(entry.get("missing_fields"), list)
+            or not entry["missing_fields"]
+            or any(field not in TELEMETRY_INCOMPLETE_FIELDS for field in entry["missing_fields"])
+            or not isinstance(entry.get("cause"), str)
+            or not entry["cause"].strip()
+        ):
+            raise EvidenceError("invalid telemetry-incompleteness record")
+        key = (entry["operation"], entry["attempt"])
+        if key in declarations:
+            raise EvidenceError("duplicate telemetry-incompleteness record")
+        declarations[key] = entry
+    return declarations
+
+
+def accept_incomplete_wait_join(
+    declared: dict[str, Any],
+    record: dict[str, Any],
+    dispatch: dict[str, Any],
+    wait: dict[str, Any],
+) -> dict[str, Any]:
+    """Admit a wait-span join whose exact defect the run has owned in writing.
+
+    A span is immutable once closed, so an orchestrator that opens a native
+    wait span without its routing metadata cannot repair it — and a validator
+    that can only refuse turns one honest slip into a phase that can never
+    close. The declaration is what keeps that from becoming a way to wave
+    problems through: it must name the span actually present, and every defect
+    it excuses must really be there. Anything it did not declare still fails.
+    """
+    if declared["span_id"] != wait["span_id"]:
+        raise EvidenceError(
+            "telemetry-incompleteness record names a span the trace does not "
+            f"carry for this attempt: declared {declared['span_id']}, observed "
+            f"{wait['span_id']}"
+        )
+    if dispatch["wait_span_id"] not in (None, wait["span_id"]):
+        raise EvidenceError("dispatch and wait span ids do not agree")
+    excused = set(declared["missing_fields"])
+    for field in TELEMETRY_INCOMPLETE_FIELDS:
+        expected = record[field]
+        actual = wait.get(field)
+        agrees = (field not in wait) if expected is None else (actual == expected)
+        if agrees and field in excused:
+            raise EvidenceError(
+                f"telemetry-incompleteness record excuses {field}, which the "
+                "wait span records correctly"
+            )
+        if not agrees and field not in excused:
+            raise EvidenceError(f"wait span {field} does not match registration")
+    return {
+        "operation": record["operation"],
+        "attempt": record["attempt"],
+        "span_id": wait["span_id"],
+        "missing_fields": sorted(excused),
+        "cause": declared["cause"],
+        "dispatch_wait_span_id": dispatch["wait_span_id"],
+    }
+
+
+def validate_role_spans(run_dir: Path, run: dict[str, Any]) -> list[dict[str, Any]]:
+    declarations = load_telemetry_declarations(run_dir)
+    degraded: list[dict[str, Any]] = []
+    records = load_jsonl(run_dir / "role-attempts.jsonl")
+    keys: set[tuple[str, int]] = set()
+    by_operation: dict[str, list[int]] = {}
+    for record in records:
+        validate_role_record(record, run)
+        key = (record["operation"], record["attempt"])
+        if key in keys:
+            raise EvidenceError("duplicate role-attempt registration")
+        keys.add(key)
+        by_operation.setdefault(record["operation"], []).append(record["attempt"])
+    for operation, attempts in by_operation.items():
+        if sorted(attempts) != list(range(1, max(attempts) + 1)):
+            raise EvidenceError(f"role attempts are not contiguous for {operation}")
+    for operation in run["required_initial_role_operations"]:
+        if (operation, 1) not in keys:
+            raise EvidenceError(f"missing required initial role attempt: {operation}")
+    dispatches = load_jsonl(run_dir / "role-dispatch.jsonl")
+    dispatch_by_key: dict[tuple[str, int], dict[str, Any]] = {}
+    for dispatch in dispatches:
+        required_dispatch = {
+            "schema_version",
+            "recorded_at",
+            "operation",
+            "attempt",
+            "accepted",
+            "idle_telemetry",
+            "intelligence_span_id",
+            "wait_span_id",
+        }
+        if (
+            set(dispatch) != required_dispatch
+            or dispatch.get("schema_version") != SCHEMA_VERSION
+            or not isinstance(dispatch.get("accepted"), bool)
+            or dispatch.get("idle_telemetry") not in {"available", "unavailable", "not-dispatched"}
+        ):
+            raise EvidenceError("invalid role-dispatch record")
+        key = (dispatch.get("operation"), dispatch.get("attempt"))
+        if key in dispatch_by_key:
+            raise EvidenceError("duplicate role-dispatch record")
+        dispatch_by_key[key] = dispatch
+    if set(dispatch_by_key) != keys:
+        raise EvidenceError("role registrations and dispatch results do not agree")
+    try:
+        spans = closed_spans(
+            engine_root=Path(run["repository_root"]), trace_id=run["telemetry_trace_id"]
+        )
+        context = trace_context(
+            engine_root=Path(run["repository_root"]), trace_id=run["telemetry_trace_id"]
+        )
+    except TelemetryError as exc:
+        raise EvidenceError(f"invalid runtime trace: {exc}") from exc
+    observed: set[tuple[str, int]] = set()
+    for record in records:
+        matching = [
+            item
+            for item in spans
+            if item["operation"] == record["operation"] and item["attempt"] == record["attempt"]
+        ]
+        intelligence = [item for item in matching if item["category"] == "intelligence"]
+        waits = [item for item in matching if item["category"] == "wait"]
+        dispatch = dispatch_by_key[(record["operation"], record["attempt"])]
+        if len(intelligence) != 1:
+            raise EvidenceError(
+                f"role attempt lacks one closed intelligence span: {record['operation']}"
+            )
+        item = intelligence[0]
+        if dispatch["intelligence_span_id"] != item["span_id"]:
+            raise EvidenceError("dispatch and intelligence span ids do not agree")
+        for field in ("role", "harness", "model", "effort"):
+            expected = record[field]
+            if expected is None:
+                if field in item:
+                    raise EvidenceError(f"role span unexpectedly records {field}")
+            elif item.get(field) != expected:
+                raise EvidenceError(f"role span {field} does not match registration")
+        if item.get("parent_span_id") != context["root_span_id"]:
+            raise EvidenceError("role intelligence span is not a root child")
+        if not dispatch["accepted"]:
+            if waits or dispatch["wait_span_id"] is not None:
+                raise EvidenceError("rejected dispatch must not have a wait span")
+        elif len(waits) != 1 or waits[0].get("parent_span_id") != item["span_id"]:
+            # A wait span that is simply absent is still a refusal. The
+            # degradation below covers a span that exists and is malformed, not
+            # one nobody can point at.
+            raise EvidenceError("role attempt lacks one closed nested wait span")
+        else:
+            wait = waits[0]
+            declared = declarations.get((record["operation"], record["attempt"]))
+            if declared is not None:
+                degraded.append(accept_incomplete_wait_join(declared, record, dispatch, wait))
+            else:
+                if dispatch["wait_span_id"] != wait["span_id"]:
+                    raise EvidenceError("dispatch and wait span ids do not agree")
+                for field in ("role", "harness", "model", "effort"):
+                    expected = record[field]
+                    if expected is None:
+                        if field in wait:
+                            raise EvidenceError(f"wait span unexpectedly records {field}")
+                    elif wait.get(field) != expected:
+                        raise EvidenceError(f"wait span {field} does not match registration")
+        observed.add((record["operation"], record["attempt"]))
+    if observed != keys:
+        raise EvidenceError("registered and observed role attempts do not agree")
+    registered_ids = {
+        item["span_id"]
+        for item in spans
+        if item["category"] in {"intelligence", "wait"} and item["operation"].startswith("role.")
+    }
+    matched_ids = {
+        item["span_id"]
+        for item in spans
+        for record in records
+        if item["operation"] == record["operation"]
+        and item["attempt"] == record["attempt"]
+        and item["category"] in {"intelligence", "wait"}
+    }
+    if registered_ids != matched_ids:
+        raise EvidenceError("trace contains unregistered role spans")
+    undeclared = set(declarations) - observed
+    if undeclared:
+        named = ", ".join(f"{operation}#{attempt}" for operation, attempt in sorted(undeclared))
+        raise EvidenceError(f"telemetry-incompleteness records name unregistered attempts: {named}")
+    return sorted(degraded, key=lambda item: (item["operation"], item["attempt"]))
+
+
+def validate_orchestration_spans(
+    bundle: dict[str, Any], run: dict[str, Any]
+) -> list[dict[str, Any]]:
+    root_id = bundle["root_span_id"]
+    candidates = [
+        item for item in bundle["spans"] if item["operation"].startswith("orchestration.")
+    ]
+    if not candidates:
+        raise EvidenceError("finalized kickoff trace has no orchestration stage spans")
+    for span in candidates:
+        if span["operation"] not in ORCHESTRATION_OPERATIONS:
+            raise EvidenceError(f"unknown orchestration stage: {span['operation']}")
+        if span["category"] != "reconciliation" or span["parent_span_id"] != root_id:
+            raise EvidenceError(
+                "orchestration stages must be reconciliation children of the run root"
+            )
+    by_operation: dict[str, list[dict[str, Any]]] = {}
+    for span in candidates:
+        by_operation.setdefault(span["operation"], []).append(span)
+    for operation, spans in by_operation.items():
+        attempts = sorted(item["attempt"] for item in spans)
+        if attempts != list(range(1, len(spans) + 1)):
+            raise EvidenceError(f"orchestration attempts are not contiguous for {operation}")
+    missing = [
+        operation
+        for operation in run["required_orchestration_operations"]
+        if not any(
+            span["operation"] == operation and span["outcome"] == "success" for span in candidates
+        )
+    ]
+    if missing:
+        raise EvidenceError("missing successful orchestration stages: " + ", ".join(missing))
+    ordered = sorted(candidates, key=lambda item: (item["start_offset_ns"], item["span_id"]))
+    if (
+        ordered[0]["span_id"] != run["initial_orchestration_span_id"]
+        or ordered[0]["operation"] != "orchestration.setup"
+    ):
+        raise EvidenceError("initial setup orchestration span is not first")
+    if ordered[-1]["operation"] != "orchestration.close":
+        raise EvidenceError("close preparation must be the final orchestration stage")
+    for previous, current in zip(ordered, ordered[1:]):
+        if current["start_offset_ns"] < previous["end_offset_ns"]:
+            raise EvidenceError("orchestration stage spans must not overlap")
+    return ordered
+
+
+def validate_review_metrics(bundle: dict[str, Any], run_dir: Path) -> None:
+    spans = {item["span_id"]: item for item in bundle["spans"]}
+    for dispatch in load_jsonl(run_dir / "role-dispatch.jsonl"):
+        if not dispatch.get("accepted") or dispatch.get("operation") not in {
+            "role.plan-review",
+            "role.code-review",
+        }:
+            continue
+        span = spans.get(dispatch.get("intelligence_span_id"))
+        if span is None:
+            raise EvidenceError("accepted review dispatch span is absent from trace")
+        if span.get("outcome") != "success":
+            # A dispatch that was accepted and then failed is not a review
+            # *pass*. It produced no artifact, so there are no findings to
+            # ingest and no convergence integers that could ever exist —
+            # demanding them would make a venue failure permanently unclosable
+            # rather than merely recorded. The failed attempt keeps its own
+            # truthful outcome and exit code in the trace.
+            continue
+        if not all(
+            isinstance(span.get(key), int) and not isinstance(span.get(key), bool)
+            for key in ("findings_reported", "actionable_findings")
+        ):
+            raise EvidenceError(
+                f"review pass lacks convergence metrics: {dispatch['operation']} "
+                f"attempt {dispatch['attempt']}"
+            )
+
+
+def validate_preclose_telemetry(run: dict[str, Any], run_dir: Path, root: Path) -> None:
+    try:
+        spans = closed_spans(
+            engine_root=root,
+            trace_id=run["telemetry_trace_id"],
+        )
+    except TelemetryError as exc:
+        raise EvidenceError(f"cannot validate pre-close telemetry: {exc}") from exc
+    stage_spans = [span for span in spans if span["operation"].startswith("orchestration.")]
+    for span in stage_spans:
+        if (
+            span["operation"] not in ORCHESTRATION_OPERATIONS
+            or span["category"] != "reconciliation"
+            or span["parent_span_id"] != run["telemetry_root_span_id"]
+        ):
+            raise EvidenceError("pre-close orchestration stage is invalid")
+    required_before_acceptance = set(run["required_orchestration_operations"]) - {
+        "orchestration.acceptance",
+        "orchestration.close",
+    }
+    missing = [
+        operation
+        for operation in sorted(required_before_acceptance)
+        if not any(
+            span["operation"] == operation and span["outcome"] == "success" for span in stage_spans
+        )
+    ]
+    if missing:
+        raise EvidenceError(
+            "missing successful pre-acceptance orchestration stages: " + ", ".join(missing)
+        )
+    ordered = sorted(stage_spans, key=lambda item: (item["start_offset_ns"], item["span_id"]))
+    if (
+        not ordered
+        or ordered[0]["span_id"] != run["initial_orchestration_span_id"]
+        or ordered[0]["operation"] != "orchestration.setup"
+    ):
+        raise EvidenceError("pre-close orchestration does not begin with setup")
+    for previous, current in zip(ordered, ordered[1:]):
+        if current["start_offset_ns"] < previous["end_offset_ns"]:
+            raise EvidenceError("orchestration stage spans must not overlap")
+    validate_review_metrics({"spans": spans}, run_dir)
+
+
+def validate_gate_record(gate: dict[str, Any], run: dict[str, Any], root: Path) -> None:
+    required = {
+        "schema_version",
+        "recorded_at",
+        "candidate_id",
+        "candidate_after_id",
+        "argv",
+        "command",
+        "operation",
+        "attempt",
+        "selection_reason",
+        "exit_code",
+        "outcome",
+        "warning_count",
+        "artifact_sha256",
+        "final",
+        "telemetry_trace_id",
+        "telemetry_span_id",
+        "duration_ns",
+        "telemetry_complete",
+    }
+    if set(gate) != required or gate.get("schema_version") != SCHEMA_VERSION:
+        raise EvidenceError("invalid gate record schema")
+    validate_candidate_id(gate.get("candidate_id"), "gate candidate")
+    validate_candidate_id(gate.get("candidate_after_id"), "gate candidate after")
+    argv = validate_string_list(gate.get("argv"), "gate argv")
+    if gate.get("command") != shlex.join(argv):
+        raise EvidenceError("gate command is not canonical argv display")
+    if not isinstance(gate.get("attempt"), int) or gate["attempt"] < 1:
+        raise EvidenceError("invalid gate attempt")
+    if gate["telemetry_trace_id"] != run["telemetry_trace_id"]:
+        raise EvidenceError("gate belongs to a foreign trace")
+    if gate["telemetry_complete"]:
+        if not isinstance(gate.get("duration_ns"), int) or gate["duration_ns"] < 0:
+            raise EvidenceError("complete gate lacks duration")
+        try:
+            span = closed_span(
+                engine_root=root,
+                trace_id=run["telemetry_trace_id"],
+                span_id=gate["telemetry_span_id"],
+            )
+        except TelemetryError as exc:
+            raise EvidenceError(f"gate span is invalid: {exc}") from exc
+        expected = {
+            "parent_span_id": run["telemetry_root_span_id"],
+            "category": "gate",
+            "operation": gate["operation"],
+            "attempt": gate["attempt"],
+            "outcome": gate["outcome"],
+            "exit_code": gate["exit_code"],
+            "duration_ns": gate["duration_ns"],
+        }
+        if any(span.get(key) != value for key, value in expected.items()):
+            raise EvidenceError("gate evidence and telemetry span do not agree")
+    elif gate["telemetry_span_id"] is not None or gate["duration_ns"] is not None:
+        raise EvidenceError("incomplete gate cannot claim span or duration")
+
+
+def validate_gate_span_join(gates: list[dict[str, Any]], run: dict[str, Any], root: Path) -> None:
+    evidence_ids = [gate["telemetry_span_id"] for gate in gates if gate["telemetry_complete"]]
+    if len(evidence_ids) != len(set(evidence_ids)):
+        raise EvidenceError("multiple gate evidence rows reference one span")
+    try:
+        spans = closed_spans(engine_root=root, trace_id=run["telemetry_trace_id"])
+    except TelemetryError as exc:
+        raise EvidenceError(f"invalid runtime trace: {exc}") from exc
+    # Only gates the orchestrator ran are evidence-bearing. A gate span nested
+    # under another gate is the observed command's own instrumentation —
+    # `bin/check` opens one per named sub-gate beneath its enclosing acceptance
+    # span, by the `AGENTIC_STARTER_EXECUTION_*` contract in
+    # `policies/execution-telemetry.md`. Those children have no `run-gate` row
+    # by design, so demanding one made a complete acceptance close (159 spans
+    # for 11 gates) fail as if 148 spans were unregistered.
+    observed_ids = {
+        span["span_id"]
+        for span in spans
+        if span["category"] == "gate"
+        and span.get("parent_span_id") == run["telemetry_root_span_id"]
+    }
+    if set(evidence_ids) != observed_ids:
+        missing = sorted(observed_ids - set(evidence_ids))
+        foreign = sorted(set(evidence_ids) - observed_ids)
+        detail = []
+        if missing:
+            detail.append("unregistered=" + ",".join(missing))
+        if foreign:
+            detail.append("unmatched=" + ",".join(foreign))
+        raise EvidenceError(
+            "gate evidence and closed gate spans do not agree"
+            + (": " + "; ".join(detail) if detail else "")
+        )
+
+
+def timing_projection(bundle: dict[str, Any]) -> dict[str, Any]:
+    root = next(item for item in bundle["spans"] if item["parent_span_id"] is None)
+    children = [item for item in bundle["spans"] if item["parent_span_id"] is not None]
+
+    def union(category: str | None = None, predicate: Any = None) -> int:
+        intervals = [
+            (item["start_offset_ns"], item["end_offset_ns"])
+            for item in children
+            if (category is None or item["category"] == category)
+            and (predicate is None or predicate(item))
+        ]
+        total = 0
+        end = -1
+        for start, stop in sorted(intervals):
+            if stop <= end:
+                continue
+            total += stop - max(start, end)
+            end = stop
+        return total
+
+    covered = union()
+    return {
+        "trace_id": bundle["trace_id"],
+        "outcome": root["outcome"],
+        "makespan_ns": root["duration_ns"],
+        "intelligence_ns": union("intelligence"),
+        "gate_ns": union("gate"),
+        "reconciliation_ns": union("reconciliation"),
+        "wait_ns": union("wait"),
+        "retry_ns": union(predicate=lambda item: item["attempt"] > 1),
+        "failed_ns": union(predicate=lambda item: item["outcome"] != "success"),
+        "unattributed_ns": max(0, root["duration_ns"] - covered),
+        "slowest_spans": [
+            {
+                "category": item["category"],
+                "operation": item["operation"],
+                "attempt": item["attempt"],
+                "duration_ns": item["duration_ns"],
+                "outcome": item["outcome"],
+            }
+            for item in sorted(
+                children, key=lambda value: (-value["duration_ns"], value["span_id"])
+            )[:5]
+        ],
+        "overlap_note": "Category totals are interval unions and may overlap.",
+    }
+
+
+def command_timing_summary(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    try:
+        bundle = finalized_trace(
+            engine_root=Path(run["repository_root"]), trace_id=run["telemetry_trace_id"]
+        )
+    except TelemetryError as exc:
+        raise EvidenceError(f"trace is not durably finalized: {exc}") from exc
+    degraded = validate_role_spans(arguments.run_dir, run)
+    validate_orchestration_spans(bundle, run)
+    validate_review_metrics(bundle, arguments.run_dir)
+    gates = load_jsonl(arguments.run_dir / "gates.jsonl")
+    for gate in gates:
+        validate_gate_record(gate, run, Path(run["repository_root"]))
+    validate_gate_span_join(gates, run, Path(run["repository_root"]))
+    projection = timing_projection(bundle)
+    # Carried in the projection rather than only printed: a consumer that reads
+    # the JSON must be able to see that an attempt's measurement is partial.
+    projection["telemetry_incomplete"] = degraded
+    if arguments.format == "json":
+        print(json.dumps(projection, sort_keys=True, separators=(",", ":")))
+        return
+    labels = (
+        ("Makespan", "makespan_ns"),
+        ("Intelligence", "intelligence_ns"),
+        ("Gates", "gate_ns"),
+        ("Orchestration", "reconciliation_ns"),
+        ("Wait", "wait_ns"),
+        ("Retry/rework", "retry_ns"),
+        ("Failed work", "failed_ns"),
+        ("Unattributed", "unattributed_ns"),
+    )
+    print("### Execution timing")
+    print()
+    print(f"- Trace: `{projection['trace_id']}`")
+    print(f"- Outcome: `{projection['outcome']}`")
+    for label, key in labels:
+        value = projection[key]
+        print(f"- {label}: {value} ns ({value / 1_000_000_000:.9f} s)")
+    print(f"- {projection['overlap_note']}")
+    print()
+    print("#### Slowest material spans")
+    print()
+    if not projection["slowest_spans"]:
+        print("- None.")
+    for span in projection["slowest_spans"]:
+        duration = span["duration_ns"]
+        print(
+            f"- `{span['operation']}` — category `{span['category']}`, "
+            f"attempt {span['attempt']}, outcome `{span['outcome']}`: "
+            f"{duration} ns ({duration / 1_000_000_000:.9f} s)"
+        )
+    if degraded:
+        print()
+        print("#### Telemetry-incomplete role attempts")
+        print()
+        for item in degraded:
+            fields = ", ".join(f"`{field}`" for field in item["missing_fields"])
+            print(
+                f"- `{item['operation']}` attempt {item['attempt']} — wait span "
+                f"`{item['span_id']}` is missing {fields}. {item['cause']}"
+            )
+        print()
+        print(
+            "These attempts are measured, not omitted: their intelligence spans "
+            "and durations are exact, and only the named wait-span metadata is "
+            "absent. The defect is recorded rather than repaired because a "
+            "closed span is immutable."
+        )
 
 
 def source_digest(path: Path) -> str:
@@ -805,8 +2254,16 @@ def command_validate(arguments: argparse.Namespace) -> None:
         or findings["reopened_count"] < 0
     ):
         raise EvidenceError("invalid finding ledger schema")
-    for item in findings.get("findings", []):
-        validate_finding(item)
+    for index, item in enumerate(findings.get("findings", [])):
+        validate_finding(item, index)
+    validate_kickoff_context(
+        root,
+        run["phase"],
+        run["telemetry_trace_id"],
+        run["telemetry_root_span_id"],
+        open_required=arguments.require_final,
+    )
+    validate_role_spans(arguments.run_dir, run)
     change_path = arguments.run_dir / "change.json"
     if change_path.exists():
         change = load_json(change_path)
@@ -870,20 +2327,11 @@ def command_validate(arguments: argparse.Namespace) -> None:
             records.append(record)
         ledgers[ledger_name] = records
     for line_number, gate in enumerate(ledgers["gates.jsonl"], 1):
-        if (
-            not isinstance(gate.get("command"), str)
-            or not gate["command"].strip()
-            or not isinstance(gate.get("selection_reason"), str)
-            or not gate["selection_reason"].strip()
-            or not isinstance(gate.get("exit_code"), int)
-            or not isinstance(gate.get("warning_count"), int)
-            or gate["warning_count"] < 0
-            or not isinstance(gate.get("final"), bool)
-        ):
-            raise EvidenceError(f"invalid gate record in gates.jsonl line {line_number}")
+        validate_gate_record(gate, run, root)
         artifact_hash = gate.get("artifact_sha256")
         if artifact_hash is not None:
             validate_candidate_id(artifact_hash, f"artifact hash in gates.jsonl line {line_number}")
+    validate_gate_span_join(ledgers["gates.jsonl"], run, root)
     for line_number, packet in enumerate(ledgers["packets.jsonl"], 1):
         if (
             packet.get("kind") not in {"plan", "code"}
@@ -902,11 +2350,25 @@ def command_validate(arguments: argparse.Namespace) -> None:
     if root != git_root(root):
         raise EvidenceError("recorded repository root no longer resolves to itself")
     if arguments.require_final:
+        validate_preclose_telemetry(run, arguments.run_dir, root)
+        blocking_states = {"open", "addressed", "blocked-owner"}
+        blocking_findings = [
+            item["id"] for item in findings["findings"] if item["state"] in blocking_states
+        ]
+        if blocking_findings:
+            raise EvidenceError(
+                "phase-close findings remain unresolved: " + ", ".join(blocking_findings)
+            )
         current_id = tree_manifest(root)["candidate_id"]
         successful_final = [
             gate
             for gate in ledgers["gates.jsonl"]
-            if gate["final"] and gate["candidate_id"] == current_id and gate["exit_code"] == 0
+            if gate["final"]
+            and gate["telemetry_complete"]
+            and gate["candidate_id"] == current_id
+            and gate["candidate_after_id"] == current_id
+            and gate["exit_code"] == 0
+            and gate["outcome"] == "success"
         ]
         if not successful_final:
             raise EvidenceError("no successful final gate is recorded for the current candidate")
@@ -932,7 +2394,88 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--root", type=Path, default=Path.cwd())
     init.add_argument("--phase", required=True)
     init.add_argument("--authority", action="append", default=[])
+    init.add_argument("--telemetry-trace-id", required=True)
+    init.add_argument("--telemetry-root-span-id", required=True)
+    init.add_argument("--initial-orchestration-span-id", required=True)
+    init.add_argument("--review-lane", choices=sorted(REVIEW_LANES), required=True)
+    init.add_argument("--follow-up-route", choices=sorted(FOLLOW_UP_ROUTES), required=True)
     init.set_defaults(handler=command_init)
+
+    register = subparsers.add_parser("register-role-attempt")
+    add_run_dir(register)
+    register.add_argument("--operation", choices=sorted(ROLE_OPERATIONS), required=True)
+    register.add_argument("--attempt", type=int, required=True)
+    register.add_argument("--role", choices=sorted(ROLE_OPERATIONS.values()), required=True)
+    register.add_argument("--harness", choices=sorted(ROLE_HARNESSES), required=True)
+    register.add_argument("--model")
+    register.add_argument("--effort")
+    register.add_argument("--reason", choices=sorted(ROLE_REASONS), required=True)
+    register.add_argument("--output", type=Path, required=True)
+    register.set_defaults(handler=command_register_role_attempt)
+
+    role_validate = subparsers.add_parser("validate-role-attempt")
+    add_run_dir(role_validate)
+    role_validate.add_argument("--registration", type=Path, required=True)
+    role_validate.set_defaults(handler=command_validate_role_attempt)
+
+    recipe = subparsers.add_parser(
+        "span-recipe",
+        description=(
+            "Print the exact execution-telemetry start argv for a native role "
+            "attempt's intelligence and wait spans, so the pair cannot be "
+            "hand-built with mismatched routing metadata."
+        ),
+    )
+    add_run_dir(recipe)
+    recipe.add_argument("--registration", type=Path, required=True)
+    recipe.add_argument("--intelligence-span-id")
+    recipe.set_defaults(handler=command_span_recipe)
+
+    incomplete = subparsers.add_parser(
+        "record-telemetry-incomplete",
+        description=(
+            "Own a wait-span join defect in writing. A closed span is "
+            "immutable, so a malformed one cannot be repaired; declaring the "
+            "exact span and the exact missing fields lets validation report "
+            "the attempt as telemetry-incomplete instead of refusing forever. "
+            "An undeclared or absent join still fails."
+        ),
+    )
+    add_run_dir(incomplete)
+    incomplete.add_argument("--operation", choices=sorted(ROLE_OPERATIONS), required=True)
+    incomplete.add_argument("--attempt", type=int, required=True)
+    incomplete.add_argument("--span-id", required=True)
+    incomplete.add_argument(
+        "--missing-field",
+        action="append",
+        choices=TELEMETRY_INCOMPLETE_FIELDS,
+        required=True,
+    )
+    incomplete.add_argument("--cause", required=True)
+    incomplete.set_defaults(handler=command_record_telemetry_incomplete)
+
+    repin = subparsers.add_parser(
+        "repin-tools",
+        description=(
+            "Re-pin a run's tool bundle to the current tree. For a repair the "
+            "active run itself needs; prints both manifest digests."
+        ),
+    )
+    add_run_dir(repin)
+    repin.set_defaults(handler=command_repin_tools)
+
+    dispatch = subparsers.add_parser("record-role-dispatch")
+    add_run_dir(dispatch)
+    dispatch.add_argument("--registration", type=Path, required=True)
+    dispatch.add_argument("--state", choices=("accepted", "rejected"), required=True)
+    dispatch.add_argument(
+        "--idle-telemetry",
+        choices=("available", "unavailable", "not-dispatched"),
+        required=True,
+    )
+    dispatch.add_argument("--intelligence-span-id")
+    dispatch.add_argument("--wait-span-id")
+    dispatch.set_defaults(handler=command_record_role_dispatch)
 
     capture = subparsers.add_parser("capture-change")
     add_run_dir(capture)
@@ -963,10 +2506,36 @@ def build_parser() -> argparse.ArgumentParser:
     plan_reviewed.add_argument("--expected-plan")
     plan_reviewed.set_defaults(handler=command_mark_plan_reviewed)
 
+    current_candidate = subparsers.add_parser(
+        "current-candidate",
+        description=(
+            "Recompute the candidate now, record it in the run's lineage, and "
+            "print it. Call this immediately before a role dispatch: the "
+            "init-time id is stale by construction, because the marker flip and "
+            "the START log block both change the tree."
+        ),
+    )
+    add_run_dir(current_candidate)
+    current_candidate.add_argument("--reason", default="dispatch")
+    current_candidate.set_defaults(handler=command_current_candidate)
+
+    schema = subparsers.add_parser(
+        "schema",
+        description=(
+            "Print the review-artifact JSON Schema derived from this tool's own "
+            "closed sets. The venue boundary constrains generation with it; this "
+            "validator still checks what a strict schema subset cannot express."
+        ),
+    )
+    schema.add_argument("--kind", choices=sorted(REVIEW_KINDS), required=True)
+    schema.add_argument("--output", type=Path)
+    schema.set_defaults(handler=command_schema)
+
     findings = subparsers.add_parser("ingest-findings")
     add_run_dir(findings)
     findings.add_argument("--kind", choices=("plan", "code"), required=True)
     findings.add_argument("--candidate", required=True)
+    findings.add_argument("--review-span-id")
     finding_source = findings.add_mutually_exclusive_group(required=True)
     finding_source.add_argument("--input", type=Path)
     finding_source.add_argument("--artifact", type=Path)
@@ -983,6 +2552,19 @@ def build_parser() -> argparse.ArgumentParser:
     gate.add_argument("--final", action="store_true")
     gate.set_defaults(handler=command_record_gate)
 
+    run_gate = subparsers.add_parser("run-gate")
+    add_run_dir(run_gate)
+    run_gate.add_argument("--candidate", required=True)
+    run_gate.add_argument("--operation", required=True)
+    run_gate.add_argument("--attempt", type=int, default=1)
+    run_gate.add_argument("--selection-reason", required=True)
+    run_gate.add_argument("--warning-count", type=int, required=True)
+    run_gate.add_argument("--artifact", type=Path)
+    run_gate.add_argument("--timeout-seconds", type=float)
+    run_gate.add_argument("--final", action="store_true")
+    run_gate.add_argument("argv", nargs=argparse.REMAINDER)
+    run_gate.set_defaults(handler=command_run_gate)
+
     packet = subparsers.add_parser("packet")
     add_run_dir(packet)
     packet.add_argument("--kind", choices=("plan", "code"), required=True)
@@ -994,6 +2576,11 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--require-final", action="store_true")
     validate.add_argument("--required-final-command")
     validate.set_defaults(handler=command_validate)
+
+    timing = subparsers.add_parser("timing-summary")
+    add_run_dir(timing)
+    timing.add_argument("--format", choices=("markdown", "json"), default="markdown")
+    timing.set_defaults(handler=command_timing_summary)
     return parser
 
 

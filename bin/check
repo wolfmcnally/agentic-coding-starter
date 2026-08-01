@@ -46,7 +46,9 @@ if [[ ! -x "$repo_root/bin/test" ]]; then
   exit 1
 fi
 
-for evidence_executable in kickoff-tree-id kickoff-evidence; do
+for evidence_executable in \
+  kickoff-tree-id kickoff-evidence kickoff-config execution-telemetry \
+  check-execution-dashboards check-harness-parity check-toolchain-callers; do
   if [[ ! -x "$repo_root/bin/$evidence_executable" ]]; then
     echo "CHECK ERROR missing required executable: bin/$evidence_executable" >&2
     exit 1
@@ -70,8 +72,10 @@ run_lint() {
   (
     cd "$project_root"
     run_gate lint uv run --locked "${python_toolchain_uv_args[@]}" ruff check \
-      example tests ../bin/kickoff-config ../bin/kickoff-evidence \
-      ../bin/kickoff-tree-id ../tests
+      example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence \
+      ../bin/kickoff-tree-id ../bin/execution-telemetry \
+      ../bin/check-execution-dashboards ../bin/check-harness-parity \
+      ../bin/check-toolchain-callers ../tests
   )
 }
 
@@ -79,8 +83,10 @@ run_format() {
   (
     cd "$project_root"
     run_gate format uv run --locked "${python_toolchain_uv_args[@]}" ruff format --check \
-      example tests ../bin/kickoff-config ../bin/kickoff-evidence \
-      ../bin/kickoff-tree-id ../tests
+      example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence \
+      ../bin/kickoff-tree-id ../bin/execution-telemetry \
+      ../bin/check-execution-dashboards ../bin/check-harness-parity \
+      ../bin/check-toolchain-callers ../tests
   )
 }
 
@@ -91,10 +97,9 @@ run_test() {
 run_policy() {
   (
     cd "$repo_root"
-    check_instructions() {
-      [[ -L AGENTS.md ]] && [[ "$(readlink AGENTS.md)" == "CLAUDE.md" ]]
-    }
-    run_gate policy-instructions check_instructions
+    run_gate policy-harness-parity ./bin/check-harness-parity
+    run_gate policy-toolchain-callers ./bin/check-toolchain-callers
+    run_gate policy-execution-dashboards ./bin/check-execution-dashboards
     run_gate policy-config ./bin/kickoff-config show
     run_gate policy-anonymization ./bin/check-anonymization.sh
     echo "CHECK policy PASS"

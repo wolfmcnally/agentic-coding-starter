@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Serve the committed execution dashboard on its fixed visual-verification port.
+
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+port=18080
+
+if [[ $# -ne 0 ]]; then
+  echo "Usage: ./bin/serve-execution-dashboard" >&2
+  exit 2
+fi
+
+# The occupancy probe is a seam so tests can be deterministic. Port 18080 is a
+# SHARED reserved port (CLAUDE.md reserves it for ad-hoc rendered-book/static
+# HTML serving, and phase plans put fixture servers there), so a test that
+# probes the live host fails whenever a developer is legitimately using it —
+# observed in Phase 26.9.2, where the acceptance battery's fixture server made
+# the whole host suite report exactly one failure. Production behaviour is
+# unchanged: the default is the same absolute lsof this always used.
+lsof_binary="${AGENTIC_STARTER_DASHBOARD_LSOF:-/usr/sbin/lsof}"
+
+if "$lsof_binary" -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "EXECUTION DASHBOARD ERROR port $port is already in use" >&2
+  exit 1
+fi
+
+echo "Serving execution dashboards at http://127.0.0.1:$port/"
+exec "$repo_root/bin/python" -m http.server "$port" \
+  --bind 127.0.0.1 \
+  --directory "$repo_root/reports/execution"
+

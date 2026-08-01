@@ -38,10 +38,12 @@ if ! git -C "$repo_root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 1
 fi
 
-if [[ ! -x "$repo_root/.githooks/pre-push" ]]; then
-  echo "INSTALL-HOOKS ERROR missing executable: .githooks/pre-push" >&2
-  exit 1
-fi
+for hook_name in pre-commit pre-push; do
+  if [[ ! -x "$repo_root/.githooks/$hook_name" ]]; then
+    echo "INSTALL-HOOKS ERROR missing executable: .githooks/$hook_name" >&2
+    exit 1
+  fi
+done
 
 configured_path="$(git -C "$repo_root" config --local --get core.hooksPath || true)"
 if [[ -n "$configured_path" && "$configured_path" != ".githooks" && "$force" -ne 1 ]]; then

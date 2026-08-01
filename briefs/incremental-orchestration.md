@@ -176,7 +176,30 @@ The evidence plane records facts it directly observes:
 It does not infer model reasoning time, repository-reading time, idle causes,
 or critical-path attribution when the venue does not emit those facts.
 
-## 9. Deliberate exclusions
+## 9. Exact execution truth and phase report
+
+One append-only trace now records the complete kickoff execution: root, stage,
+role, wait, tool, and gate spans share stable identifiers and monotonic clocks.
+Evidence records join to those identifiers rather than estimating elapsed time
+from artifacts or messages. Phase close fails closed when a required role,
+wait, or gate cannot be joined to the trace.
+
+The timing projection distinguishes active makespan, calendar duration, summed
+work, exclusive work, peak concurrency, failed/retry time, and uncovered gaps.
+Active makespan is the union of active intervals, so parallel work is not
+double-counted; wait spans remain explicit and do not silently become work.
+Interrupted writers spool locally and reconcile idempotently before final
+validation.
+
+After acceptance, a privacy projection removes prompts, raw output, absolute
+paths, and environment data. A deterministic generator commits a fully offline
+HTML phase report plus aggregate index under `reports/execution/`. The report
+uses vendored assets, a restrictive content-security policy, responsive
+layouts, and build-gate freshness checks. Opening the validated report is the
+final kickoff handoff; a late presentation failure is reported but does not
+rewrite already-valid acceptance evidence or phase status.
+
+## 10. Deliberate exclusions
 
 The universal template does not yet add:
 
@@ -205,7 +228,7 @@ once and deferred. Marginal optimization, open-ended profiling, and any
 reduction in correctness, coverage, determinism, review independence, or final
 assurance are explicitly out of scope.
 
-## 10. Acceptance properties
+## 11. Acceptance properties
 
 The design is realized when:
 
@@ -217,6 +240,8 @@ The design is realized when:
 - authority drift and named risk boundaries force a review rebase;
 - gate records reject stale candidates;
 - the authoritative full gate still closes every completed phase; and
+- exact timing summaries derive from trace joins and interval unions, and every
+  completed phase produces a deterministic, sanitized, offline HTML report;
 - obvious high-leverage wall-clock improvements are considered
   proportionally without numeric tripwires or assurance loss; and
 - incomplete streams never become ordinary success, while independently valid

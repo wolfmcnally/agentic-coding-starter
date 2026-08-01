@@ -16,6 +16,24 @@ from pathlib import Path
 from typing import Any
 
 NAMESPACE = b"agentic-kickoff-candidate-v1\0"
+SCRIPT_PATH = Path(__file__).resolve()
+
+
+def default_root() -> Path:
+    """Resolve the repository when this tool runs from a pinned kickoff bundle."""
+    override = os.environ.get("KICKOFF_ENGINE_ROOT")
+    if override:
+        return Path(override)
+    tool_root = SCRIPT_PATH.parent
+    if tool_root.name == "tools":
+        try:
+            document = json.loads((tool_root.parent / "run.json").read_text())
+            recorded = document.get("repository_root")
+        except (OSError, TypeError, ValueError):
+            recorded = None
+        if isinstance(recorded, str) and recorded:
+            return Path(recorded)
+    return Path.cwd()
 
 
 def git(root: Path, *arguments: str) -> bytes:
@@ -102,8 +120,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--root",
         type=Path,
-        default=Path.cwd(),
-        help="path inside the Git repository (default: current directory)",
+        default=default_root(),
+        help="path inside the Git repository (default: recorded run root or cwd)",
     )
     parser.add_argument(
         "--json",
@@ -119,7 +137,10 @@ def main() -> int:
         root = repository_root(arguments.root.resolve())
         manifest = candidate_manifest(root)
     except (OSError, ValueError) as exc:
-        print(f"kickoff-tree-id: {exc}", file=os.sys.stderr)
+        detail = str(exc)
+        if "not a git repository" in detail:
+            detail = f"{arguments.root} is not a git repository; pass --root explicitly"
+        print(f"kickoff-tree-id: {detail}", file=os.sys.stderr)
         return 2
     if arguments.json:
         json.dump(manifest, os.sys.stdout, sort_keys=True, separators=(",", ":"))

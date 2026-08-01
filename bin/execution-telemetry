@@ -1,0 +1,506 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Capture, validate, recover, and report execution telemetry."""
+
+from __future__ import annotations
+
+import argparse
+import dataclasses
+import json
+import os
+import sys
+import tempfile
+import webbrowser
+from pathlib import Path
+from typing import Any
+
+SCRIPT_PATH = Path(__file__).resolve()
+TOOL_ROOT = SCRIPT_PATH.parent
+if (TOOL_ROOT / "lib" / "agentic_starter" / "execution_telemetry.py").is_file():
+    REPO_ROOT = Path(os.environ.get("KICKOFF_ENGINE_ROOT", Path.cwd())).resolve()
+    LIB_ROOT = TOOL_ROOT / "lib"
+else:
+    REPO_ROOT = SCRIPT_PATH.parents[1]
+    LIB_ROOT = REPO_ROOT / "lib"
+sys.path.insert(0, str(LIB_ROOT))
+
+from agentic_starter.execution_dashboard import render_phase_dashboard  # noqa: E402
+from agentic_starter.execution_telemetry import (  # noqa: E402
+    CATEGORIES,
+    OUTCOMES,
+    SCOPES,
+    TIMEOUT_KINDS,
+    TelemetryError,
+    attach_token_reference,
+    closed_span,
+    discover_engine_root,
+    expect_managed_run,
+    finalize_trace,
+    finalized_trace,
+    finish_span,
+    format_text_report,
+    gc_managed_runs,
+    reconcile_managed_runs,
+    recover_trace,
+    report_across_scopes,
+    report_history,
+    run_observed,
+    scope_ledger_path,
+    start_span,
+    start_trace,
+    trace_context,
+    validate_ledger,
+    validate_runtime_trace,
+)
+
+
+def _json(value: Any) -> None:
+    print(json.dumps(value, sort_keys=True, separators=(",", ":")))
+
+
+def _atomic_result(file_path: Path, value: Any) -> None:
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(prefix=f".{file_path.name}.", dir=file_path.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(value, stream, sort_keys=True, separators=(",", ":"))
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, file_path)
+    finally:
+        try:
+            temporary.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def _add_repo(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--repo-root", type=Path)
+
+
+def _add_metadata(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--harness")
+    parser.add_argument("--role")
+    parser.add_argument("--model")
+    parser.add_argument("--effort")
+    parser.add_argument("--batch-id")
+    parser.add_argument("--concurrency-group")
+    parser.add_argument("--token-cycle-id")
+    parser.add_argument("--token-role")
+
+
+def _metadata(args: argparse.Namespace) -> dict[str, Any]:
+    return {
+        key.replace("-", "_"): getattr(args, key.replace("-", "_"))
+        for key in (
+            "harness",
+            "role",
+            "model",
+            "effort",
+            "batch-id",
+            "concurrency-group",
+            "token-cycle-id",
+            "token-role",
+        )
+        if getattr(args, key.replace("-", "_"), None) is not None
+    }
+
+
+def _engine(args: argparse.Namespace, fallback: Path | None = None) -> Path:
+    return discover_engine_root(args.repo_root or fallback)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="execution-telemetry")
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    start = commands.add_parser("start")
+    _add_repo(start)
+    start.add_argument("--scope-root", type=Path)
+    start.add_argument("--scope", choices=sorted(SCOPES))
+    start.add_argument("--scope-id")
+    start.add_argument("--run-type")
+    start.add_argument("--trace-id")
+    start.add_argument("--parent-span-id")
+    start.add_argument("--category", choices=sorted(CATEGORIES - {"run"}))
+    start.add_argument("--operation", required=True)
+    start.add_argument("--attempt", type=int, default=1)
+    _add_metadata(start)
+    start.set_defaults(handler=cmd_start)
+
+    finish = commands.add_parser("finish")
+    _add_repo(finish)
+    finish.add_argument("--trace-id", required=True)
+    finish.add_argument("--span-id", required=True)
+    finish.add_argument("--outcome", choices=sorted(OUTCOMES), required=True)
+    finish.add_argument("--exit-code", type=int)
+    finish.add_argument("--timeout-kind", choices=sorted(TIMEOUT_KINDS))
+    finish.add_argument("--timeout-ns", type=int)
+    finish.add_argument(
+        "--json",
+        action="store_true",
+        help="emit the confirmation as JSON on stdout instead of a note on stderr",
+    )
+    finish.set_defaults(handler=cmd_finish)
+
+    run = commands.add_parser("run")
+    _add_repo(run)
+    run.add_argument("--trace-id", required=True)
+    run.add_argument("--parent-span-id", required=True)
+    run.add_argument("--category", choices=sorted(CATEGORIES - {"run"}), required=True)
+    run.add_argument("--operation", required=True)
+    run.add_argument("--attempt", type=int, default=1)
+    run.add_argument("--timeout-seconds", type=float)
+    run.add_argument("--result-json", type=Path)
+    _add_metadata(run)
+    run.add_argument("argv", nargs=argparse.REMAINDER)
+    run.set_defaults(handler=cmd_run)
+
+    for name, handler in (("finalize", cmd_finalize), ("recover", cmd_recover)):
+        operation = commands.add_parser(name)
+        _add_repo(operation)
+        operation.add_argument("--trace-id", required=True)
+        operation.set_defaults(handler=handler)
+
+    context = commands.add_parser("context")
+    _add_repo(context)
+    context.add_argument("--trace-id", required=True)
+    context.set_defaults(handler=cmd_context)
+
+    span = commands.add_parser("span")
+    _add_repo(span)
+    span.add_argument("--trace-id", required=True)
+    span.add_argument("--span-id", required=True)
+    span.set_defaults(handler=cmd_span)
+
+    finalized = commands.add_parser("finalized")
+    _add_repo(finalized)
+    finalized.add_argument("--trace-id", required=True)
+    finalized.set_defaults(handler=cmd_finalized)
+
+    validate = commands.add_parser("validate")
+    _add_repo(validate)
+    selection = validate.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--trace-id")
+    selection.add_argument("--ledger", type=Path)
+    validate.set_defaults(handler=cmd_validate)
+
+    report = commands.add_parser("report")
+    _add_repo(report)
+    report.add_argument("--ledger", type=Path)
+    report.add_argument("--all-scopes", action="store_true")
+    report.add_argument("--scope-root", type=Path)
+    report.add_argument("--scope", choices=sorted(SCOPES))
+    report.add_argument("--scope-id")
+    report.add_argument("--trace-id")
+    report.add_argument("--run-type")
+    report.add_argument("--phase")
+    report.add_argument("--batch-id")
+    report.add_argument("--since")
+    report.add_argument("--recent", type=int)
+    report.add_argument("--format", choices=("text", "json"), default="text")
+    report.set_defaults(handler=cmd_report)
+
+    dashboard = commands.add_parser("dashboard")
+    _add_repo(dashboard)
+    dashboard.add_argument("--phase", required=True)
+    dashboard.add_argument("--accepted-trace-id", required=True)
+    dashboard.add_argument("--handoff", type=Path)
+    dashboard.add_argument("--output-root", type=Path)
+    dashboard.add_argument("--open", action="store_true")
+    dashboard.set_defaults(handler=cmd_dashboard)
+
+    attach = commands.add_parser("attach-token")
+    _add_repo(attach)
+    attach.add_argument("--trace-id", required=True)
+    attach.add_argument("--span-id", required=True)
+    attach.add_argument("--token-cycle-id", required=True)
+    attach.add_argument("--token-role", required=True)
+    attach.set_defaults(handler=cmd_attach_token)
+
+    expect = commands.add_parser("expect")
+    _add_repo(expect)
+    expect.add_argument("--scope", choices=sorted(SCOPES), required=True)
+    expect.add_argument("--scope-id", required=True)
+    expect.add_argument("--run-type", required=True)
+    expect.add_argument("--operation", required=True)
+    expect.add_argument("--cycle-id")
+    expect.add_argument("--batch-id")
+    expect.add_argument("--run-id")
+    expect.set_defaults(handler=cmd_expect)
+
+    reconcile = commands.add_parser("reconcile")
+    _add_repo(reconcile)
+    reconcile.set_defaults(handler=cmd_reconcile)
+
+    gc = commands.add_parser("gc")
+    _add_repo(gc)
+    gc.set_defaults(handler=cmd_gc)
+    return parser
+
+
+def cmd_dashboard(args: argparse.Namespace) -> int:
+    engine_root = _engine(args)
+    output_root = args.output_root or engine_root / "reports" / "execution"
+    handoff = None
+    if args.handoff is not None:
+        try:
+            handoff = json.loads(args.handoff.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise TelemetryError(f"cannot read dashboard handoff: {exc}") from exc
+    result = render_phase_dashboard(
+        engine_root=engine_root,
+        output_root=output_root,
+        phase_id=args.phase,
+        accepted_trace_id=args.accepted_trace_id,
+        handoff=handoff,
+    )
+    _json(result)
+    if args.open:
+        page = (output_root / result["archive_directory"] / "index.html").resolve()
+        if not webbrowser.open(page.as_uri()):
+            raise TelemetryError("default browser refused the dashboard")
+    return 0
+
+
+def cmd_start(args: argparse.Namespace) -> int:
+    if args.trace_id:
+        if args.scope_root or args.scope or args.scope_id or args.run_type:
+            raise TelemetryError("child start cannot include root scope arguments")
+        if not args.parent_span_id or not args.category:
+            raise TelemetryError("child start requires --parent-span-id and --category")
+        handle = start_span(
+            engine_root=_engine(args),
+            trace_id=args.trace_id,
+            parent_span_id=args.parent_span_id,
+            category=args.category,
+            operation=args.operation,
+            attempt=args.attempt,
+            **_metadata(args),
+        )
+    else:
+        if (
+            args.parent_span_id
+            or args.category
+            or not all((args.scope_root, args.scope, args.scope_id, args.run_type))
+        ):
+            raise TelemetryError(
+                "root start requires --scope-root, --scope, --scope-id, and --run-type"
+            )
+        handle = start_trace(
+            engine_root=_engine(args, args.scope_root),
+            scope_root=args.scope_root,
+            scope=args.scope,
+            scope_id=args.scope_id,
+            run_type=args.run_type,
+            operation=args.operation,
+            **_metadata(args),
+        )
+    _json(dataclasses.asdict(handle))
+    return 0
+
+
+def cmd_finish(args: argparse.Namespace) -> int:
+    """Close a span. Confirmation goes to stderr unless `--json` is asked for.
+
+    `start` prints the handle a caller must capture; `finish` prints only a
+    confirmation. With both on stdout, the ordinary "close A, open B, capture
+    B's span id" idiom captures two JSON blobs and binds the wrong span — it
+    cost one bad span-id capture in a real run. Routing the confirmation to
+    stderr makes the idiom safe by default and keeps the machine-readable form
+    available on request.
+    """
+    record = finish_span(
+        engine_root=_engine(args),
+        trace_id=args.trace_id,
+        span_id=args.span_id,
+        outcome=args.outcome,
+        exit_code=args.exit_code,
+        timeout_kind=args.timeout_kind,
+        timeout_ns=args.timeout_ns,
+    )
+    confirmation = {
+        "trace_id": args.trace_id,
+        "span_id": args.span_id,
+        "state": record["state"],
+    }
+    if args.json:
+        _json(confirmation)
+    else:
+        print(
+            f"execution-telemetry: span {args.span_id} {record['state']}",
+            file=sys.stderr,
+        )
+    return 0
+
+
+def cmd_run(args: argparse.Namespace) -> int:
+    argv = args.argv
+    if argv and argv[0] == "--":
+        argv = argv[1:]
+    if not argv:
+        raise TelemetryError("run requires a command after --")
+    result = run_observed(
+        engine_root=_engine(args),
+        trace_id=args.trace_id,
+        parent_span_id=args.parent_span_id,
+        category=args.category,
+        operation=args.operation,
+        argv=argv,
+        attempt=args.attempt,
+        timeout_seconds=args.timeout_seconds,
+        **_metadata(args),
+    )
+    envelope = dataclasses.asdict(result)
+    if args.result_json:
+        try:
+            _atomic_result(args.result_json, envelope)
+        except OSError:
+            print("execution-telemetry: result-json-write-failed", file=sys.stderr)
+    if not result.telemetry_complete:
+        print(f"execution-telemetry: {result.error_code}", file=sys.stderr)
+    return result.exit_code
+
+
+def cmd_finalize(args: argparse.Namespace) -> int:
+    _json(finalize_trace(engine_root=_engine(args), trace_id=args.trace_id))
+    return 0
+
+
+def cmd_recover(args: argparse.Namespace) -> int:
+    _json(recover_trace(engine_root=_engine(args), trace_id=args.trace_id))
+    return 0
+
+
+def cmd_context(args: argparse.Namespace) -> int:
+    _json(trace_context(engine_root=_engine(args), trace_id=args.trace_id))
+    return 0
+
+
+def cmd_span(args: argparse.Namespace) -> int:
+    _json(closed_span(engine_root=_engine(args), trace_id=args.trace_id, span_id=args.span_id))
+    return 0
+
+
+def cmd_finalized(args: argparse.Namespace) -> int:
+    _json(finalized_trace(engine_root=_engine(args), trace_id=args.trace_id))
+    return 0
+
+
+def cmd_validate(args: argparse.Namespace) -> int:
+    if args.ledger:
+        bundles = validate_ledger(args.ledger)
+        _json({"ledger": str(args.ledger), "valid_traces": len(bundles)})
+        return 0
+    _json(validate_runtime_trace(engine_root=_engine(args), trace_id=args.trace_id))
+    return 0
+
+
+def cmd_attach_token(args: argparse.Namespace) -> int:
+    record = attach_token_reference(
+        engine_root=_engine(args),
+        trace_id=args.trace_id,
+        span_id=args.span_id,
+        token_cycle_id=args.token_cycle_id,
+        token_role=args.token_role,
+    )
+    _json(
+        {
+            "trace_id": args.trace_id,
+            "span_id": args.span_id,
+            "token_reference": record["token_reference"],
+        }
+    )
+    return 0
+
+
+def cmd_expect(args: argparse.Namespace) -> int:
+    _json(
+        expect_managed_run(
+            engine_root=_engine(args),
+            scope=args.scope,
+            scope_id=args.scope_id,
+            run_type=args.run_type,
+            operation=args.operation,
+            cycle_id=args.cycle_id,
+            batch_id=args.batch_id,
+            run_id=args.run_id,
+        )
+    )
+    return 0
+
+
+def cmd_reconcile(args: argparse.Namespace) -> int:
+    _json(reconcile_managed_runs(_engine(args)))
+    return 0
+
+
+def cmd_gc(args: argparse.Namespace) -> int:
+    _json(gc_managed_runs(engine_root=_engine(args)))
+    return 0
+
+
+def _report_ledger(args: argparse.Namespace) -> Path:
+    if args.ledger:
+        if args.scope_root or args.scope or args.scope_id or args.all_scopes:
+            raise TelemetryError("--ledger cannot be combined with scope selection")
+        return args.ledger
+    if not all((args.scope_root, args.scope, args.scope_id)):
+        raise TelemetryError("report requires --ledger or a complete scope selection")
+    engine = _engine(args, args.scope_root)
+    return scope_ledger_path(engine, args.scope_root, args.scope, args.scope_id)
+
+
+def cmd_report(args: argparse.Namespace) -> int:
+    if args.all_scopes or (not args.ledger and args.scope and args.scope_id):
+        if args.all_scopes and (args.scope_root or args.scope or args.scope_id):
+            raise TelemetryError("--all-scopes cannot be combined with scope selection")
+        engine = _engine(args, args.scope_root)
+        result = report_across_scopes(
+            engine,
+            trace_id=args.trace_id,
+            run_type=args.run_type,
+            scope=args.scope,
+            scope_id=args.scope_id,
+            phase_id=args.phase,
+            batch_id=args.batch_id,
+            since=args.since,
+            recent=args.recent,
+        )
+        if args.format == "json":
+            _json(result)
+        else:
+            print(format_text_report(result), end="")
+        return 0
+    reports = report_history(
+        _report_ledger(args),
+        trace_id=args.trace_id,
+        run_type=args.run_type,
+        batch_id=args.batch_id,
+        phase_id=args.phase,
+        since=args.since,
+        recent=args.recent,
+    )
+    if args.format == "json":
+        _json(reports)
+    else:
+        print(format_text_report(reports), end="")
+    return 0
+
+
+def main() -> int:
+    parser = build_parser()
+    args = parser.parse_args()
+    try:
+        return args.handler(args)
+    except TelemetryError as exc:
+        print(f"execution-telemetry: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

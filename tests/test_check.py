@@ -76,6 +76,16 @@ printf 'policy cwd=%s\\n' "$PWD" >> "$CHECK_TEST_LOG"
 printf 'config cwd=%s args=%s\\n' "$PWD" "$*" >> "$CHECK_TEST_LOG"
 """,
     )
+    for executable, label in (
+        ("execution-telemetry", "telemetry"),
+        ("check-harness-parity", "parity"),
+        ("check-toolchain-callers", "callers"),
+        ("check-execution-dashboards", "dashboards"),
+    ):
+        _write_executable(
+            root / "bin" / executable,
+            f'#!/usr/bin/env bash\nprintf \'{label} cwd=%s\\n\' "$PWD" >> "$CHECK_TEST_LOG"\n',
+        )
     environment = os.environ.copy()
     environment["PATH"] = f"{tool_dir}:{environment['PATH']}"
     environment["CHECK_TEST_LOG"] = str(log_path)
@@ -114,13 +124,17 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
         ),
         (
             f"uv cwd={root / 'project'} args=run --locked --managed-python "
-            "ruff check example tests ../bin/kickoff-config ../bin/kickoff-evidence "
-            "../bin/kickoff-tree-id ../tests"
+            "ruff check example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence "
+            "../bin/kickoff-tree-id ../bin/execution-telemetry "
+            "../bin/check-execution-dashboards ../bin/check-harness-parity "
+            "../bin/check-toolchain-callers ../tests"
         ),
         (
             f"uv cwd={root / 'project'} args=run --locked --managed-python ruff format --check "
-            "example tests ../bin/kickoff-config ../bin/kickoff-evidence "
-            "../bin/kickoff-tree-id ../tests"
+            "example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence "
+            "../bin/kickoff-tree-id ../bin/execution-telemetry "
+            "../bin/check-execution-dashboards ../bin/check-harness-parity "
+            "../bin/check-toolchain-callers ../tests"
         ),
         (
             f"uv cwd={root} args=run --project {root / 'project'} --locked "
@@ -130,6 +144,9 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
             f"uv cwd={root} args=run --project {root / 'project'} --locked "
             "--managed-python python -m pytest -q project/tests tests"
         ),
+        f"parity cwd={root}",
+        f"callers cwd={root}",
+        f"dashboards cwd={root}",
         f"config cwd={root} args=show",
         f"policy cwd={root}",
     ]
@@ -159,6 +176,9 @@ def test_named_mode_runs_only_selected_gate(
                 f"uv cwd={root} args=run --project {root / 'project'} --locked "
                 f"--managed-python python -c {PROBE}"
             ),
+            f"parity cwd={root}",
+            f"callers cwd={root}",
+            f"dashboards cwd={root}",
             f"config cwd={root} args=show",
             f"policy cwd={root}",
         ]
@@ -220,7 +240,19 @@ def test_missing_project_contract_fails_clearly(
     assert f"CHECK ERROR missing required file: {expected_path}" in result.stderr
 
 
-@pytest.mark.parametrize("executable", ["test", "kickoff-tree-id", "kickoff-evidence"])
+@pytest.mark.parametrize(
+    "executable",
+    [
+        "test",
+        "kickoff-tree-id",
+        "kickoff-evidence",
+        "kickoff-config",
+        "execution-telemetry",
+        "check-execution-dashboards",
+        "check-harness-parity",
+        "check-toolchain-callers",
+    ],
+)
 def test_missing_required_executable_fails_clearly(
     check_repo: tuple[Path, dict[str, str]], executable: str
 ) -> None:

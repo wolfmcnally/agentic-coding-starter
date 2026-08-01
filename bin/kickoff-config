@@ -9,14 +9,24 @@
   bin/kickoff-config set-models [<harness>] <role>.model=<model> [<role>.effort=<effort>] ...
   bin/kickoff-config reset models|timeouts|all
   bin/kickoff-config preflight
-  bin/kickoff-config watch [metadata/options] -- <command> [args...]
+  bin/kickoff-config watch [routing/telemetry options] --prompt-file <path>
+  bin/kickoff-config render-command [routing options] --prompt-file <path>
   bin/kickoff-config recommend-timeouts
 
 Section updates use ruamel.yaml round-trip mode: comments, ordering, quoting,
 and data under `extensions` survive. Known schemas are strict. All writes
 validate first and use atomic replacement. `watch` returns the child status,
-65 on an unrecoverable protocol failure, 66 when a fresh artifact needs
-explicit verification after an incomplete stream, or 124 on timeout.
+65 on an unrecoverable protocol failure, 66 when a successful child produced
+a fresh artifact but its terminal stream is incomplete, or 124 on timeout.
+
+`watch` constructs the delegated `claude -p` / `codex exec` invocation itself
+from its routing metadata; no caller hands it a command line. That is
+deliberate: for as long as the recipe lived in prose, every orchestrator
+rebuilt it by hand, and each hand-built copy was free to omit a flag whose
+absence is silent — a missing `--json` costs the session id, a missing
+`UV_NO_SYNC=1` costs the delegated coder every build gate it claims to have
+run. `render-command` prints the exact argv without spawning anything, so the
+recipe stays inspectable without being re-typed.
 """
 
 from __future__ import annotations
@@ -43,13 +53,50 @@ from typing import Any, BinaryIO
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
-CONFIG = Path(os.environ.get("KICKOFF_CONFIG_FILE", "kickoff.yaml"))
+SCRIPT_PATH = Path(__file__).resolve()
+TOOL_ROOT = SCRIPT_PATH.parent
+if (TOOL_ROOT / "lib" / "agentic_starter" / "finding_schema.py").is_file():
+    REPO_ROOT = Path(os.environ.get("KICKOFF_ENGINE_ROOT", Path.cwd())).resolve()
+    LIB_ROOT = TOOL_ROOT / "lib"
+    DEFAULT_CONFIG = TOOL_ROOT / "kickoff.yaml"
+else:
+    REPO_ROOT = SCRIPT_PATH.parents[1]
+    LIB_ROOT = REPO_ROOT / "lib"
+    DEFAULT_CONFIG = REPO_ROOT / "kickoff.yaml"
+sys.path.insert(0, str(LIB_ROOT))
+
+from agentic_starter.execution_telemetry import (  # noqa: E402
+    TelemetryError,
+    closed_span,
+    finish_span,
+    start_span,
+    trace_context,
+)
+from agentic_starter.finding_schema import schema_json  # noqa: E402
+
+CONFIG = Path(os.environ.get("KICKOFF_CONFIG_FILE", DEFAULT_CONFIG))
 DEFAULT_TELEMETRY = ".kickoff/role-timings.jsonl"
 TIMEOUT_EXIT = 124
 PROTOCOL_EXIT = 65
 RECOVERABLE_PROTOCOL_EXIT = 66
 PREFLIGHT_SENTINEL = "KICKOFF_PREFLIGHT_OK"
 PREFLIGHT_TIMEOUT_SECONDS = 120
+
+# The canonical reviewer/coder tool stances, by access mode. On the Codex venue
+# `-s read-only` enforces the stance at the sandbox; on the Claude venue
+# `--allowedTools` is a strong hint the persona still self-polices
+# (`policies/role-models.md`).
+CLAUDE_TOOLS = {
+    "read-only": "Read,Grep,Glob",
+    "workspace-write": "Read,Grep,Glob,Write,Edit,Bash",
+}
+# The one write-enabled cross-harness role. Single-writer is satisfied by
+# serialization: kickoff runs the coder stage with no concurrent native writer.
+WRITE_ENABLED_ROLES = frozenset({"coder"})
+# The roles that emit a Finding Evidence document, and the review kind each one
+# reviews. Only these dispatches carry a structured-output schema; the planner
+# and coder emit different artifacts entirely.
+REVIEW_ROLE_KINDS = {"reviewer": "plan", "critic": "code"}
 
 HARNESSES = ("default", "claude", "codex")
 ROLES = ("planner", "reviewer", "coder", "critic")
@@ -63,6 +110,12 @@ CODEX_MODELS = {
 CLAUDE_MODELS = {"claude": None, "opus": "opus", "fable": "fable"}
 CODEX_EFFORTS = ("low", "medium", "high", "xhigh")
 CLAUDE_EFFORTS = ("low", "medium", "high", "xhigh", "max")
+ROLE_OPERATIONS = {
+    "planner": "role.plan",
+    "reviewer": "role.plan-review",
+    "coder": "role.implement",
+    "critic": "role.code-review",
+}
 
 SHIPPED_MODELS: dict[str, dict[str, dict[str, str]]] = {
     "default": {
@@ -123,19 +176,12 @@ def yaml_engine() -> YAML:
     return engine
 
 
+ROLE_ATTEMPT_LEDGER_NAME = "role-attempts.jsonl"
+
+
 def die(message: str) -> None:
     print(f"kickoff-config: {message}", file=sys.stderr)
     raise SystemExit(2)
-
-
-def repo_root() -> Path:
-    proc = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return Path(proc.stdout.strip())
 
 
 def commented(value: Any) -> Any:
@@ -478,12 +524,212 @@ def preflight_targets(
     for role, (model, effort) in resolve_models(section, harness).items():
         if model == "default":
             continue
+        write_enabled = role in WRITE_ENABLED_ROLES
         if model in CLAUDE_MODELS:
-            target = PreflightTarget("claude", CLAUDE_MODELS[model], effort, role == "coder")
+            target = PreflightTarget("claude", CLAUDE_MODELS[model], effort, write_enabled)
         else:
-            target = PreflightTarget("codex", CODEX_MODELS[model], effort, role == "coder")
+            target = PreflightTarget("codex", CODEX_MODELS[model], effort, write_enabled)
         targets.setdefault(target, []).append(role)
     return targets
+
+
+def role_access(role: str) -> str:
+    """The access mode a role runs under. Derived, never passed in.
+
+    A reviewer that could be handed `workspace-write` is a reviewer that can
+    contend for the working tree, so the mode is a property of the role rather
+    than an argument an orchestrator supplies.
+    """
+    return "workspace-write" if role in WRITE_ENABLED_ROLES else "read-only"
+
+
+def cli_program(cli: str) -> str:
+    """Resolve the venue executable.
+
+    `KICKOFF_CLI_CLAUDE` / `KICKOFF_CLI_CODEX` substitute the *binary* only, for
+    tests and diagnostics. The argv around it is still generated here, so a
+    substituted binary receives the production recipe rather than a stand-in.
+    """
+    return os.environ.get(f"KICKOFF_CLI_{cli.upper()}") or cli
+
+
+def claude_routing_flags(model_slug: str | None, effort: str | None) -> list[str]:
+    """Model/effort flags for the Claude CLI, repeated identically on resume."""
+    flags: list[str] = []
+    if model_slug:
+        flags.extend(("--model", model_slug))
+    if effort:
+        flags.extend(("--effort", effort))
+    return flags
+
+
+def codex_routing_flags(model_slug: str | None, effort: str | None) -> list[str]:
+    """Model/effort flags for the Codex CLI, repeated identically on resume."""
+    flags: list[str] = []
+    if model_slug:
+        flags.extend(("--model", model_slug))
+    if effort:
+        flags.extend(("-c", f'model_reasoning_effort="{effort}"'))
+    return flags
+
+
+def review_kind(role: str) -> str | None:
+    """The review kind this role emits findings for, or None if it emits none."""
+    return REVIEW_ROLE_KINDS.get(role)
+
+
+def write_output_schema(artifact: str, kind: str) -> str:
+    """Materialize the schema beside the artifact the venue will write.
+
+    Codex takes a schema *file*, so one has to exist on disk. Deriving its path
+    from the artifact keeps it inside the directory the caller already owns and
+    leaves it there for inspection after a failed dispatch — the schema is
+    evidence about what the role was asked for, not scratch.
+    """
+    path = Path(f"{artifact}.schema.json")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(schema_json(kind) + "\n", encoding="utf-8")
+    return str(path)
+
+
+def build_claude_command(
+    *,
+    prompt: str,
+    model_slug: str | None,
+    effort: str | None,
+    access: str,
+    max_turns: int,
+    schema_kind: str | None,
+    resume_session: str | None,
+) -> list[str]:
+    """The production `claude -p` invocation.
+
+    `--output-format stream-json --verbose` is not a preference: it is what
+    makes the first-event and idle clocks measure real activity, and it carries
+    the `session_id` a revision round resumes from. `--permission-mode dontAsk`
+    is the only fully non-interactive mode — `--dangerously-skip-permissions`
+    parks on a one-time consent dialog that, with no TTY, never returns.
+    """
+    command = [cli_program("claude"), "-p", prompt]
+    command.extend(claude_routing_flags(model_slug, effort))
+    if resume_session:
+        command.extend(("--resume", resume_session))
+    command.extend(
+        (
+            "--permission-mode",
+            "dontAsk",
+            "--allowedTools",
+            CLAUDE_TOOLS[access],
+            "--output-format",
+            "stream-json",
+            "--verbose",
+            "--max-turns",
+            str(max_turns),
+        )
+    )
+    if schema_kind:
+        # Claude takes the schema inline; Codex takes a file. The asymmetry is
+        # the vendors', not ours.
+        command.extend(("--json-schema", schema_json(schema_kind)))
+    return command
+
+
+def build_codex_command(
+    *,
+    prompt: str,
+    model_slug: str | None,
+    effort: str | None,
+    access: str,
+    output_file: str,
+    schema_kind: str | None,
+    resume_session: str | None,
+) -> list[str]:
+    """The production `codex exec` invocation.
+
+    `resume` has a different flag surface than `exec`: `-s/--sandbox` and
+    `-C/--cd` do not exist on it, so the sandbox travels as a config override
+    and the working directory as the inherited cwd (resume filters recorded
+    sessions by cwd). A resume that reuses the `exec` flags flag-parse-fails,
+    which reads as a venue failure and silently costs the session's context.
+    """
+    program = cli_program("codex")
+    if resume_session:
+        command = [
+            program,
+            "exec",
+            "resume",
+            resume_session,
+            "--json",
+            "-c",
+            'approval_policy="never"',
+            "-c",
+            f'sandbox_mode="{access}"',
+        ]
+    else:
+        command = [
+            program,
+            "exec",
+            "--json",
+            "-s",
+            access,
+            "-c",
+            'approval_policy="never"',
+            "-C",
+            str(REPO_ROOT),
+        ]
+    command.extend(("--output-last-message", output_file))
+    if schema_kind:
+        command.extend(("--output-schema", write_output_schema(output_file, schema_kind)))
+    command.extend(codex_routing_flags(model_slug, effort))
+    command.append(prompt)
+    return command
+
+
+def build_watch_command(
+    arguments: argparse.Namespace, section: MutableMapping[str, Any]
+) -> list[str]:
+    """Generate the delegated invocation for one role dispatch."""
+    prompt = Path(arguments.prompt_file).read_text(encoding="utf-8")
+    if not prompt.strip():
+        die(f"prompt file is empty: {arguments.prompt_file}")
+    effort = None if arguments.effort == "default" else arguments.effort
+    model, effort = validate_model_fields(
+        {"model": arguments.model, **({"effort": effort} if effort else {})},
+        "watch routing",
+    )
+    access = role_access(arguments.role)
+    schema_kind = review_kind(arguments.role)
+    if arguments.venue == "claude":
+        if model not in CLAUDE_MODELS:
+            die(f"model '{model}' does not route to the claude CLI")
+        if not arguments.result_file:
+            die("claude venue requires --result-file")
+        if arguments.required_output_file:
+            die("claude venue extracts its artifact from the stream; use --result-file")
+        return build_claude_command(
+            prompt=prompt,
+            model_slug=CLAUDE_MODELS[model],
+            effort=effort,
+            access=access,
+            max_turns=section["roles"][arguments.role]["claude_max_turns"],
+            schema_kind=schema_kind,
+            resume_session=arguments.resume_session,
+        )
+    if model not in CODEX_MODELS:
+        die(f"model '{model}' does not route to the codex CLI")
+    if not arguments.required_output_file:
+        die("codex venue requires --required-output-file")
+    if arguments.result_file:
+        die("codex venue writes its artifact directly; use --required-output-file")
+    return build_codex_command(
+        prompt=prompt,
+        model_slug=CODEX_MODELS[model],
+        effort=effort,
+        access=access,
+        output_file=arguments.required_output_file,
+        schema_kind=schema_kind,
+        resume_session=arguments.resume_session,
+    )
 
 
 def scrubbed_env(cli: str) -> dict[str, str]:
@@ -506,22 +752,21 @@ def diagnostic(process: subprocess.CompletedProcess[str]) -> str:
 
 def run_claude_preflight(target: PreflightTarget, workdir: str) -> None:
     command = [
-        "claude",
+        cli_program("claude"),
         "-p",
         f"Reply with exactly: {PREFLIGHT_SENTINEL}",
         "--permission-mode",
         "dontAsk",
         "--allowedTools",
-        "Read,Grep,Glob,Write,Edit,Bash" if target.write_enabled else "Read,Grep,Glob",
+        CLAUDE_TOOLS["workspace-write" if target.write_enabled else "read-only"],
+        # A one-shot `json` envelope suffices for a sentinel probe; it cannot
+        # support the idle watchdog production work needs.
         "--output-format",
         "json",
         "--max-turns",
         "3",
+        *claude_routing_flags(target.model, target.effort),
     ]
-    if target.model:
-        command.extend(("--model", target.model))
-    if target.effort:
-        command.extend(("--effort", target.effort))
     process = subprocess.run(
         command,
         cwd=workdir,
@@ -547,9 +792,12 @@ def run_codex_preflight(target: PreflightTarget, workdir: str) -> None:
     with tempfile.TemporaryDirectory(prefix="kickoff-preflight-") as temporary:
         message_file = os.path.join(temporary, "last-message.txt")
         command = [
-            "codex",
+            cli_program("codex"),
             "exec",
             "--json",
+            # Upstream readiness needs no repository context, and the probe runs
+            # in an empty directory; the production checkout call never carries
+            # this flag.
             "--skip-git-repo-check",
             "-s",
             "workspace-write" if target.write_enabled else "read-only",
@@ -559,12 +807,9 @@ def run_codex_preflight(target: PreflightTarget, workdir: str) -> None:
             workdir,
             "--output-last-message",
             message_file,
+            *codex_routing_flags(target.model, target.effort),
+            f"Reply with exactly: {PREFLIGHT_SENTINEL}",
         ]
-        if target.model:
-            command.extend(("--model", target.model))
-        if target.effort:
-            command.extend(("-c", f'model_reasoning_effort="{target.effort}"'))
-        command.append(f"Reply with exactly: {PREFLIGHT_SENTINEL}")
         process = subprocess.run(
             command,
             cwd=workdir,
@@ -621,19 +866,45 @@ def utc_now() -> str:
 
 
 def terminate_group(process: subprocess.Popen[bytes]) -> None:
+    group_id = process.pid
+
+    def group_exists() -> bool:
+        try:
+            os.killpg(group_id, 0)
+            return True
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+
+    def wait_group(seconds: float) -> bool:
+        deadline = time.monotonic() + seconds
+        while group_exists() and time.monotonic() < deadline:
+            if process.poll() is None:
+                try:
+                    process.wait(timeout=min(0.05, max(0.001, deadline - time.monotonic())))
+                except subprocess.TimeoutExpired:
+                    pass
+            else:
+                time.sleep(0.01)
+        return not group_exists()
+
     try:
-        os.killpg(process.pid, signal.SIGTERM)
+        os.killpg(group_id, signal.SIGTERM)
     except ProcessLookupError:
-        return
-    try:
-        process.wait(timeout=5)
-        return
-    except subprocess.TimeoutExpired:
         pass
-    try:
-        os.killpg(process.pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
+    if not wait_group(5):
+        try:
+            os.killpg(group_id, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        wait_group(2)
+    if process.poll() is None:
+        try:
+            process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
 
 
 def open_artifact(path: str | None) -> BinaryIO | None:
@@ -653,26 +924,6 @@ def prepare_output_path(path: str | None) -> Path | None:
     return target
 
 
-def invoked_program_index(command: list[str]) -> int:
-    if Path(command[0]).name != "env":
-        return 0
-    index = 1
-    while index < len(command):
-        token = command[index]
-        if token == "--":
-            return index + 1
-        if token in ("-u", "--unset"):
-            index += 2
-            continue
-        if token.startswith("--unset=") or ("=" in token and not token.startswith("-")):
-            index += 1
-            continue
-        if token.startswith("-"):
-            die(f"unsupported env option before watched command: {token}")
-        return index
-    die("watch command contains env but no program")
-
-
 def option_value(command: list[str], names: tuple[str, ...]) -> str | None:
     for index, token in enumerate(command):
         for name in names:
@@ -685,7 +936,14 @@ def option_value(command: list[str], names: tuple[str, ...]) -> str | None:
 
 
 def validate_watch_routing(arguments: argparse.Namespace, command: list[str]) -> int:
-    program_index = invoked_program_index(command)
+    """Re-derive the routing contract from the generated argv.
+
+    This began as a guard against hand-built commands. It survives their removal
+    as the generator's own proof: the flags the child will actually receive are
+    read back and required to match the metadata the telemetry spans record, so
+    a builder that drifts from its own routing fields cannot spawn.
+    """
+    program_index = 0
     actual_venue = Path(command[program_index]).name
     if actual_venue != arguments.venue:
         die(f"watch venue={arguments.venue} but command invokes {actual_venue}")
@@ -730,14 +988,104 @@ def validate_watch_routing(arguments: argparse.Namespace, command: list[str]) ->
     return program_index
 
 
-def numbers_from_usage(value: Any) -> tuple[int, int]:
+def _uv_directory(arguments: tuple[str, ...], label: str) -> Path:
+    process = subprocess.run(
+        ["uv", *arguments],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if process.returncode != 0 or not process.stdout.strip():
+        detail = process.stderr.strip() or process.stdout.strip() or f"exit {process.returncode}"
+        die(f"cannot resolve uv {label}: {detail}")
+    return Path(process.stdout.strip()).resolve()
+
+
+def watched_sandbox(cli_arguments: list[str]) -> str | None:
+    """The sandbox the generated command asks for, in either spelling.
+
+    `exec` takes `-s <mode>`; `resume` has no such flag and carries the mode as
+    a `sandbox_mode` config override. Reading only the first spelling would let
+    a resumed coder run without the uv support its initial call received — the
+    same zero-verification failure, one round later.
+    """
+    direct = option_value(cli_arguments, ("-s", "--sandbox"))
+    if direct:
+        return direct
+    for index, token in enumerate(cli_arguments):
+        if index and cli_arguments[index - 1] in {"-c", "--config"}:
+            match = re.match(r'^sandbox_mode=["\']?([\w-]+)["\']?$', token)
+            if match:
+                return match.group(1)
+    return None
+
+
+def prepare_watched_command(
+    arguments: argparse.Namespace,
+    command: list[str],
+    program_index: int,
+) -> tuple[list[str], dict[str, str]]:
+    environment = scrubbed_env(arguments.venue)
+    cli_arguments = command[program_index + 1 :]
+    sandbox = watched_sandbox(cli_arguments)
+    if arguments.venue != "codex" or sandbox != "workspace-write":
+        return command, environment
+
+    injected: list[str] = []
+    supplied_no_sync = environment.get("UV_NO_SYNC")
+    if supplied_no_sync is None:
+        environment["UV_NO_SYNC"] = "1"
+        injected.append("UV_NO_SYNC=1")
+    elif supplied_no_sync != "1":
+        die("codex workspace-write requires UV_NO_SYNC=1")
+
+    writable_roots_key = "sandbox_workspace_write.writable_roots"
+    has_writable_roots = any(
+        token.startswith(f"{writable_roots_key}=")
+        for index, token in enumerate(cli_arguments)
+        if index > 0 and cli_arguments[index - 1] in {"-c", "--config"}
+    )
+    if not has_writable_roots:
+        cache_dir = _uv_directory(("cache", "dir"), "cache directory")
+        python_dir = _uv_directory(("python", "dir"), "data directory")
+        data_dir = python_dir.parent
+        config = f"{writable_roots_key}=" + json.dumps(
+            [str(cache_dir), str(data_dir)], separators=(",", ":")
+        )
+        # Insert after the subcommand chain and any positional session id —
+        # before the first flag. Anchoring on `exec` alone would place the
+        # override between `exec` and `resume`, where it does not parse.
+        flag_offset = next(
+            (index for index, token in enumerate(cli_arguments) if token.startswith("-")),
+            len(cli_arguments),
+        )
+        insertion = program_index + 1 + flag_offset
+        command = [*command[:insertion], "-c", config, *command[insertion:]]
+        injected.append(writable_roots_key)
+
+    # UV_NO_SYNC avoids uv's resolver inside Seatbelt. This is sound only while
+    # --locked detects dependency drift and the host has provisioned the venv.
+    # Dependency-changing work must sync on the host first or use a native coder.
+    if injected:
+        print(
+            "kickoff-config: injected codex workspace-write support: " + ", ".join(injected),
+            file=sys.stderr,
+        )
+    return command, environment
+
+
+def numbers_from_usage(value: Any) -> tuple[int | None, int | None]:
     if not isinstance(value, dict):
-        return (0, 0)
-    input_tokens = value.get("input_tokens", value.get("inputTokens", 0))
-    output_tokens = value.get("output_tokens", value.get("outputTokens", 0))
+        return (None, None)
+    input_tokens = value.get("input_tokens", value.get("inputTokens"))
+    output_tokens = value.get("output_tokens", value.get("outputTokens"))
+
+    def accepted(item: Any) -> int | None:
+        return item if isinstance(item, int) and not isinstance(item, bool) and item >= 0 else None
+
     return (
-        int(input_tokens) if isinstance(input_tokens, (int, float)) else 0,
-        int(output_tokens) if isinstance(output_tokens, (int, float)) else 0,
+        accepted(input_tokens),
+        accepted(output_tokens),
     )
 
 
@@ -765,10 +1113,11 @@ def event_text(event: dict[str, Any]) -> str | None:
 
 def parse_events(
     data: bytes,
+    venue: str | None = None,
 ) -> tuple[int | None, int | None, int | None, str | None, str | None, set[str]]:
     turns = 0
-    input_tokens = 0
-    output_tokens = 0
+    input_tokens: int | None = None
+    output_tokens: int | None = None
     result: str | None = None
     assistant_text: str | None = None
     event_types: set[str] = set()
@@ -785,14 +1134,8 @@ def parse_events(
         event_types.add(event_type)
         if event_type in {"turn.started", "assistant"}:
             turns += 1
-        usage_candidates = [event.get("usage")]
-        message = event.get("message")
-        if isinstance(message, dict):
-            usage_candidates.append(message.get("usage"))
-        for usage in usage_candidates:
-            seen_input, seen_output = numbers_from_usage(usage)
-            input_tokens = max(input_tokens, seen_input)
-            output_tokens = max(output_tokens, seen_output)
+        if venue == "claude" and event_type == "result":
+            input_tokens, output_tokens = numbers_from_usage(event.get("usage"))
         if event_type == "result" and isinstance(event.get("result"), str):
             result = event["result"]
         if event_type in {"assistant", "item.completed"}:
@@ -801,8 +1144,8 @@ def parse_events(
                 assistant_text = observed_text
     return (
         turns if parsed else None,
-        input_tokens if parsed else None,
-        output_tokens if parsed else None,
+        input_tokens if parsed and venue == "claude" else None,
+        output_tokens if parsed and venue == "claude" else None,
         result,
         assistant_text,
         event_types,
@@ -817,13 +1160,167 @@ def append_record(record: dict[str, Any], telemetry_path: str) -> None:
         handle.write("\n")
 
 
+def inject_telemetry_failure(stage: str) -> None:
+    configured = {
+        item.strip()
+        for item in os.environ.get("KICKOFF_TELEMETRY_FAIL", "").split(",")
+        if item.strip()
+    }
+    if stage in configured:
+        raise TelemetryError(f"injected {stage} failure")
+
+
+def validate_telemetry_registration(arguments: argparse.Namespace) -> dict[str, Any] | None:
+    supplied = [
+        arguments.telemetry_trace_id,
+        arguments.telemetry_parent_span_id,
+        arguments.telemetry_operation,
+        arguments.telemetry_attempt,
+        arguments.telemetry_role_registration,
+    ]
+    if not any(value is not None for value in supplied):
+        return None
+    if not all(value is not None for value in supplied):
+        die("telemetry arguments must be supplied together")
+    registration_path = Path(arguments.telemetry_role_registration)
+    # The append-only ledger is never a registration. It is JSON Lines, so a
+    # ledger holding exactly one record is *also* a valid JSON object and would
+    # parse here -- the watcher would run, and the identical argument would then
+    # die with "Extra data: line 2 column 1" as soon as a second role registered.
+    # An argument that works early and fails later teaches the wrong contract and
+    # fails at the worst moment, so refuse it the same way every time, by name,
+    # before parsing.
+    if registration_path.name == ROLE_ATTEMPT_LEDGER_NAME:
+        die(
+            f"telemetry role registration must not be the {ROLE_ATTEMPT_LEDGER_NAME} "
+            "ledger: pass the per-attempt file written by "
+            "`register-role-attempt --output`, which the ledger cross-checks"
+        )
+    try:
+        registration = json.loads(registration_path.read_text())
+    except OSError as exc:
+        die(f"invalid telemetry role registration: {exc}")
+    except json.JSONDecodeError as exc:
+        # A JSONL file that is not literally named role-attempts.jsonl reaches
+        # here. Name the likely cause rather than surfacing the decoder's offset.
+        die(
+            f"invalid telemetry role registration: {exc}. A registration is one "
+            "JSON object -- the per-attempt file written by "
+            "`register-role-attempt --output`, not an append-only JSON Lines ledger"
+        )
+    expected = {
+        "telemetry_trace_id": arguments.telemetry_trace_id,
+        "telemetry_root_span_id": arguments.telemetry_parent_span_id,
+        "operation": arguments.telemetry_operation,
+        "attempt": arguments.telemetry_attempt,
+        "role": arguments.role,
+        "harness": arguments.venue,
+        "model": arguments.model,
+        "effort": None if arguments.effort == "default" else arguments.effort,
+    }
+    if not isinstance(registration, dict) or any(
+        registration.get(key) != value for key, value in expected.items()
+    ):
+        die("telemetry role registration does not match watcher routing")
+    try:
+        ledger_records = [
+            json.loads(line)
+            for line in (registration_path.parent / "role-attempts.jsonl").read_text().splitlines()
+            if line.strip()
+        ]
+    except (OSError, json.JSONDecodeError) as exc:
+        die(f"invalid role-attempt ledger: {exc}")
+    if sum(item == registration for item in ledger_records) != 1:
+        die("telemetry role registration is not uniquely present in its ledger")
+    if ROLE_OPERATIONS[arguments.role] != arguments.telemetry_operation:
+        die("telemetry operation does not match canonical role")
+    try:
+        context = trace_context(engine_root=REPO_ROOT, trace_id=arguments.telemetry_trace_id)
+    except TelemetryError as exc:
+        die(f"invalid telemetry trace: {exc}")
+    if (
+        context["root_span_id"] != arguments.telemetry_parent_span_id
+        or context["scope"] != "engine"
+        or context["scope_id"] != "engine"
+        or context["run_type"] != "kickoff"
+        or context["operation"] != f"phase.{arguments.phase}"
+        or context["state"] != "open"
+    ):
+        die("telemetry trace does not own this kickoff role")
+    return registration
+
+
+def record_dispatch_topology(
+    arguments: argparse.Namespace,
+    *,
+    accepted: bool,
+    intelligence_span_id: str | None,
+    wait_span_id: str | None,
+) -> str | None:
+    if arguments.telemetry_role_registration is None:
+        return None
+    registration = Path(arguments.telemetry_role_registration)
+    executable = registration.parent / "tools" / "kickoff-evidence"
+    command = [
+        str(executable),
+        "record-role-dispatch",
+        "--run-dir",
+        str(registration.parent),
+        "--registration",
+        str(registration),
+        "--state",
+        "accepted" if accepted else "rejected",
+        "--idle-telemetry",
+        "available" if accepted else "not-dispatched",
+    ]
+    if intelligence_span_id is not None:
+        command.extend(["--intelligence-span-id", intelligence_span_id])
+    if wait_span_id is not None:
+        command.extend(["--wait-span-id", wait_span_id])
+    environment = os.environ.copy()
+    environment["KICKOFF_ENGINE_ROOT"] = str(REPO_ROOT)
+    result = subprocess.run(command, capture_output=True, text=True, check=False, env=environment)
+    if result.returncode != 0:
+        return result.stderr.strip() or "dispatch topology write failed"
+    return None
+
+
 def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> int:
-    command = arguments.command
-    if command and command[0] == "--":
-        command = command[1:]
-    if not command:
-        die("watch requires a command after --")
+    if os.environ.get("KICKOFF_DELEGATION_DEPTH"):
+        die(
+            "KICKOFF_DELEGATION_DEPTH is set: this session is itself a delegated "
+            "role and may not delegate again; run the role natively"
+        )
+    command = build_watch_command(arguments, section)
     program_index = validate_watch_routing(arguments, command)
+    command, child_environment = prepare_watched_command(arguments, command, program_index)
+    registration = validate_telemetry_registration(arguments)
+    intelligence = None
+    wait_span = None
+    telemetry_complete = registration is not None
+    telemetry_errors: list[str] = []
+    if registration is not None:
+        metadata = {
+            "harness": arguments.venue,
+            "role": arguments.role,
+            "model": arguments.model,
+        }
+        if arguments.effort != "default":
+            metadata["effort"] = arguments.effort
+        try:
+            inject_telemetry_failure("intelligence-start")
+            intelligence = start_span(
+                engine_root=REPO_ROOT,
+                trace_id=arguments.telemetry_trace_id,
+                parent_span_id=arguments.telemetry_parent_span_id,
+                category="intelligence",
+                operation=arguments.telemetry_operation,
+                attempt=arguments.telemetry_attempt,
+                **metadata,
+            )
+        except TelemetryError as exc:
+            telemetry_complete = False
+            telemetry_errors.append(f"intelligence-start: {exc}")
     role_config = section["roles"][arguments.role]
     first_limit = (
         arguments.first_event_timeout
@@ -865,6 +1362,7 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
     try:
         process = subprocess.Popen(
             command,
+            env=child_environment,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -875,13 +1373,72 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
             stdout_file.close()
         if stderr_file:
             stderr_file.close()
+        if intelligence is not None:
+            try:
+                finish_span(
+                    engine_root=REPO_ROOT,
+                    trace_id=intelligence.trace_id,
+                    span_id=intelligence.span_id,
+                    outcome="error",
+                    exit_code=127,
+                )
+            except TelemetryError as telemetry_exc:
+                telemetry_errors.append(f"intelligence-finish: {telemetry_exc}")
+        topology_error = record_dispatch_topology(
+            arguments,
+            accepted=False,
+            intelligence_span_id=intelligence.span_id if intelligence else None,
+            wait_span_id=None,
+        )
+        if topology_error:
+            print(f"kickoff-config: telemetry incomplete: {topology_error}", file=sys.stderr)
         die(f"could not start {command[0]}: {exc}")
+    if intelligence is not None:
+        try:
+            inject_telemetry_failure("wait-start")
+            wait_span = start_span(
+                engine_root=REPO_ROOT,
+                trace_id=intelligence.trace_id,
+                parent_span_id=intelligence.span_id,
+                category="wait",
+                operation=arguments.telemetry_operation,
+                attempt=arguments.telemetry_attempt,
+                harness=arguments.venue,
+                role=arguments.role,
+                model=arguments.model,
+                **({"effort": arguments.effort} if arguments.effort != "default" else {}),
+            )
+        except TelemetryError as exc:
+            telemetry_complete = False
+            telemetry_errors.append(f"wait-start: {exc}")
+    topology_error = record_dispatch_topology(
+        arguments,
+        accepted=True,
+        intelligence_span_id=intelligence.span_id if intelligence else None,
+        wait_span_id=wait_span.span_id if wait_span else None,
+    )
+    if topology_error:
+        telemetry_complete = False
+        telemetry_errors.append(f"dispatch-topology: {topology_error}")
     selector = selectors.DefaultSelector()
+    cancelled_signal: int | None = None
+    prior_handlers: dict[int, Any] = {}
+
+    def cancel_handler(signum: int, _frame: Any) -> None:
+        nonlocal cancelled_signal
+        cancelled_signal = signum
+
+    for signum in (signal.SIGINT, signal.SIGTERM):
+        prior_handlers[signum] = signal.getsignal(signum)
+        signal.signal(signum, cancel_handler)
     assert process.stdout is not None and process.stderr is not None
     selector.register(process.stdout, selectors.EVENT_READ, ("stdout", stdout_file))
     selector.register(process.stderr, selectors.EVENT_READ, ("stderr", stderr_file))
     try:
         while True:
+            if cancelled_signal is not None:
+                terminate_group(process)
+                break
             now = time.monotonic()
             if now - started >= hard_limit:
                 timeout_kind = "hard"
@@ -944,7 +1501,9 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
                 if artifact:
                     artifact.write(chunk)
                     artifact.flush()
-        if timeout_kind:
+        if cancelled_signal is not None:
+            return_code = 128 + cancelled_signal
+        elif timeout_kind:
             terminate_group(process)
             return_code = TIMEOUT_EXIT
         else:
@@ -955,12 +1514,18 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
             stdout_file.close()
         if stderr_file:
             stderr_file.close()
+        for signum, prior in prior_handlers.items():
+            signal.signal(signum, prior)
 
     ended = time.monotonic()
     longest_idle = max(longest_idle, max(0.0, ended - last_activity))
-    child_exit_code = None if timeout_kind else return_code
+    child_exit_code = None if timeout_kind or cancelled_signal is not None else return_code
+    child_interrupted = child_exit_code is not None and child_exit_code < 0
+    if child_exit_code is not None and child_exit_code < 0:
+        child_exit_code = 128 + abs(child_exit_code)
+        return_code = child_exit_code
     turns, input_tokens, output_tokens, result, assistant_text, event_types = parse_events(
-        bytes(stdout_data)
+        bytes(stdout_data), arguments.venue
     )
     protocol_errors: list[str] = []
     artifact_requested = result_path is not None or required_output_path is not None
@@ -990,9 +1555,15 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
     if not stream_complete:
         protocol_errors.append("terminal stream event missing or empty")
 
-    if timeout_kind:
+    if cancelled_signal is not None:
+        return_code = 128 + cancelled_signal
+        outcome = "cancelled"
+    elif timeout_kind:
         return_code = TIMEOUT_EXIT
         outcome = "timeout"
+    elif child_interrupted:
+        return_code = child_exit_code
+        outcome = "interrupted"
     elif child_exit_code != 0:
         return_code = child_exit_code
         outcome = "error"
@@ -1005,35 +1576,97 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
     else:
         return_code = 0
         outcome = "success"
-    append_record(
-        {
-            "schema_version": 2,
-            "phase": arguments.phase,
-            "role": arguments.role,
-            "venue": arguments.venue,
-            "model": arguments.model,
-            "effort": arguments.effort,
-            "started_at": started_iso,
-            "ended_at": utc_now(),
-            "duration_seconds": round(ended - started, 3),
-            "first_event_seconds": (
-                round(first_event_at - started, 3) if first_event_at is not None else None
-            ),
-            "longest_idle_seconds": round(longest_idle, 3),
-            "turns": turns,
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "outcome": outcome,
-            "timeout_kind": timeout_kind,
-            "protocol_error": "; ".join(protocol_errors) if protocol_errors else None,
-            "exit_code": return_code,
-            "child_exit_code": child_exit_code,
-            "artifact_status": artifact_status,
-            "stream_status": stream_status,
-            "program": Path(command[program_index]).name,
-        },
-        os.environ.get("KICKOFF_TIMING_LOG", DEFAULT_TELEMETRY),
+    telemetry_outcome = (
+        "interrupted"
+        if child_interrupted
+        else "error"
+        if outcome == "completed_unverified_protocol"
+        else outcome
     )
+    timeout_ns = (
+        int(
+            {"first-event": first_limit, "idle": idle_limit, "hard": hard_limit}[timeout_kind]
+            * 1_000_000_000
+        )
+        if timeout_kind
+        else None
+    )
+    for handle in (wait_span, intelligence):
+        if handle is None:
+            continue
+        try:
+            inject_telemetry_failure(
+                "wait-finish" if handle is wait_span else "intelligence-finish"
+            )
+            finish_span(
+                engine_root=REPO_ROOT,
+                trace_id=handle.trace_id,
+                span_id=handle.span_id,
+                outcome=telemetry_outcome,
+                exit_code=return_code,
+                timeout_kind=timeout_kind,
+                timeout_ns=timeout_ns,
+            )
+        except TelemetryError as exc:
+            telemetry_complete = False
+            telemetry_errors.append(f"span-finish: {exc}")
+    duration_ns = None
+    if intelligence is not None:
+        try:
+            inject_telemetry_failure("span-read")
+            duration_ns = closed_span(
+                engine_root=REPO_ROOT,
+                trace_id=intelligence.trace_id,
+                span_id=intelligence.span_id,
+            )["duration_ns"]
+        except TelemetryError as exc:
+            telemetry_complete = False
+            telemetry_errors.append(f"span-read: {exc}")
+    diagnostic = {
+        "schema_version": 3,
+        "phase": arguments.phase,
+        "role": arguments.role,
+        "venue": arguments.venue,
+        "model": arguments.model,
+        "effort": arguments.effort,
+        "started_at": started_iso,
+        "ended_at": utc_now(),
+        "trace_id": arguments.telemetry_trace_id,
+        "span_id": intelligence.span_id if intelligence else None,
+        "wait_span_id": wait_span.span_id if wait_span else None,
+        "duration_ns": duration_ns,
+        "first_event_seconds": (
+            round(first_event_at - started, 3) if first_event_at is not None else None
+        ),
+        "longest_idle_seconds": round(longest_idle, 3),
+        "turns": turns,
+        "usage_scope": (
+            "invocation" if input_tokens is not None or output_tokens is not None else "unavailable"
+        ),
+        "outcome": outcome,
+        "timeout_kind": timeout_kind,
+        "protocol_error": "; ".join(protocol_errors) if protocol_errors else None,
+        "exit_code": return_code,
+        "child_exit_code": child_exit_code,
+        "artifact_status": artifact_status,
+        "stream_status": stream_status,
+        "program": Path(command[program_index]).name,
+        "telemetry_complete": telemetry_complete,
+        "telemetry_error": "; ".join(telemetry_errors) if telemetry_errors else None,
+    }
+    if input_tokens is not None:
+        diagnostic["input_tokens"] = input_tokens
+    if output_tokens is not None:
+        diagnostic["output_tokens"] = output_tokens
+    try:
+        append_record(diagnostic, os.environ.get("KICKOFF_TIMING_LOG", DEFAULT_TELEMETRY))
+    except OSError as exc:
+        print(f"kickoff-config: local timing diagnostic write failed: {exc}", file=sys.stderr)
+    if telemetry_errors:
+        print(
+            f"kickoff-config: telemetry incomplete: {'; '.join(telemetry_errors)}",
+            file=sys.stderr,
+        )
     if timeout_kind:
         print(
             f"kickoff-config: {arguments.role} timed out ({timeout_kind}) after "
@@ -1072,7 +1705,31 @@ def recommend_timeouts(section: MutableMapping[str, Any]) -> None:
         except json.JSONDecodeError:
             print(f"Ignoring malformed telemetry line {line_number}.", file=sys.stderr)
             continue
-        if record.get("outcome") != "success" or record.get("role") not in ROLES:
+        if record.get("schema_version") != 3:
+            print(
+                f"Ignoring non-schema-3 telemetry line {line_number}.",
+                file=sys.stderr,
+            )
+            continue
+        complete_sample = (
+            record.get("outcome") == "success"
+            and record.get("role") in ROLES
+            and record.get("telemetry_complete") is True
+            and isinstance(record.get("duration_ns"), int)
+            and not isinstance(record.get("duration_ns"), bool)
+            and record["duration_ns"] >= 0
+            and isinstance(record.get("longest_idle_seconds"), (int, float))
+            and not isinstance(record.get("longest_idle_seconds"), bool)
+            and math.isfinite(float(record["longest_idle_seconds"]))
+            and record["longest_idle_seconds"] >= 0
+        )
+        if record.get("outcome") == "success" and not complete_sample:
+            print(
+                f"Ignoring incomplete/malformed schema-3 telemetry line {line_number}.",
+                file=sys.stderr,
+            )
+            continue
+        if not complete_sample:
             continue
         key = tuple(
             str(record.get(field) or "default") for field in ("role", "venue", "model", "effort")
@@ -1085,7 +1742,7 @@ def recommend_timeouts(section: MutableMapping[str, Any]) -> None:
         if len(records) < minimum:
             continue
         role = key[0]
-        durations = [float(item["duration_seconds"]) for item in records]
+        durations = [int(item["duration_ns"]) / 1_000_000_000 for item in records]
         gaps = [float(item["longest_idle_seconds"]) for item in records]
         role_config = section["roles"][role]
         hard = max(
@@ -1130,25 +1787,63 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("preflight")
     subparsers.add_parser("recommend-timeouts")
 
-    watch_parser = subparsers.add_parser("watch")
-    watch_parser.add_argument("--role", required=True, choices=ROLES)
-    watch_parser.add_argument("--venue", required=True, choices=("claude", "codex"))
-    watch_parser.add_argument("--model", required=True, choices=MODELS)
-    watch_parser.add_argument("--effort", default="default", choices=("default", *CLAUDE_EFFORTS))
+    def add_routing_arguments(parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--role", required=True, choices=ROLES)
+        parser.add_argument("--venue", required=True, choices=("claude", "codex"))
+        parser.add_argument("--model", required=True, choices=MODELS)
+        parser.add_argument("--effort", default="default", choices=("default", *CLAUDE_EFFORTS))
+        parser.add_argument("--prompt-file", required=True)
+        parser.add_argument("--result-file")
+        parser.add_argument("--required-output-file")
+        parser.add_argument(
+            "--resume-session",
+            help="provider session id; produces the venue's resume invocation",
+        )
+
+    watch_parser = subparsers.add_parser(
+        "watch",
+        description=(
+            "Generate and watch one delegated role invocation. The claude/codex "
+            "command line is built here from the routing metadata, never supplied "
+            "by the caller. Codex workspace-write dispatches receive UV_NO_SYNC=1 "
+            "and runtime-resolved uv writable roots. UV_NO_SYNC skips virtualenv "
+            "synchronization; this is sound only because --locked still rejects "
+            "lock/pyproject drift and the host provisions the venv. "
+            "Dependency-changing work must sync on the host first or use a native coder."
+        ),
+    )
+    add_routing_arguments(watch_parser)
     watch_parser.add_argument("--phase", required=True)
     watch_parser.add_argument("--stdout-file")
     watch_parser.add_argument("--stderr-file")
-    watch_parser.add_argument("--result-file")
-    watch_parser.add_argument("--required-output-file")
     watch_parser.add_argument("--first-event-timeout", type=float)
     watch_parser.add_argument("--idle-timeout", type=float)
     watch_parser.add_argument("--hard-timeout", type=float)
-    watch_parser.add_argument("command", nargs=argparse.REMAINDER)
+    watch_parser.add_argument("--telemetry-trace-id")
+    watch_parser.add_argument("--telemetry-parent-span-id")
+    watch_parser.add_argument("--telemetry-operation")
+    watch_parser.add_argument("--telemetry-attempt", type=int)
+    watch_parser.add_argument("--telemetry-role-registration")
+
+    render_parser = subparsers.add_parser(
+        "render-command",
+        description=(
+            "Print the exact delegated invocation watch would spawn, without "
+            "spawning it. The inspection path for the generated recipe."
+        ),
+    )
+    add_routing_arguments(render_parser)
+    render_parser.add_argument("--json", action="store_true", help="emit the argv as a JSON array")
     return root
 
 
 def main() -> None:
-    os.chdir(repo_root())
+    # REPO_ROOT is already resolved from the script's own location (or, for a
+    # pinned bundle, from KICKOFF_ENGINE_ROOT). Asking git for the toplevel
+    # instead made this tool require a repository it never reads: inside a
+    # Gate 9 worker copy, which carries no `.git`, every invocation died on a
+    # CalledProcessError traceback before parsing a single argument.
+    os.chdir(REPO_ROOT)
     arguments = build_parser().parse_args()
     if arguments.action == "reset":
         reset(arguments.scope)
@@ -1162,6 +1857,13 @@ def main() -> None:
         preflight(document["role_models"])
     elif arguments.action == "watch":
         raise SystemExit(watch(arguments, document["role_timeouts"]))
+    elif arguments.action == "render-command":
+        command = build_watch_command(arguments, document["role_timeouts"])
+        validate_watch_routing(arguments, command)
+        if arguments.json:
+            print(json.dumps(command))
+        else:
+            print("\n".join(command))
     else:
         recommend_timeouts(document["role_timeouts"])
 

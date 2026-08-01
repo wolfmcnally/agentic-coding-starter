@@ -1,0 +1,139 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Fail closed when canonical agent surfaces and harness mirrors drift."""
+
+from __future__ import annotations
+
+import os
+import sys
+import tomllib
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+DRIFT: list[str] = []
+
+
+def report(surface: str, relative: str, reason: str) -> None:
+    DRIFT.append(f"ERROR\t{surface}\t{relative}\t{reason}")
+
+
+def frontmatter(path: Path) -> dict[str, str]:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    if not lines or lines[0] != "---":
+        raise ValueError("missing YAML frontmatter")
+    try:
+        end = lines.index("---", 1)
+    except ValueError as exc:
+        raise ValueError("unterminated YAML frontmatter") from exc
+    result: dict[str, str] = {}
+    index = 1
+    while index < end:
+        line = lines[index]
+        if not line or line.startswith(" "):
+            index += 1
+            continue
+        key, separator, value = line.partition(":")
+        if not separator:
+            raise ValueError(f"invalid frontmatter line {index + 1}")
+        value = value.strip()
+        if value in {">", ">-", "|", "|-"}:
+            parts: list[str] = []
+            index += 1
+            while index < end and (not lines[index] or lines[index].startswith(" ")):
+                if lines[index].strip():
+                    parts.append(lines[index].strip())
+                index += 1
+            result[key] = " ".join(parts)
+            continue
+        result[key] = value.strip("\"'")
+        index += 1
+    return result
+
+
+def check_instructions() -> None:
+    link = ROOT / "AGENTS.md"
+    if not link.is_symlink():
+        report("instructions", "AGENTS.md", "must be a symlink")
+        return
+    if os.readlink(link) != "CLAUDE.md":
+        report("instructions", "AGENTS.md", "must target CLAUDE.md")
+    if not link.resolve().is_file():
+        report("instructions", "AGENTS.md", "target does not resolve")
+
+
+def check_skills() -> None:
+    canonical_root = ROOT / ".claude" / "skills"
+    mirror_root = ROOT / ".agents" / "skills"
+    canonical = {item.name for item in canonical_root.iterdir() if item.is_dir()}
+    mirrors = {item.name for item in mirror_root.iterdir()}
+    for name in sorted(canonical | mirrors):
+        relative = f".agents/skills/{name}"
+        if name not in canonical:
+            report("skills", relative, "orphan mirror")
+            continue
+        if name not in mirrors:
+            report("skills", relative, "missing mirror")
+            continue
+        link = mirror_root / name
+        expected = f"../../.claude/skills/{name}"
+        if not link.is_symlink():
+            report("skills", relative, "must be a directory symlink")
+        elif os.readlink(link) != expected:
+            report("skills", relative, f"wrong target; expected {expected}")
+        elif not link.is_dir():
+            report("skills", relative, "target does not resolve to a directory")
+        elif not (link / "SKILL.md").is_file():
+            report("skills", relative, "canonical skill has no SKILL.md")
+
+
+def check_agents() -> None:
+    canonical_root = ROOT / ".claude" / "agents"
+    mirror_root = ROOT / ".codex" / "agents"
+    canonical = {item.stem: item for item in canonical_root.glob("*.md")}
+    mirrors = {item.stem: item for item in mirror_root.glob("*.toml")}
+    for role in sorted(canonical.keys() | mirrors.keys()):
+        relative = f".codex/agents/{role}.toml"
+        if role not in canonical:
+            report("agents", relative, "orphan wrapper")
+            continue
+        if role not in mirrors:
+            report("agents", relative, "missing wrapper")
+            continue
+        try:
+            metadata = frontmatter(canonical[role])
+            wrapper = tomllib.loads(mirrors[role].read_text(encoding="utf-8"))
+        except (OSError, ValueError, tomllib.TOMLDecodeError) as exc:
+            report("agents", relative, f"unreadable metadata: {exc}")
+            continue
+        if wrapper.get("name") != metadata.get("name") or wrapper.get("name") != role:
+            report("agents", relative, "name does not match canonical role")
+        if wrapper.get("description") != metadata.get("description"):
+            report("agents", relative, "description does not match canonical frontmatter")
+        instructions = wrapper.get("developer_instructions")
+        pointer = f"Read .claude/agents/{role}.md in this repo and follow it."
+        if not isinstance(instructions, str) or pointer not in instructions:
+            report("agents", relative, "missing exact canonical pointer")
+        if isinstance(instructions, str) and "# " in instructions:
+            report("agents", relative, "wrapper appears to duplicate canonical body")
+
+
+def main() -> int:
+    if len(sys.argv) != 1:
+        print("Usage: ./bin/check-harness-parity", file=sys.stderr)
+        return 2
+    for check in (check_instructions, check_skills, check_agents):
+        try:
+            check()
+        except OSError as exc:
+            report("filesystem", ".", str(exc))
+    if DRIFT:
+        print("\n".join(sorted(DRIFT)))
+        return 1
+    print("HARNESS PARITY OK")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -20,11 +20,16 @@ Both vendors sanction this interop: OpenAI ships an official Claude Code plugin 
 
 ## 2. Claude Code → `codex` (headless)
 
-Canonical invocation shape (review roles):
+Canonical generated invocation (review roles):
 
 ```
-./bin/kickoff-config watch --role reviewer --venue codex --model "$MODEL" --effort "$EFFORT" --phase "$PHASE" --stdout-file "$EVENTS" --stderr-file "$ERRORS" --required-output-file "$MSGFILE" -- env -u OPENAI_API_KEY -u CODEX_API_KEY KICKOFF_DELEGATION_DEPTH=1 codex exec --json -s read-only -c 'approval_policy="never"' -C "$(pwd)" --output-last-message "$MSGFILE" "${MODEL_ARGS[@]}" "${EFFORT_ARGS[@]}" "$(cat "$PROMPTFILE")"
+./bin/kickoff-config render-command --role reviewer --venue "$VENUE" --model "$MODEL" --effort "$EFFORT" --prompt-file "$PROMPTFILE" --required-output-file "$MSGFILE"
 ```
+
+The manager resolves the venue, model, effort, auth scrubs, access mode,
+artifact paths, output schema, telemetry registration, and watcher command.
+The rendered command is authoritative; callers do not reconstruct it from the
+flag rationale below.
 
 Capture the session id for revision rounds from the first event on stdout (the human-readable mode prints it *only* to stderr, which the recipe discards — without `--json` the id is unrecoverable):
 
@@ -68,7 +73,7 @@ Flag-by-flag rationale:
 - **Revision rounds: `codex exec resume <session-id> ...`** preserves the reviewer's context across rounds. **The `resume` subcommand has a different flag surface than `exec` — `-s/--sandbox` and `-C/--cd` do not exist on it** (codex-cli 0.136.0 rejects `-s` with `error: unexpected argument '-s' found`, exit 2 — empirically verified). Set the sandbox through a config override instead, and `cd` into the repo rather than passing `-C` (resume filters recorded sessions by cwd). `--model` and `-c model_reasoning_effort=...` are accepted on resume (re-verified with codex-cli 0.144.0) and must be repeated for an explicit pin:
 
   ```
-  ( cd "$REPO" && ./bin/kickoff-config watch --role reviewer --venue codex --model "$MODEL" --effort "$EFFORT" --phase "$PHASE" --stdout-file "$EVENTS" --stderr-file "$ERRORS" --required-output-file "$MSGFILE" -- env -u OPENAI_API_KEY -u CODEX_API_KEY KICKOFF_DELEGATION_DEPTH=1 codex exec resume "$TID" --json -c 'approval_policy="never"' -c 'sandbox_mode="read-only"' --output-last-message "$MSGFILE" "${MODEL_ARGS[@]}" "${EFFORT_ARGS[@]}" "$(cat "$PROMPTFILE")" )
+  ./bin/kickoff-config render-command --role reviewer --venue codex --model "$MODEL" --effort "$EFFORT" --prompt-file "$PROMPTFILE" --required-output-file "$MSGFILE" --resume-session "$TID"
   ```
 
   For example, a resumed role with `model: sol` and `effort: medium` adds
@@ -82,11 +87,14 @@ Flag-by-flag rationale:
 
 ## 3. Codex → `claude` (headless)
 
-Canonical invocation shape (review roles):
+Canonical generated invocation (review roles):
 
 ```
-./bin/kickoff-config watch --role reviewer --venue claude --model "$MODEL" --effort "$EFFORT" --phase "$PHASE" --stdout-file "$EVENTS" --stderr-file "$ERRORS" --result-file "$MSGFILE" -- env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT -u ANTHROPIC_API_KEY KICKOFF_DELEGATION_DEPTH=1 claude -p "$(cat "$PROMPTFILE")" "${MODEL_ARGS[@]}" "${EFFORT_ARGS[@]}" --permission-mode dontAsk --allowedTools "Read,Grep,Glob" --output-format stream-json --verbose --max-turns "$CLAUDE_MAX_TURNS"
+./bin/kickoff-config render-command --role reviewer --venue claude --model "$MODEL" --effort "$EFFORT" --prompt-file "$PROMPTFILE" --result-file "$MSGFILE"
 ```
+
+As in the Codex direction, the generated command is the executable contract;
+the bullets below explain its choices rather than defining a second copy.
 
 Flag-by-flag rationale:
 
@@ -141,7 +149,7 @@ Flag-by-flag rationale:
 
 ## 5. How this maps onto our methodology
 
-These BCPs are applied by the per-role model/venue feature ([`policies/role-models.md`](../policies/role-models.md)) and execution-budget policy ([`policies/role-timeouts.md`](../policies/role-timeouts.md)). Their separate model and effort fields plus timeout budgets live together in human-editable `kickoff.yaml`. Its shipped default is cross-vendor review: at Step 4 (plan review) and Step 6 (code critique), the read-only reviewer roles run in the *other* harness. Before phase state begins, `./bin/kickoff-config preflight` live-validates every non-native target. Production external calls then run through `./bin/kickoff-config watch`, read the same canonical role file as native subagents, stream progress, and retain local timing evidence. Orchestration and build gates are never delegated.
+These BCPs are applied by the per-role model/venue feature ([`policies/role-models.md`](../policies/role-models.md)) and execution-budget policy ([`policies/role-timeouts.md`](../policies/role-timeouts.md)). Their separate model and effort fields plus timeout budgets live together in human-editable `kickoff.yaml`. Its shipped default is cross-vendor review: at Step 4 (plan review) and Step 6 (code critique), the read-only reviewer roles run in the *other* harness. Before phase state begins, `./bin/kickoff-config preflight` live-validates every non-native target. Production external calls run through `watch`, which generates and supervises the child command from resolved metadata; `render-command` exposes the same generated argv for inspection. Calls read the same canonical role file as native subagents, stream progress into the shared exact execution trace, and register immutable evidence. Orchestration and build gates are never delegated.
 
 ## 6. Sources
 

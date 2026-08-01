@@ -93,11 +93,12 @@ lockfile. Behavioral coverage lives in
 
 ### `install-hooks` — opt in to tracked Git hooks
 
-Configures only the current checkout's `core.hooksPath` to `.githooks`, whose
-pre-push hook calls `./bin/check all`. Installation is explicit and
-idempotent. A different existing hooks path is preserved and reported; only
-`--force` replaces it. `--dry-run` reports the proposed change without writing
-Git configuration.
+Configures only the current checkout's `core.hooksPath` to `.githooks`. The
+pre-commit hook runs the fast harness-parity and toolchain-caller checks; the
+pre-push hook runs `./bin/check all`. Installation is explicit and idempotent.
+A different existing hooks path is preserved and reported; only `--force`
+replaces it. `--dry-run` reports the proposed change without writing Git
+configuration.
 
 ```bash
 ./bin/install-hooks --dry-run
@@ -112,7 +113,17 @@ Behavioral coverage lives in `tests/test_install_hooks.py`.
 
 ### `kickoff-config` — human-editable `kickoff` configuration and enforcement
 
-Validates and safely edits repo-root `kickoff.yaml`, whose `role_models` and `role_timeouts` sections hold separate model/effort fields and execution budgets. Round-trip YAML handling preserves human comments, ordering, quoting, and data under `extensions`; strict known sections reject typos; scoped resets never overwrite the other section; every write validates first and atomically replaces the file. The same manager performs fail-closed live venue preflight, routing-verified and progress-aware subprocess supervision, fresh-artifact enforcement, gitignored telemetry, and evidence-based timeout recommendations. A Python script run via `uv` with PEP 723 `ruamel.yaml`. Governed by [`policies/role-models.md`](../policies/role-models.md) and [`policies/role-timeouts.md`](../policies/role-timeouts.md).
+Validates and safely edits repo-root `kickoff.yaml`, whose `role_models` and
+`role_timeouts` sections hold separate model/effort fields and execution
+budgets. Round-trip YAML handling preserves human comments and extension data.
+The manager also owns fail-closed venue preflight, generated cross-harness
+commands, strict review-output schemas, immutable role-attempt registration,
+progress-aware supervision, fresh-artifact enforcement, exact execution spans,
+and evidence-based timeout recommendations. A Python script run via `uv` with
+PEP 723 `ruamel.yaml`. Governed by
+[`policies/role-models.md`](../policies/role-models.md),
+[`policies/role-timeouts.md`](../policies/role-timeouts.md), and
+[`policies/execution-telemetry.md`](../policies/execution-telemetry.md).
 
 ```bash
 ./bin/kickoff-config show
@@ -131,7 +142,7 @@ Validates and safely edits repo-root `kickoff.yaml`, whose `role_models` and `ro
 ```
 
 ```bash
-./bin/kickoff-config watch --role reviewer --venue claude --model opus --effort high --phase 2 --stdout-file /tmp/reviewer.events.jsonl --stderr-file /tmp/reviewer.stderr --result-file /tmp/reviewer.result -- claude --model opus --effort high <production flags>
+./bin/kickoff-config render-command --role reviewer --venue codex --model sol --effort high --prompt-file /absolute/run/reviewer.prompt --required-output-file /absolute/run/reviewer.result
 ```
 
 ```bash
@@ -176,12 +187,13 @@ behavioral coverage lives in `tests/test_kickoff_tree_id.py`.
 
 ### `kickoff-evidence` — run-scoped review and gate evidence
 
-Initializes and validates the authority, change, finding, packet, and gate
-records for one `kickoff` run. It extracts exact JSON evidence blocks from role
-artifacts, enforces stable finding identity and state transitions, detects
-authority/risk rebases, compiles deterministic plan/code revision packets, and
-rejects gate records for stale candidates. Run `--help` or a subcommand's
-`--help` for the full schema-driven interface.
+Initializes and validates the authority, change, finding, packet, role-attempt,
+trace-binding, candidate-lineage, timing-summary, and gate records for one
+`kickoff` run. It extracts exact JSON evidence blocks from role artifacts,
+enforces stable finding identity and state transitions, detects authority/risk
+rebases, compiles deterministic revision packets, and rejects stale or
+unjoined evidence. Run `--help` or a subcommand's `--help` for the full
+schema-driven interface.
 
 ```bash
 ./bin/kickoff-evidence --help
@@ -194,6 +206,60 @@ rejects gate records for stale candidates. Run `--help` or a subcommand's
 Governed by
 [`policies/orchestration-evidence.md`](../policies/orchestration-evidence.md);
 behavioral coverage lives in `tests/test_kickoff_evidence.py`.
+
+### `execution-telemetry` — exact shared execution trace
+
+Records append-only stage, role, wait, tool, and gate spans in one trace;
+reconciles interrupted spools; computes union-based makespan and concurrency;
+and projects a privacy-safe phase handoff. The handoff is the only input to the
+committed HTML report.
+
+```bash
+./bin/execution-telemetry --help
+```
+
+Governed by
+[`policies/execution-telemetry.md`](../policies/execution-telemetry.md);
+behavioral coverage lives in `tests/test_execution_telemetry.py`.
+
+### `check-execution-dashboards` — validate committed reports
+
+Regenerates and validates every committed phase report and its aggregate index,
+rejecting stale output, unsafe paths, network dependencies, and unsanitized
+runtime data. An empty archive is valid before the first completed phase.
+
+```bash
+./bin/check-execution-dashboards
+```
+
+### `serve-execution-dashboard` — local report server
+
+Serves `reports/execution/` on loopback for browser review. `kickoff` uses its
+`--open` mode as the final end-of-phase handoff after the report has passed
+validation.
+
+```bash
+./bin/serve-execution-dashboard --open
+```
+
+### `check-harness-parity` — canonical/mirror consistency
+
+Verifies the top-level instruction symlink, skill-directory symlinks, and thin
+Codex agent pointers against their canonical Claude definitions.
+
+```bash
+./bin/check-harness-parity
+```
+
+### `check-toolchain-callers` — repository runtime boundary
+
+Inventories active scripts, hooks, workflows, and instructions and rejects
+raw dependency-bearing runtime or test commands that bypass repository-owned
+entry points.
+
+```bash
+./bin/check-toolchain-callers
+```
 
 ### `check-anonymization.sh` — pre-publish leak guard *(starter-only)*
 

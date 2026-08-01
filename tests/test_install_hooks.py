@@ -16,6 +16,7 @@ def hook_repo(tmp_path: Path) -> Path:
     (root / ".githooks").mkdir()
     shutil.copy2(REPO_ROOT / "bin" / "install-hooks", root / "bin" / "install-hooks")
     shutil.copy2(REPO_ROOT / ".githooks" / "pre-push", root / ".githooks" / "pre-push")
+    shutil.copy2(REPO_ROOT / ".githooks" / "pre-commit", root / ".githooks" / "pre-commit")
     subprocess.run(["git", "init", "-q", "-b", "master", str(root)], check=True)
     return root
 

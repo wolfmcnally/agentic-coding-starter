@@ -76,7 +76,20 @@ Preflight is fail-closed. A missing CLI, unusable authentication, unavailable mo
 
 ## Invocation, resume, and fallback
 
-Production commands and auth traps live in [`briefs/cross-agent-invocation.md`](../briefs/cross-agent-invocation.md). Every external call runs through `bin/kickoff-config watch` under [`role-timeouts.md`](role-timeouts.md). Roles resume the same external session across revision rounds, repeating both model and effort flags.
+`bin/kickoff-config` owns the production command. `render-command` emits the
+exact inspectable argv; `watch` generates and launches it from role, venue,
+model, effort, prompt, artifact, resume, and timeout metadata. Callers never
+hand-build a Claude or Codex command. The manager alone owns auth scrubs,
+recursion depth, access posture, artifact wiring, and model/effort flags. Roles
+resume the same external session across revision rounds.
+
+Before dispatch, `kickoff-evidence register-role-attempt` creates an immutable
+per-attempt registration. The watcher accepts that registration—not the
+append-only ledger—and binds it to exact intelligence and nested wait spans.
+Review roles receive a strict structured-output schema generated from the same
+finding vocabularies the evidence validator enforces. A missing registration,
+routing mismatch, stale artifact, malformed schema result, or bad span join
+fails closed.
 
 A delegated call is an ordinary success only when all three hold:
 
@@ -113,7 +126,12 @@ user-facing summary.
 
 ## Propagation
 
-`kickoff.yaml`, `bin/kickoff-config`, `roles`, this policy, the timeout policy, and the invocation brief are one universal configuration/execution bundle. `stamp` carries it. `teach` upgrades its schema and mechanics while preserving target values, comments, `extensions` data, and telemetry. `learn` may absorb general mechanics but not donor operational state.
+`kickoff.yaml`, `bin/kickoff-config`, `bin/kickoff-evidence`, the finding schema,
+the exact telemetry substrate, `roles`, this policy, and the timeout policy are
+one universal configuration/execution bundle. `stamp` carries it. `teach`
+upgrades its schema and mechanics while preserving target values, comments,
+`extensions` data, and local operational state. `learn` may absorb general
+mechanics but never donor operational state.
 
 ## Relationship to other policies
 

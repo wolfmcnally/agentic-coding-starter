@@ -1,0 +1,222 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Read-only integrity gate for the committed execution-dashboard archive."""
+
+from __future__ import annotations
+
+import filecmp
+import hashlib
+import json
+import re
+import sys
+import tempfile
+from pathlib import Path
+
+SCRIPT_PATH = Path(__file__).resolve()
+REPO_ROOT = SCRIPT_PATH.parents[1]
+sys.path.insert(0, str(REPO_ROOT / "lib"))
+
+from agentic_starter.execution_dashboard import (  # noqa: E402
+    parse_data_script,
+    render_phase_dashboard,
+)
+from agentic_starter.execution_telemetry import TelemetryError  # noqa: E402
+
+ARCHIVE = REPO_ROOT / "reports" / "execution"
+ASSETS = ARCHIVE / "assets"
+ECHARTS_SHA256 = "b66b25aeb4df84e33199dc21694014d336d222cbd9deb0e5a7c14bd6aa0d0fd0"
+FORBIDDEN_PAYLOAD = tuple(
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"\bprompt\b",
+        r"\bresponse\b",
+        r"\bsecret\b",
+        r"\btoken(?:s|_reference)?\b",
+        r"\buncommitted\b",
+        r"/Users/",
+        r"[A-Za-z]:\\",
+        r"https?://",
+        r"\bon(?:click|load|error)\s*=",
+    )
+)
+FORBIDDEN_RENDERER = tuple(
+    re.compile(pattern, re.IGNORECASE)
+    for pattern in (
+        r"\bfetch\s*\(",
+        r"\bXMLHttpRequest\b",
+        r"\bWebSocket\b",
+        r"\binnerHTML\b",
+        r"\beval\s*\(",
+        r"https?://",
+        r"\bon(?:click|load|error)\s*=",
+    )
+)
+FORBIDDEN_GRAPH_STYLING = (
+    re.compile(r"decal:\s*\{\s*show:\s*true"),
+    re.compile(r"\blineDash\b"),
+    re.compile(r'borderType:\s*"dashed"'),
+    re.compile(r"\bborderColor\b"),
+    re.compile(r"\bborderWidth\b"),
+    re.compile(r"\blineWidth\b"),
+)
+FORBIDDEN_REPORT_COPY = (
+    "Construction roles",
+    "Plan review",
+    "Code critique",
+    "Execution span waterfall",
+    "Telemetry quality",
+    "Exact category values",
+    "source_trace_id.slice",
+    "Orchestrator waiting",
+    "Elapsed seconds",
+    'name: "Seconds"',
+    "axisDuration",
+)
+
+
+def fail(message: str) -> None:
+    raise TelemetryError(message)
+
+
+def compare_files(expected: Path, actual: Path) -> None:
+    if not expected.is_file() or not actual.is_file():
+        fail(f"missing dashboard artifact: {expected.relative_to(REPO_ROOT)}")
+    if not filecmp.cmp(expected, actual, shallow=False):
+        fail(f"stale dashboard artifact: {expected.relative_to(REPO_ROOT)}")
+
+
+def validate_static_assets() -> None:
+    chart_library = ASSETS / "echarts-6.1.0.min.js"
+    license_path = ASSETS / "LICENSE-echarts.txt"
+    if not chart_library.is_file():
+        fail("vendored ECharts asset is missing")
+    chart_bytes = chart_library.read_bytes()
+    if hashlib.sha256(chart_bytes).hexdigest() != ECHARTS_SHA256:
+        fail("vendored ECharts asset must be the pinned 6.1.0 release")
+    if not license_path.is_file() or "Apache License" not in license_path.read_text():
+        fail("vendored ECharts license is missing or invalid")
+    renderer = (ASSETS / "dashboard-v3.js").read_text(encoding="utf-8")
+    stylesheet = (ASSETS / "dashboard-v3.css").read_text(encoding="utf-8")
+    for pattern in FORBIDDEN_RENDERER:
+        if pattern.search(renderer) or pattern.search(stylesheet):
+            fail(f"unsafe or online renderer construct: {pattern.pattern}")
+    for pattern in FORBIDDEN_GRAPH_STYLING:
+        if pattern.search(renderer):
+            fail(f"overstated graph styling is forbidden: {pattern.pattern}")
+    for phrase in FORBIDDEN_REPORT_COPY:
+        if phrase in renderer:
+            fail(f"internal or obsolete report copy is forbidden: {phrase}")
+    required = (
+        'renderer: "svg"',
+        "decal: {show: false}",
+        'renderMode: "richText"',
+        "charts.forEach((chart) => chart.resize())",
+        "axisMinutes",
+        "Review Convergence",
+        "Setup & Coordination",
+        "Acceptance Coordination",
+        "prefers-reduced-motion: reduce",
+        "@media print",
+    )
+    combined = renderer + stylesheet
+    for marker in required:
+        if marker not in combined:
+            fail(f"dashboard accessibility/rendering marker is missing: {marker}")
+
+
+def main() -> int:
+    validate_static_assets()
+    payload_files = sorted(ARCHIVE.glob("????-??-??/phase-*/data.js"))
+    if not payload_files:
+        index = parse_data_script(
+            (ARCHIVE / "index-data.js").read_text(encoding="utf-8"), index=True
+        )
+        if index["phases"] or index["dates"]:
+            fail("dashboard index names phases absent from the archive")
+        index_html = (ARCHIVE / "index.html").read_text(encoding="utf-8")
+        if "Content-Security-Policy" not in index_html or "connect-src 'none'" not in index_html:
+            fail("missing default-deny CSP: reports/execution/index.html")
+        for pattern in FORBIDDEN_PAYLOAD:
+            if pattern.search(index_html):
+                fail("unsafe dashboard HTML: reports/execution/index.html")
+        print("EXECUTION DASHBOARDS PASS (0 phases)")
+        return 0
+    payloads = []
+    for file_path in payload_files:
+        text = file_path.read_text(encoding="utf-8")
+        for pattern in FORBIDDEN_PAYLOAD:
+            if pattern.search(text):
+                fail(
+                    f"private or out-of-scope dashboard data in "
+                    f"{file_path.relative_to(REPO_ROOT)}: {pattern.pattern}"
+                )
+        payload = parse_data_script(text)
+        expected_dir = ARCHIVE / payload["utc_date"] / f"phase-{payload['phase_id']}"
+        if file_path.parent != expected_dir:
+            fail(f"dashboard date/phase routing mismatch: {file_path.relative_to(REPO_ROOT)}")
+        payloads.append(payload)
+        handoff_path = expected_dir / "handoff.json"
+        if not handoff_path.is_file():
+            fail(f"missing dashboard handoff: {handoff_path.relative_to(REPO_ROOT)}")
+        handoff_text = handoff_path.read_text(encoding="utf-8")
+        for pattern in FORBIDDEN_PAYLOAD:
+            if pattern.search(handoff_text):
+                fail(
+                    f"private or out-of-scope dashboard handoff in "
+                    f"{handoff_path.relative_to(REPO_ROOT)}: {pattern.pattern}"
+                )
+
+    with tempfile.TemporaryDirectory(prefix="agentic_starter-dashboard-check-") as directory:
+        regenerated = Path(directory) / "execution"
+        for payload in payloads:
+            handoff_path = (
+                ARCHIVE / payload["utc_date"] / f"phase-{payload['phase_id']}" / "handoff.json"
+            )
+            render_phase_dashboard(
+                engine_root=REPO_ROOT,
+                output_root=regenerated,
+                phase_id=payload["phase_id"],
+                accepted_trace_id=payload["accepted_trace_id"],
+                handoff=json.loads(handoff_path.read_text(encoding="utf-8")),
+            )
+        compare_files(ARCHIVE / "index.html", regenerated / "index.html")
+        compare_files(ARCHIVE / "index-data.js", regenerated / "index-data.js")
+        regenerated_index = parse_data_script(
+            (regenerated / "index-data.js").read_text(encoding="utf-8"), index=True
+        )
+        for payload in payloads:
+            relative = Path(payload["utc_date"]) / f"phase-{payload['phase_id']}"
+            compare_files(ARCHIVE / relative / "index.html", regenerated / relative / "index.html")
+            compare_files(ARCHIVE / relative / "data.js", regenerated / relative / "data.js")
+            compare_files(
+                ARCHIVE / relative / "handoff.json",
+                regenerated / relative / "handoff.json",
+            )
+        for phase in regenerated_index["phases"]:
+            target = ARCHIVE / phase["href"]
+            if not target.is_file():
+                fail(f"broken archive navigation target: {phase['href']}")
+            for key in ("previous_href", "next_href"):
+                if phase[key] is not None and not (ARCHIVE / phase[key]).is_file():
+                    fail(f"broken {key}: {phase[key]}")
+
+    html_files = [ARCHIVE / "index.html", *ARCHIVE.glob("????-??-??/phase-*/index.html")]
+    for file_path in html_files:
+        text = file_path.read_text(encoding="utf-8")
+        if "Content-Security-Policy" not in text or "connect-src 'none'" not in text:
+            fail(f"missing default-deny CSP: {file_path.relative_to(REPO_ROOT)}")
+        for pattern in FORBIDDEN_PAYLOAD:
+            if pattern.search(text):
+                fail(f"unsafe dashboard HTML: {file_path.relative_to(REPO_ROOT)}")
+    print(f"EXECUTION DASHBOARDS PASS ({len(payloads)} phases)")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except (OSError, ValueError, TelemetryError) as exc:
+        print(f"EXECUTION DASHBOARDS FAIL: {exc}", file=sys.stderr)
+        raise SystemExit(1)

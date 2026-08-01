@@ -241,6 +241,11 @@ example, a cloud function's declared runtime) and language shebangs are not
 operational caller instructions and remain governed by their own platform
 contracts.
 
+The policy gate runs the repository-owned caller inventory, harness-parity
+check, and execution-dashboard validator. These checkers and their behavioral
+tests are part of the atomic bundle: a transfer that adds a policy without its
+enforcement, or a checker without its callers and fixtures, is incomplete.
+
 After changing any bundle member or caller, run `./bin/test` for focused
 wrapper coverage, run `./bin/check all`, and search for stale raw setup or test
 commands that bypass the repository interface.

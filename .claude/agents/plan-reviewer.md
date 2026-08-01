@@ -117,6 +117,12 @@ Each finding object has: `id`, `severity`, `authority`, `evidence`,
 `affected_paths`, `required_outcome`, `introduced_in`, `resolved_in`, `state`,
 `classification`, and `disposition`.
 
+- `severity`: `blocking`, `high`, `medium`, `low`, or `nit`.
+- `state`: `open`, `addressed`, `verified`, `closed`,
+  `rejected-with-evidence`, `blocked-owner`, or `superseded`.
+- `classification`: `initial`, `introduced-by-revision`,
+  `newly-exposed-by-resolution`, or `missed-in-full-pass`.
+
 ### 5. Issue the verdict
 
 Your final output MUST end with exactly one of these two headers as the first line of the verdict block.

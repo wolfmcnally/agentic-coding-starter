@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Fast deterministic policy checks before a local commit is accepted.
+
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+./bin/check-harness-parity
+./bin/check-toolchain-callers
+

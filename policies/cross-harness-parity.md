@@ -4,7 +4,7 @@ This repo's agent surfaces (skills, agent definitions, top-level instructions) m
 
 ## Principle
 
-Every cross-harness capability has **one canonical source** and **N harness-specific wrappers**. A change to a capability touches all wrappers in the same commit. Drift is detected by inspection; it is repaired by editing the canonical source and refreshing the mirrors.
+Every cross-harness capability has **one canonical source** and **N harness-specific wrappers**. A change to a capability touches all wrappers in the same commit. `bin/check-harness-parity` detects drift deterministically in the full policy gate and the opt-in pre-commit hook.
 
 ## Cross-harness surfaces
 
@@ -47,9 +47,8 @@ Committed documentation must use the bare skill name in harness-neutral prose (f
    - If a harness can follow symlinks for skill directories, prefer that to maintaining a separate mirror.
 
 3. **Codex agent wrappers mirror Claude Code agent definitions.**
-   - A `.codex/agents/<role>.toml` file's `developer_instructions` field carries the same instructional body as `.claude/agents/<role>.md`'s post-frontmatter content.
+   - A `.codex/agents/<role>.toml` file's `developer_instructions` field is a thin exact pointer telling the role to read `.claude/agents/<role>.md`; it never duplicates the Markdown body.
    - The TOML `description` field mirrors the Markdown `description:` frontmatter field.
-   - The TOML `tools` (when the harness honors it) mirrors the Markdown `tools:` frontmatter.
    - Update both in the same commit.
 
 4. **Codex skill mirrors are directory symlinks to canonical skill content.**
@@ -85,28 +84,13 @@ When you discover drift between a canonical file and a mirror:
 
 ## Verification
 
-A quick manual sweep, runnable in any shell from the repo root:
+Run the deterministic checker from any directory:
 
 ```bash
-# Top-level: AGENTS.md is a symlink to CLAUDE.md
-test -L AGENTS.md && [ "$(readlink AGENTS.md)" = "CLAUDE.md" ] && echo "AGENTS.md OK"
-
-# Codex native skills: each .agents/skills/<name> is a DIRECTORY symlink to ../../.claude/skills/<name>
-for d in .claude/skills/*/; do
-  skill=$(basename "$d")
-  link=".agents/skills/${skill}"
-  expected="../../.claude/skills/${skill}"
-  if [ ! -L "$link" ]; then echo "not a symlink: $link"
-  elif [ "$(readlink "$link")" != "$expected" ]; then echo "wrong target: $link → $(readlink "$link") (expected $expected)"
-  elif [ ! -d "$link" ]; then echo "symlink does not resolve to a directory: $link"
-  fi
-done
-
-# Agent roles: each .claude/agents/<role>.md has a .codex/agents/<role>.toml peer (thin wrapper, not symlink)
-for f in .claude/agents/*.md; do
-  role=$(basename "$f" .md)
-  [ -f ".codex/agents/${role}.toml" ] || echo "missing .codex/agents/${role}.toml"
-done
+./bin/check-harness-parity
 ```
 
-A clean repo prints `AGENTS.md OK` and nothing else.
+It fails on a copied or misdirected `AGENTS.md`, missing/orphan/wrong-target
+skill symlinks, missing/orphan agent wrappers, mismatched names or descriptions,
+and wrappers without the exact canonical pointer. `./bin/check policy` and the
+opt-in pre-commit hook invoke it automatically.

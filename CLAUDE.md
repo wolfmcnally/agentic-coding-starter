@@ -95,6 +95,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 - [`role-models.md`](policies/role-models.md) — harness-aware per-role model/venue in `kickoff.yaml`, with separate model and effort fields. Direct edits and `roles` are both supported; `bin/kickoff-config` preserves comments and `extensions` data, preflights every non-native target before phase mutation, and owns runtime fallback/reporting mechanics.
 - [`role-timeouts.md`](policies/role-timeouts.md) — first-event, idle-progress, and hard deadlines under `kickoff.yaml`'s `role_timeouts`. The unified manager enforces external calls, records gitignored telemetry, and recommends evidence-based recalibration without rewriting values automatically.
 - [`orchestration-evidence.md`](policies/orchestration-evidence.md) — binds review, revision, findings, and gates to exact candidate identities; requires fresh run-scoped evidence, delta packets with fail-closed rebasing, a focused-to-final verification ladder, and explicit protocol recovery.
+- [`execution-telemetry.md`](policies/execution-telemetry.md) — requires one exact shared execution trace for stages, roles, waits, tools, and gates; defines union-based timing metrics, fail-closed joins, recovery, privacy projection, and the deterministic offline end-of-phase HTML report.
 - [`mechanistic-vs-intelligence.md`](policies/mechanistic-vs-intelligence.md) — the triage rule: route each repeatable task to a deterministic script in `bin/` (consistency, determinism, repeatability) or to intelligence (synthesis, judgment, generativity). Don't burn a model on what a script does better, or script what needs judgment; split mixed tasks at the seam, and stay alert to conspicuous low-effort wall-clock improvements in expensive mechanics.
 - [`build-gates.md`](policies/build-gates.md) — every repo owns an atomic,
   cwd-independent setup/test/check contract backed by its runtime pin,
@@ -120,10 +121,13 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 - `bin/` — the repo's deterministic executables: the mechanistic half of the
   methodology. [`bin/README.md`](bin/README.md) is the operator index. This
   repo ships the atomic `setup`/`test`/`check`/`python` toolchain interface,
-  opt-in `install-hooks`, universal `kickoff-config`, `kickoff-tree-id`, and
-  `kickoff-evidence` managers, and starter-only `check-anonymization.sh` leak
-  guard.
-- `tests/` — tests for universal methodology machinery outside the isolated deliverable: gate/hook contracts, orchestration evidence, candidate identity, and `kickoff-config`. These are carried into derived projects and run in addition to the deliverable's own gates.
+  opt-in `install-hooks`; universal `kickoff-config`, `kickoff-tree-id`,
+  `kickoff-evidence`, and `execution-telemetry` managers; deterministic
+  dashboard, harness-parity, and caller-policy checkers; and the starter-only
+  `check-anonymization.sh` leak guard.
+- `lib/agentic_starter/` — shared deterministic implementation for exact execution telemetry, evidence schemas, and offline dashboard generation.
+- `reports/execution/` — committed, privacy-safe, offline phase reports and aggregate index generated from sanitized telemetry handoffs.
+- `tests/` — tests for universal methodology machinery outside the isolated deliverable: gate/hook contracts, orchestration evidence, execution telemetry and reports, candidate identity, and `kickoff-config`. These are carried into derived projects and run in addition to the deliverable's own gates.
 - `.githooks/` — tracked optional lifecycle hooks. `bin/install-hooks` opts a checkout in; cloning or stamping never changes Git configuration silently.
 - `plan/` — phased execution plan. Entry point [`plan/INDEX.md`](plan/INDEX.md) (dependency graph, status table, cross-cutting concerns, critical-files map). Each `plan/phase-*.md` holds Goal / Deliverables / Acceptance / brief refs. **When `plan/` and a brief disagree, `plan/` wins.**
 - `LOG.md` — append-only activity log. `kickoff` writes START on phase entry and END on phase completion. Do not hand-edit historical entries.
@@ -144,7 +148,7 @@ The deliverable's directory (whatever the project calls it — `project/` when p
 
 ## Phase work and the `kickoff` skill
 
-Work proceeds phase by phase under [`plan/`](plan/INDEX.md). `kickoff` orchestrates an initial implementation through plan → plan-review → code → code-review → acceptance (plan review is skipped for phases declaring the `light` review lane — [`policies/review-lanes.md`](policies/review-lanes.md); the initial code critic runs in every lane). First reviews are complete; later rounds use candidate-bound finding ledgers and causal revision packets, widening back to a complete pass when authority, risk, scope, or continuity changes. Iteration uses focused checks, while acceptance ends with one complete `./bin/check all` against the unchanged approved candidate. Later test- or user-driven corrections are routed proportionally by risk and size. Canonical role definitions live in `.claude/agents/*.md` (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`); don't invoke them by hand for full-phase work unless deliberately bypassing the orchestration.
+Work proceeds phase by phase under [`plan/`](plan/INDEX.md). `kickoff` orchestrates an initial implementation through plan → plan-review → code → code-review → acceptance (plan review is skipped for phases declaring the `light` review lane — [`policies/review-lanes.md`](policies/review-lanes.md); the initial code critic runs in every lane). First reviews are complete; later rounds use candidate-bound finding ledgers and causal revision packets, widening back to a complete pass when authority, risk, scope, or continuity changes. Iteration uses focused checks, while acceptance ends with one complete `./bin/check all` against the unchanged approved candidate. One shared exact trace covers stage, role, wait, tool, and gate activity; phase close validates its joins, writes exact timing metrics into the END block, and generates a privacy-safe offline HTML report as the final handoff. Later test- or user-driven corrections are routed proportionally by risk and size. Canonical role definitions live in `.claude/agents/*.md` (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`); don't invoke them by hand for full-phase work unless deliberately bypassing the orchestration.
 
 ### Status markers
 
@@ -183,6 +187,11 @@ These are the universals every project derived from this template inherits. The 
   phase-prescribed sequence and authoritative full gate once against the
   unchanged approved candidate. See
   [`policies/orchestration-evidence.md`](policies/orchestration-evidence.md).
+- **Execution truth is trace-bound.** Stage, role, wait, tool, and gate timing
+  comes from one append-only trace joined fail-closed to evidence. Makespan is
+  a union of active intervals rather than a sum that double-counts overlap;
+  every completed phase ends with a sanitized, deterministic, offline HTML
+  report. See [`policies/execution-telemetry.md`](policies/execution-telemetry.md).
 - **Mechanistic vs. intelligence.** Triage every repeatable task. Deterministic, exact, repeatable work is a script under `bin/`; synthesis, judgment, and generative work is an agent. Don't burn a model on what a script does better (cheaper, exact, harness-portable, testable), and don't script what needs judgment. Split mixed tasks at the seam — the agent decides *what*, a deterministic script does the mechanical *how*. See [`policies/mechanistic-vs-intelligence.md`](policies/mechanistic-vs-intelligence.md).
 - **Human wall-clock efficiency.** Treat the operator's elapsed wait as a first-class development cost. Stay alert when gates, builds, indexing, generation, migrations, repeated setup, or other operations materially dominate the work and a substantial, low-risk reduction appears available. Prefer conspicuous gains—safe parallel execution of genuinely independent work, one-time invariant setup, focused iteration, or reuse with complete input identity—over heroic micro-optimization. Never trade away correctness, coverage, determinism, review independence, or the complete final gate, and never expand the active phase merely to chase speed.
 - **Repository-owned toolchain contract.** Setup, focused/full testing,
@@ -191,7 +200,7 @@ These are the universals every project derived from this template inherits. The 
   language profiles may add a runtime wrapper such as `./bin/python`. See
   [`policies/build-gates.md`](policies/build-gates.md).
 - **Repo-relative paths only** in any file committed to this repo. Bash invocations may use absolute paths.
-- **Cross-harness parity.** Skills and agent definitions have one canonical home (`.claude/` / repo-root `CLAUDE.md`) and harness-specific mirrors (`.codex/`, `.agents/`, `AGENTS.md`). Edit the canonical; refresh the mirror in the same commit.
+- **Cross-harness parity.** Skills and agent definitions have one canonical home (`.claude/` / repo-root `CLAUDE.md`) and thin harness-specific pointers (`.codex/`, `.agents/`, `AGENTS.md`). Edit the canonical; `bin/check-harness-parity` rejects missing, copied, or orphaned mirrors.
 - **Human decides done.** `kickoff` never auto-commits. The human reviews each phase's END block and either accepts the work, asks for revisions, or commits.
 - **Greenfield until released.** No backward-compatibility shims, legacy aliases, or migration code paths are added unless the policy is explicitly amended. Wrong shapes get replaced directly. See [`policies/greenfield-until-released.md`](policies/greenfield-until-released.md).
 
@@ -230,7 +239,7 @@ Terms used consistently across briefs, skills, policies, and code. Mismatched us
 - **Policy.** A short, prescriptive rule under `policies/` that every phase honors. Policies are the law of the repo.
 - **Phase.** One unit of phased work. A phase file (`plan/phase-N.md`) holds Goal, Deliverables, Acceptance, and Brief refs. Status lives in `plan/INDEX.md`.
 - **Sub-phase.** A child of a major phase (`plan/phase-N.M.md`), produced by decomposing the parent at the moment the parent becomes the next phase to work.
-- **`kickoff`.** The orchestrator skill. Invoke it as `/kickoff` in Claude Code or `$kickoff` in Codex. Runs an initial phase implementation through planner → reviewer → coder → critic, retains candidate-bound evidence across revision rounds, closes with the complete final gate, then routes later corrections in proportion to risk and size. Writes START/END blocks to `LOG.md`; it may write code only for an eligible small, low-risk follow-up fix.
+- **`kickoff`.** The orchestrator skill. Invoke it as `/kickoff` in Claude Code or `$kickoff` in Codex. Runs an initial phase implementation through planner → reviewer → coder → critic, retains candidate-bound evidence across revision rounds, closes with the complete final gate, records exact execution timing, generates the end-of-phase HTML report, then routes later corrections in proportion to risk and size. Writes START/END blocks to `LOG.md`; it may write code only for an eligible small, low-risk follow-up fix.
 - **`learn`.** Universal cross-repo skill. Invoke it as `/learn` in Claude Code or `$learn` in Codex. Explores a donor repo and proposes which of its patterns to absorb into the current repo. Plan-first; user approves; then applies. The donor stays read-only.
 - **`teach`.** Universal cross-repo skill. Invoke it as `/teach` in Claude Code or `$teach` in Codex. Inverse of `learn`. Proposes which of the current repo's patterns to apply to a target repo. Plan-first; user approves; then applies to the target. The current repo stays read-only during teaching.
 - **The four canonical agents.** `phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`. Their names are load-bearing — `kickoff` invokes them by name. Their definitions live in `.claude/agents/` (canonical) and `.codex/agents/` (mirror).

@@ -139,8 +139,8 @@ Teaching: cross-harness review handoff is a *map, not a payload*. Applied one im
 - briefs/cross-agent-invocation.md — §4 reworded the redact bullet and added the "map not payload / never reject on diff size" pattern.
 Observed war-story generalized (no source-repo-specific byte counts) to match the template's style. Codex mirrors (.codex/prompts/kickoff.md, .agents/skills/kickoff) are symlinks to the edited canonical — auto-reflected. Parity surfaces clean; no heals needed. No commit made — target owner owns commits.
 
-## 2026-07-24 20:02 — TAUGHT FROM BARTLEY
-Source: bartley @ <sha>
+## 2026-07-24 20:02 — TAUGHT FROM DONOR A
+Source: Donor A @ <sha withheld>
 Items applied: 1, by tier T1=1/T2=0/T3=0/T4=0
 Parity heals applied: 0 (AUTO); 0 surfaced as DECIDE
 Stale migrations: 0 (AUTO); 0 DECIDE; 0 DEFER
@@ -212,3 +212,18 @@ propagation, candidate binding, or the complete final gate.
 Patterns to feed back via /learn: effectiveness-preserving operator-latency
 awareness as an architectural invariant and proportional duty shared by the
 planner, plan reviewer, coder, critic, and orchestrator.
+
+## 2026-08-01 15:25 — LEARN
+Donor: Donor A @ <sha withheld>
+Items absorbed: 3, by tier T1=2/T2=1/T3=0/T4=0
+Stale-in-light-of-learning migrations: 16 AUTO; 2 DECIDE resolved; 0 DEFER
+Files touched: 47
+
+Generalized improvements: one trace-bound execution-evidence plane now carries
+exact monotonic timing across stages, roles, waits, tools, and gates; generated
+cross-harness commands and immutable attempt records fail closed against that
+trace; deterministic parity and repository-caller checks guard integration.
+Every completed phase now produces a sanitized, responsive, fully offline HTML
+report and aggregate archive after acceptance. The report uses overlap-safe
+interval unions, explicit gaps and retries, a pinned chart asset, deterministic
+regeneration, and browser-verified desktop/mobile presentation.
