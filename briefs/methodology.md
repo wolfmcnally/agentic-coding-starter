@@ -1,6 +1,6 @@
 ---
 title: "The Agentic Coding Methodology — Eleven Steps"
-date: 2026-06-09
+date: 2026-08-04
 status: methodology
 scope: The canonical statement of the methodology this template implements. Authoritative reference for every skill, agent, and policy in the repo.
 ---
@@ -96,12 +96,26 @@ low-risk follow-up correction whose intended shape is already determined.
 - **Closing a phase requires recorded evidence**, not just a green test run (step 9).
 - **Phases and sub-phases are mutable**; refactor the plan as understanding grows (step 11).
 
+## Orchestration runtime doctrine
+
+Hard-won rules for step 7 when the loop runs fail-closed and unattended. Distilled from a production day in a derived repo in which one orchestration halted nine times: each halt was diagnosed, cured, and compiled into a standing rule; these are the rules.
+
+- **Fail-closed park, diagnosed self-resume.** Any first-encountered defect halts the run and writes an honest park record. A halt whose cause is *novel* for the phase, fully diagnosed with a recorded causal correction, and whose integrity proofs pass (candidate restoration or explicit lineage, prior evidence read-only, governed resources released) may self-resume without waiting for the human — against a small budget (three self-resumes between human contacts is a working default). A *recurring* cause class always stops for the human: recurrence means a generator the cure didn't reach.
+- **Never round-trip deterministic work through a model.** Bookkeeping rebases, identifier substitutions, and small revisions to large documents are orchestrator-performed, byte-diff-proven transforms; the displaced model role reviews the result instead of producing it.
+- **No artifact larger than one model response travels a single-message channel.** Large documents are revised by delta plus deterministic merge. A model asked to re-emit a big document verbatim will summarize it or paginate it, and either way the artifact is wrong.
+- **Qualify every measuring instrument outside the evidentiary run** before it gates anything: exercise every branch, prove aim (the probe demonstrably measures the intended target), and prove falsifiability (a deliberately wrong probe must fail). An assertion that can only pass is not evidence — a mis-aimed probe can emit green forever.
+- **Embed every contract verbatim in the dispatch prompt**, rendered from the enforcing source — never trusted to model memory, never inferred from prose in an upstream document. This includes closed vocabularies, artifact schemas, and output-shape requirements.
+- **Designed human checkpoints are satisfying stops**, enumerated in advance so continuation machinery never bulldozes holds that exist for the human. Every other stop is classified before it is cured — legitimate park, defect, contract mismatch, or model behavior — because each class takes a different fix, and retrying a generator-class cause can never converge.
+- **Run an out-of-band supervisor** for long orchestrations: a second session with no write access to the worker's context that reads its trace, verifies every load-bearing claim against ground truth, and drafts steering the human ratifies and relays. The supervisor's real job is compiling incidents into standing rules so each failure class dies after its first appearance.
+
+**Enforcement status:** these are doctrine, not yet mechanics. Self-resume budgets in `kickoff`, delta-merge tooling, and instrument-qualification harnesses are not yet mechanized in this template; until they land, the `kickoff` prose loop and the human relay carry these rules.
+
 ## What this methodology gives up
 
 Honest accounting of the cost.
 
 - **Speed of a single throwaway iteration.** A one-line ad-hoc prompt is faster than spinning up a brief, a plan, and a phase. Use ad-hoc for one-off scripts; use this methodology for projects that will exist next month.
-- **Autonomy.** The methodology assumes a human reviewer per phase. It's the wrong tool if your goal is unattended overnight code generation.
+- **Autonomy.** The methodology assumes a human reviewer per phase. The orchestration runtime doctrine (above) earns long unattended stretches *between* designed checkpoints, but every phase still terminates at a human gate; if your goal is code generation with no human gates at all, this is still the wrong tool.
 - **Flexibility within a session.** The orchestrator follows the plan. If you want to wander, do it before `kickoff` starts or in between phases — not mid-orchestration.
 
 What you get in exchange: each phase leaves a reviewable artifact pair (END block + commit diff), the next session resumes from a known state without re-explaining anything, and the structural surface (briefs, policies, plan, log) tells the next human contributor — or the next session of you — what's true about the project.

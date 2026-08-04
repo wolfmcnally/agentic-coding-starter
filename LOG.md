@@ -227,3 +227,19 @@ Every completed phase now produces a sanitized, responsive, fully offline HTML
 report and aggregate archive after acceptance. The report uses overlap-safe
 interval unions, explicit gaps and retries, a pinned chart asset, deterministic
 regeneration, and browser-verified desktop/mobile presentation.
+
+## 2026-08-04 00:27 — TAUGHT FROM DONOR
+Source: the donor @ <sha withheld> — a private production repo built with this methodology, feeding back one day's fail-closed orchestration learnings (nine diagnosed halts → seven runtime rules).
+Items applied: 1, by tier T1=1/T2=0/T3=0/T4=0
+Parity heals applied: 0 (AUTO); 0 surfaced as DECIDE
+Stale-in-light-of-teaching migrations: 2 (AUTO); 0 DECIDE; 1 DEFER
+Files touched in target: 4
+
+Teaching: the orchestration runtime doctrine — seven rules for the fail-closed kickoff loop running unattended: (1) fail-closed park with diagnosed self-resume under a novelty ledger and a small budget, recurring cause classes always stopping for the human; (2) deterministic work never round-trips a model — orchestrator-performed byte-diff-proven transforms with the displaced role as reviewer; (3) no artifact larger than one model response travels a single-message channel — large documents revise by delta plus deterministic merge; (4) instruments qualify outside the evidentiary run with aim proofs and falsification controls; (5) contracts embed verbatim in dispatch prompts, rendered from the enforcing source; (6) designed human checkpoints are satisfying stops, and every other stop is classified before it is cured; (7) an out-of-band supervisor verifies claims against ground truth and compiles incidents into standing rules.
+
+Applied across: briefs/methodology.md (new § Orchestration runtime doctrine + honest revision of the "Autonomy" gives-up bullet — unattended stretches between designed checkpoints are now doctrine-supported; date bump), .claude/skills/methodology/SKILL.md (mirrored section; Codex surface auto-reflected via the .agents/skills/methodology directory symlink), CLAUDE.md (methodology-briefs catalog line extended), LOG.md (this entry).
+
+DEFER: the prescriptive/enforcement layer — a fail-closed-resume policy, kickoff self-resume mechanics and budget knobs, delta-merge tooling, instrument-qualification harnesses, four-canonical-agents/review-lanes integration — awaits the donor's vetted mechanics (its own engine phase); transfer via a future teach, refinements return via learn. Doctrine section carries an explicit enforcement-status note so brief and mechanics cannot silently diverge.
+
+Patterns to feed back via /learn (target → source): None identified within this run's narrow scope.
+Verification: anonymization check clean; parity surfaces clean (no heals needed); brief and skill sections content-identical. Not committed — starter's owner drives commits.

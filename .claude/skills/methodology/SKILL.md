@@ -87,6 +87,20 @@ The orchestrator delegates to four specialist roles. Their names are load-bearin
 - **Closing a phase requires recorded evidence.**
 - **Phases and sub-phases are mutable.**
 
+## Orchestration runtime doctrine
+
+Hard-won rules for step 7 when the loop runs fail-closed and unattended:
+
+- **Fail-closed park, diagnosed self-resume.** Any first-encountered defect halts the run and writes an honest park record. A halt whose cause is *novel* for the phase, fully diagnosed with a recorded causal correction, and whose integrity proofs pass may self-resume without waiting for the human — against a small budget (three between human contacts is a working default). A *recurring* cause class always stops for the human: recurrence means a generator the cure didn't reach.
+- **Never round-trip deterministic work through a model.** Bookkeeping rebases, identifier substitutions, and small revisions to large documents are orchestrator-performed, byte-diff-proven transforms; the displaced model role reviews the result instead of producing it.
+- **No artifact larger than one model response travels a single-message channel.** Large documents are revised by delta plus deterministic merge; a model asked to re-emit a big document verbatim will summarize or paginate it, and either way the artifact is wrong.
+- **Qualify every measuring instrument outside the evidentiary run** before it gates anything: exercise every branch, prove aim, and prove falsifiability (a deliberately wrong probe must fail). An assertion that can only pass is not evidence.
+- **Embed every contract verbatim in the dispatch prompt**, rendered from the enforcing source — never model memory, never prose inference.
+- **Designed human checkpoints are satisfying stops**, enumerated in advance. Every other stop is classified before it is cured — legitimate park, defect, contract mismatch, or model behavior — because each class takes a different fix, and retrying a generator-class cause can never converge.
+- **Run an out-of-band supervisor** for long orchestrations: a second session with no write access to the worker's context that verifies claims against ground truth and drafts human-ratified steering, compiling incidents into standing rules.
+
+**Enforcement status:** doctrine, not yet mechanics — until self-resume budgets, delta-merge tooling, and qualification harnesses land in `kickoff`, the prose loop and the human relay carry these rules. Full statement: `briefs/methodology.md` § Orchestration runtime doctrine.
+
 ## Source
 
 This skill restates [`briefs/methodology.md`](../../../briefs/methodology.md). If that brief changes, update this skill.
