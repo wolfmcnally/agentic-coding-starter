@@ -98,6 +98,19 @@ Hard-won rules for step 7 when the loop runs fail-closed and unattended:
 - **Embed every contract verbatim in the dispatch prompt**, rendered from the enforcing source — never model memory, never prose inference.
 - **Designed human checkpoints are satisfying stops**, enumerated in advance. Every other stop is classified before it is cured — legitimate park, defect, contract mismatch, or model behavior — because each class takes a different fix, and retrying a generator-class cause can never converge.
 - **Run an out-of-band supervisor** for long orchestrations: a second session with no write access to the worker's context that verifies claims against ground truth and drafts human-ratified steering, compiling incidents into standing rules.
+- **Choose the weakest instrument that can falsify the defect class under test** — retire instruments when a design change eliminates their defect class; every instrument repair first re-asks whether the measured property still needs measuring.
+- **Every falsification control must itself be provably satisfiable** — the wrong probe must fail for its intended reason AND the specified control must be able to succeed under the declared comparator; check at specification time.
+- **A machine check fully shadowed by a designed human gate defaults to advisory** — recording rights, not parking rights.
+- **Structure every ratification artifact orientation-first** — human gates degrade under density, not just volume ("approval snow blindness"): plain-language beats first, fixed decision-payload position, producer owns legibility, receiver read-back as the forcing function.
+
+## Run-lifecycle vocabulary
+
+- **Finalized** — lifecycle closed, outcome recorded, failure included.
+- **Sealed** — passed its acceptance gate; digest-bound, immutable, cited downstream. Working shorthand for supply-chain *attestation*: git commits are the substrate (a commit seals *what*; a seal adds *why you may rely on it*); working-state tree hashes (`bin/kickoff-tree-id`) seal the uncommitted interval. Seal at every trust boundary; keep the sealer cheap enough that ubiquity is free.
+- **Frozen** — tooling made byte-identical and read-only under a recorded manifest, so later runs provably execute the qualified instrument.
+- **Parked** — the run-level stop discipline (written causal account, nothing disturbed, clean proven scene, explicit resume conditions) — distinct from interrupt/pause, checkpoint, and halt.
+
+Full statement: `briefs/methodology.md` § Run-lifecycle vocabulary.
 
 **Enforcement status:** doctrine, not yet mechanics — until self-resume budgets, delta-merge tooling, and qualification harnesses land in `kickoff`, the prose loop and the human relay carry these rules. Full statement: `briefs/methodology.md` § Orchestration runtime doctrine.
 

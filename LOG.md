@@ -243,3 +243,18 @@ DEFER: the prescriptive/enforcement layer — a fail-closed-resume policy, kicko
 
 Patterns to feed back via /learn (target → source): None identified within this run's narrow scope.
 Verification: anonymization check clean; parity surfaces clean (no heals needed); brief and skill sections content-identical. Not committed — starter's owner drives commits.
+
+## 2026-08-04 13:51 — TAUGHT FROM DONOR
+Source: the donor @ <sha withheld> — second transfer of the day, carrying the doctrine ratified since the morning's seven-rule teach.
+Items applied: 1, by tier T1=1/T2=0/T3=0/T4=0
+Parity heals applied: 0 (AUTO); 0 surfaced as DECIDE
+Stale-in-light-of-teaching migrations: 2 (AUTO); 0 DECIDE; 1 DEFER (unchanged: enforcement mechanics await the donor's vetted engine phase)
+Files touched in target: 4
+
+Teaching, part 1 — four doctrine rules appended to briefs/methodology.md § Orchestration runtime doctrine: instrument altitude (weakest falsifying instrument; retire instruments whose defect class a design change eliminated; ratchet warning); falsification-control satisfiability (a control must be provably able to succeed, checked at specification time); advisory-when-human-shadowed (machine checks fully shadowed by a designed human gate earn recording rights, not parking rights); orientation-first ratification artifacts (density-induced approval collapse — "approval snow blindness" — mitigated by plain-language beats first, fixed decision-payload geography, producer-owned legibility, receiver read-back).
+
+Teaching, part 2 — new § Run-lifecycle vocabulary: finalized / sealed / frozen / parked as a set. Sealed is presented as working shorthand for supply-chain attestation (digest-bound subject plus acceptance predicate), with git commits as the substrate (a commit seals what; a seal adds why you may rely on it) and working-state tree hashes — this template's own bin/kickoff-tree-id — sealing the uncommitted interval; usage rule is seal-at-every-trust-boundary with a sealer cheap enough that ubiquity is free. Parked cross-references the doctrine's stop discipline and is contrasted with interrupt/pause, checkpoint, and halt. Note: the template already carried the full candidate-identity mechanism from earlier transfers; this teach adds the conceptual layer the mechanism lacked.
+
+Mirrored in .claude/skills/methodology/SKILL.md (Codex surface auto-reflects via directory symlink); CLAUDE.md methodology-briefs catalog line updated to the eleven-rule count and the vocabulary.
+Patterns to feed back via /learn (target → source): the donor's own methodology brief has not yet absorbed this doctrine — the return transfer is the donor's deferred phase, by design.
+Verification: anonymization check clean; parity clean; brief and skill sections content-aligned. Not committed — starter's owner drives commits.
