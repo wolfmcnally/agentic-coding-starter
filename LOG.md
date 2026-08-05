@@ -258,3 +258,35 @@ Teaching, part 2 — new § Run-lifecycle vocabulary: finalized / sealed / froze
 Mirrored in .claude/skills/methodology/SKILL.md (Codex surface auto-reflects via directory symlink); CLAUDE.md methodology-briefs catalog line updated to the eleven-rule count and the vocabulary.
 Patterns to feed back via /learn (target → source): the donor's own methodology brief has not yet absorbed this doctrine — the return transfer is the donor's deferred phase, by design.
 Verification: anonymization check clean; parity clean; brief and skill sections content-aligned. Not committed — starter's owner drives commits.
+
+## 2026-08-05 09:20 — TAUGHT FROM DONOR
+Source: the donor @ <sha withheld> — third transfer, carrying the doctrine ratified during an overnight one-shot implementation run and its supervision.
+Items applied: 1, by tier T1=1/T2=0/T3=0/T4=0
+Parity heals applied: 0 (AUTO); 0 surfaced as DECIDE
+Stale-in-light-of-teaching migrations: 1 (AUTO: CLAUDE.md catalog rule count eleven → fourteen with the three new rule names); 0 DECIDE; 1 DEFER (unchanged: enforcement mechanics await the donor's engine phase)
+Files touched in target: 4
+
+Doctrine growth, 11 → 14 rules in briefs/methodology.md § Orchestration
+runtime doctrine, mirrored in the methodology skill: (1) the instrument-
+altitude rule gains its time axis — before any repair or new machinery,
+check the roadmap for a scheduled change that obsoletes the repaired
+surface; a fix for what the plan deletes is the ratchet in a new coat
+(motivating case: a validator exception proposed for one legacy ledger
+row in a store already scheduled for reset). (2) New rule: preflight the
+environment before staking an unattended run on it — a fail-closed probe
+ladder before the tasking prompt; barriers surface one layer per round
+(observed: three distinct sandbox boundaries in three successive rounds);
+fixes land as durable config; a green authoritative baseline classifies
+every later failure as the run's own. (3) New rule: well-specified
+isolated tasks may run as goal-armed one-shots instead of the four-role
+loop — operator-reviewed spec substitutes for plan review, new-files-only
+write set, designed parks as satisfying stops, durable goal carrying
+outcome + printed proof + park clause, independent verification before
+push; goal durability is harness-specific (one harness persists goals as
+database state across compaction, another silently clears them). (4) New
+rule: authoritative gates run in the native execution context — sandboxed
+gate output can contain phantom failures in either direction; one native
+baseline classifies; a gate that could not run is "not run," never
+"passed." Feed-back note: the donor's own methodology brief receives the
+full fourteen-rule doctrine by /learn immediately after this teach, per
+operator direction.
