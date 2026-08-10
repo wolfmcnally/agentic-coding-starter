@@ -312,3 +312,36 @@ The application return-path review found no additional generalizable candidate
 beyond the four approved donor lessons. Focused validation did expose and close
 two incomplete applications of the approved propagation and corpus-reconciliation
 changes before the final gate.
+
+## 2026-08-10 14:45 MDT — LEARN
+Donor: Donor A @ <sha withheld>
+Items absorbed: 8, by tier T1=7/T2=1/T3=0/T4=0
+Donor lessons harvested: 1 (1 absorbed as rule proposal; 0 filed to lessons/)
+Application-found return candidates: 2 filed to lessons/
+Stale-in-light-of-learning migrations: 3 AUTO; 2 DECIDE resolved by approval; 0 DEFER
+Files touched: 20
+
+Generalized improvements: `kickoff-evidence` now checks gate-artifact
+preconditions before the gated command runs and records an artifact absent
+afterward with no digest instead of stranding the closed span, and
+`ingest-findings` requires `--review-span-id` with an owned, recorded
+`--no-review-span` opt-out — adopted atomically with six behavioral tests, the
+kickoff skill's Steps 4/6 and operating notes, and the orchestration-evidence
+policy. The kickoff skill gained Step 10a (a structured close-time user testing
+protocol, cross-referenced from the user-demo policy). The donor's standing
+methodology lesson landed as a direct fix: the catalog checker now exempts
+inline code spans from link scanning the way fences are exempt. The same
+checker also gained the phase-status checks the policy had claimed without
+implementing (frontmatter `status:` and body status declarations in per-phase
+files), with the policy's Verification section rewritten to describe what
+actually runs. CLAUDE.md gained a Lessons operating section; the policies
+README gained the authority-precedence ladder, the expanded not-a-policy list,
+and the policy-evolution lifecycle; smaller lifts landed in the lessons,
+briefs, and repo-relative-paths policies, the self-improvement brief, and
+plan/INDEX.md's conventions. The example project gained a network-egress
+tripwire with an arming test.
+
+The application return-path review filed two candidates: wholesale donor-file
+copies can silently revert destination-ahead hunks, and mechanizing a policy's
+verification can silently narrow the contract when the prose delegation lands
+ahead of the gate's implementation.

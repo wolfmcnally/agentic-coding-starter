@@ -22,10 +22,19 @@ NEXT_MARKER = "⬅️"
 IN_PROGRESS_MARKER = "🚧"
 NOT_STARTED_MARKER = "⏳"
 FENCE_PATTERN = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+# An inline code span is quotation, not prose: a link inside backticks is a
+# quoted edit target, not a live link, so it is exempt the same way fenced
+# blocks are. The pattern honors CommonMark's equal-length backtick delimiters.
+CODE_SPAN_PATTERN = re.compile(r"(?<!`)(`+)(?!`)(?:.+?)(?<!`)\1(?!`)")
 INLINE_LINK_PATTERN = re.compile(r"!?\[[^\]\n]*\]\((?P<destination>[^)\n]+)\)")
 REFERENCE_LINK_PATTERN = re.compile(r"^ {0,3}\[[^\]\n]+\]:\s*(?P<destination><[^>\n]+>|\S+)")
 URI_SCHEME_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 PLACEHOLDER_PATTERN = re.compile(r"<[^>]+>|\{[^}]+\}")
+FRONTMATTER_STATUS_PATTERN = re.compile(r"^status\s*:", re.IGNORECASE)
+STATUS_DECLARATION_PATTERN = re.compile(
+    r"^ {0,3}\*{0,2}status\*{0,2}\s*:\s*(⏳|⬅️|🚧|✅|not started|next|in progress|completed)",
+    re.IGNORECASE,
+)
 
 
 def report(surface: str, relative: str, reason: str) -> None:
@@ -112,6 +121,52 @@ def check_phase_ledger() -> None:
             "plan/INDEX.md",
             f"idle incomplete phase table must carry exactly one {NEXT_MARKER} marker; found 0",
         )
+
+
+def frontmatter_lines(text: str) -> list[tuple[int, str]]:
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return []
+    block: list[tuple[int, str]] = []
+    for line_number, line in enumerate(lines[1:], start=2):
+        if line.strip() in ("---", "..."):
+            return block
+        block.append((line_number, line))
+    return []
+
+
+def check_phase_files() -> None:
+    """Status lives only in plan/INDEX.md's phase table (policies/phase-status.md).
+
+    Narrative mentions of the status emojis in prose are fine; the failure mode
+    is a *declaration* — a frontmatter `status:` key or a `Status: ✅`-shaped
+    line — which creates a second source of truth.
+    """
+    for phase_file in sorted((ROOT / "plan").glob("phase-*.md")):
+        relative = phase_file.relative_to(ROOT).as_posix()
+        try:
+            text = phase_file.read_text(encoding="utf-8")
+        except OSError as exc:
+            report("plan", relative, str(exc))
+            continue
+        frontmatter = frontmatter_lines(text)
+        for line_number, line in frontmatter:
+            if FRONTMATTER_STATUS_PATTERN.match(line):
+                report(
+                    "plan",
+                    relative,
+                    f"line {line_number}: frontmatter must not carry a status field",
+                )
+        frontmatter_numbers = {line_number for line_number, _ in frontmatter}
+        for line_number, line in markdown_prose_lines(text):
+            if line_number in frontmatter_numbers:
+                continue
+            if STATUS_DECLARATION_PATTERN.match(CODE_SPAN_PATTERN.sub("", line)):
+                report(
+                    "plan",
+                    relative,
+                    f"line {line_number}: status declaration outside plan/INDEX.md's phase table",
+                )
 
 
 def tracked_markdown_files() -> list[Path]:
@@ -204,7 +259,8 @@ def check_markdown_links() -> None:
         except OSError as exc:
             report("links", source.relative_to(ROOT).as_posix(), str(exc))
             continue
-        for line_number, line in markdown_prose_lines(text):
+        for line_number, raw_line in markdown_prose_lines(text):
+            line = CODE_SPAN_PATTERN.sub("", raw_line)
             destinations = [
                 match.group("destination") for match in INLINE_LINK_PATTERN.finditer(line)
             ]
@@ -230,6 +286,7 @@ def main() -> int:
         for directory in CATALOGED_DIRECTORIES:
             check_catalog(directory, instructions)
     check_phase_ledger()
+    check_phase_files()
     check_markdown_links()
     if DRIFT:
         print("\n".join(sorted(DRIFT)))

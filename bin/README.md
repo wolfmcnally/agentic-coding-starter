@@ -192,8 +192,14 @@ trace-binding, candidate-lineage, timing-summary, and gate records for one
 `kickoff` run. It extracts exact JSON evidence blocks from role artifacts,
 enforces stable finding identity and state transitions, detects authority/risk
 rebases, compiles deterministic revision packets, and rejects stale or
-unjoined evidence. Run `--help` or a subcommand's `--help` for the full
-schema-driven interface.
+unjoined evidence. `ingest-findings` requires `--review-span-id` (convergence
+metrics attach to the review pass's own intelligence span, and a finalized
+trace cannot be repaired retroactively); a non-review ingest passes
+`--no-review-span '<reason>'`, which records the owned omission in the run's
+`review-metrics-omitted.jsonl`. `run-gate` checks artifact-path preconditions
+before the gated command runs and records an artifact absent afterward with no
+digest plus a loud warning rather than stranding the closed gate span. Run
+`--help` or a subcommand's `--help` for the full schema-driven interface.
 
 ```bash
 ./bin/kickoff-evidence --help
@@ -294,7 +300,12 @@ indexed entry resolves to a file (no orphans either way). It also validates
 tracked repository-internal Markdown links and the complete phase lifecycle:
 each phase-table row has one recognized status, at most one row is `⬅️`, idle
 incomplete work has exactly one next row, and active or complete work may have
-none.
+none. Link scanning exempts fenced code blocks *and* inline code spans — a
+link quoted inside backticks is a quoted edit target, not a live link. It also
+enforces [`policies/phase-status.md`](../policies/phase-status.md) over
+per-phase files: a `status:` frontmatter field or a `Status: ✅`-shaped
+declaration line in any `plan/phase-*.md` fails; narrative emoji mentions in
+prose stay fine.
 
 ```bash
 ./bin/check-catalogs

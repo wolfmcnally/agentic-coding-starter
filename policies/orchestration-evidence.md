@@ -248,7 +248,14 @@ Sequential reconciliation spans measure setup, planning, implementation,
 acceptance, and close preparation. Final timing validation requires the
 route-appropriate successful stages, contiguous attempts, no stage overlap,
 and close preparation last. Accepted review dispatches must carry the
-candidate-bound convergence integers produced by `ingest-findings`.
+candidate-bound convergence integers produced by `ingest-findings`. Those
+integers attach to the review pass's own intelligence span, so `ingest-findings`
+requires `--review-span-id` and refuses without it: a span is immutable once its
+trace is finalized, which makes an omission unrepairable after the fact rather
+than merely untidy. An ingest that is not a review pass — an orchestrator-authored
+state transition with no dispatched span — uses `--no-review-span '<reason>'`,
+which records the omission in `review-metrics-omitted.jsonl` rather than leaving
+it silent.
 
 Managed gates use `run-gate`; `record-gate` is nonfinal imported evidence only.
 Final eligibility requires a complete matching span, exact argv, and equal

@@ -56,14 +56,17 @@ the orchestrator choose through ambiguity.
 ## Verification
 
 The deterministic catalog checker validates the lifecycle state and
-one-status-per-row invariant:
+one-status-per-row invariant, rejects a `status:` field in any per-phase
+frontmatter, and rejects status-declaration lines in phase bodies. Narrative
+mentions of the status emojis in prose are fine — only a *declaration* (a
+frontmatter key or a `Status: ✅`-shaped line) creates a second source of
+truth, and quoted forms inside fenced blocks or inline code spans are exempt:
 
 ```bash
 ./bin/check-catalogs
 ```
 
-The authoritative full gate also rejects status fields or status declarations
-outside the phase table:
+The checker runs inside the authoritative full gate:
 
 ```bash
 ./bin/check all

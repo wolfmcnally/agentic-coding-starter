@@ -289,7 +289,11 @@ send unbound plan text to review.
    explicit recovery. In either case, write the exact reviewer response to a
    fresh artifact, require exactly one `## Verdict:` header, and run
    `./bin/kickoff-evidence ingest-findings --run-dir <run> --kind plan
-   --candidate <current-candidate-id> --artifact <review-artifact>`. Failure
+   --candidate <current-candidate-id> --review-span-id <reviewer-intelligence-span-id>
+   --artifact <review-artifact>`. **`--review-span-id` is required** — the
+   convergence metrics attach to that span, and a finalized trace cannot be
+   repaired retroactively, so omitting it makes `timing-summary` refuse for the
+   whole run. Failure
    of role shape, finding schema/transition, or candidate identity triggers
    native fallback. Exception before falling back:
    a Claude `error_max_turns` result may resume once with the concise
@@ -381,8 +385,10 @@ both stage attempts.
 4. Gate on ordinary three-signal success, or handle exit 66 through Step 0c.
    Write the exact response to a fresh artifact, require exactly one verdict,
    and run `./bin/kickoff-evidence ingest-findings --run-dir <run> --kind code
-   --candidate <current-candidate-id> --artifact <critic-artifact>` against
-   its `## Finding Evidence` block. Failure of role shape, evidence
+   --candidate <current-candidate-id> --review-span-id <critic-intelligence-span-id>
+   --artifact <critic-artifact>` against
+   its `## Finding Evidence` block. **`--review-span-id` is required**, for the
+   reason given in Step 4. Failure of role shape, evidence
    schema/transition, or candidate identity triggers native fallback. The one
    `error_max_turns` conclude-now rescue remains available. After ingesting
    the response, mark the candidate just reviewed through
@@ -652,6 +658,49 @@ Remaining:
 - <anything significant left incomplete, or "None">
 ```
 
+### Step 10a: User testing protocol
+
+Every phase that ships user-observable behavior — a running service, a CLI tool, a new tool surface, a new artifact landing where the user can see it — produces a structured **test protocol** appended to the user-facing report (Step 11). The protocol is the bridge between "the orchestrator says this is done" and "the user has satisfied themselves it works." It is the deeper sibling of the `User Demo:` block from [`policies/user-demo-protocols.md`](../../../policies/user-demo-protocols.md): the policy declares *what* to demo at plan time; this step ships the structured testing layout at close time. It is not optional except for purely internal phases (e.g., a refactor that ships nothing externally observable; flag the exception explicitly in the END block under `Remaining` if so).
+
+Format. The protocol has up to seven sections; omit any that don't apply:
+
+```
+# <Phase id> — <Phase title> · Test Protocol
+
+**Surfaces introduced.** One-line inventory the user can paste into their shell or open directly.
+
+## 1. Hot-state checks (run now, no setup)
+Two-to-five short shell commands the user can run immediately to confirm the deployed state. Each line: a `bash` block plus the expected output.
+
+## 2. Daemon / service / console checks (manual)
+What to inspect via process listings, service status commands, log directories, or a GUI. Anything the orchestrator cannot script.
+
+## 3. End-to-end behaviour (if a new behaviour ships)
+The full happy path the user should walk through — invoking the new command, opening the produced artifact, exercising the new surface end to end. Name every observable side-effect.
+
+## 4. Acceptance items not covered by automated smokes
+Phase-file Acceptance entries that require manual verification. Quote the entry and provide the verification recipe.
+
+## 5. Destructive / maintenance-window checks (optional)
+Anything that requires a temporary-state change to verify (e.g., "stop the service, edit a file, restart, verify catch-up"). Mark clearly as "DO NOT RUN CASUALLY" and document the restore procedure.
+
+## 6. Future-phase deferrals
+Acceptance items the phase claims partial credit for but that genuinely belong to a future phase. Name which phase will close them out.
+
+## 7. Summary
+A two-to-three-line wrap: which automated checks PASS, which manual checks remain, what the user should do next.
+```
+
+Style notes:
+- Use real values from the running system (file paths, session ids, service names) rather than `<placeholders>` the user has to fill in.
+- Every shell command is copy-pasteable and self-contained.
+- When a check is racey or eventually consistent, say so and provide the deterministic alternative.
+- When the protocol leans on a brief or policy, name it — e.g., "verifies the append-only invariant from `policies/log-discipline.md`."
+
+Where to put it: inline at the end of the user-facing report. Long protocols (~> 50 lines) may also be appended to `LOG.md` under the END block as a `### Test protocol` subsection so future planners can find it without scrolling the conversation.
+
+When to skip: mandatory unless the phase is a pure internal refactor with no user-observable surface, or introduces only invariants enforced by automated gates. In either case, state explicitly in the END block under `Remaining`: `Test protocol: skipped (reason: …)`.
+
 ### Step 11: Generate and open the phase report last
 
 After status, ripple, lessons harvest, next-phase selection, and the END block
@@ -692,6 +741,7 @@ Then report to the user:
 - Any Minor Corrections or Observations the reviewers noted that the user may want to track.
 - Lessons filed or recurred this phase, and any graduation DECIDE items awaiting the user's ratification (with the proposed target surface for each).
 - Manual checks the user needs to perform that the orchestrator couldn't.
+- **A user testing protocol** for what's new or changed (Step 10a).
 
 **Do not auto-commit.** The user drives commits, per [`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md).
 
@@ -706,6 +756,7 @@ Then report to the user:
 - Exact execution telemetry ([`policies/execution-telemetry.md`](../../../policies/execution-telemetry.md)): monotonic nanoseconds, overlap-safe unions, exclusive attribution, candidate/role/gate joins, truthful recovery, and deterministic offline reports are one acceptance-bound contract. UTC is correlation only, wait mirrors are not extra work, and missing measurement never becomes a reassuring zero.
 - Review lanes and follow-up routing ([`policies/review-lanes.md`](../../../policies/review-lanes.md)): a phase's `review_lane: light` frontmatter skips Step 4 for mechanical initial work. The code critic runs on every initial implementation and guards the light lane. Later test- or user-driven corrections use direct fix, coder-only, or full-cycle routing according to risk and size; only the full-cycle route repeats independent review.
 - Candidate-bound evidence ([`policies/orchestration-evidence.md`](../../../policies/orchestration-evidence.md)): every run uses a fresh isolated evidence directory; revisions use stable findings and deterministic packets; final gates name the unchanged approved candidate.
+- `ingest-findings` **requires `--review-span-id`** and refuses without it. The convergence integers attach to the review pass's own intelligence span, and a span is immutable once the trace is finalized — so an omitted flag makes `timing-summary` refuse for the entire run and cannot be repaired afterward. Preserve each reviewer's and critic's intelligence span id when you dispatch it. For an ingest that is genuinely **not** a review pass — most commonly the orchestrator recording an `open → addressed` transition after a *plan* revision, since `phase-planner` emits a revised plan rather than a `## Finding Evidence` block — pass `--no-review-span '<reason>'`, which records the omission in `review-metrics-omitted.jsonl` instead of hiding it.
 - Human wall-clock efficiency is an ambient judgment, not a timer-driven
   program: act or surface only when a substantial, low-risk gain is reasonably
   apparent, never at the expense of effectiveness or the complete final gate.

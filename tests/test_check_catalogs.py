@@ -229,3 +229,94 @@ def test_link_that_escapes_repository_is_reported(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert "links\tREADME.md\tline 1: link escapes repository" in result.stdout
+
+
+def test_link_quoted_in_an_inline_code_span_is_exempt(tmp_path: Path) -> None:
+    """A backtick-quoted link is a quoted edit target, not a live link.
+
+    Quoting the exact sentence another file should contain is the ordinary way
+    a plan specifies an edit; resolving that quotation from the quoting file's
+    directory forced precise quotes to be degraded into prose.
+    """
+    root = fixture(tmp_path)
+    write_tracked(root, "docs/guide.md", "# Guide\n")
+    write_tracked(
+        root,
+        "README.md",
+        "Add the line `- [`x.md`](briefs/x.md) — an x brief.` to that catalog.\n"
+        "Quoted `[missing](docs/absent.md)` plus a real [guide](docs/guide.md).\n"
+        "A double-backtick span: ``[also quoted](docs/also-absent.md)``.\n",
+    )
+
+    result = run(root)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_real_missing_link_beside_a_code_span_is_still_reported(tmp_path: Path) -> None:
+    root = fixture(tmp_path)
+    write_tracked(
+        root,
+        "README.md",
+        "Quoted `[fine](docs/absent.md)` but [broken](docs/broken.md) is live.\n",
+    )
+
+    result = run(root)
+
+    assert result.returncode == 1
+    assert "links\tREADME.md\tline 1: missing target docs/broken.md" in result.stdout
+    assert "docs/absent.md" not in result.stdout
+
+
+def test_phase_frontmatter_status_field_is_rejected(tmp_path: Path) -> None:
+    root = fixture(tmp_path)
+    write_tracked(
+        root,
+        "plan/phase-1.md",
+        "---\ntitle: First\nstatus: in progress\n---\n\n# Phase 1\n",
+    )
+
+    result = run(root)
+
+    assert result.returncode == 1
+    assert (
+        "plan\tplan/phase-1.md\tline 3: frontmatter must not carry a status field" in result.stdout
+    )
+
+
+def test_phase_body_status_declaration_is_rejected(tmp_path: Path) -> None:
+    root = fixture(tmp_path)
+    write_tracked(
+        root,
+        "plan/phase-1.md",
+        "---\ntitle: First\n---\n\n# Phase 1\n\nStatus: ✅\n\n**Status**: In Progress\n",
+    )
+
+    result = run(root)
+
+    assert result.returncode == 1
+    assert (
+        "plan\tplan/phase-1.md\tline 7: status declaration outside plan/INDEX.md's phase table"
+        in result.stdout
+    )
+    assert (
+        "plan\tplan/phase-1.md\tline 9: status declaration outside plan/INDEX.md's phase table"
+        in result.stdout
+    )
+
+
+def test_narrative_status_mentions_in_phase_files_are_fine(tmp_path: Path) -> None:
+    """Only declarations create a second source of truth; prose mentions don't."""
+    root = fixture(tmp_path)
+    write_tracked(
+        root,
+        "plan/phase-1.md",
+        "---\ntitle: First\n---\n\n# Phase 1\n\n"
+        "When this phase closes, `kickoff` flips 🚧 → ✅ in the index.\n"
+        "The quoted form `status: ✅` is how the defect looked in the wild.\n"
+        "```\nstatus: in progress\n```\n",
+    )
+
+    result = run(root)
+
+    assert result.returncode == 0, result.stdout + result.stderr

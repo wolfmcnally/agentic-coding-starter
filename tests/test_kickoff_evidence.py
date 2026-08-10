@@ -230,11 +230,24 @@ def ingest(
     *,
     kind: str = "code",
     candidate: str | None = None,
+    review_span_id: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    """Ingest findings for a test that is exercising something other than metrics.
+
+    `--review-span-id` is required in production, but these cases have no
+    dispatched review pass to name. They pass the explicit opt-out so the
+    omission is recorded rather than silent -- which is the whole point of the
+    flag. Tests that care about convergence metrics pass `review_span_id`.
+    """
     input_path = tmp_path / "findings-input.json"
     input_path.write_text(json.dumps({"findings": findings}))
     expected_candidate = candidate or str(
         findings[0]["resolved_in"] or findings[0]["introduced_in"]
+    )
+    metrics_argv = (
+        ["--review-span-id", review_span_id]
+        if review_span_id
+        else ["--no-review-span", "test fixture: no review pass was dispatched"]
     )
     return run(
         "ingest-findings",
@@ -246,6 +259,7 @@ def ingest(
         expected_candidate,
         "--input",
         str(input_path),
+        *metrics_argv,
     )
 
 
@@ -575,6 +589,8 @@ def test_role_artifacts_feed_findings_and_change_metadata_without_reparsing(
         "code",
         "--candidate",
         candidate,
+        "--no-review-span",
+        "test fixture: no review pass was dispatched",
         "--artifact",
         str(review_artifact),
     )
@@ -622,6 +638,8 @@ def test_malformed_role_artifact_is_rejected(repository: Path, tmp_path: Path) -
         "code",
         "--candidate",
         candidate,
+        "--no-review-span",
+        "test fixture: no review pass was dispatched",
         "--artifact",
         str(malformed),
     )
@@ -650,6 +668,8 @@ def test_role_artifact_allows_blank_line_before_json_fence(
         "code",
         "--candidate",
         candidate,
+        "--no-review-span",
+        "test fixture: no review pass was dispatched",
         "--artifact",
         str(artifact),
     )
@@ -687,6 +707,8 @@ def test_structured_artifact_is_ingested_without_a_markdown_envelope(
         "code",
         "--candidate",
         candidate,
+        "--no-review-span",
+        "test fixture: no review pass was dispatched",
         "--artifact",
         str(artifact),
     )
@@ -711,6 +733,8 @@ def test_structured_artifact_still_gets_the_fenced_readers_diagnostic(
         "code",
         "--candidate",
         candidate,
+        "--no-review-span",
+        "test fixture: no review pass was dispatched",
         "--artifact",
         str(artifact),
     )
@@ -735,6 +759,8 @@ def test_role_artifact_diagnostic_distinguishes_missing_block(
         "code",
         "--candidate",
         candidate,
+        "--no-review-span",
+        "test fixture: no review pass was dispatched",
         "--artifact",
         str(artifact),
     )
@@ -2539,6 +2565,8 @@ class TestCandidateLineage:
             "code",
             "--candidate",
             current,
+            "--no-review-span",
+            "test fixture: no review pass was dispatched",
             "--artifact",
             str(artifact),
         )
@@ -2566,6 +2594,8 @@ class TestCandidateLineage:
             "code",
             "--candidate",
             candidate,
+            "--no-review-span",
+            "test fixture: no review pass was dispatched",
             "--artifact",
             str(artifact),
         )
@@ -2800,6 +2830,8 @@ def test_a_reviewer_may_reject_a_finding_it_previously_marked_addressed(
             "plan",
             "--candidate",
             candidate,
+            "--no-review-span",
+            "test fixture: no review pass was dispatched",
             "--input",
             str(batch),
         )
@@ -3553,3 +3585,219 @@ def test_an_orchestrator_gate_span_without_evidence_still_refuses(
     refused = run("timing-summary", "--run-dir", str(run_dir), "--format", "json")
     assert refused.returncode == 2
     assert "unregistered=" + orphan.span_id in refused.stderr
+
+
+def test_absent_gate_artifact_records_the_gate_instead_of_orphaning_its_span(
+    repository: Path, tmp_path: Path
+) -> None:
+    """A gate whose artifact never appeared must still be recorded.
+
+    `run_observed` opens and closes the gate span before the artifact is
+    inspected. Raising on an absent artifact therefore stranded a closed,
+    root-parented gate span with no evidence row -- and `validate` refuses on
+    exactly that, with no supported repair (`record-gate` writes
+    `telemetry_span_id: None`, so it cannot adopt the span). Observed in a
+    derived project's acceptance close: a passing `./bin/check all` gate named
+    an artifact its script had not yet written, which made the run's evidence
+    bundle permanently unvalidatable.
+    """
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    missing = tmp_path / "never-written.txt"
+    result = run(
+        "run-gate",
+        "--run-dir",
+        str(run_dir),
+        "--candidate",
+        candidate,
+        "--operation",
+        "gate.focused",
+        "--selection-reason",
+        "artifact absent after a clean run",
+        "--warning-count",
+        "0",
+        "--artifact",
+        str(missing),
+        "--",
+        "/usr/bin/true",
+        cwd=repository,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "gate artifact absent" in result.stderr
+    gate = json.loads((run_dir / "gates.jsonl").read_text())
+    assert gate["exit_code"] == 0
+    assert gate["artifact_sha256"] is None
+    assert gate["telemetry_span_id"] is not None
+    # The whole point: the bundle still validates, so the span is not orphaned.
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
+
+
+def test_unusable_gate_artifact_path_is_refused_before_the_command_runs(
+    repository: Path, tmp_path: Path
+) -> None:
+    """An artifact precondition must fail before a span exists, not after."""
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    marker = tmp_path / "command-ran.txt"
+    toucher = tmp_path / "touch.sh"
+    toucher.write_text(f"#!/bin/sh\nprintf 'ran\\n' > {marker}\nexit 0\n")
+    toucher.chmod(0o755)
+    result = run(
+        "run-gate",
+        "--run-dir",
+        str(run_dir),
+        "--candidate",
+        candidate,
+        "--operation",
+        "gate.focused",
+        "--selection-reason",
+        "artifact directory does not exist",
+        "--warning-count",
+        "0",
+        "--artifact",
+        str(tmp_path / "no-such-dir" / "artifact.txt"),
+        "--",
+        str(toucher),
+        cwd=repository,
+    )
+    assert result.returncode == 2
+    assert "gate artifact directory does not exist" in result.stderr
+    assert not marker.exists(), "the command must not run when the precondition fails"
+    assert not (run_dir / "gates.jsonl").read_text().strip()
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
+
+
+def test_ingest_findings_refuses_when_the_review_span_is_omitted(
+    repository: Path, tmp_path: Path
+) -> None:
+    """An omitted --review-span-id is unrepairable, so it must fail closed.
+
+    Convergence metrics attach to the review pass's own intelligence span, and a
+    span is immutable once its trace is finalized. A derived project once
+    omitted the flag on every call; by the time `timing-summary` refused, the
+    trace was finalized and the only way to attach the metrics late would have
+    been to re-ingest earlier artifacts, driving `verified -> open` and
+    reopening resolved findings to satisfy a validator. The lesson belongs in
+    the machinery, not in LOG.md.
+    """
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    evidence = tmp_path / "findings.json"
+    evidence.write_text(json.dumps({"findings": [finding("CODE-F001", candidate)]}))
+
+    result = run(
+        "ingest-findings",
+        "--run-dir",
+        str(run_dir),
+        "--kind",
+        "code",
+        "--candidate",
+        candidate,
+        "--input",
+        str(evidence),
+    )
+
+    assert result.returncode == 2
+    assert "requires --review-span-id" in result.stderr
+    assert "finalized trace cannot be repaired" in result.stderr
+    assert "--no-review-span" in result.stderr
+    # `init` creates the ledger, so the proof is that it is still empty: a
+    # refused ingest must not half-write the findings it declined to accept.
+    assert json.loads((run_dir / "findings.json").read_text())["findings"] == []
+    assert not (run_dir / "review-metrics-omitted.jsonl").exists()
+
+
+def test_explicit_opt_out_records_the_omission_instead_of_hiding_it(
+    repository: Path, tmp_path: Path
+) -> None:
+    """The escape hatch exists for non-review ingests, and it is never silent.
+
+    An orchestrator-authored state transition -- recording that a plan revision
+    addressed its findings, for instance -- has no dispatched review pass and so
+    no intelligence span to carry metrics. That ingest is legitimate; what is
+    not legitimate is letting it look like a measured review pass.
+    """
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    evidence = tmp_path / "findings.json"
+    evidence.write_text(json.dumps({"findings": [finding("CODE-F001", candidate)]}))
+
+    result = run(
+        "ingest-findings",
+        "--run-dir",
+        str(run_dir),
+        "--kind",
+        "code",
+        "--candidate",
+        candidate,
+        "--no-review-span",
+        "orchestrator-authored addressed transition; no review pass dispatched",
+        "--input",
+        str(evidence),
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "WITHOUT review convergence metrics" in result.stderr
+    omissions = [
+        json.loads(line)
+        for line in (run_dir / "review-metrics-omitted.jsonl").read_text().splitlines()
+        if line.strip()
+    ]
+    assert len(omissions) == 1
+    assert omissions[0]["kind"] == "code"
+    assert omissions[0]["candidate_id"] == candidate
+    assert omissions[0]["findings_reported"] == 1
+    assert "orchestrator-authored" in omissions[0]["reason"]
+    assert json.loads((run_dir / "findings.json").read_text())["findings"][0]["id"] == "CODE-F001"
+
+
+def test_the_two_review_span_flags_are_mutually_exclusive(repository: Path, tmp_path: Path) -> None:
+    """Naming a span and disclaiming one at once is incoherent, not a preference."""
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    evidence = tmp_path / "findings.json"
+    evidence.write_text(json.dumps({"findings": [finding("CODE-F001", candidate)]}))
+
+    result = run(
+        "ingest-findings",
+        "--run-dir",
+        str(run_dir),
+        "--kind",
+        "code",
+        "--candidate",
+        candidate,
+        "--review-span-id",
+        "f" * 32,
+        "--no-review-span",
+        "cannot be both",
+        "--input",
+        str(evidence),
+    )
+
+    assert result.returncode == 2
+    assert "mutually exclusive" in result.stderr
+
+
+def test_the_opt_out_reason_cannot_be_blank(repository: Path, tmp_path: Path) -> None:
+    """An unexplained omission is the silence the flag exists to prevent."""
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    evidence = tmp_path / "findings.json"
+    evidence.write_text(json.dumps({"findings": [finding("CODE-F001", candidate)]}))
+
+    result = run(
+        "ingest-findings",
+        "--run-dir",
+        str(run_dir),
+        "--kind",
+        "code",
+        "--candidate",
+        candidate,
+        "--no-review-span",
+        "   ",
+        "--input",
+        str(evidence),
+    )
+
+    assert result.returncode == 2
+    assert "nonempty reason" in result.stderr

@@ -185,7 +185,7 @@ These are the universals every project derived from this template inherits. The 
 - **Rules, not memory.** Anything that should bind future sessions — across harnesses (Claude Code, Codex, and others), across operators, across machines — belongs in this repo: in `CLAUDE.md`, in `briefs/`, in `policies/`, or in a `.claude/skills/<name>/SKILL.md`. Agent-side memory is local to one operator, one harness, one machine; it is the wrong place for engine knowledge. If a learning surfaces in a session, capture it in the repo, not in memory.
 - **Lessons compound.** Every phase close asks what generalizable process lesson was learned and routes the answer — scope-classified `local` or `methodology` — into the `lessons/` ledger; "none" is a permitted, recorded answer, but the question is mandatory. Graduation of a recurring lesson into a durable surface is human-ratified, never agent-applied; the ledger is swept and pruned, not only grown. See [`policies/lessons.md`](policies/lessons.md).
 - **Monotonic progress — spiral in, never out.** Hold the authorized objective, scope, and completion criteria fixed unless the user explicitly changes them. Every action must serve that objective by either advancing a completion criterion or reducing uncertainty that directly blocks one; prerequisite work remains in scope only while that causal link is explicit. Record each material tangent once in the appropriate backlog or decision surface, then defer it. Do not investigate, design, implement, or promote it into a new phase or loop without explicit user authorization, and never move the finish line to justify opportunistic improvement. If successive iterations no longer materially shrink the remaining work or blocking uncertainty, stop and escalate.
-- **Briefs are the contract.** Every phase points at files under `briefs/`. Phase files specify *how*, not *what*. Fix ambiguous briefs at the source. When `plan/` and a brief disagree, `plan/` wins.
+- **Briefs are the contract.** Every phase points at files under `briefs/`. Phase files specify *how*, not *what*. Fix ambiguous briefs at the source. When `plan/` and a brief disagree, `plan/` wins; when two briefs disagree, fix the briefs.
 - **Policies are the law.** Every phase honors every file under `policies/`. A policy violation blocks acceptance.
 - **Status lives in one place.** `plan/INDEX.md`'s phase table is the single source of truth for which phase is `⬅️ / 🚧 / ✅`. Per-phase frontmatter never carries `status`.
 - **Acceptance is empirical.** Every phase's Acceptance section lists shell commands with verifiable results, named manual checks, or analyzer outputs that pass a quality gate. "The code compiles" is not acceptance.
@@ -228,6 +228,20 @@ The [`user-actions/`](user-actions/) directory at the repo root is the live queu
 6. **Close by moving to the archive.** Set `status: done | closed | superseded` + a `closed:` date, add a `## Disposition` section when the resolution is non-obvious, and move the file to `user-actions-archived/`. The disposition also answers whether the resolution reveals a recurring learning — if so, file or recur a `lessons/<slug>.md` entry before archiving. Archived files stay on disk as a permanent audit trail.
 
 Checkoff discipline: an agent may close an action only when *it personally* did the underlying action (e.g., ran a smoke script clean, read CloudWatch logs directly). Console / dashboard / GUI / pricing / billing verification is **human-only checkoff**. Full contract: [`policies/user-actions.md`](policies/user-actions.md).
+
+### Lessons (`lessons/`)
+
+[`lessons/`](lessons/) at the repo root is the ledger of candidate **process** lessons — what work in this repo keeps re-teaching us. It is the sibling of `user-actions/` (human-only *work*) and `LOG.md` (phase *history*): this directory holds durable *learnings* that have not yet earned a rule. One Markdown file per lesson, all metadata in YAML frontmatter, a two-word slug for a filename, no index file. Closed lessons move to `lessons-archived/` as the permanent trail linking every rule back to the incidents that earned it.
+
+The mechanics an agent needs:
+
+1. **`kickoff` Step 9c harvests at every phase close.** The sensor feed is each role's Process Observations, the coder's Failure Analysis from any revision round, verdict bodies, wall-clock observations, and `user-actions` dispositions. "No lessons this phase" is a valid recorded answer; omitting the `Lessons:` END-block field is not.
+2. **File or recur, never duplicate.** Check both directories first. If an entry already states the lesson, append an occurrence (`{date, ref}`) instead of filing a second file.
+3. **Classify the scope.** `local` binds only this project; `methodology` generalizes to the methodology itself and is a standing export upstream.
+4. **Filing and recurring are the only writes an agent performs.** Graduation — editing `policies/`, `briefs/`, `CLAUDE.md`, a skill, or an agent definition because of a lesson — is the human's ratified act. Surface it as a DECIDE item and stop.
+5. **Validate mechanically**: `./bin/lessons validate` (schema, enums, slug uniqueness) and `./bin/lessons candidates` (graduation-ready: three or more occurrences, still open). Both run inside `./bin/check all`.
+
+Full contract: [`policies/lessons.md`](policies/lessons.md); design rationale: [`briefs/harness-self-improvement.md`](briefs/harness-self-improvement.md). The `sweep` skill (`/sweep` in Claude Code; `$sweep` in Codex) runs the pruning half over policies, briefs, skills, catalogs, and the ledger.
 
 ## Universal conventions
 

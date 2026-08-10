@@ -15,6 +15,7 @@ Every path embedded in a committed file is **repo-relative**. Absolute paths (`/
 - Shell command invocations from a session (`Bash` tool calls) may use absolute paths. The agent's working directory is conventional but the agent host may pass absolute paths internally.
 - The output of tools that emit absolute paths into a transient log or scratch file is fine if the scratch file is gitignored or ephemeral.
 - Symlink targets in `.gitignore`d state directories are not subject to this rule.
+- Tilde-prefixed home-relative paths (`~/Library/Logs/...`, `~/.config/...`) in **operator-run commands** — demo protocols, hot-state checks, acceptance recipes the human pastes into their own shell. These are portable across users precisely because the shell expands `~` per operator; spelling them absolute would break that.
 
 ## Why this rule exists
 

@@ -110,6 +110,10 @@ That line is the planner's affirmative claim that the policy was considered and 
 
 The rule is: address the policy explicitly, but only write a real protocol when there's a real interactive experience worth exercising.
 
+## Relationship to the close-time test protocol
+
+This policy governs the **plan-time** declaration: what to demo, decided when Acceptance is drafted. Its close-time sibling is `kickoff`'s Step 10a, which ships a structured user testing protocol (surfaces introduced, hot-state checks, manual checks, end-to-end behavior, uncovered acceptance items, destructive checks, deferrals) in the phase report after the work is accepted. The two are complementary, not redundant: the demo block says what the human should judge; the test protocol says how to satisfy themselves the deployed state works.
+
 ## Why "interactive, not deterministic"
 
 Automated tests answer *did the code do the thing I told it to do?* User demos answer *is the thing the right thing?* A regression in feel, latency, error-message tone, layout, or sequencing slips past green tests every time. The demo protocol is the cheapest mechanism for catching that class of regression: it costs the planner a paragraph, the user a minute, and it preserves the human-in-the-loop value proposition that this methodology rests on (see [`human-in-the-loop.md`](human-in-the-loop.md)).

@@ -46,9 +46,13 @@ Every phase row carries exactly one recognized status. An idle incomplete
 project has exactly one `⬅️`; active work may have zero while its executable
 row is `🚧`; a complete project has zero; more than one is always invalid.
 
+## Decomposition ledger (convention)
+
+As a plan grows, this file also records the *why* of its own shape, in prose near the phase table: when a sub-phase is inserted, note when it was drafted, at whose close, what it carved off, what invariant it must preserve, and why the numbering is what it is; when phases are renumbered or reordered, record the event and what it did (and did not) change in the dependency structure; and precede a large phase table with a short critical-path narrative — ordering rationale, parallelism opportunities, and any ratified reversals with their dates. Sub-phase insertion mechanics are governed by [`../policies/phase-ripple.md`](../policies/phase-ripple.md); this ledger is where their rationale survives. A one-phase plan (like this template's) has nothing to record yet.
+
 ## Cross-Cutting Concerns (apply to every phase)
 
-These are the universals the template ships with. A project derived from this template inherits them and may add more.
+These are the universals the template ships with. A project derived from this template inherits them and may add more. The canonical statements live in [`../CLAUDE.md`](../CLAUDE.md) §"Architectural invariants"; this list is a phase-work-flavored restatement for quick reference, not a second authority.
 
 - **Briefs are the contract.** Every phase points at one or more files under `briefs/` for the canonical design. Phase files specify *how to build* the brief's design; they do not re-specify it. If a brief is ambiguous or wrong, fix the brief — don't work around it.
 - **Policies are the law.** Every phase honors every file under `policies/`. A policy violation blocks acceptance.
@@ -74,6 +78,8 @@ These are the universals the template ships with. A project derived from this te
   graduation into a binding rule remains human-ratified.
 
 ## Critical-Files Map
+
+Shipped files are linked. A file a future phase will create may also appear, as plain text annotated with its phase — e.g. `daemons/watch/` (Phase 6) — so the map is a forward-looking contract, not just an index of what exists.
 
 | Concern                              | Location                                                  |
 |--------------------------------------|-----------------------------------------------------------|

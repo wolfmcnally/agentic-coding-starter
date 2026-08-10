@@ -1281,6 +1281,12 @@ def validate_finding(value: Any, index: int) -> dict[str, Any]:
 
 
 def command_ingest_findings(arguments: argparse.Namespace) -> None:
+    # Flag consistency is settled before any work, so a malformed invocation
+    # fails immediately rather than after the whole artifact is validated.
+    if arguments.review_span_id is not None and arguments.no_review_span is not None:
+        raise EvidenceError("--review-span-id and --no-review-span are mutually exclusive")
+    if arguments.no_review_span is not None and not arguments.no_review_span.strip():
+        raise EvidenceError("--no-review-span requires a nonempty reason")
     run = validate_run_dir(arguments.run_dir)
     current = tree_manifest(Path(run["repository_root"]))
     expected_candidate = validate_candidate_id(arguments.candidate, "finding candidate")
@@ -1374,6 +1380,39 @@ def command_ingest_findings(arguments: argparse.Namespace) -> None:
         "reopened_count": reopened,
         "findings": [existing[key] for key in sorted(existing)],
     }
+    # Convergence metrics live on the review pass's own intelligence span, and a
+    # span is immutable once its trace is finalized. An omitted --review-span-id
+    # is therefore unrepairable after the fact: `timing-summary` refuses for the
+    # whole run, and the only way to attach the metrics late would be to
+    # re-ingest earlier artifacts, driving `verified -> open` and reopening
+    # resolved findings to satisfy a validator. So the flag is required, and the
+    # only alternative is to own the omission in writing.
+    if arguments.review_span_id is None and not arguments.no_review_span:
+        raise EvidenceError(
+            "ingest-findings requires --review-span-id: convergence metrics "
+            "(findings_reported, actionable_findings) attach to the review "
+            "pass's intelligence span, and a finalized trace cannot be repaired "
+            "retroactively, so omitting it makes `timing-summary` refuse for the "
+            "entire run. Pass the reviewer's or critic's intelligence span id. "
+            "If this ingest is not a review pass and no such span exists — an "
+            "orchestrator-authored state transition, for instance — pass "
+            "--no-review-span '<reason>' to record the omission."
+        )
+    if arguments.no_review_span:
+        omission = {
+            "schema_version": SCHEMA_VERSION,
+            "recorded_at": now(),
+            "kind": arguments.kind,
+            "candidate_id": expected_candidate,
+            "findings_reported": len(incoming),
+            "reason": arguments.no_review_span.strip(),
+        }
+        append_jsonl(arguments.run_dir / "review-metrics-omitted.jsonl", omission)
+        print(
+            "kickoff-evidence: recorded WITHOUT review convergence metrics "
+            f"({arguments.kind}, {len(incoming)} findings): {omission['reason']}",
+            file=sys.stderr,
+        )
     if arguments.review_span_id is not None:
         expected_operation = {
             "plan": "role.plan-review",
@@ -1473,6 +1512,17 @@ def command_run_gate(arguments: argparse.Namespace) -> None:
         argv = argv[1:]
     if not argv or any(not isinstance(item, str) or not item for item in argv):
         raise EvidenceError("run-gate requires exact argv after --")
+    # Artifact preconditions are checked BEFORE the command runs. Everything
+    # after `run_observed` has opened a span must be recoverable, because a
+    # closed span is immutable and a root-parented gate span with no evidence
+    # row makes `validate` refuse forever with no supported repair — the
+    # artifact check used to raise here and strand exactly that.
+    if arguments.artifact:
+        if arguments.artifact.is_dir():
+            raise EvidenceError(f"gate artifact is a directory: {arguments.artifact}")
+        parent = arguments.artifact.parent
+        if not parent.is_dir():
+            raise EvidenceError(f"gate artifact directory does not exist: {parent}")
     original_directory = Path.cwd()
     try:
         os.chdir(root)
@@ -1491,9 +1541,17 @@ def command_run_gate(arguments: argparse.Namespace) -> None:
     after = tree_manifest(root)
     artifact_digest = None
     if arguments.artifact:
-        if not arguments.artifact.is_file():
-            raise EvidenceError(f"gate artifact does not exist: {arguments.artifact}")
-        artifact_digest = hashlib.sha256(arguments.artifact.read_bytes()).hexdigest()
+        if arguments.artifact.is_file():
+            artifact_digest = hashlib.sha256(arguments.artifact.read_bytes()).hexdigest()
+        else:
+            # The command ran and its span is closed. Refusing here would orphan
+            # that span permanently, so record the gate truthfully with no
+            # digest and say so loudly instead.
+            print(
+                "kickoff-evidence: gate artifact absent after the command ran: "
+                f"{arguments.artifact} (recorded with no digest)",
+                file=sys.stderr,
+            )
     span = None
     if result.telemetry_complete and result.span_id:
         try:
@@ -2555,6 +2613,16 @@ def build_parser() -> argparse.ArgumentParser:
     findings.add_argument("--kind", choices=("plan", "code"), required=True)
     findings.add_argument("--candidate", required=True)
     findings.add_argument("--review-span-id")
+    findings.add_argument(
+        "--no-review-span",
+        metavar="REASON",
+        help=(
+            "record this ingest WITHOUT review convergence metrics, for an "
+            "ingest that is not a review pass and has no intelligence span. "
+            "The omission and its reason are appended to "
+            "review-metrics-omitted.jsonl."
+        ),
+    )
     finding_source = findings.add_mutually_exclusive_group(required=True)
     finding_source.add_argument("--input", type=Path)
     finding_source.add_argument("--artifact", type=Path)

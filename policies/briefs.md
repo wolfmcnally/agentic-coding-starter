@@ -43,7 +43,7 @@ Don't write a brief for ephemeral state, single-session decisions, or anything t
 ## Status lifecycle
 
 - `draft` — still being shaped; numbers and conclusions tentative.
-- `methodology` — defines an approach the project defers to.
+- `methodology` — defines an approach the project defers to. In a methodology-following repo this marker also signals *portable Methodology Contract content* — do not apply it to a project-specific design or survey merely because it feels durable or foundational; a cross-repo `learn` pass that trusts the marker as a selector would mis-transfer domain content into the template. Durable domain briefs belong in `draft`/`implemented`/`historical`.
 - `implemented` — the position has been realized in code or operational practice.
 - `historical` — superseded by a later brief or by changed reality; kept for the audit trail.
 
