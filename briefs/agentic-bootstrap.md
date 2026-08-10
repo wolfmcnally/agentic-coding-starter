@@ -25,6 +25,8 @@ A project derived from this template contains the following **portable structure
   AGENTS.md                # Symlink → CLAUDE.md (for Codex/aider/OpenHands)
   LOG.md                   # Append-only activity log; kickoff writes
                            #   START/END blocks here
+  lessons/                # Open candidate process lessons (.gitkeep initially)
+  lessons-archived/       # Codified/rejected lesson audit trail (.gitkeep initially)
   .gitignore               # Editor/harness state; includes local .kickoff/
   kickoff.yaml             # Human-editable model/effort/timeout configuration
 
@@ -38,6 +40,8 @@ A project derived from this template contains the following **portable structure
     kickoff-config         # Round-trip editor, preflight, watchdog, calibration
     kickoff-tree-id        # Complete review candidate identity
     kickoff-evidence       # Authority/change/finding/packet/gate records
+    lessons                # Validate/query the lessons ledger
+    check-catalogs         # Catalog, internal-link, and phase-ledger checks
 
   tests/
     test_toolchain_entrypoints.py # Setup/test/runtime behavioral coverage
@@ -46,6 +50,8 @@ A project derived from this template contains the following **portable structure
     test_kickoff_config.py # Universal manager/watchdog behavioral coverage
     test_kickoff_tree_id.py # Candidate identity behavioral coverage
     test_kickoff_evidence.py # Evidence/packet/gate behavioral coverage
+    test_lessons.py        # Lessons-ledger schema/query coverage
+    test_check_catalogs.py # Document and phase-ledger coverage
 
   briefs/
     BRIEF.md               # Entry-point brief, project-specific
@@ -54,6 +60,7 @@ A project derived from this template contains the following **portable structure
     cross-agent-invocation.md  # Cross-CLI invocation BCPs (copied verbatim)
     incremental-orchestration.md # Candidate-bound incremental assurance
     deterministic-orchestration.md  # Draft: deterministic kickoff loop (copied verbatim)
+    harness-self-improvement.md # Lessons capture, pruning, and propagation
     <topic>.md             # Project-specific topic briefs as they appear
 
   policies/
@@ -68,6 +75,7 @@ A project derived from this template contains the following **portable structure
     phase-status.md
     acceptance-empirical.md
     log-discipline.md
+    lessons.md
     human-in-the-loop.md
     repo-relative-paths.md
     <project-specific>.md  # Add per-project as they appear
@@ -86,6 +94,7 @@ A project derived from this template contains the following **portable structure
                            #   patterns to another
       roles/SKILL.md       # Universal: edit model/effort fields for any role
                            #   (wraps bin/kickoff-config)
+      sweep/SKILL.md       # Universal: audit/prune accumulated rule surfaces
       # stamp is NOT carried over — the new project doesn't need to stamp
       # out more projects from itself by default
     agents/
@@ -109,6 +118,7 @@ A project derived from this template contains the following **portable structure
       learn                #  a skill dir — issue #11314 — but does traverse
       teach                #  a symlinked skill directory.)
       roles
+      sweep
       # stamp is NOT mirrored here either — starter-only
 
   project/                 # When project-isolation is enabled (default for
@@ -128,8 +138,12 @@ A project derived from this template contains the following **portable structure
 **Status legend** used in `plan/INDEX.md` and nowhere else:
 
 ```text
-⏳ Not Started    ⬅️ Next (only one)    🚧 In Progress    ✅ Completed
+⏳ Not Started    ⬅️ Next (at most one)    🚧 In Progress    ✅ Completed
 ```
+
+Every phase row carries exactly one recognized status. The initial idle ledger
+has exactly one `⬅️`; active and complete ledgers may have zero; more than one
+is always invalid.
 
 **The four canonical agents** — exact names matter; `kickoff` invokes them by name:
 
@@ -157,6 +171,7 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.claude/skills/learn/SKILL.md` (universal cross-repo skill)
 - `.claude/skills/teach/SKILL.md` (universal cross-repo skill)
 - `.claude/skills/roles/SKILL.md` (universal — per-role model/effort editing; wraps `bin/kickoff-config`)
+- `.claude/skills/sweep/SKILL.md` (universal rule-surface maintenance and lessons graduation)
 - `.claude/agents/phase-planner.md`
 - `.claude/agents/plan-reviewer.md`
 - `.claude/agents/phase-coder.md`
@@ -167,6 +182,7 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.agents/skills/learn` (directory symlink → `../../.claude/skills/learn`)
 - `.agents/skills/teach` (directory symlink → `../../.claude/skills/teach`)
 - `.agents/skills/roles` (directory symlink → `../../.claude/skills/roles`)
+- `.agents/skills/sweep` (directory symlink → `../../.claude/skills/sweep`)
 - `AGENTS.md` symlink → `CLAUDE.md`
 - Every file under `policies/` (these are universal by design)
 - `bin/kickoff-config` (universal Python/uv round-trip config manager, fail-closed venue preflight, execution watchdog, and telemetry calibrator), plus human-editable `kickoff.yaml` seeded via `bin/kickoff-config reset all`
@@ -175,12 +191,18 @@ These files encode the methodology itself, not any particular product. Copy them
   identity and run-evidence managers)
 - `tests/test_kickoff_tree_id.py` and `tests/test_kickoff_evidence.py`
   (universal behavioral coverage for candidate/evidence mechanics)
+- `bin/lessons` and `bin/check-catalogs` (universal lessons-ledger,
+  document-link, and phase-ledger fitness managers)
+- `tests/test_lessons.py` and `tests/test_check_catalogs.py` (universal
+  behavioral coverage for those managers)
 - `briefs/methodology.md`
 - `briefs/agentic-bootstrap.md` (this file, so the next bootstrap is possible)
 - `briefs/cross-agent-invocation.md` (the cross-CLI invocation BCPs cited by `policies/role-models.md`)
 - `briefs/incremental-orchestration.md` (candidate-bound review, revision,
   verification, and protocol-recovery design)
 - `briefs/deterministic-orchestration.md` (draft universal brief: decision criteria for a deterministic kickoff loop, so the derived project can act when its harnesses gain parity workflow primitives)
+- `briefs/harness-self-improvement.md` (phase-scale lessons capture,
+  rule-surface pruning, and cross-repo propagation)
 - The skeletal headings/structure of `plan/INDEX.md`
 - The skeletal frontmatter shape for `plan/phase-*.md` (`id`, `title`, `depends_on`, `informs`, optional `review_lane` per `policies/review-lanes.md`)
 - The START/END block format for `LOG.md`
@@ -264,11 +286,17 @@ Then create the empty directory shape:
 ```text
 .claude/skills/kickoff/
 .claude/skills/methodology/
+.claude/skills/learn/
+.claude/skills/teach/
+.claude/skills/roles/
+.claude/skills/sweep/
 .claude/agents/
 .codex/agents/
-.agents/skills/        # (the five skill entries here are directory symlinks
+.agents/skills/        # (the six skill entries here are directory symlinks
                        #  to ../../.claude/skills/<name>, created in Step 5)
 briefs/
+lessons/
+lessons-archived/
 policies/
 plan/
 ```
@@ -290,7 +318,7 @@ In this exact order (each feeds the next):
      - `## Project briefs` — `briefs/` entries specific to this project (initially `BRIEF.md` only).
      - `## Project surfaces` — the deliverable (location, language, seed code description).
      - `## Project conventions` — language, tooling, build-gate command shape.
-     - `## Project-specific skills` — any beyond the universal five. Omit if none.
+     - `## Project-specific skills` — any beyond the universal six. Omit if none.
 
 3. **`AGENTS.md`** — symlink to `CLAUDE.md`:
    ```bash
@@ -306,7 +334,7 @@ In this exact order (each feeds the next):
 
 5. **`README.md`** — didactic top-level for human readers. Mirror the template's section structure; write project-specific content. The README is the human's entry point; CLAUDE.md is the agent's.
 
-### Step 5 — Port the orchestrator, the four canonical agents, the methodology skill
+### Step 5 — Port the universal harness bundle
 
 Copy verbatim, then adapt project names and surface-specific build-gate commands:
 
@@ -314,12 +342,33 @@ Copy verbatim, then adapt project names and surface-specific build-gate commands
 - `.claude/skills/methodology/SKILL.md`
 - `.claude/skills/learn/SKILL.md`
 - `.claude/skills/teach/SKILL.md`
+- `.claude/skills/roles/SKILL.md`
+- `.claude/skills/sweep/SKILL.md`
 - `.claude/agents/phase-planner.md`
 - `.claude/agents/plan-reviewer.md`
 - `.claude/agents/phase-coder.md`
 - `.claude/agents/code-critic.md`
 - `.codex/agents/*.toml`
-- `.agents/skills/{kickoff,methodology,learn,teach}` (directory symlinks → `../../.claude/skills/<name>`)
+- `.agents/skills/{kickoff,methodology,learn,teach,roles,sweep}` (directory symlinks → `../../.claude/skills/<name>`)
+
+Port the self-improvement machinery as the same atomic bundle:
+
+- `briefs/harness-self-improvement.md`
+- `policies/lessons.md`
+- `bin/lessons` and `bin/check-catalogs`
+- `tests/test_lessons.py` and `tests/test_check_catalogs.py`
+- empty `lessons/` and `lessons-archived/` directories, each retained by a
+  `.gitkeep`
+
+Do not seed a new project's ledger with the template's lesson entries. Ledger
+content is project state; only the schema, empty directories, capture loop, and
+fitness checks transfer.
+
+The executable transfer skills, this manual procedure, its acceptance
+checklist, the methodology narrative, role-output contracts, catalogs, and
+contract tests form one propagation boundary. Whenever a universal bundle
+grows, update every path in the same change; leaving one path stale makes
+derived repositories depend on which bootstrap procedure happened to run.
 
 Adaptations to make in each:
 
@@ -432,11 +481,15 @@ full claim; callers do not duplicate the command mappings.
 Before declaring the bootstrap complete, verify:
 
 - `readlink AGENTS.md` returns `CLAUDE.md`.
-- `grep -E '^\| \[Phase ' plan/INDEX.md` returns at least one row, exactly one of which is `⬅️`.
+- `bin/check-catalogs` accepts the initial idle ledger with exactly one `⬅️`
+  and resolves every tracked internal Markdown link.
 - `head -1 LOG.md` is `# Activity Log`.
 - `ls .claude/agents/` lists exactly the four canonical role files.
-- `ls .claude/skills/kickoff/` contains `SKILL.md`.
-- `ls .claude/skills/methodology/` contains `SKILL.md`.
+- Each of `.claude/skills/{kickoff,methodology,learn,teach,roles,sweep}/`
+  contains `SKILL.md`, and each corresponding `.agents/skills/<name>` entry
+  is a directory symlink to `../../.claude/skills/<name>`.
+- `bin/lessons validate`, `bin/check-catalogs`, and their behavioral tests
+  pass against the empty initial ledger and Phase 1 status table.
 - `bin/kickoff-config show` succeeds and `kickoff.yaml` contains valid `role_models` and `role_timeouts` sections.
 - `bin/setup` works from outside the repository and provisions only the
   committed runtime and dependencies, then passes a real deliverable-and-tool
@@ -447,8 +500,8 @@ Before declaring the bootstrap complete, verify:
 - A valid explicit runtime override drives setup, probing, testing, gates, and
   the runtime wrapper; an invalid or probe-failing override exits nonzero
   without trying the repository default or an ambient runtime.
-- The new `CLAUDE.md`'s "Briefs catalog" section lists every file in `briefs/`, and every file in `briefs/` is referenced from the catalog (no orphans either way).
-- The new `CLAUDE.md`'s "Policies catalog" section lists every file in `policies/`, and every file in `policies/` is referenced from the catalog (no orphans either way).
+- The new `CLAUDE.md` catalogs are bidirectionally complete, and every tracked
+  repository-internal Markdown link resolves.
 - `plan/phase-1.md`'s `Brief refs` section lists at least one brief, and each listed brief exists.
 - `bin/check all` runs from outside the repository root and passes on the trivial seeded code, including the universal methodology tests.
 
@@ -491,7 +544,9 @@ Anything else that needs to change probably indicates a bootstrap deviation that
 These bite every bootstrap; flag them before they happen.
 
 - **Status markers in two places.** The status of a phase lives in `plan/INDEX.md`'s phase table and **nowhere else**. Per-phase frontmatter is `id / title / depends_on / informs` — no `status` field.
-- **Catalog drift.** `CLAUDE.md`'s "Briefs catalog" and "Policies catalog" must list every file in their respective directories, and every file in those directories must be listed. Orphans on either side cause agents to read past the file or miss it entirely.
+- **Document drift.** `CLAUDE.md`'s catalogs must be bidirectionally complete,
+  and tracked internal Markdown links must resolve. Catalog membership alone
+  does not prove that links inside transferred documents survived adaptation.
 - **`AGENTS.md` as a real file instead of a symlink.** A duplicate file drifts. Make it a symlink and verify with `readlink`.
 - **Reusing template-specific invariants.** "The example Python project must lint clean" is a template rule. Don't carry it into a project that has no Python.
 - **Filling in Phase 2+ at bootstrap.** Tempting and wrong. Phase 1 reality is the input to Phase 2's design.
@@ -534,17 +589,22 @@ Bootstrap is complete when **all** of the following hold:
 [ ] .claude/skills/methodology/SKILL.md exists (verbatim from template)
 [ ] .claude/skills/learn/SKILL.md exists (verbatim from template)
 [ ] .claude/skills/teach/SKILL.md exists (verbatim from template)
+[ ] .claude/skills/roles/SKILL.md exists (verbatim from template)
+[ ] .claude/skills/sweep/SKILL.md exists (verbatim from template)
 [ ] .claude/skills/stamp/ does NOT exist (starter-only meta-skill)
 [ ] .claude/agents/{phase-planner,plan-reviewer,phase-coder,code-critic}.md
     exist, adapted for this project
 [ ] .codex/agents/*.toml mirrors exist
-[ ] .agents/skills/{kickoff,methodology,learn,teach} exist as directory
+[ ] .agents/skills/{kickoff,methodology,learn,teach,roles,sweep} exist as directory
     symlinks to ../../.claude/skills/<name> (the canonical skill directory)
 [ ] .agents/skills/stamp does NOT exist (starter-only, must not propagate)
 [ ] bin/kickoff-config is executable; kickoff.yaml validates; scoped updates
     preserve human comments and `extensions` data; `.kickoff/` is gitignored
 [ ] bin/kickoff-tree-id and bin/kickoff-evidence are executable; candidate
     identity and run-scoped evidence behavioral tests pass
+[ ] bin/lessons and bin/check-catalogs are executable; lessons/.gitkeep and
+    lessons-archived/.gitkeep exist; ledger, document-link, and phase-lifecycle
+    fitness tests pass
 [ ] bin/setup, bin/test, bin/check, and bin/install-hooks are executable;
     the language runtime wrapper exists when applicable; .githooks/pre-push
     calls bin/check; hook installation remains explicit and opt-in
@@ -552,7 +612,8 @@ Bootstrap is complete when **all** of the following hold:
     language profile; no workflow assumes a versioned runtime binary on PATH
 [ ] tests/test_toolchain_entrypoints.py, tests/test_check.py,
     tests/test_install_hooks.py, tests/test_kickoff_config.py,
-    tests/test_kickoff_tree_id.py, and tests/test_kickoff_evidence.py pass
+    tests/test_kickoff_tree_id.py, tests/test_kickoff_evidence.py,
+    tests/test_lessons.py, and tests/test_check_catalogs.py pass
     through bin/test
 [ ] Every file in policies/ from the template exists, with project-name
     references updated

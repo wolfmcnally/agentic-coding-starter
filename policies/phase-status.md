@@ -6,7 +6,7 @@ Phase status lives in **`plan/INDEX.md`** and nowhere else. This is a hard rule,
 
 ```text
 ⏳ Not Started
-⬅️ Next (only one at a time)
+⬅️ Next (at most one at a time; required only while idle and incomplete)
 🚧 In Progress
 ✅ Completed
 ```
@@ -26,35 +26,45 @@ Duplicating status across files invites drift. The orchestrator (`kickoff`) read
 
 - On phase entry: `⬅️` → `🚧` and append a START block to `LOG.md`.
 - On phase completion: `🚧` → `✅`, advance the next `⏳` row to `⬅️` per the dependency graph, and append an END block to `LOG.md`.
-- On phase pause: leave the row at `🚧` and append an END block to `LOG.md` documenting the pause reason. Do not advance `⬅️`.
+- On phase pause: leave the row at `🚧` and append an END block to `LOG.md`
+  documenting the pause reason. Do not advance `⬅️`; zero next rows is valid
+  while work remains active.
 
 Humans may flip markers manually only in two cases:
 
 - **Bootstrap.** When a brand-new `plan/INDEX.md` is created, the human assigns `⬅️` to Phase 1.
 - **Recovery.** When `kickoff` failed partway through and left the state inconsistent, the human corrects the table — and ideally adds a note to `LOG.md` explaining the recovery.
 
-## "Only one `⬅️` at a time"
+## The phase-ledger state machine
 
-This is invariant. The dependency graph at the top of `plan/INDEX.md` permits parallel phases in principle (`P3` and `P4` both depend on `P2`), but the orchestrator works on one phase per session.
+Every phase-table data row carries exactly one recognized status marker. The
+number of `⬅️` rows depends on lifecycle state:
 
-If two rows are `⬅️` after a recovery, `kickoff` picks the earliest one in the dependency graph and warns the human.
+- **Idle and incomplete:** exactly one row is `⬅️`.
+- **Active:** zero or one row may be `⬅️`. Zero is normal after the executable
+  row changes to `🚧`; one is normal when a decomposed parent remains `🚧`
+  while its next child is queued.
+- **Complete:** zero rows are `⬅️` because no work remains to advance.
+- **Always invalid:** more than one `⬅️`, a phase-table row with no recognized
+  status, or a row carrying multiple recognized statuses.
+
+The dependency graph may expose parallel opportunities, but the orchestrator
+queues at most one executable phase. If recovery finds two `⬅️` rows, the
+ledger is invalid; `kickoff` stops and the human corrects it rather than letting
+the orchestrator choose through ambiguity.
 
 ## Verification
 
-A clean state satisfies all of:
+The deterministic catalog checker validates the lifecycle state and
+one-status-per-row invariant:
 
 ```bash
-# Exactly one ⬅️ phase-table row in INDEX.md
-[ "$(grep -E '^\| \[Phase ' plan/INDEX.md | grep -c '⬅️')" = 1 ] || echo "wrong ⬅️ count in phase table"
+./bin/check-catalogs
+```
 
-# No status: field in any per-phase frontmatter
-for f in plan/phase-*.md; do
-  awk 'BEGIN{n=0} /^---$/{n++; next} n==1 && /^status:/{print FILENAME ": status field in frontmatter"; exit}' "$f"
-done
+The authoritative full gate also rejects status fields or status declarations
+outside the phase table:
 
-# No status-declaration line in per-phase bodies. (Narrative mentions of the
-# status emojis inside prose are fine; declarations like "Status: 🚧" or a
-# frontmatter "status: in_progress" are the failure modes we guard against.)
-grep -nE '^[Ss]tatus *: *(⏳|⬅️|🚧|✅|not started|next|in progress|completed)' plan/phase-*.md && \
-  echo "status-declaration line in phase body" || true
+```bash
+./bin/check all
 ```

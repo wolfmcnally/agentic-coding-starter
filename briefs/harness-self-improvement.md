@@ -16,7 +16,7 @@ This brief records the design: what the loop is, where each stage lives, what wa
 The improvement flywheel runs at two scales, and the template owns both:
 
 - **Phase scale (inner tier, runs in every repo).** `kickoff` closes each phase with a harvest step: the four roles' Process Observations, the coder's failure analyses, review verdicts, dispositions, and wall-clock observations are distilled into candidate lessons in the `lessons/` ledger. Recurring lessons surface as graduation proposals the human ratifies (or doesn't). The `sweep` skill periodically audits the accumulated rules, skills, and briefs and proposes retirements.
-- **Repo scale (outer tier, runs between repos).** The starter is the hub. `stamp` ships the machinery to new projects; `teach` retrofits it onto existing ones; `learn` harvests derived projects' `scope: methodology` lessons back into the starter, where — once ratified — they improve the template every future project is stamped from.
+- **Repo scale (outer tier, runs between repos).** The starter is the hub. `stamp` ships the machinery to new projects; `teach` retrofits it onto existing ones; `learn` harvests both derived projects' `scope: methodology` lessons and new defects exposed while applying a donor bundle. Once ratified, those findings improve the template every future project is stamped from.
 
 The seam between the tiers is the lesson's `scope` field. A `local` lesson stays in its repo. A `methodology` lesson is a standing export: pre-digested, provenance-carrying input that `learn` reads as a first-class source instead of rediscovering patterns from raw files. This is the template's answer to the portability problem — knowledge is repo-local by default, and the hub-and-spoke transfer channel is what makes phase-scale learning compound across the whole family of projects.
 
@@ -25,8 +25,8 @@ The seam between the tiers is the lesson's `scope` field. A `local` lesson stays
 1. **Capture.** Roles emit Process Observations (friction or ambiguity in briefs, policies, plans, tooling, or the methodology itself) as structured output fields; on revision rounds the coder states *why* the previous attempt failed, and that analysis travels in the revision packet. `kickoff`'s harvest step files or recurs lessons in `lessons/` per [`policies/lessons.md`](../policies/lessons.md). "No lessons this phase" is a permitted, recorded answer; skipping the question is not.
 2. **Distill.** `bin/lessons` mechanically validates the ledger and tallies occurrences; `bin/lessons candidates` lists graduation-ready entries (three or more occurrences). Three is the stabilization threshold: a lesson codified on first sight tends to be wrong in ways its variations would have revealed.
 3. **Codify.** Graduation is human-ratified, one lesson at a time, onto a named surface: a policy, a brief, a skill, an agent definition, a `bin/` script, a test, or a `CLAUDE.md` invariant. Agents propose; the human edits (or approves the edit); the lesson archives with `graduated_to:` pointing at the rule it became. Every rule stays traceable to the incidents that earned it.
-4. **Prune.** `sweep` runs the maintenance half: stale or contradictory rules, skills past their review cadence, briefs due for `historical` status, aging ledger candidates, catalog drift (`bin/check-catalogs`). In the starter itself, `sweep` additionally audits the methodology corpus — the universal policies, methodology briefs, and the orchestration runtime doctrine's instruments — because defects here propagate to every spoke.
-5. **Propagate.** The machinery is Methodology Contract content: `stamp` copies it verbatim into new projects, `teach` proposes it to existing ones, and `learn` closes the return loop. Anonymization on the upstream path is governed by [`policies/anonymize-log-references.md`](../policies/anonymize-log-references.md) — a methodology lesson leaves its repo's identifying details behind before it enters the public template.
+4. **Prune.** `sweep` runs the maintenance half: stale or contradictory rules, skills past their review cadence, briefs due for `historical` status, aging ledger candidates, catalog drift, and internal-link integrity (`bin/check-catalogs`). In the starter itself, `sweep` additionally audits the methodology corpus — the universal policies, methodology briefs, and the orchestration runtime doctrine's instruments — because defects here propagate to every spoke.
+5. **Propagate and return.** The machinery is Methodology Contract content: `stamp` copies it verbatim into new projects, `teach` proposes it to existing ones, and `learn` closes the return loop. After applying an approved bundle, `learn` separately harvests generalizable defects discovered by the adaptation itself; applying the pattern is evidence about its source contract. Anonymization on the upstream path is governed by [`policies/anonymize-log-references.md`](../policies/anonymize-log-references.md) — a methodology lesson leaves its repo's identifying details behind before it enters the public template.
 
 ## 3. Why itemized capture, not instruction-file rewrites
 
@@ -60,8 +60,13 @@ When several derived projects exist, "is this spoke running the current methodol
 ## 7. Acceptance criteria for this design
 
 - A phase close in any derived repo cannot complete without answering the lessons question (END block `Lessons:` field; [`policies/log-discipline.md`](../policies/log-discipline.md)).
-- `./bin/lessons validate` and `./bin/check-catalogs` pass in this repo and in a freshly stamped project.
+- `./bin/lessons validate` and `./bin/check-catalogs` pass in this repo and
+  in a freshly stamped project, covering ledger schema, catalog membership,
+  tracked internal links, and phase-lifecycle state.
 - A `scope: methodology` lesson filed in a derived repo is visible to `learn` Stage 1 without bespoke exploration.
+- A `learn` application that exposes a new methodology defect records it as a
+  distinct return-path candidate and reports it separately from donor-ledger
+  lessons.
 - No agent-authored change to `policies/`, `briefs/`, `CLAUDE.md`, skills, or agent definitions cites a lesson as its authority without a recorded human ratification.
 
 ## Sources

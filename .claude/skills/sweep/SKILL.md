@@ -30,7 +30,8 @@ Raw arguments: `!{ARGUMENTS}`
 
 Run the mechanical checks first — they are deterministic and their output anchors the rest:
 
-1. `./bin/check-catalogs` — catalog/file sync and the single-`⬅️` invariant.
+1. `./bin/check-catalogs` — catalog/file sync, tracked internal-link integrity,
+   and the lifecycle-aware phase-ledger state machine.
 2. `./bin/lessons validate` — ledger schema health.
 3. `./bin/lessons candidates` — graduation-ready lessons (≥3 occurrences).
 
@@ -39,7 +40,7 @@ Then the judgment audits, each producing candidate findings:
 4. **Policies.** Read `policies/` against `LOG.md`, `lessons/`, and the repo's current shape. Flag: rules that contradict each other or a newer policy; rules describing machinery that no longer exists; rules that have never prevented anything (no LOG/lesson/finding has referenced them since adoption — a candidate for merging or retirement, not automatic deletion); policy examples that have drifted from the files they cite.
 5. **Briefs.** Check each brief's `status` against reality per [`policies/briefs.md`](../../../policies/briefs.md): an `implemented` brief whose design has been superseded belongs at `historical`; a `draft` that has quietly become load-bearing needs promotion or a decision. Briefs decay if not maintained — this is the check behind that warning.
 6. **Skills and agents.** Compare each `.claude/skills/*/SKILL.md` `last-reviewed:` date against the sweep date; re-read any skill past ~90 days or whose subject matter changed since its stamp. For agent definitions (no frontmatter date), use `git log -1 --format=%cs -- <file>` as the staleness heuristic. Flag steps that reference renamed files, retired tools, or contradicted policies.
-7. **Lessons ledger.** Beyond the mechanical candidates list: flag `candidate` lessons that have sat unratified across multiple sweeps (propose graduate or reject — an undecided ledger is a silent backlog), and near-duplicate lessons that should merge.
+7. **Lessons ledger.** Beyond the mechanical candidates list: flag `candidate` lessons that have sat unratified across multiple sweeps (propose graduate or reject — an undecided ledger is a silent backlog), and near-duplicate lessons that should merge. Treat catalog completeness and internal-link integrity as separate claims even though one deterministic checker now enforces both.
 8. **Hub-only — methodology corpus.** Only when this repo is itself a template (detect: `.claude/skills/stamp/` exists). Audit the surfaces that propagate to every derived project: the universal policies, the methodology briefs, and the orchestration runtime doctrine in [`briefs/methodology.md`](../../../briefs/methodology.md) — applying the doctrine's own anti-ratchet rule: an instrument or rule whose defect class a design change eliminated is retired, not accumulated. A defect that ships from a template multiplies into every spoke; this audit exists because of that leverage.
 
 ## Stage 2 — Classify and plan

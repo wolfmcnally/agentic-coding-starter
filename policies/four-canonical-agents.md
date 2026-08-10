@@ -27,13 +27,13 @@ Whether *both* reviewer roles run on a phase's initial implementation is governe
 
 ## What each role does
 
-- **`phase-planner`** — Reads the phase file, the briefs it references, the policies, and the existing repo, and produces a concrete file-level implementation plan. Does not write code. Output: a markdown plan with named files, named types/functions, an Implementation Order, a Build Gate Sequence, and an Open Questions section.
+- **`phase-planner`** — Reads the phase file, the briefs it references, the policies, and the existing repo, and produces a concrete file-level implementation plan. Does not write code. Output: a markdown plan with named files, named types/functions, an Implementation Order, a Build Gate Sequence, Open Questions, and Process Observations.
 
-- **`plan-reviewer`** — Reads the same authorities plus the planner's output. Issues a single verdict (`APPROVED` or `REVISE`) at the top of its response. May call `AskUserQuestion` to escalate decisions only the human can make.
+- **`plan-reviewer`** — Reads the same authorities plus the planner's output. Issues a single verdict (`APPROVED` or `REVISE`) at the top of its response and records Process Observations separately from phase findings. May call `AskUserQuestion` to escalate decisions only the human can make.
 
-- **`phase-coder`** — Reads the approved plan and implements it. Runs the build gates. Reports files created/modified and the build-status block.
+- **`phase-coder`** — Reads the approved plan and implements it. Runs the build gates. Reports files created/modified, the build-status block, Process Observations, and — on revision rounds — root-cause Failure Analysis in both its human report and Change Evidence.
 
-- **`code-critic`** — Reads the approved plan, the briefs and policies it cites, and the code diff. Issues a single verdict (`APPROVED` or `REVISE`). Does not rewrite the implementation; only reviews it.
+- **`code-critic`** — Reads the approved plan, the briefs and policies it cites, and the code diff. Issues a single verdict (`APPROVED` or `REVISE`) and records Process Observations separately from code findings. Does not rewrite the implementation; only reviews it.
 
 ## Verdict headers
 

@@ -34,13 +34,17 @@ The graph contains a single placeholder phase because starter's own deliverable 
 
 ## Phase Table
 
-Status legend: ⏳ Not Started · ⬅️ Next (only one at a time) · 🚧 In Progress · ✅ Completed.
+Status legend: ⏳ Not Started · ⬅️ Next (at most one) · 🚧 In Progress · ✅ Completed.
 
 | Phase                  | Title                                | Status |
 |------------------------|--------------------------------------|--------|
 | [Phase 1](phase-1.md)  | Adopt the template for your project  | ⬅️     |
 
 `kickoff` flips `⬅️` → `🚧` on start, `🚧` → `✅` on completion, and advances the next `⏳` row to `⬅️` per this dependency graph. Status does not live in per-phase frontmatter.
+
+Every phase row carries exactly one recognized status. An idle incomplete
+project has exactly one `⬅️`; active work may have zero while its executable
+row is `🚧`; a complete project has zero; more than one is always invalid.
 
 ## Cross-Cutting Concerns (apply to every phase)
 
@@ -65,6 +69,9 @@ These are the universals the template ships with. A project derived from this te
 - **Cross-harness parity** (see [`../policies/cross-harness-parity.md`](../policies/cross-harness-parity.md)). The same canonical files drive Claude Code, Codex CLI, and any other harness. Mirrors do not get hand-edited.
 - **Human decides done** (see [`../policies/human-in-the-loop.md`](../policies/human-in-the-loop.md)). `kickoff` never auto-commits, never advances past unresolved gates, never claims subjective acceptance.
 - **Log discipline** (see [`../policies/log-discipline.md`](../policies/log-discipline.md)). `LOG.md` is append-only and owned by `kickoff`.
+- **Lessons compound** (see [`../policies/lessons.md`](../policies/lessons.md)).
+  Every phase close harvests process observations into the lessons ledger;
+  graduation into a binding rule remains human-ratified.
 
 ## Critical-Files Map
 
@@ -76,6 +83,7 @@ These are the universals the template ships with. A project derived from this te
 | Bootstrap a new project              | [`../briefs/agentic-bootstrap.md`](../briefs/agentic-bootstrap.md) |
 | Top-level agent guidance             | [`../CLAUDE.md`](../CLAUDE.md)                            |
 | Activity log                         | [`../LOG.md`](../LOG.md)                                  |
+| Lessons and maintenance flywheel     | [`../briefs/harness-self-improvement.md`](../briefs/harness-self-improvement.md), [`../policies/lessons.md`](../policies/lessons.md), [`../bin/lessons`](../bin/lessons), [`../bin/check-catalogs`](../bin/check-catalogs), [`../.claude/skills/sweep/SKILL.md`](../.claude/skills/sweep/SKILL.md) |
 | Toolchain contract                  | [`../bin/setup`](../bin/setup), [`../bin/test`](../bin/test), [`../bin/check`](../bin/check), [`../bin/python`](../bin/python), [`../policies/build-gates.md`](../policies/build-gates.md) |
 | Optional tracked hooks              | [`../.githooks/pre-push`](../.githooks/pre-push), [`../bin/install-hooks`](../bin/install-hooks) |
 | Phase orchestrator                   | [`../.claude/skills/kickoff/SKILL.md`](../.claude/skills/kickoff/SKILL.md) |

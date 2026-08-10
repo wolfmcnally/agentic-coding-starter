@@ -7,14 +7,25 @@
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
+from collections.abc import Iterable
 from pathlib import Path
+from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
 DRIFT: list[str] = []
 
 CATALOGED_DIRECTORIES = ("policies", "briefs")
+PHASE_STATUSES = ("⏳", "⬅️", "🚧", "✅")
 NEXT_MARKER = "⬅️"
+IN_PROGRESS_MARKER = "🚧"
+NOT_STARTED_MARKER = "⏳"
+FENCE_PATTERN = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+INLINE_LINK_PATTERN = re.compile(r"!?\[[^\]\n]*\]\((?P<destination>[^)\n]+)\)")
+REFERENCE_LINK_PATTERN = re.compile(r"^ {0,3}\[[^\]\n]+\]:\s*(?P<destination><[^>\n]+>|\S+)")
+URI_SCHEME_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+PLACEHOLDER_PATTERN = re.compile(r"<[^>]+>|\{[^}]+\}")
 
 
 def report(surface: str, relative: str, reason: str) -> None:
@@ -31,20 +42,179 @@ def check_catalog(directory: str, instructions: str) -> None:
         report(directory, f"{directory}/{name}", "CLAUDE.md references a missing file")
 
 
-def check_next_marker() -> None:
+def phase_rows(lines: list[str]) -> list[str]:
+    in_phase_table = False
+    table_started = False
+    raw_rows: list[str] = []
+    for line in lines:
+        if line.strip().casefold() == "## phase table":
+            in_phase_table = True
+            continue
+        if in_phase_table and line.startswith("## "):
+            break
+        if not in_phase_table:
+            continue
+        if line.lstrip().startswith("|"):
+            table_started = True
+            raw_rows.append(line)
+        elif table_started and line.strip():
+            break
+
+    rows: list[str] = []
+    for row in raw_rows:
+        cells = [cell.strip() for cell in row.strip().strip("|").split("|")]
+        if not cells or cells[0].casefold() == "phase":
+            continue
+        if all(re.fullmatch(r":?-{3,}:?", cell) for cell in cells):
+            continue
+        rows.append(row)
+    return rows
+
+
+def check_phase_ledger() -> None:
     index = ROOT / "plan" / "INDEX.md"
     try:
         lines = index.read_text(encoding="utf-8").splitlines()
     except OSError as exc:
         report("plan", "plan/INDEX.md", str(exc))
         return
-    table_markers = sum(line.count(NEXT_MARKER) for line in lines if line.lstrip().startswith("|"))
-    if table_markers != 1:
+
+    rows = phase_rows(lines)
+    if not rows:
+        report("plan", "plan/INDEX.md", "phase table has no data rows")
+        return
+
+    row_markers: list[str | None] = []
+    for position, row in enumerate(rows, start=1):
+        markers = [marker for marker in PHASE_STATUSES if marker in row]
+        if len(markers) != 1:
+            report(
+                "plan",
+                "plan/INDEX.md",
+                f"phase row {position} must carry exactly one status marker; found {len(markers)}",
+            )
+            row_markers.append(None)
+        else:
+            row_markers.append(markers[0])
+
+    next_count = row_markers.count(NEXT_MARKER)
+    in_progress_count = row_markers.count(IN_PROGRESS_MARKER)
+    not_started_count = row_markers.count(NOT_STARTED_MARKER)
+    if next_count > 1:
         report(
             "plan",
             "plan/INDEX.md",
-            f"phase table must carry exactly one {NEXT_MARKER} marker; found {table_markers}",
+            f"phase table may carry at most one {NEXT_MARKER} marker; found {next_count}",
         )
+    elif next_count == 0 and in_progress_count == 0 and not_started_count > 0:
+        report(
+            "plan",
+            "plan/INDEX.md",
+            f"idle incomplete phase table must carry exactly one {NEXT_MARKER} marker; found 0",
+        )
+
+
+def tracked_markdown_files() -> list[Path]:
+    result = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-files", "-z", "--", "*.md"],
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        message = result.stderr.decode("utf-8", errors="replace").strip()
+        report("links", ".", f"git ls-files failed (exit {result.returncode}): {message}")
+        return []
+    return [ROOT / item.decode("utf-8") for item in result.stdout.split(b"\0") if item]
+
+
+def markdown_prose_lines(text: str) -> Iterable[tuple[int, str]]:
+    fence_character: str | None = None
+    fence_length = 0
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        match = FENCE_PATTERN.match(line)
+        if match:
+            marker = match.group(1)
+            if fence_character is None:
+                fence_character = marker[0]
+                fence_length = len(marker)
+            elif marker[0] == fence_character and len(marker) >= fence_length:
+                fence_character = None
+                fence_length = 0
+            continue
+        if fence_character is None:
+            yield line_number, line
+
+
+def link_destination(raw_destination: str) -> str | None:
+    raw = raw_destination.strip()
+    if not raw:
+        return None
+    if raw.startswith("<"):
+        closing = raw.find(">")
+        if closing == -1:
+            return None
+        suffix = raw[closing + 1 :].strip()
+        if suffix and not suffix.startswith(('"', "'", "(")):
+            return None
+        destination = raw[1:closing]
+    else:
+        destination = raw.split(maxsplit=1)[0]
+    return unquote(destination.replace("\\(", "(").replace("\\)", ")"))
+
+
+def check_link(source: Path, line_number: int, destination: str) -> None:
+    if (
+        not destination
+        or destination.startswith(("#", "//"))
+        or URI_SCHEME_PATTERN.match(destination)
+        or PLACEHOLDER_PATTERN.search(destination)
+    ):
+        return
+
+    file_destination = destination.split("#", 1)[0].split("?", 1)[0]
+    if not file_destination:
+        return
+    if file_destination.startswith("/"):
+        candidate = ROOT / file_destination.lstrip("/")
+    else:
+        candidate = source.parent / file_destination
+    resolved_root = ROOT.resolve()
+    resolved_candidate = candidate.resolve(strict=False)
+    try:
+        relative_candidate = resolved_candidate.relative_to(resolved_root)
+    except ValueError:
+        report(
+            "links",
+            source.relative_to(ROOT).as_posix(),
+            f"line {line_number}: link escapes repository: {destination}",
+        )
+        return
+    if not candidate.exists():
+        report(
+            "links",
+            source.relative_to(ROOT).as_posix(),
+            f"line {line_number}: missing target {relative_candidate.as_posix()}",
+        )
+
+
+def check_markdown_links() -> None:
+    for source in tracked_markdown_files():
+        try:
+            text = source.read_text(encoding="utf-8")
+        except OSError as exc:
+            report("links", source.relative_to(ROOT).as_posix(), str(exc))
+            continue
+        for line_number, line in markdown_prose_lines(text):
+            destinations = [
+                match.group("destination") for match in INLINE_LINK_PATTERN.finditer(line)
+            ]
+            reference_match = REFERENCE_LINK_PATTERN.match(line)
+            if reference_match:
+                destinations.append(reference_match.group("destination"))
+            for raw_destination in destinations:
+                destination = link_destination(raw_destination)
+                if destination is not None:
+                    check_link(source, line_number, destination)
 
 
 def main() -> int:
@@ -59,7 +229,8 @@ def main() -> int:
     if instructions:
         for directory in CATALOGED_DIRECTORIES:
             check_catalog(directory, instructions)
-    check_next_marker()
+    check_phase_ledger()
+    check_markdown_links()
     if DRIFT:
         print("\n".join(sorted(DRIFT)))
         return 1

@@ -209,7 +209,8 @@ coverage floor.
 ## <YYYY-MM-DD HH:MM> — LEARN
 Donor: <donor-name> @ <sha or fp>
 Items absorbed: <count>, by tier T1=<n>/T2=<n>/T3=<n>/T4=<n>
-Lessons harvested: <count> (<count> absorbed as rule proposals; <count> filed to lessons/)
+Donor lessons harvested: <count> (<count> absorbed as rule proposals; <count> filed to lessons/)
+Application-found return candidates: <count> filed to lessons/
 Stale-in-light-of-learning migrations: <count> (AUTO); <count> DECIDE; <count> DEFER
 Files touched: <count>
 ```
@@ -253,19 +254,31 @@ Once approved, apply the approved items. Order:
    run `./bin/lessons validate`. A donor lesson approved as a direct rule
    change lands as its rule edit instead (steps 1–2) — not both.
 7. Run focused wrapper tests through `./bin/test
-   tests/test_toolchain_entrypoints.py tests/test_check.py -q`, then the
-   repository's canonical full gate to confirm nothing regressed:
-   `./bin/check all`. If an older methodology-following destination lacks the
-   atomic toolchain contract, run the exact commands declared by its current
-   metadata and `kickoff`, and flag every missing contract member as a learning
-   candidate.
+   tests/test_toolchain_entrypoints.py tests/test_check.py -q`. If an older
+   methodology-following destination lacks the atomic toolchain contract, run
+   the exact focused commands declared by its current metadata and `kickoff`,
+   and flag every missing contract member as a learning candidate.
 8. Re-run the caller inventory and verify that format checking covers staged,
    unstaged, and nonignored untracked candidates. For any repeated,
    mutation-sensitive, generated, or detached workflow, prove that the
    underlying repository interpreter is resolved once and reused.
-9. Append the LEARN entry to `LOG.md`. Format as proposed in the plan and
-   apply this repository's anonymization policy because this write lands in
-   Starter.
+9. **Harvest the application return path.** Review defects and improvements
+   discovered while translating, applying, and validating the approved bundle
+   that were not already donor-ledger inputs. Applying a donor pattern is an
+   empirical test of that pattern's contract. For each generalizable finding,
+   check both destination lesson directories, append an occurrence to a match
+   or file a new `scope: methodology`, `source: learn` candidate, and preserve
+   the donor as read-only. Do not turn the finding directly into another rule
+   edit in this step: application-found candidates enter the ledger for later
+   human ratification. Run `./bin/lessons validate` and
+   `./bin/lessons candidates`; count these separately from donor lessons.
+10. Append the LEARN entry to `LOG.md`. Format as proposed in the plan,
+    report donor-ledger and application-found lesson counts separately, and
+    apply this repository's anonymization policy because this write lands in
+    Starter.
+11. Run `./bin/check all` against the complete unchanged candidate after all
+    rule, lesson, stale-migration, and LOG writes. This is the authoritative
+    final gate; any subsequent candidate change invalidates it.
 
 **Do not auto-commit.** Per [`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md), the human owns commits. Report the file list, the build-gate status, and any unresolved manual steps so the user can review and commit.
 
@@ -278,6 +291,10 @@ Once approved, apply the approved items. Order:
 - **Catalog drift is forbidden.** `CLAUDE.md`'s catalogs reflect every file in `briefs/` and `policies/` after the apply finishes. Verify before reporting done.
 - **Skip donor-specific PII, secrets, and proprietary content** wholesale during Stage 1. If a donor file contains real names, emails, API keys, or internal company names, do not read its body beyond confirming the type; never transfer such content, even in inspiration form.
 - **One LOG entry per `learn` run.** Not per item. The aggregate entry preserves the audit trail without flooding the log.
+- **The return path is mandatory.** After application and focused validation,
+  harvest new generalizable defects exposed by the adaptation as destination
+  `scope: methodology` candidates. Keep their count distinct from lessons
+  that already existed in the donor.
 - **Stale sweep is acceptance.** Every file made stale by an approved learning is migrated (AUTO), decided (DECIDE), or deferred with a named condition (DEFER) in the same plan and LOG entry.
 - **Kickoff-config learning is atomic and privacy-preserving.** Adopt generalizable policy/schema/round-trip manager/test/invocation/reporting improvements together. Never ingest donor raw telemetry, percentiles, values, comments, `extensions` data, overrides, model choices, or efforts; validate the local bundle with `bin/kickoff-config show`, the behavioral suite, scoped-update preservation tests, and a bounded watchdog smoke test.
 - **Orchestration-evidence learning is atomic and privacy-preserving.** Never

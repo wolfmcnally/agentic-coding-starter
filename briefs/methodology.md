@@ -54,7 +54,7 @@ A methodology for writing software with AI coding agents in a way that scales be
    change is large/cross-cutting. A failed lightweight attempt upgrades to the
    full cycle; every relevant change invalidates prior gate evidence.
 
-9. **Append-only phase log.** Use an append-only log (`LOG.md`) to **open and close** work on every phase. Closing requires recording the **evidence** of what happened and **why** the orchestrator believes the success criteria were met. The human reads the END block before accepting the phase.
+9. **Append-only phase log and lessons harvest.** Use an append-only log (`LOG.md`) to **open and close** work on every phase. Closing requires recording the **evidence** of what happened and **why** the orchestrator believes the success criteria were met. Before finalizing the END block, harvest every role's Process Observations, revision failure analyses, wall-clock observations, and relevant dispositions into the `lessons/` ledger per [`policies/lessons.md`](../policies/lessons.md). `None` is valid; skipping the question is not. The human reads the END block before accepting the phase.
 
 10. **Human evaluation.** The human evaluates each sub-phase, and re-invokes the orchestrator (or specific agents) to refine or fix anything found before moving on. This is where the human exercises engineering, UX, and product judgment. **The orchestrator does not decide done.**
 
@@ -69,7 +69,7 @@ When you're starting or scoping a coding project, work through these steps in or
 - If architecture exists but no phase plan, do step 5.
 - If a phase exists but no sub-phases, do step 6.
 - If a sub-phase is being executed, follow step 7's orchestrator pattern (planner → planning critic → coder → coding critic, with revision loops).
-- Whenever a phase opens or closes, write to the append-only log (step 9) with explicit evidence.
+- Whenever a phase opens or closes, write to the append-only log (step 9) with explicit evidence; at close, also run the mandatory lessons harvest and surface graduation-ready candidates for human ratification.
 
 ## The four canonical agents
 
@@ -84,7 +84,7 @@ The methodology's orchestrator delegates to four specialist roles. Their names a
 
 The orchestrator (`kickoff`) is the fifth participant. It delegates initial
 implementation; owns authority, change, finding, and gate evidence; handles
-verdicts, final gates, and `LOG.md`; and may write code only for a small,
+verdicts, final gates, the lessons harvest, and `LOG.md`; and may write code only for a small,
 low-risk follow-up correction whose intended shape is already determined.
 
 ## Non-negotiables
@@ -93,7 +93,7 @@ low-risk follow-up correction whose intended shape is already determined.
 - **Every initial phase implementation passes the code critic**, whichever review lane it declares; repeat review on follow-ups is risk- and size-based (steps 7–8).
 - **The human decides when work is "done"**; the orchestrator does not (step 4, step 10).
 - **The orchestrator writes code only for eligible small, low-risk follow-up corrections** (step 8).
-- **Closing a phase requires recorded evidence**, not just a green test run (step 9).
+- **Closing a phase requires recorded evidence and a lessons-harvest answer**, not just a green test run (step 9).
 - **Phases and sub-phases are mutable**; refactor the plan as understanding grows (step 11).
 
 ## Orchestration runtime doctrine
@@ -141,3 +141,5 @@ What you get in exchange: each phase leaves a reviewable artifact pair (END bloc
 - **`kickoff`** — runs steps 7–9 for one sub-phase, end-to-end.
 - **`stamp`** — runs the bootstrap procedure described in [`agentic-bootstrap.md`](agentic-bootstrap.md) to stand up a new repo under this methodology.
 - **`methodology`** — re-states this brief as a skill, invoked as `/methodology` in Claude Code or `$methodology` in Codex, for sessions that need a reminder without reading the whole file.
+- **`learn` / `teach`** — move ratified methodology patterns and scope-classified lessons between the starter hub and project repos under explicit user approval.
+- **`sweep`** — audits policies, briefs, skills, agents, catalogs, and the lessons ledger; proposes pruning and graduation decisions for human ratification.

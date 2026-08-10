@@ -286,12 +286,15 @@ entry points.
 ./bin/check-toolchain-callers
 ```
 
-### `check-catalogs` — catalog and ledger fitness functions
+### `check-catalogs` — document and phase-ledger fitness functions
 
 Verifies the durable-document catalogs stay closed under sync: every
 `policies/*.md` and `briefs/*.md` file is indexed in `CLAUDE.md` and every
-indexed entry resolves to a file (no orphans either way), and
-`plan/INDEX.md` carries exactly one `⬅️` marker.
+indexed entry resolves to a file (no orphans either way). It also validates
+tracked repository-internal Markdown links and the complete phase lifecycle:
+each phase-table row has one recognized status, at most one row is `⬅️`, idle
+incomplete work has exactly one next row, and active or complete work may have
+none.
 
 ```bash
 ./bin/check-catalogs

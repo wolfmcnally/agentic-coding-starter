@@ -171,10 +171,17 @@ Copy these files **from this template** into the new project, then run a name su
   (verbatim — universal candidate identity and orchestration-evidence
   contract, governed by `policies/orchestration-evidence.md`)
 - `bin/lessons`, `bin/check-catalogs`, `tests/test_lessons.py`, and
-  `tests/test_check_catalogs.py` (verbatim — universal lessons-ledger and
-  catalog-fitness machinery, governed by `policies/lessons.md`). The
+  `tests/test_check_catalogs.py` (verbatim — universal lessons-ledger,
+  document-link, and phase-lifecycle fitness machinery, governed by
+  `policies/lessons.md`). The
   destination's ledger starts **empty**: create `lessons/.gitkeep` and
   `lessons-archived/.gitkeep`; never copy Starter's lesson files.
+
+This inventory, the manual bootstrap brief, `teach`'s atomic transfer list,
+acceptance checklists, role contracts, and methodology narrative are one
+propagation boundary. Whenever the universal bundle grows, reconcile every
+member in the same change; a current executable path does not excuse a stale
+manual path.
 
 Then create the `.agents/skills/` **directory symlinks** for Codex CLI's native skill discovery. Each is a relative symlink whose target is the canonical skill *directory* (not the SKILL.md file inside it — Codex doesn't follow file-level symlinks inside a skill dir per [openai/codex#11314](https://github.com/openai/codex/issues/11314), but does traverse a symlinked skill directory):
 
@@ -225,7 +232,7 @@ Author these afresh, using the gathered configuration:
     - `## Project surfaces` — describe the deliverable (path, what language, what the example or seed code is). When `project_isolation` is on, the surface is `project/`; when off, name the sibling deliverable directories.
     - `## Project conventions` — language, tooling, build-gate command shape for this project.
     - `## Model & review venue` — describe `kickoff.yaml` as the human-editable source for separate model/effort fields and execution budgets; `roles` is an optional validated editor; the shipped default gives cross-vendor review. Governed by the two role policies.
-    - `## Project-specific skills` — if the new project carries any skills beyond the universal five (kickoff, methodology, learn, teach, roles), list them here. For most fresh projects, this section is empty (or omitted).
+    - `## Project-specific skills` — if the new project carries any skills beyond the universal six (kickoff, methodology, learn, teach, roles, sweep), list them here. For most fresh projects, this section is empty (or omitted).
   - Preserve the introductory paragraph that explains the two-zone contract; it is informational and lives outside both markers.
 
 - **`<dest>/AGENTS.md`** — symlink to `CLAUDE.md`. Create with `ln -s CLAUDE.md AGENTS.md` in the destination.

@@ -175,7 +175,8 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── agentic-bootstrap.md        ←   how to stand up a new project
 │   ├── cross-agent-invocation.md   ←   cross-CLI invocation BCPs
 │   ├── incremental-orchestration.md ← candidate-bound incremental assurance
-│   └── deterministic-orchestration.md ← draft: deterministic kickoff loop
+│   ├── deterministic-orchestration.md ← draft: deterministic kickoff loop
+│   └── harness-self-improvement.md ← lessons, sweep, and cross-repo flywheel
 ├── policies/                       ← non-negotiable rules every phase honors
 │   ├── README.md
 │   ├── briefs-and-policies.md
@@ -190,6 +191,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── role-timeouts.md            ← first-event/idle/hard execution budgets
 │   ├── orchestration-evidence.md   ← candidate/revision/gate evidence
 │   ├── review-lanes.md             ← review intensity + proportional follow-ups
+│   ├── lessons.md                  ← candidate process-lessons lifecycle
 │   ├── build-gates.md              ← atomic repository toolchain contract
 │   ├── project-isolation.md        ← isolate deliverable under project/
 │   └── greenfield-until-released.md ← no backward-compat shims pre-release
@@ -202,6 +204,8 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── kickoff-config              ← round-trip config, preflight, watchdog
 │   ├── kickoff-tree-id             ← complete review candidate identity
 │   ├── kickoff-evidence            ← authority/change/finding/gate records
+│   ├── lessons                     ← validate and query the lessons ledger
+│   ├── check-catalogs              ← document and phase-ledger fitness
 │   └── check-anonymization.sh      ← starter-only public-repo leak guard
 ├── .githooks/
 │   └── pre-push                    ← optional; calls the canonical full gate
@@ -211,7 +215,11 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── test_install_hooks.py       ← opt-in hook installer coverage
 │   ├── test_kickoff_config.py      ← config/watchdog behavioral coverage
 │   ├── test_kickoff_tree_id.py     ← candidate identity coverage
-│   └── test_kickoff_evidence.py    ← evidence/packet/gate coverage
+│   ├── test_kickoff_evidence.py    ← evidence/packet/gate coverage
+│   ├── test_lessons.py             ← lessons-ledger coverage
+│   └── test_check_catalogs.py      ← document and phase-ledger coverage
+├── lessons/                        ← open candidate process lessons
+├── lessons-archived/               ← codified/rejected lesson audit trail
 ├── plan/                           ← phased execution plan
 │   ├── INDEX.md                    ←   phase ledger (status lives ONLY here)
 │   └── phase-1.md                  ←   first phase (a stub you replace)
@@ -222,6 +230,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   │   ├── learn/SKILL.md          ←   absorb patterns FROM another repo (universal)
 │   │   ├── teach/SKILL.md          ←   send patterns TO another repo (universal)
 │   │   ├── roles/SKILL.md          ←   pin a model/harness to a role (universal)
+│   │   ├── sweep/SKILL.md          ←   prune and graduate rule surfaces (universal)
 │   │   └── stamp/SKILL.md          ←   new-project bootstrapper (starter-only)
 │   └── agents/
 │       ├── phase-planner.md
@@ -241,6 +250,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
         ├── learn                   ←      file-level symlinks inside skill dirs — issue #11314)
         ├── teach
         ├── roles
+        ├── sweep
         └── stamp                   ←   present only in this template repo
 ```
 
@@ -251,11 +261,15 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 Phase status lives in **`plan/INDEX.md`** and nowhere else. The legend is:
 
 - ⏳ Not Started
-- ⬅️ Next — exactly one phase carries this marker at any time
+- ⬅️ Next — at most one phase; required while idle and incomplete
 - 🚧 In Progress
 - ✅ Completed
 
 `kickoff` flips `⬅️` → `🚧` on start, `🚧` → `✅` on completion, and advances the next `⏳` row to `⬅️`. Status does not live in per-phase frontmatter; `id`, `title`, `depends_on`, `informs`, and the optional `review_lane` (see `policies/review-lanes.md`) are the only frontmatter fields.
+
+Every phase row carries exactly one recognized status. Zero next rows is valid
+while work is active and after the project completes; more than one is always
+invalid.
 
 ---
 
@@ -307,10 +321,14 @@ See [`policies/cross-harness-parity.md`](policies/cross-harness-parity.md) for t
 
 Once you have more than one methodology-following project, patterns evolve in one and stop in another. Two universal skills handle the round trip:
 
-- **`learn <donor-dir> [<desc>]`** — Invoke as `/learn ...` in Claude Code or `$learn ...` in Codex. Explores `<donor-dir>` for patterns (skills, policies, briefs, agent refinements, build-gate idioms, even domain specializations) and proposes which to absorb. The donor stays read-only. Nothing is written here until you approve.
+- **`learn <donor-dir> [<desc>]`** — Invoke as `/learn ...` in Claude Code or `$learn ...` in Codex. Explores `<donor-dir>` for patterns (skills, policies, briefs, agent refinements, build-gate idioms, even domain specializations) and proposes which to absorb. The donor stays read-only. Nothing is written here until you approve. After application, it captures methodology defects exposed by adapting the donor so a later return pass can harvest them.
 - **`teach <target-dir> [<desc>]`** — Invoke as `/teach ...` in Claude Code or `$teach ...` in Codex. Proposes which of *this* repo's patterns to apply to `<target-dir>`. This repo stays read-only, and the target's custom work is preserved by default.
 
 Both skills are carried into every project that `stamp` creates, so any methodology-following project can learn from or teach another.
+
+Every derived project also carries the `lessons/` ledger and `sweep` skill.
+Phase work records candidate process lessons; `sweep` proposes graduation,
+rejection, consolidation, and rule-surface maintenance for human approval.
 
 The `<desc>` argument narrows intent. Omit it for a broad assessment that defaults to general-purpose improvements; supply it to focus on a specific surface ("focus on the testing setup", "Unity specialization", "just the policies").
 

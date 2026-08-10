@@ -119,10 +119,16 @@ The template is acceptable when:
   and nonignored-untracked candidate state; `bin/kickoff-evidence` validates
   run-scoped authority, change, finding, packet, and final-gate evidence.
 - No file in this repo references Wolf McNally, his email, his other projects, or any third-party PII. The template is distributable.
-- Every file under `briefs/` is listed in `CLAUDE.md`'s Briefs catalog, and every file in the catalog exists. No orphans either way.
-- Every file under `policies/` is listed in `CLAUDE.md`'s Policies catalog, and every file in the catalog exists. No orphans either way.
+- Every file under `briefs/` and `policies/` is cataloged bidirectionally, and
+  every tracked repository-internal Markdown link resolves. No orphans or
+  dangling document links.
+- The lessons ledger, phase-close harvest, and user-gated `sweep` workflow ship
+  as one portable contract; `bin/lessons validate` and `bin/check-catalogs`
+  pass in this repo and in a freshly stamped project.
 - `AGENTS.md` is a symlink to `CLAUDE.md` (verifiable with `readlink AGENTS.md`).
-- `plan/INDEX.md` carries exactly one `⬅️` row at any time.
+- Every `plan/INDEX.md` phase row carries exactly one recognized status. An
+  idle incomplete project has exactly one `⬅️`; active and complete projects
+  may have none; more than one is always invalid.
 
 ## 8. Out of scope
 

@@ -50,7 +50,7 @@ The authoritative source is [`briefs/methodology.md`](../../../briefs/methodolog
    invalidates prior gate evidence; a failed lightweight route upgrades to the
    full cycle.
 
-9. **Append-only phase log.** `LOG.md` opens and closes work on every phase. Closing requires recording evidence of what happened and why the success criteria were met.
+9. **Append-only phase log and lessons harvest.** `LOG.md` opens and closes work on every phase. Closing requires recorded evidence plus the mandatory lessons question: harvest role Process Observations, revision failure analyses, wall-clock observations, and relevant dispositions into `lessons/`; `None` is valid, omission is not.
 
 10. **Human evaluation.** The human evaluates each sub-phase. The orchestrator does not decide done.
 
@@ -63,7 +63,7 @@ The authoritative source is [`briefs/methodology.md`](../../../briefs/methodolog
 - If architecture exists but no phase plan, do step 5.
 - If a phase exists but no sub-phases, do step 6.
 - If a sub-phase is being executed, follow step 7's `kickoff` orchestrator pattern.
-- Whenever a phase opens or closes, write to the append-only log (step 9) with explicit evidence.
+- Whenever a phase opens or closes, write to the append-only log (step 9) with explicit evidence; at close, run the lessons harvest and surface graduation-ready candidates for human ratification.
 
 ## The four canonical agents
 
@@ -85,7 +85,7 @@ The orchestrator delegates to four specialist roles. Their names are load-bearin
 - **The orchestrator, not the coder, owns the one complete acceptance-close gate.**
 - **The human decides when work is "done."**
 - **The orchestrator writes code only for eligible small, low-risk follow-up corrections.**
-- **Closing a phase requires recorded evidence.**
+- **Closing a phase requires recorded evidence and a lessons-harvest answer.**
 - **Phases and sub-phases are mutable.**
 
 ## Orchestration runtime doctrine

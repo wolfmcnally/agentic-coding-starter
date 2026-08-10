@@ -14,8 +14,11 @@ MECHANISTIC_POLICY = _normalized(REPO_ROOT / "policies" / "mechanistic-vs-intell
 ORCHESTRATION_POLICY = _normalized(REPO_ROOT / "policies" / "orchestration-evidence.md")
 ANONYMIZATION_POLICY = _normalized(REPO_ROOT / "policies" / "anonymize-log-references.md")
 INCREMENTAL_BRIEF = _normalized(REPO_ROOT / "briefs" / "incremental-orchestration.md")
+METHODOLOGY_BRIEF = _normalized(REPO_ROOT / "briefs" / "methodology.md")
+BOOTSTRAP_BRIEF = _normalized(REPO_ROOT / "briefs" / "agentic-bootstrap.md")
 CLAUDE = _normalized(REPO_ROOT / "CLAUDE.md")
 KICKOFF = _normalized(REPO_ROOT / ".claude" / "skills" / "kickoff" / "SKILL.md")
+METHODOLOGY = _normalized(REPO_ROOT / ".claude" / "skills" / "methodology" / "SKILL.md")
 PLANNER = _normalized(REPO_ROOT / ".claude" / "agents" / "phase-planner.md")
 PLAN_REVIEWER = _normalized(REPO_ROOT / ".claude" / "agents" / "plan-reviewer.md")
 CODER = _normalized(REPO_ROOT / ".claude" / "agents" / "phase-coder.md")
@@ -106,6 +109,41 @@ def test_candidate_evidence_bundle_propagates_atomically() -> None:
         assert phrase in STAMP
         assert phrase in TEACH
     assert "Orchestration-evidence learning is atomic" in LEARN
+
+
+def test_self_improvement_bundle_propagates_atomically() -> None:
+    required = (
+        ".claude/skills/sweep/SKILL.md",
+        "briefs/harness-self-improvement.md",
+        "policies/lessons.md",
+        "bin/lessons",
+        "bin/check-catalogs",
+        "tests/test_lessons.py",
+        "tests/test_check_catalogs.py",
+        "lessons-archived",
+    )
+    for phrase in required:
+        assert phrase in STAMP
+        assert phrase in TEACH
+        assert phrase in BOOTSTRAP_BRIEF
+
+
+def test_methodology_narrative_carries_lessons_and_failure_analysis() -> None:
+    for document in (METHODOLOGY, METHODOLOGY_BRIEF):
+        assert "lessons harvest" in document
+        assert "Process Observations" in document
+    assert "root-cause failure analysis" in INCREMENTAL_BRIEF
+    assert "root-cause Failure Analysis" in _normalized(
+        REPO_ROOT / "policies" / "four-canonical-agents.md"
+    )
+
+
+def test_learn_harvests_the_post_application_return_path() -> None:
+    assert "Harvest the application return path" in LEARN
+    assert "Application-found return candidates" in LEARN
+    assert "source: learn" in LEARN
+    assert "scope: methodology" in LEARN
+    assert "after all rule, lesson, stale-migration, and LOG writes" in LEARN
 
 
 def test_human_wall_clock_efficiency_is_ambient_and_effectiveness_preserving() -> None:

@@ -60,7 +60,8 @@ Each phase run owns four run-scoped records:
    locators, and priority order. Original files remain authoritative.
 2. **Change manifest.** Reviewed and current candidate identifiers, changed
    paths and content hashes, declared risk tags, selected tests and rationale,
-   intentionally unchanged neighbors, authority drift, and rebase reasons.
+   intentionally unchanged neighbors, authority drift, rebase reasons, and —
+   on revision rounds — the coder's root-cause failure analysis.
 3. **Finding ledger.** Stable finding id, severity, governing authority,
    evidence, affected paths, required outcome, introduction and resolution
    candidates, state, classification, and disposition.
@@ -84,7 +85,11 @@ A revision review begins with:
 - the causal path/hash delta;
 - authority drift and explicit rebase reasons;
 - selected verification mapped to the change;
+- the coder's explanation of why the previous attempt produced the findings;
 - prior gate records for the affected candidate.
+
+The failure analysis travels with the packet so the reviewer can test the fix
+against the coder's theory of the root cause rather than only its surface diff.
 
 The reviewer decides prior findings first, then examines the changed dependency
 surface for regression. New findings remain allowed and are classified as:

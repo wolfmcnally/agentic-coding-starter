@@ -290,3 +290,25 @@ baseline classifies; a gate that could not run is "not run," never
 "passed." Feed-back note: the donor's own methodology brief receives the
 full fourteen-rule doctrine by /learn immediately after this teach, per
 operator direction.
+
+## 2026-08-10 02:46 MDT — LEARN
+Donor: Donor A @ <sha withheld>
+Items absorbed: 4, by tier T1=4/T2=0/T3=0/T4=0
+Donor lessons harvested: 4 (4 absorbed as rule proposals; 0 filed to lessons/)
+Application-found return candidates: 0 filed to lessons/
+Stale-in-light-of-learning migrations: 18 AUTO; 1 DECIDE resolved by approval; 0 DEFER
+Files touched: 23
+
+Generalized improvements: phase-ledger validation now models idle, active,
+decomposed, and complete lifecycles instead of requiring a next marker in every
+state; the catalog checker also verifies tracked repository-internal Markdown
+links. The self-improvement machinery now propagates as an explicit atomic
+bundle across executable and manual bootstrap paths, methodology and role
+contracts carry lessons and root-cause analysis consistently, and `learn`
+harvests defects exposed by applying a donor bundle before its final unchanged-
+candidate gate.
+
+The application return-path review found no additional generalizable candidate
+beyond the four approved donor lessons. Focused validation did expose and close
+two incomplete applications of the approved propagation and corpus-reconciliation
+changes before the final gate.

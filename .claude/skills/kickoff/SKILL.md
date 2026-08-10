@@ -127,9 +127,18 @@ For native subagents, use the same role-specific hard and idle budgets through t
 
 Read `plan/INDEX.md` (the authoritative phase ledger) and locate the phase to work on. Status markers live in the `INDEX.md` phase table, not in the per-phase files (see [`policies/phase-status.md`](../../../policies/phase-status.md)).
 
-- **No arguments**: find the row whose status is `⬅️` in the phase table. If multiple rows are marked `⬅️` (should never happen), pick the earliest in the dependency graph and warn the user.
+- **No arguments**: find the row whose status is `⬅️` in the phase table. If
+  none exists while a row is `🚧`, require an explicit phase id to resume that
+  active work. If every row is `✅`, report that the project is complete. If
+  incomplete work is idle with no `⬅️`, or more than one row is `⬅️`, stop
+  on the invalid ledger rather than choosing through ambiguity.
 - **`phase N` / `phase N.M`**: find the row whose link is `[Phase <id>](phase-<id>.md)`.
 - **Free text**: resolve to a phase row or ask the user.
+
+The lifecycle invariant is: every phase row has exactly one recognized status;
+idle incomplete work has exactly one `⬅️`; active or complete work may have
+zero; more than one is always invalid. `./bin/check-catalogs` enforces this
+same state machine.
 
 Then resolve the **review lane** per [`policies/review-lanes.md`](../../../policies/review-lanes.md): read `review_lane:` from the target phase file's frontmatter. Absent or `full` → **full** lane. `light` → **light** lane: Step 4 (plan review) will be skipped; the code critic still runs and guards the lane. You may upgrade a declared `light` to `full` when the phase's actual deliverables look non-mechanical — note the upgrade and why. Never downgrade `full` to `light` on your own.
 
@@ -545,7 +554,7 @@ If no downstream drafted phase files exist (e.g., this is the project's only pha
 Runs when a major phase's row was just flipped to `✅` — either by Step 9.3 directly (the closed phase was a monolithic major phase) or by Step 9a's parent-rollup branch (the closed phase was the last sub-phase under its parent).
 
 1. **Ripple pass** against the next drafted major phase (`phase-(N+1).md`) and any subsequent sketched phases. Procedure mirrors Step 9a's ripple sub-step (read END block + verdict bodies; classify each candidate AUTO/DECIDE; apply AUTO; capture DECIDE for the END block). The major-phase ripple is more likely to touch Goal and Deliverables (lower-fidelity sketches have more headroom) and Acceptance (sketched criteria need tightening once the upstream phase pins them).
-2. **Advance `⬅️`.** Find the next `⏳` row in the dependency graph order (honoring parallel opportunities). Change it to `⬅️`. Only one `⬅️` at a time.
+2. **Advance `⬅️`.** Find the next `⏳` row in the dependency graph order (honoring parallel opportunities). Change it to `⬅️`. At most one row is `⬅️`; when no downstream phase exists, zero is the valid completed state.
 3. **Sketched-phase completeness check.** If the new `⬅️` row points at a `phase-N.md` that doesn't exist as a file (only a row in INDEX.md), this is a bootstrap-completeness failure — flag in the END block. Do not auto-draft it; per [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md) §8, every major phase the brief surfaces should have been sketched at bootstrap.
 
 If no downstream major phase exists (project complete), Step 9b's ripple is a no-op and `⬅️` advances to nothing — the project is done. Surface this to the user in the report.

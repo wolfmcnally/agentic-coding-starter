@@ -160,11 +160,13 @@ Work proceeds phase by phase under [`plan/`](plan/INDEX.md). `kickoff` orchestra
 Phase statuses live **only** in [`plan/INDEX.md`](plan/INDEX.md)'s phase table:
 
 - ⏳ Not Started
-- ⬅️ Next (only one at a time)
+- ⬅️ Next (at most one; required while idle and incomplete)
 - 🚧 In Progress
 - ✅ Completed
 
 `kickoff` flips `⬅️` → `🚧` on start, `🚧` → `✅` on completion, and advances `⬅️` per the dependency graph at the top of `plan/INDEX.md`.
+Every phase row carries exactly one recognized status. Active and complete
+projects may have zero `⬅️` rows; more than one is always invalid.
 
 ### Reading protocol for phase work
 

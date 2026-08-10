@@ -83,6 +83,11 @@ Archived files **stay on disk** — they are the audit trail linking every rule 
 ### Who writes
 
 - **Any agent** may file a candidate lesson or append an occurrence: `kickoff`'s harvest step at phase close, `sweep` during a maintenance pass, a `user-actions` disposition, `learn`/`teach` during a transfer, or the user directly.
+- **`learn` keeps two inputs distinct.** Donor-ledger lessons are harvested as
+  direct rule proposals or destination-ledger candidates. New methodology
+  defects exposed while adapting the approved bundle are filed separately in
+  the destination ledger with `source: learn` and `scope: methodology`; the
+  donor remains read-only. The aggregate LOG entry reports both counts.
 - **Only the human** graduates, and only the human edits `policies/`, `briefs/`, `CLAUDE.md`, skills, or agent definitions *because of* a lesson. Filing and occurrence-appending are the only ledger writes an agent performs autonomously.
 
 ## Anonymization on the upstream path
