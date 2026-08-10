@@ -591,6 +591,7 @@ def test_role_artifacts_feed_findings_and_change_metadata_without_reparsing(
                 "selection_reason": "Exercises the public behavior",
                 "intentionally_unchanged": ["policy.md"],
                 "rebase_reasons": [],
+                "failure_analysis": "",
             }
         )
         + "\n```\n"
@@ -845,6 +846,85 @@ def test_packet_is_deterministic_projection_with_explicit_omissions(
     packet_record = json.loads((run_dir / "packets.jsonl").read_text())
     assert packet_record["bytes"] == len(text.encode())
     assert packet_record["candidate_id"] == candidate
+    assert "## Failure analysis" in text
+    assert "None (initial implementation)." in text
+
+
+def test_revision_round_requires_and_carries_failure_analysis(
+    repository: Path, tmp_path: Path
+) -> None:
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    (repository / "code.py").write_text("VALUE = 2\n")
+    first_candidate = capture(repository, run_dir)
+    marked = run(
+        "mark-reviewed",
+        "--run-dir",
+        str(run_dir),
+        "--expected-candidate",
+        first_candidate,
+        cwd=repository,
+    )
+    assert marked.returncode == 0, marked.stderr
+
+    (repository / "code.py").write_text("VALUE = 3\n")
+    without_analysis = run(
+        "capture-change",
+        "--run-dir",
+        str(run_dir),
+        "--risk-tag",
+        "public-api",
+        "--test",
+        "./bin/test focused",
+        "--selection-reason",
+        "Exercises the revised behavior",
+        cwd=repository,
+    )
+    assert without_analysis.returncode == 2
+    assert "failure_analysis must be nonempty on a revision round" in without_analysis.stderr
+
+    analysis = "Initial fix patched the symptom; the guard belonged one call earlier."
+    with_analysis = run(
+        "capture-change",
+        "--run-dir",
+        str(run_dir),
+        "--risk-tag",
+        "public-api",
+        "--test",
+        "./bin/test focused",
+        "--selection-reason",
+        "Exercises the revised behavior",
+        "--failure-analysis",
+        analysis,
+        cwd=repository,
+    )
+    assert with_analysis.returncode == 0, with_analysis.stderr
+    revised_candidate = with_analysis.stdout.strip()
+    assert json.loads((run_dir / "change.json").read_text())["failure_analysis"] == analysis
+
+    assert (
+        ingest(
+            run_dir,
+            tmp_path,
+            [finding("CODE-F001", revised_candidate)],
+            candidate=revised_candidate,
+        ).returncode
+        == 0
+    )
+    output = tmp_path / "revision-packet.md"
+    packet = run(
+        "packet",
+        "--run-dir",
+        str(run_dir),
+        "--kind",
+        "code",
+        "--output",
+        str(output),
+    )
+    assert packet.returncode == 0, packet.stderr
+    text = output.read_text()
+    assert "## Failure analysis" in text
+    assert analysis in text
 
 
 def test_plan_packet_contains_exact_plan_delta(repository: Path, tmp_path: Path) -> None:
@@ -979,6 +1059,7 @@ def test_evidence_paths_cannot_escape_repository(repository: Path, tmp_path: Pat
                 "selection_reason": "Exercises the change",
                 "intentionally_unchanged": ["../outside"],
                 "rebase_reasons": [],
+                "failure_analysis": "",
             }
         )
     )

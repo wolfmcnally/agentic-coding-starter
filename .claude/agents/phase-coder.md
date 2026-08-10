@@ -134,18 +134,27 @@ Use this structure:
   "selected_tests": [],
   "selection_reason": "",
   "intentionally_unchanged": [],
-  "rebase_reasons": []
+  "rebase_reasons": [],
+  "failure_analysis": ""
 }
 ```
 
 Populate every field. Use only the universal risk tags from the approved plan
 or `project:<name>` tags. Add a rebase reason when implementation changed
-authority, scope, architecture, a risk boundary, or an acceptance claim. The
-orchestrator passes this object unchanged to
+authority, scope, architecture, a risk boundary, or an acceptance claim. On a
+revision round, `failure_analysis` states in one paragraph *why* the previous
+attempt produced the findings being fixed — the root cause, not a restatement
+of the findings; on an initial implementation leave it `""`. The orchestrator
+passes this object unchanged to
 `bin/kickoff-evidence capture-change --metadata`.
 
 ### Finding Resolution
 - `<finding id>` — <implementation change and mapped verification>
+
+### Failure Analysis (revision rounds only)
+- [One paragraph: why the previous attempt produced these findings — the same
+  root-cause statement carried in Change Evidence's `failure_analysis`, stated
+  for human readers. Omit this section on an initial implementation.]
 
 ### Manual Checks (for the orchestrator to surface to the user)
 - [Anything the orchestrator cannot mechanically verify — perceptual judgments, console inspections, dashboard reads, hardware-attached tests.]
@@ -153,6 +162,9 @@ orchestrator passes this object unchanged to
 ### User Demo (per `policies/user-demo-protocols.md`)
 - If the approved plan carries a `User Demo:` block, restate it here verbatim so the orchestrator can lift it into the END block. Confirm that the entry point exists in the merged code and that any prerequisites (sample data, config, env vars) are either already in place or named in Notes below.
 - If the approved plan declared `User Demo: N/A — <reason>`, restate the line here.
+
+### Process Observations (if any)
+- [Friction or ambiguity in the plan, a brief, a policy, or the toolchain that a future phase should not re-learn — feeds the phase-close lessons harvest; "none" is fine.]
 
 ### Notes
 - [Deviations from the plan with justification, assumptions made, or invariant-related judgments. Include one material wall-clock opportunity used or surfaced and how guarantees were preserved; omit marginal timing noise. Toolchain or environment gaps are reported here rather than skipped silently.]

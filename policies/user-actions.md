@@ -62,7 +62,7 @@ closed: 2026-01-31             # ISO date closed
 
 ### Body
 
-Below the frontmatter, write the human-readable description: the context, the steps, what the human returns. For a non-trivial item, structure it with prose or a short list; the body is where load-bearing detail lives. For a closed item whose resolution is non-obvious, add a `## Disposition` section explaining what happened — the disposition is the audit trail.
+Below the frontmatter, write the human-readable description: the context, the steps, what the human returns. For a non-trivial item, structure it with prose or a short list; the body is where load-bearing detail lives. For a closed item whose resolution is non-obvious, add a `## Disposition` section explaining what happened — the disposition is the audit trail. The disposition also answers one more question: **does this resolution reveal a recurring learning that should become a lesson, rule, or check?** If yes, file (or recur) a `lessons/<slug>.md` entry per [`lessons.md`](lessons.md) before archiving, and name it in the disposition; if no, "no recurring learning" stated in the disposition is a complete answer.
 
 ## Slug discipline
 
@@ -86,7 +86,7 @@ Slugs are not reused after closure. An archived file keeps its slug forever.
 
 1. **Open.** Any agent that hits a human-only wall generates a unique slug and writes `user-actions/<slug>.md` with full frontmatter + a prose body, then surfaces the new action in the session's reply so the human sees it. No index to update — that is the point.
 2. **In flight.** The file stays in `user-actions/` until the underlying action has been personally verified. Update `status` between `pending` and `deferred` (and `needed_at`) as the situation changes.
-3. **Closed.** Set `status:` to the closure kind, add a `closed:` date, add a `## Disposition` section when the resolution is non-obvious, and **move the file** from `user-actions/` to `user-actions-archived/`:
+3. **Closed.** Set `status:` to the closure kind, add a `closed:` date, add a `## Disposition` section when the resolution is non-obvious (answering the recurring-learning question above, filing a lesson when the answer is yes), and **move the file** from `user-actions/` to `user-actions-archived/`:
    - `done` — action completed.
    - `closed` — explicitly closed without action (cost-benefit failed, scope changed, no longer relevant).
    - `superseded` — replaced by a different action or approach.
@@ -108,7 +108,7 @@ Every agentic session — `kickoff` invocation, a hand-driven skill, an ad-hoc e
 
 - `LOG.md` records *what happened* in past phases (append-only). `user-actions/` records *what's pending on the human right now* (live).
 - `plan/INDEX.md` records *which phase is next* (ledger). `user-actions/` records interrupts and asks that cut across phases.
-- A new policy goes under `policies/`. A new brief goes under `briefs/`. A new human-only action item goes here as a file.
+- A new policy goes under `policies/`. A new brief goes under `briefs/`. A new human-only action item goes here as a file. A recurring process learning goes to `lessons/` per [`lessons.md`](lessons.md).
 
 ## Extension pattern (optional, for sub-domain projects)
 

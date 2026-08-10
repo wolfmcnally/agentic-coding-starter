@@ -177,6 +177,9 @@ complete final gate, or expand the phase to pursue an optimization tangent.
 
 ## Open Questions
 [Ambiguities the implementer should resolve. Flag here rather than guess. Include both technical ambiguities and product/architecture decisions that should escalate to the reviewer for user confirmation.]
+
+## Process Observations
+[Friction or ambiguity encountered in a brief, policy, prior phase file, or tool that a future phase should not re-learn — feeds the phase-close lessons harvest. "None" is fine.]
 ```
 
 ## Rules

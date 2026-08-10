@@ -48,7 +48,8 @@ fi
 
 for evidence_executable in \
   kickoff-tree-id kickoff-evidence kickoff-config execution-telemetry \
-  check-execution-dashboards check-harness-parity check-toolchain-callers; do
+  check-execution-dashboards check-harness-parity check-toolchain-callers \
+  lessons check-catalogs; do
   if [[ ! -x "$repo_root/bin/$evidence_executable" ]]; then
     echo "CHECK ERROR missing required executable: bin/$evidence_executable" >&2
     exit 1
@@ -75,7 +76,8 @@ run_lint() {
       example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence \
       ../bin/kickoff-tree-id ../bin/execution-telemetry \
       ../bin/check-execution-dashboards ../bin/check-harness-parity \
-      ../bin/check-toolchain-callers ../tests
+      ../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs \
+      ../tests
   )
 }
 
@@ -86,7 +88,8 @@ run_format() {
       example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence \
       ../bin/kickoff-tree-id ../bin/execution-telemetry \
       ../bin/check-execution-dashboards ../bin/check-harness-parity \
-      ../bin/check-toolchain-callers ../tests
+      ../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs \
+      ../tests
   )
 }
 
@@ -101,6 +104,8 @@ run_policy() {
     run_gate policy-toolchain-callers ./bin/check-toolchain-callers
     run_gate policy-execution-dashboards ./bin/check-execution-dashboards
     run_gate policy-config ./bin/kickoff-config show
+    run_gate policy-catalogs ./bin/check-catalogs
+    run_gate policy-lessons ./bin/lessons validate
     run_gate policy-anonymization ./bin/check-anonymization.sh
     echo "CHECK policy PASS"
   )

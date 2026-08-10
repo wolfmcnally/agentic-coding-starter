@@ -100,10 +100,18 @@ runaway backstop.
 
 `./bin/python bin/kickoff-evidence packet` compiles the revision packet. It includes
 unresolved findings, reviewed/current candidate ids, causal path/hash changes,
-authority drift, risk/test-selection facts, gate evidence, and explicit
-omission rules. Closed, rejected, superseded, unchanged-authority, and
-unchanged-candidate details may be omitted because their source hashes remain
-recorded and original files remain readable.
+authority drift, risk/test-selection facts, the coder's failure analysis, gate
+evidence, and explicit omission rules. Closed, rejected, superseded,
+unchanged-authority, and unchanged-candidate details may be omitted because
+their source hashes remain recorded and original files remain readable.
+
+The failure analysis is the reflexion contract: on every revision round the
+coder's Change Evidence must state *why* the previous attempt produced the
+findings being fixed — root cause, not restatement — and `capture-change`
+rejects a revision capture that omits it. The packet carries the analysis
+forward so the next review judges the fix against the coder's own theory of
+the failure, and the phase-close lessons harvest ([`lessons.md`](lessons.md))
+reads it as sensor input.
 
 Rebase to a complete review when authority or scope changes, a new risk class
 appears, a public API or persisted format changes, security/concurrency/

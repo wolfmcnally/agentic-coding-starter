@@ -242,6 +242,31 @@ validation.
 ./bin/serve-execution-dashboard --open
 ```
 
+### `lessons` — lessons-ledger validation and queries
+
+Validates every file in `lessons/` and `lessons-archived/` against the ledger
+schema (closed key set, enums, slug uniqueness across both directories,
+well-formed occurrences) and answers the two mechanical queries the harvest
+and sweep loops need: filtered listings and graduation-ready candidates
+(three or more occurrences, still open). Queries fail closed on an invalid
+ledger. Filing, occurrence-appending, and graduation remain judgment work
+outside this tool.
+
+```bash
+./bin/lessons validate
+```
+
+```bash
+./bin/lessons list --scope methodology --status candidate
+```
+
+```bash
+./bin/lessons candidates
+```
+
+Governed by [`policies/lessons.md`](../policies/lessons.md); behavioral
+coverage lives in `tests/test_lessons.py`.
+
 ### `check-harness-parity` — canonical/mirror consistency
 
 Verifies the top-level instruction symlink, skill-directory symlinks, and thin
@@ -260,6 +285,19 @@ entry points.
 ```bash
 ./bin/check-toolchain-callers
 ```
+
+### `check-catalogs` — catalog and ledger fitness functions
+
+Verifies the durable-document catalogs stay closed under sync: every
+`policies/*.md` and `briefs/*.md` file is indexed in `CLAUDE.md` and every
+indexed entry resolves to a file (no orphans either way), and
+`plan/INDEX.md` carries exactly one `⬅️` marker.
+
+```bash
+./bin/check-catalogs
+```
+
+Behavioral coverage lives in `tests/test_check_catalogs.py`.
 
 ### `check-anonymization.sh` — pre-publish leak guard *(starter-only)*
 

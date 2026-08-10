@@ -1,0 +1,72 @@
+---
+title: "Harness Self-Improvement: The Two-Tier Flywheel"
+date: 2026-08-10
+status: implemented
+scope: How this template captures process lessons at phase scale, prunes its rule surfaces on a cadence, and propagates both disciplines to every derived project.
+---
+
+# Harness Self-Improvement: The Two-Tier Flywheel
+
+This repo is a harness — skills, agents, policies, briefs, and deterministic scripts wrapped around whichever coding-agent CLI hosts a session. A harness that only accumulates rules by hand improves at the speed of its operator's memory. Current best practice is to make improvement *structural*: every unit of work ends by asking what was learned, learnings accumulate as addressable entries rather than prose rewrites, recurring ones graduate into rules under human ratification, and the rule surfaces themselves are pruned on a cadence so the compounding asset never turns into a compounding liability.
+
+This brief records the design: what the loop is, where each stage lives, what was deliberately declined, and the one decision deferred.
+
+## 1. The two tiers
+
+The improvement flywheel runs at two scales, and the template owns both:
+
+- **Phase scale (inner tier, runs in every repo).** `kickoff` closes each phase with a harvest step: the four roles' Process Observations, the coder's failure analyses, review verdicts, dispositions, and wall-clock observations are distilled into candidate lessons in the `lessons/` ledger. Recurring lessons surface as graduation proposals the human ratifies (or doesn't). The `sweep` skill periodically audits the accumulated rules, skills, and briefs and proposes retirements.
+- **Repo scale (outer tier, runs between repos).** The starter is the hub. `stamp` ships the machinery to new projects; `teach` retrofits it onto existing ones; `learn` harvests derived projects' `scope: methodology` lessons back into the starter, where — once ratified — they improve the template every future project is stamped from.
+
+The seam between the tiers is the lesson's `scope` field. A `local` lesson stays in its repo. A `methodology` lesson is a standing export: pre-digested, provenance-carrying input that `learn` reads as a first-class source instead of rediscovering patterns from raw files. This is the template's answer to the portability problem — knowledge is repo-local by default, and the hub-and-spoke transfer channel is what makes phase-scale learning compound across the whole family of projects.
+
+## 2. The loop, stage by stage
+
+1. **Capture.** Roles emit Process Observations (friction or ambiguity in briefs, policies, plans, tooling, or the methodology itself) as structured output fields; on revision rounds the coder states *why* the previous attempt failed, and that analysis travels in the revision packet. `kickoff`'s harvest step files or recurs lessons in `lessons/` per [`policies/lessons.md`](../policies/lessons.md). "No lessons this phase" is a permitted, recorded answer; skipping the question is not.
+2. **Distill.** `bin/lessons` mechanically validates the ledger and tallies occurrences; `bin/lessons candidates` lists graduation-ready entries (three or more occurrences). Three is the stabilization threshold: a lesson codified on first sight tends to be wrong in ways its variations would have revealed.
+3. **Codify.** Graduation is human-ratified, one lesson at a time, onto a named surface: a policy, a brief, a skill, an agent definition, a `bin/` script, a test, or a `CLAUDE.md` invariant. Agents propose; the human edits (or approves the edit); the lesson archives with `graduated_to:` pointing at the rule it became. Every rule stays traceable to the incidents that earned it.
+4. **Prune.** `sweep` runs the maintenance half: stale or contradictory rules, skills past their review cadence, briefs due for `historical` status, aging ledger candidates, catalog drift (`bin/check-catalogs`). In the starter itself, `sweep` additionally audits the methodology corpus — the universal policies, methodology briefs, and the orchestration runtime doctrine's instruments — because defects here propagate to every spoke.
+5. **Propagate.** The machinery is Methodology Contract content: `stamp` copies it verbatim into new projects, `teach` proposes it to existing ones, and `learn` closes the return loop. Anonymization on the upstream path is governed by [`policies/anonymize-log-references.md`](../policies/anonymize-log-references.md) — a methodology lesson leaves its repo's identifying details behind before it enters the public template.
+
+## 3. Why itemized capture, not instruction-file rewrites
+
+The naive loop — "agent, update the instruction file with what you learned" — degrades under iteration: each rewrite shortens and blands the document (brevity bias) until accumulated knowledge collapses into generic filler (context collapse). The remedy is structural: lessons are discrete, addressable files with provenance and occurrence counters; the author of a lesson is never the authority that ratifies it; and rule documents are only ever edited by the human, deliberately, one graduation at a time. The ledger grows; the rules are curated.
+
+## 4. Grounding
+
+The design instantiates named patterns from the Encyclopedia of Agentic Coding Patterns, checked against the 2026 self-improving-harness literature:
+
+- **Compound Engineering** — codification as a closing condition of every unit of work; the five-surface routing question. The harvest step is that closing condition made mandatory.
+- **Feedback Flywheel** — capture → distill → codify with a recurrence threshold before rules land.
+- **Reflexion** — the coder's failure analysis on revision rounds, stored and fed forward.
+- **Garbage Collection / Skill Fitness** — `sweep` and the skills' `last-reviewed` cadence; the anti-ratchet duty over the runtime doctrine's instruments.
+- **Incident-to-Eval Synthesis** — dispositions and post-mortems route into lessons, and mechanizable fixes land with regression tests in the same change.
+- **Agentic Context Engineering** — itemized, tagged, counter-scored entries with a separated curator role (here: the human), replacing monolithic self-rewrites.
+- **Self-Harness (arXiv 2606.09498) and successors** — weakness mining from execution traces (`recommend-timeouts` surfacing at phase close is the first instance), bounded minimal proposals, regression-gated acceptance, and strict separation between the thing evolving and the evaluator judging it (`./bin/check all` never bends to a lesson).
+
+## 5. Deliberately declined
+
+- **Autonomous self-modification.** The fully closed loop — agent mines weaknesses, edits its own rules, validates, merges — contradicts [`policies/human-in-the-loop.md`](../policies/human-in-the-loop.md) and imports the literature's own top risks (reward hacking, evaluator contamination). Humans move up the stack, not out of the loop: the human is the Curator, and that is a design choice, not a maturity gap.
+- **First-pass-acceptance-rate tracking.** The flywheel's canonical metric needs a denominator of phases that doesn't exist yet in a young repo, and gaming pressure makes it a trend indicator at best. Revisit once derived projects have accumulated enough END blocks for the number to mean something.
+- **Skill lift measurement.** Measuring each skill's marginal effect on task pass-rate requires an eval harness this template doesn't carry. `last-reviewed` cadence plus `sweep` retirement proposals is the proportionate version at this scale.
+- **Hooks as a codification surface.** The template's hooks remain opt-in (`bin/install-hooks`); lessons that need deterministic enforcement route to `bin/` scripts and gates instead.
+
+## 6. DECIDE — methodology-contract versioning (deferred)
+
+When several derived projects exist, "is this spoke running the current methodology?" has no mechanical answer: `teach`'s parity-heal catalog repairs known drift classes, but nothing marks *which revision* of the Methodology Contract a stamped repo carries. A contract-version marker (bumped on methodology changes, taught outward, checked by `teach` to compute deltas instead of full rescans) is the pinning discipline applied to the contract itself.
+
+**Deferred** until at least two derived projects are active. With one spoke, the marker is ceremony that every methodology edit must remember to maintain; `teach`'s full scan covers the interim. Revisit at the second spoke.
+
+## 7. Acceptance criteria for this design
+
+- A phase close in any derived repo cannot complete without answering the lessons question (END block `Lessons:` field; [`policies/log-discipline.md`](../policies/log-discipline.md)).
+- `./bin/lessons validate` and `./bin/check-catalogs` pass in this repo and in a freshly stamped project.
+- A `scope: methodology` lesson filed in a derived repo is visible to `learn` Stage 1 without bespoke exploration.
+- No agent-authored change to `policies/`, `briefs/`, `CLAUDE.md`, skills, or agent definitions cites a lesson as its authority without a recorded human ratification.
+
+## Sources
+
+- Encyclopedia of Agentic Coding Patterns (aipatternbook.com): `compound-engineering`, `feedback-flywheel`, `garbage-collection`, `skill-fitness`, `incident-to-eval-synthesis`, `agentic-context-engineering`, `reflexion`, `harness-engineering`.
+- *Self-Harness: Harnesses That Improve Themselves*, arXiv:2606.09498 (2026) — the weakness-mining → bounded-proposal → regression-validation loop.
+- Lilian Weng, "Harness Engineering for Self-Improvement" (July 2026) — editable-surface taxonomy, evaluator isolation, "humans move up the stack."
+- Fowler/Boeckeler, "Harness engineering for coding agent users" (martinfowler.com) — the three-loop model; this brief's machinery is the outer loop given repo surfaces.

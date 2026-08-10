@@ -1,0 +1,244 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["pyyaml"]
+# ///
+"""Validate and query the lessons ledger defined by policies/lessons.md."""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+from datetime import date
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+DEFAULT_ROOT = Path(__file__).resolve().parents[1]
+GRADUATION_THRESHOLD = 3
+SLUG_PATTERN = re.compile(r"^[a-z]+-[a-z]+$")
+
+OPEN_DIRECTORY = "lessons"
+ARCHIVED_DIRECTORY = "lessons-archived"
+
+OPEN_STATUSES = {"candidate"}
+ARCHIVED_STATUSES = {"codified", "rejected", "superseded"}
+SCOPES = {"local", "methodology"}
+SURFACES = {"policy", "brief", "skill", "agent", "bin", "test", "invariant"}
+SOURCES = {"kickoff", "sweep", "disposition", "learn", "teach", "user"}
+
+REQUIRED_KEYS = {
+    "slug",
+    "title",
+    "status",
+    "scope",
+    "proposed_surface",
+    "filed",
+    "source",
+    "occurrences",
+}
+ALLOWED_KEYS = REQUIRED_KEYS | {"closed", "graduated_to"}
+OCCURRENCE_KEYS = {"date", "ref"}
+
+
+class LedgerError(ValueError):
+    """A lesson file violates policies/lessons.md."""
+
+
+def parse_frontmatter(path: Path) -> dict[str, Any]:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    if not lines or lines[0] != "---":
+        raise LedgerError("missing YAML frontmatter")
+    try:
+        end = lines.index("---", 1)
+    except ValueError as exc:
+        raise LedgerError("unterminated YAML frontmatter") from exc
+    try:
+        document = yaml.safe_load("\n".join(lines[1:end]))
+    except yaml.YAMLError as exc:
+        raise LedgerError(f"unparseable frontmatter: {exc}") from exc
+    if not isinstance(document, dict):
+        raise LedgerError("frontmatter is not a mapping")
+    return document
+
+
+def require_iso_date(value: Any, key: str) -> None:
+    try:
+        date.fromisoformat(str(value))
+    except (TypeError, ValueError) as exc:
+        raise LedgerError(f"{key} is not an ISO date: {value!r}") from exc
+
+
+def validate_occurrences(value: Any) -> int:
+    if not isinstance(value, list) or not value:
+        raise LedgerError("occurrences must be a non-empty list")
+    for position, entry in enumerate(value, start=1):
+        if not isinstance(entry, dict) or set(entry) != OCCURRENCE_KEYS:
+            raise LedgerError(
+                f"occurrence {position} must be a mapping with exactly {sorted(OCCURRENCE_KEYS)}"
+            )
+        require_iso_date(entry["date"], f"occurrence {position} date")
+        if not isinstance(entry["ref"], str) or not entry["ref"].strip():
+            raise LedgerError(f"occurrence {position} ref must be a non-empty string")
+    return len(value)
+
+
+def validate_lesson(path: Path, archived: bool) -> dict[str, Any]:
+    if not SLUG_PATTERN.fullmatch(path.stem):
+        raise LedgerError("filename must be a two-word slug")
+    metadata = parse_frontmatter(path)
+    unknown = set(metadata) - ALLOWED_KEYS
+    if unknown:
+        raise LedgerError(f"unknown frontmatter keys: {sorted(unknown)}")
+    missing = REQUIRED_KEYS - set(metadata)
+    if missing:
+        raise LedgerError(f"missing frontmatter keys: {sorted(missing)}")
+    if metadata["slug"] != path.stem:
+        raise LedgerError(f"slug {metadata['slug']!r} does not match filename")
+    if not isinstance(metadata["title"], str) or not metadata["title"].strip():
+        raise LedgerError("title must be a non-empty string")
+    status = metadata["status"]
+    expected = ARCHIVED_STATUSES if archived else OPEN_STATUSES
+    if status not in expected:
+        raise LedgerError(f"status {status!r} invalid here; expected one of {sorted(expected)}")
+    if metadata["scope"] not in SCOPES:
+        raise LedgerError(f"scope must be one of {sorted(SCOPES)}")
+    if metadata["proposed_surface"] not in SURFACES:
+        raise LedgerError(f"proposed_surface must be one of {sorted(SURFACES)}")
+    if metadata["source"] not in SOURCES:
+        raise LedgerError(f"source must be one of {sorted(SOURCES)}")
+    require_iso_date(metadata["filed"], "filed")
+    metadata["occurrence_count"] = validate_occurrences(metadata["occurrences"])
+    if archived:
+        if "closed" not in metadata:
+            raise LedgerError("archived lesson missing closed date")
+        require_iso_date(metadata["closed"], "closed")
+        if status == "codified" and not metadata.get("graduated_to"):
+            raise LedgerError("codified lesson missing graduated_to")
+    else:
+        for key in ("closed", "graduated_to"):
+            if key in metadata:
+                raise LedgerError(f"open lesson must not carry {key}")
+    if metadata.get("graduated_to") is not None and not isinstance(metadata["graduated_to"], str):
+        raise LedgerError("graduated_to must be a string path")
+    return metadata
+
+
+def ledger_files(root: Path) -> list[tuple[Path, bool]]:
+    entries: list[tuple[Path, bool]] = []
+    for directory, archived in ((OPEN_DIRECTORY, False), (ARCHIVED_DIRECTORY, True)):
+        base = root / directory
+        if not base.is_dir():
+            raise LedgerError(f"missing directory: {directory}/")
+        for path in sorted(base.iterdir()):
+            if path.name == ".gitkeep" or path.name.startswith("."):
+                continue
+            if path.suffix != ".md" or not path.is_file():
+                raise LedgerError(f"unexpected entry: {path.relative_to(root)}")
+            entries.append((path, archived))
+    return entries
+
+
+def load_ledger(root: Path) -> tuple[list[dict[str, Any]], list[str]]:
+    errors: list[str] = []
+    lessons: list[dict[str, Any]] = []
+    try:
+        entries = ledger_files(root)
+    except LedgerError as exc:
+        return [], [f"ERROR\tlessons\t.\t{exc}"]
+    seen: dict[str, Path] = {}
+    for path, archived in entries:
+        relative = path.relative_to(root).as_posix()
+        previous = seen.get(path.stem)
+        if previous is not None:
+            errors.append(
+                f"ERROR\tlessons\t{relative}\tslug collides with"
+                f" {previous.relative_to(root).as_posix()}"
+            )
+        else:
+            seen[path.stem] = path
+        try:
+            metadata = validate_lesson(path, archived)
+        except (OSError, LedgerError) as exc:
+            errors.append(f"ERROR\tlessons\t{relative}\t{exc}")
+            continue
+        metadata["archived"] = archived
+        lessons.append(metadata)
+    return lessons, errors
+
+
+def render(lesson: dict[str, Any]) -> str:
+    return "\t".join(
+        (
+            str(lesson["slug"]),
+            str(lesson["status"]),
+            str(lesson["scope"]),
+            str(lesson["occurrence_count"]),
+            str(lesson["title"]),
+        )
+    )
+
+
+def command_validate(lessons: list[dict[str, Any]]) -> int:
+    print("LESSONS OK")
+    return 0
+
+
+def command_list(lessons: list[dict[str, Any]], scope: str | None, status: str | None) -> int:
+    for lesson in lessons:
+        if scope is not None and lesson["scope"] != scope:
+            continue
+        if status is not None and lesson["status"] != status:
+            continue
+        print(render(lesson))
+    return 0
+
+
+def command_candidates(lessons: list[dict[str, Any]]) -> int:
+    for lesson in lessons:
+        if lesson["archived"] or lesson["occurrence_count"] < GRADUATION_THRESHOLD:
+            continue
+        print(render(lesson))
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Validate and query the lessons ledger (policies/lessons.md)."
+    )
+    parser.add_argument(
+        "--root",
+        type=Path,
+        default=DEFAULT_ROOT,
+        help="repository root containing lessons/ and lessons-archived/",
+    )
+    subparsers = parser.add_subparsers(dest="action", required=True)
+    subparsers.add_parser("validate", help="check every ledger file against the policy schema")
+    list_parser = subparsers.add_parser("list", help="list lessons, optionally filtered")
+    list_parser.add_argument("--scope", choices=sorted(SCOPES))
+    list_parser.add_argument("--status", choices=sorted(OPEN_STATUSES | ARCHIVED_STATUSES))
+    subparsers.add_parser(
+        "candidates",
+        help=f"list open lessons with >= {GRADUATION_THRESHOLD} occurrences",
+    )
+    return parser
+
+
+def main() -> int:
+    arguments = build_parser().parse_args()
+    lessons, errors = load_ledger(arguments.root.resolve())
+    if errors:
+        print("\n".join(sorted(errors)), file=sys.stderr)
+        return 1
+    lessons.sort(key=lambda lesson: str(lesson["slug"]))
+    if arguments.action == "validate":
+        return command_validate(lessons)
+    if arguments.action == "list":
+        return command_list(lessons, arguments.scope, arguments.status)
+    return command_candidates(lessons)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

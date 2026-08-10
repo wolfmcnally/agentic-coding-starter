@@ -10,6 +10,7 @@ description: >-
   /learn <donor-dir> [<desc>] in Claude Code or $learn <donor-dir> [<desc>]
   in Codex.
 argument-hint: "<donor-dir> [<desc>]"
+last-reviewed: 2026-08-10
 ---
 
 # Learn — Absorb patterns from another repo into this repo
@@ -65,7 +66,7 @@ Build a structural map of the donor. **Do not** open every file; do targeted rea
 
 1. **Top-level inventory.** `ls -la <donor-dir>`. Note root files (READMEs, AGENTS.md, CLAUDE.md, language metadata) and directory shape.
 2. **Methodology surfaces.** Check for `briefs/`, `policies/`, `plan/`, `LOG.md`, `.claude/`, `.codex/`, `.agents/`. Their presence — or absence of structure where this template has structure — is the first signal.
-3. **Skills & agents.** `ls <donor>/.claude/skills/` and `ls <donor>/.claude/agents/`. Also `ls -la <donor>/.agents/skills/` (Codex CLI's native skill-discovery path — expected to be **directory-level symlinks** back to `<donor>/.claude/skills/<name>` per the workaround for [openai/codex#11314](https://github.com/openai/codex/issues/11314); surface novelty only if the *target* of the symlink is novel, or if an entry there is *not* a directory symlink — the latter typically indicates a stray from the Codex desktop "import settings" prompt and is not a learning candidate). Read the `SKILL.md` and agent files whose names are *not* in the canonical set (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`, `kickoff`, `methodology`, `stamp`, `learn`, `teach`). The novel ones are the candidates for learning.
+3. **Skills & agents.** `ls <donor>/.claude/skills/` and `ls <donor>/.claude/agents/`. Also `ls -la <donor>/.agents/skills/` (Codex CLI's native skill-discovery path — expected to be **directory-level symlinks** back to `<donor>/.claude/skills/<name>` per the workaround for [openai/codex#11314](https://github.com/openai/codex/issues/11314); surface novelty only if the *target* of the symlink is novel, or if an entry there is *not* a directory symlink — the latter typically indicates a stray from the Codex desktop "import settings" prompt and is not a learning candidate). Read the `SKILL.md` and agent files whose names are *not* in the canonical set (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`, `kickoff`, `methodology`, `stamp`, `learn`, `teach`, `roles`, `sweep`). The novel ones are the candidates for learning.
 4. **Briefs & policies.** `ls <donor>/briefs/` and `ls <donor>/policies/`. Read each one whose name doesn't already exist here. For names that *do* exist, do a structural diff (head + section list + line count) so the assessment knows whether the donor's version supersedes ours, diverges, or just paraphrases.
 5. **Phase plan shape.** If `<donor>/plan/INDEX.md` exists, read it. Look for cross-cutting concerns or critical-files-map patterns we don't have.
 6. **Language conventions.** Read `<donor>/CLAUDE.md` (or `AGENTS.md`) section by section. Note any architectural invariants, glossary entries, or conventions the donor pins that this starter doesn't.
@@ -92,6 +93,16 @@ Build a structural map of the donor. **Do not** open every file; do targeted rea
     docs, and behavioral tests as one bundle. Separate general mechanics from
     project-specific risk tags, thresholds, dependency selectors, assurance
     profiles, and private run artifacts.
+11. **Lessons ledger.** Read `<donor>/lessons/` and `<donor>/lessons-archived/`
+    (per the ledger contract in `policies/lessons.md`). Entries with
+    `scope: methodology` are **first-class harvest input** — pre-digested,
+    provenance-carrying learnings the donor's own phase work already
+    distilled, far cheaper than rediscovering the same patterns from raw
+    files. Archived `codified` entries point (via `graduated_to:`) at rules
+    the donor already ratified — check whether those rules themselves are
+    transfer candidates. Ignore `scope: local` entries beyond confirming the
+    ledger's health. A donor with no ledger is itself a finding: it predates
+    the lessons contract and is a `teach` candidate.
 
 Output of Stage 1 is internal. The user sees Stage 3's plan.
 
@@ -109,7 +120,7 @@ For each candidate surfaced in Stage 1, classify on two axes.
 
 ### Generality tier (lower number = more general = higher priority)
 
-- **Tier 1 — Methodology-level.** Orchestrator patterns, agent role definitions, policy structures, brief shapes, the briefs/policies/plan triplet itself, cross-harness orchestration machinery, role-timeout enforcement/calibration contracts, and review-intensity machinery. Improvements here help *every* downstream project.
+- **Tier 1 — Methodology-level.** Orchestrator patterns, agent role definitions, policy structures, brief shapes, the briefs/policies/plan triplet itself, cross-harness orchestration machinery, role-timeout enforcement/calibration contracts, and review-intensity machinery. Improvements here help *every* downstream project. A donor lesson with `scope: methodology` maps here (or to Tier 2) by construction — the donor already made the generality call.
 - **Tier 2 — Universal template content.** `.gitignore` patterns, build-gate idioms common across languages, log discipline rules, status-marker conventions.
 - **Tier 3 — Language or platform specializations.** Python-specific lint rules, TypeScript-specific tsconfig defaults, Rust workspace patterns. These specialize the template for a language family.
 - **Tier 4 — Domain specializations.** Unity game project structure, ML/data-science project structure, CDK-backed AWS project structure. These narrow the template to a niche.
@@ -198,6 +209,7 @@ coverage floor.
 ## <YYYY-MM-DD HH:MM> — LEARN
 Donor: <donor-name> @ <sha or fp>
 Items absorbed: <count>, by tier T1=<n>/T2=<n>/T3=<n>/T4=<n>
+Lessons harvested: <count> (<count> absorbed as rule proposals; <count> filed to lessons/)
 Stale-in-light-of-learning migrations: <count> (AUTO); <count> DECIDE; <count> DEFER
 Files touched: <count>
 ```
@@ -235,18 +247,23 @@ Once approved, apply the approved items. Order:
    - If a new `.claude/skills/<name>/SKILL.md` was added, add the matching `.agents/skills/<name>` directory symlink for Codex discovery.
    - See [`policies/cross-harness-parity.md`](../../../policies/cross-harness-parity.md).
 5. Update `CLAUDE.md`'s catalogs (briefs catalog, policies catalog) so every new file is indexed.
-6. Run focused wrapper tests through `./bin/test
+6. File harvested donor lessons that were approved as ledger entries rather
+   than immediate rule changes: write each to this repo's `lessons/<slug>.md`
+   with `source: learn`, anonymized per this repo's publication policy, and
+   run `./bin/lessons validate`. A donor lesson approved as a direct rule
+   change lands as its rule edit instead (steps 1–2) — not both.
+7. Run focused wrapper tests through `./bin/test
    tests/test_toolchain_entrypoints.py tests/test_check.py -q`, then the
    repository's canonical full gate to confirm nothing regressed:
    `./bin/check all`. If an older methodology-following destination lacks the
    atomic toolchain contract, run the exact commands declared by its current
    metadata and `kickoff`, and flag every missing contract member as a learning
    candidate.
-7. Re-run the caller inventory and verify that format checking covers staged,
+8. Re-run the caller inventory and verify that format checking covers staged,
    unstaged, and nonignored untracked candidates. For any repeated,
    mutation-sensitive, generated, or detached workflow, prove that the
    underlying repository interpreter is resolved once and reused.
-8. Append the LEARN entry to `LOG.md`. Format as proposed in the plan and
+9. Append the LEARN entry to `LOG.md`. Format as proposed in the plan and
    apply this repository's anonymization policy because this write lands in
    Starter.
 

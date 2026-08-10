@@ -8,6 +8,7 @@ description: >-
   CLAUDE.md and phase file declare which build gates to run.
   Invoke as /kickoff in Claude Code or $kickoff in Codex (picks up the ⬅️
   phase); append "phase N" to target a specific phase.
+last-reviewed: 2026-08-10
 ---
 
 # Kickoff: Single-Phase Session
@@ -381,9 +382,13 @@ both stage attempts.
 **If `APPROVED`**: proceed to Step 7.
 
 **If `REVISE`**: re-run `phase-coder` with the stable finding ledger and
-critic narrative. Validate its new Change Evidence, then generate a
-`--kind code` revision packet and re-review in the same venue (resume
-preferred). Continue only while a blocking finding advances and no
+critic narrative, instructing it to include a **Failure Analysis** — why the
+previous attempt produced these findings (root cause, not restatement) — in
+its report and as the `failure_analysis` key of its Change Evidence. Validate
+its new Change Evidence, then generate a `--kind code` revision packet and
+re-review in the same venue (resume preferred); the packet carries the failure
+analysis forward so the critic reviews the fix against the coder's own theory
+of the failure. Continue only while a blocking finding advances and no
 equal-or-worse finding reopens. When the change manifest requires rebasing,
 run a complete critique rather than a delta-only pass. Escalate on recurrence,
 oscillation, authority disagreement, or two rounds without reduced severity or
@@ -523,7 +528,7 @@ If the closed sub-phase reveals that the parent's Deliverables list needs revisi
 
 This step implements just-in-time, one-at-a-time sub-phase decomposition per [`briefs/methodology.md`](../../../briefs/methodology.md) §6 — `phase-N.(M+1)` is drafted *with* `phase-N.M`'s outcomes in hand, not in advance.
 
-**Then run the ripple sub-step** before proceeding to Step 10. This applies whether the parent is still `🚧` (a new sub-phase was drafted in 1–3 above) or just rolled up to `✅` (Step 9b took over). The ripple sub-step exists per [`policies/phase-ripple.md`](../../../policies/phase-ripple.md):
+**Then run the ripple sub-step** before proceeding to Step 9c. This applies whether the parent is still `🚧` (a new sub-phase was drafted in 1–3 above) or just rolled up to `✅` (Step 9b took over). The ripple sub-step exists per [`policies/phase-ripple.md`](../../../policies/phase-ripple.md):
 
 1. Read the closing sub-phase's `LOG.md` END block, the plan-reviewer's Observations, and the code-critic's verdict body.
 2. Identify candidate ripples: pinned values, renamed paths, added brief refs, tightened Acceptance criteria, surfaced concerns addressed to a later phase by name.
@@ -531,6 +536,7 @@ This step implements just-in-time, one-at-a-time sub-phase decomposition per [`b
    - **AUTO** (mechanical, one correct shape): apply the edit now. If the edit is more than one line (e.g., reshaping an Acceptance section to incorporate a now-pinned value), invoke `phase-planner` with the downstream file and the ripple description; otherwise edit directly.
    - **DECIDE** (judgment-bearing): do *not* edit. Capture the item for the END block.
 4. AUTO edits land before Step 10 writes the END block; the END block lists every AUTO ripple applied and every DECIDE ripple surfaced.
+   Note ripple's boundary: it propagates *content* into downstream `plan/` files. Durable *process* learnings are not ripples — they belong to Step 9c's lessons harvest.
 
 If no downstream drafted phase files exist (e.g., this is the project's only phase, or all later phases are already ✅), the ripple sub-step is a no-op — note `none — no downstream sketches` in the END block.
 
@@ -543,6 +549,18 @@ Runs when a major phase's row was just flipped to `✅` — either by Step 9.3 d
 3. **Sketched-phase completeness check.** If the new `⬅️` row points at a `phase-N.md` that doesn't exist as a file (only a row in INDEX.md), this is a bootstrap-completeness failure — flag in the END block. Do not auto-draft it; per [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md) §8, every major phase the brief surfaces should have been sketched at bootstrap.
 
 If no downstream major phase exists (project complete), Step 9b's ripple is a no-op and `⬅️` advances to nothing — the project is done. Surface this to the user in the report.
+
+### Step 9c: Harvest lessons (every close)
+
+Runs on **every** phase close — sub-phase or major — after the ripple pass and before Step 10, per [`policies/lessons.md`](../../../policies/lessons.md). This is the capture stage of the improvement flywheel: the question is mandatory; "no lessons" is a permitted, recorded answer.
+
+1. **Gather the sensor feed.** Re-read the close-out artifacts the ripple pass already collected (END-adjacent material, the plan-reviewer's and code-critic's verdict bodies) plus: every role's **Process Observations** output (planner, reviewer, coder, critic), the coder's **Failure Analysis** from any revision rounds, wall-clock observations, and any `user-actions` dispositions filed during the phase.
+2. **Distill candidate lessons.** A candidate lesson is a specific, generalizable process learning — friction or ambiguity in a brief, policy, plan, skill, or tool that a future phase (or a future repo) should not re-derive. Discard one-off situational notes; keep what would change behavior next time.
+3. **File or recur.** For each candidate, check `lessons/` and `lessons-archived/` for an existing entry stating the same lesson. Append an occurrence (`{date, ref}` — use the phase id) to an existing entry, or write a new `lessons/<slug>.md` with `status: candidate` and a scope classification (`local` — binds only this project; `methodology` — generalizes to the template and is an upstream candidate for `learn`). Follow the slug recipe and collision check in the policy.
+4. **Validate and tally.** Run `./bin/lessons validate` (must pass — fix any schema error now), then `./bin/lessons candidates`. Carry every graduation-ready lesson (≥3 occurrences) forward to the END block as a graduation DECIDE item.
+5. **Surface the telemetry recommendation.** Run `./bin/kickoff-config recommend-timeouts`. Summarize per-target output for the END block: the recommendation when a target has crossed the sample threshold, otherwise `insufficient samples (<n>/<minimum>)`. Never edit `kickoff.yaml` from this output — recalibration is a human decision per [`policies/role-timeouts.md`](../../../policies/role-timeouts.md).
+
+**Hard boundary:** filing and occurrence-appending in `lessons/` are the *only* writes this step performs. Codifying a lesson — editing `CLAUDE.md`, `policies/`, `briefs/`, a skill, or an agent definition because of it — requires the user's explicit ratification of a surfaced DECIDE item. Never apply a graduation autonomously, and never rewrite rule documents wholesale from session memory.
 
 ### Step 10: Close the log and report
 
@@ -612,6 +630,12 @@ Ripple (per `policies/phase-ripple.md`):
 - DECIDE: <downstream phase file> — <one-line: candidate ripple, why it needs human judgment> | None
 <If no downstream drafted phase files exist, state "none — no downstream sketches".>
 
+Lessons (per `policies/lessons.md`):
+- filed: <slug> — <one-line lesson, scope> | none
+- occurrences added: <slug> (<n> total) — <ref> | none
+- graduation DECIDE: <slug> → <proposed_surface> — <one-line why it is ready> | none
+- recalibration: <role/venue target — recommended hard/idle values> | insufficient samples (<n>/<minimum>)
+
 User demo (per `policies/user-demo-protocols.md`):
 <If the approved plan carried a `User Demo:` block, paste it verbatim here, with the entry-point command on its own line so the user can copy it directly. If the plan declared `User Demo: N/A — <reason>`, restate that line.>
 
@@ -621,8 +645,8 @@ Remaining:
 
 ### Step 11: Generate and open the phase report last
 
-After status, ripple, next-phase selection, and the END block are complete,
-write `$RUN_DIR/dashboard-handoff.json` using the exact schema in
+After status, ripple, lessons harvest, next-phase selection, and the END block
+are complete, write `$RUN_DIR/dashboard-handoff.json` using the exact schema in
 [`policies/execution-telemetry.md`](../../../policies/execution-telemetry.md).
 Ground `what_just_landed`, `see_for_yourself`, `coming_up_next`, and
 `recommended_steps` in accepted work, the User Demo, applied ripple, and real
@@ -657,6 +681,7 @@ Then report to the user:
   guarantees were preserved. Omit marginal timing noise and no-leverage
   observations.
 - Any Minor Corrections or Observations the reviewers noted that the user may want to track.
+- Lessons filed or recurred this phase, and any graduation DECIDE items awaiting the user's ratification (with the proposed target surface for each).
 - Manual checks the user needs to perform that the orchestrator couldn't.
 
 **Do not auto-commit.** The user drives commits, per [`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md).
@@ -676,6 +701,7 @@ Then report to the user:
   program: act or surface only when a substantial, low-risk gain is reasonably
   apparent, never at the expense of effectiveness or the complete final gate.
 - The ripple pass in Step 9a (sub-phase close) and Step 9b (major-phase close) is governed by [`policies/phase-ripple.md`](../../../policies/phase-ripple.md). AUTO ripples land in the same session; DECIDE ripples appear in the END block as named follow-ups.
+- The lessons harvest in Step 9c is governed by [`policies/lessons.md`](../../../policies/lessons.md). Agents file and recur ledger entries; graduation into a rule surface is a human-ratified DECIDE, never an autonomous edit. A follow-up correction that reveals a recurring learning files a lesson too, even though it skips the full Step 9 family.
 - Cross-harness: this same canonical skill drives both Claude Code and Codex. Claude Code invokes it as `kickoff`; Codex discovers it through `.agents/skills/kickoff` (a directory symlink to `.claude/skills/kickoff/`) and invokes it as `$kickoff`. Edit this canonical skill, not the mirror.
 - If your harness does not expose named subagents, perform the same role sequence locally by reading each `.claude/agents/<role>.md` directly and adopting that role's reading protocol and output format for the duration of the step.
 

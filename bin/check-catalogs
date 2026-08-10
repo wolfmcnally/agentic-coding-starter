@@ -1,0 +1,71 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Fail closed when durable-document catalogs drift from the files on disk."""
+
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+DRIFT: list[str] = []
+
+CATALOGED_DIRECTORIES = ("policies", "briefs")
+NEXT_MARKER = "⬅️"
+
+
+def report(surface: str, relative: str, reason: str) -> None:
+    DRIFT.append(f"ERROR\t{surface}\t{relative}\t{reason}")
+
+
+def check_catalog(directory: str, instructions: str) -> None:
+    base = ROOT / directory
+    on_disk = {item.name for item in base.glob("*.md")}
+    referenced = set(re.findall(rf"{directory}/([A-Za-z0-9._-]+\.md)", instructions))
+    for name in sorted(on_disk - referenced):
+        report(directory, f"{directory}/{name}", "file is not indexed in CLAUDE.md")
+    for name in sorted(referenced - on_disk):
+        report(directory, f"{directory}/{name}", "CLAUDE.md references a missing file")
+
+
+def check_next_marker() -> None:
+    index = ROOT / "plan" / "INDEX.md"
+    try:
+        lines = index.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        report("plan", "plan/INDEX.md", str(exc))
+        return
+    table_markers = sum(line.count(NEXT_MARKER) for line in lines if line.lstrip().startswith("|"))
+    if table_markers != 1:
+        report(
+            "plan",
+            "plan/INDEX.md",
+            f"phase table must carry exactly one {NEXT_MARKER} marker; found {table_markers}",
+        )
+
+
+def main() -> int:
+    if len(sys.argv) != 1:
+        print("Usage: ./bin/check-catalogs", file=sys.stderr)
+        return 2
+    try:
+        instructions = (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
+    except OSError as exc:
+        report("instructions", "CLAUDE.md", str(exc))
+        instructions = ""
+    if instructions:
+        for directory in CATALOGED_DIRECTORIES:
+            check_catalog(directory, instructions)
+    check_next_marker()
+    if DRIFT:
+        print("\n".join(sorted(DRIFT)))
+        return 1
+    print("CATALOGS OK")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

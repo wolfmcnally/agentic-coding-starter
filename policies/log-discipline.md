@@ -51,11 +51,17 @@ Build status:
 Manual checks for user:
 - <named check that needs human eyes> | None
 
+Lessons:
+- <slug> filed/recurred — <one-line lesson, scope> | none
+- graduation DECIDE: <slug> → <proposed surface> | none
+
 Remaining:
 - <anything significant left incomplete, or "None">
 ```
 
 Build-status lines are project-specific. A Python project might list `ruff check`, `ruff format`, `pytest`. A polyglot project lists every surface's gate. Use `N/A` for gates that don't apply to this phase.
+
+The `Lessons:` field is part of the minimum END contract because the harvest question is mandatory at every close ([`lessons.md`](lessons.md)): `none` is a valid answer, but the field may not be omitted. Ledger content and graduation mechanics are governed by `policies/lessons.md`; `kickoff`'s Step 10 may extend this block with additional evidence fields.
 
 When a phase pauses (not completes), the END block uses the same format but adds a `Pause reason:` line and leaves the phase row in `plan/INDEX.md` at `🚧`.
 

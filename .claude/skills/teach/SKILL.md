@@ -10,6 +10,7 @@ description: >-
   /teach <target-dir> [<desc>] in Claude Code or $teach <target-dir> [<desc>]
   in Codex.
 argument-hint: "<target-dir> [<desc>]"
+last-reviewed: 2026-08-10
 ---
 
 # Teach — Apply patterns from this repo to another repo
@@ -107,6 +108,8 @@ Build a structural map of the target. Mirror Stage 1 of `learn`, but from the op
 
    For each detected violation, classify as **AUTO** (mechanical, one correct shape, heal it) or **DECIDE** (intent is ambiguous, surface to user). Capture both classifications for Stage 3.
 
+11. **Lessons ledger.** Check for `<target>/lessons/` and `<target>/lessons-archived/` (the ledger contract in `policies/lessons.md`). Two findings matter: (a) the ledger is **absent** — the target predates the lessons contract; its adoption is a stale-sweep bullet below; (b) the ledger holds **unharvested `scope: methodology` candidates** — pre-digested learnings destined for this starter that no `learn` pass has collected yet. List them (slug + one-line title only) for Stage 3's "Patterns to feed back via `learn`" section. Never transfer or resolve the target's `scope: local` entries — those are target state.
+
 Output of Stage 1 is internal. The user sees Stage 3's plan.
 
 ## Stage 2 — Assess (categorize and tier)
@@ -177,6 +180,7 @@ For each proposed addition or update, ask:
   detached processes resolve the underlying interpreter once. Partial adoption
   is stale and blocking.
 - **Review-lane and follow-up-routing adoption.** Does the target's `kickoff` SKILL.md carry the Step 1 lane resolution, the Step 4 light-lane skip, the Step 6 lane-fit input and `Escalate: full lane` handling, Step 7's direct/coder-only/full correction routing, and the END-block `Review lane:` plus `Follow-up route:` lines — with `policies/review-lanes.md` in its `policies/` and the lane-fit duty in its `.claude/agents/code-critic.md`? Porting is mechanical — AUTO. **No phase-file migration is needed**: absent `review_lane:` frontmatter means `full`, so every existing drafted phase keeps its current initial-review behavior; follow-up routing is runtime classification, not frontmatter.
+- **Lessons-ledger adoption.** Treat `lessons/` + `lessons-archived/` (with `.gitkeep`s), `policies/lessons.md`, `bin/lessons`, `tests/test_lessons.py`, `bin/check-catalogs`, `tests/test_check_catalogs.py`, the `bin/check` registrations, the `sweep` skill (with its `.agents/skills/sweep` symlink), `kickoff` Step 9c plus the END-block `Lessons:` field and `log-discipline.md`'s minimum-contract line, the four roles' Process Observations sections, the coder/evidence `failure_analysis` chain, `briefs/harness-self-improvement.md`, and the CLAUDE.md invariant/catalog/glossary entries as **one atomic contract**. If absent, port the bundle with an empty ledger — never seed the target's ledger with starter lessons. If partially present, partial adoption is stale and blocking. The target's existing ledger *content* is target state: preserve it untouched.
 - **Candidate-bound evidence adoption.** Treat
   `briefs/incremental-orchestration.md`,
   `policies/orchestration-evidence.md`, `bin/kickoff-tree-id`,
@@ -253,6 +257,7 @@ Produce a structured plan inline in the conversation. Use this exact format:
 Areas where the target has surpassed this source. List each as a candidate for a future `learn` invocation against the target. No file change in either repo from this `teach` run; the goal is to make sure the source's maintainer sees what they could absorb. Empty section is fine — declare "None identified" rather than omit.
 
 - `<target path>` — <one-line description of what the target does better and why it generalizes>
+- `<target>/lessons/<slug>.md` (methodology lesson, unharvested) — <one-line title from Stage 1's ledger check>
 - ...
 
 ## Stale-in-light-of-teaching (will be migrated or surfaced)
@@ -294,6 +299,7 @@ Source: <this-repo-name> @ <sha or fp>
 Items applied: <count>, by tier T1=<n>/T2=<n>/T3=<n>/T4=<n>
 Parity heals applied: <count> (AUTO); <count> surfaced as DECIDE
 Stale-in-light-of-teaching migrations: <count> (AUTO); <count> DECIDE; <count> DEFER
+Unharvested methodology lessons surfaced for `learn`: <count>
 Files touched in target: <count>
 ```
 ```
@@ -320,7 +326,7 @@ Once approved, apply the approved items to the target. Order:
 3. MODIFY existing target files (smallest diffs first; one logical change per Edit call).
 4. Maintain cross-harness parity for any *newly added or modified* skills and agents — apply the same four-surface contract the parity heals enforce, but to whatever the teach pass just added:
    - **Top-level instructions** — `CLAUDE.md` ↔ `AGENTS.md` symlink. If a fresh `CLAUDE.md` was created in step 2, also create the `AGENTS.md → CLAUDE.md` symlink (the parity-heal pass in step 1 only repairs existing-`CLAUDE.md` mismatches).
-   - **Skills — Codex native skill-discovery surface** — `.claude/skills/<name>/` ↔ `.agents/skills/<name>` (directory symlink). For every universal skill added or modified (kickoff, methodology, learn, teach, roles — *not* `stamp`): `mkdir -p <target>/.agents/skills && ln -s ../../.claude/skills/<name> <target>/.agents/skills/<name>`. Directory-level, not file-level — per [openai/codex#11314](https://github.com/openai/codex/issues/11314).
+   - **Skills — Codex native skill-discovery surface** — `.claude/skills/<name>/` ↔ `.agents/skills/<name>` (directory symlink). For every universal skill added or modified (kickoff, methodology, learn, teach, roles, sweep — *not* `stamp`): `mkdir -p <target>/.agents/skills && ln -s ../../.claude/skills/<name> <target>/.agents/skills/<name>`. Directory-level, not file-level — per [openai/codex#11314](https://github.com/openai/codex/issues/11314).
    - **Agent roles** — `.claude/agents/<role>.md` ↔ `.codex/agents/<role>.toml` (thin wrapper TOML). For every agent .md added or modified, generate or refresh the .toml as a thin pointer: a `description` field plus a `developer_instructions` body that just says "Read .claude/agents/<role>.md and follow it."
 5. Update the target's `CLAUDE.md` catalogs (briefs catalog, policies catalog, critical-files map) so every new file is indexed. Add the catalog as a new section when the target lacks it.
 6. Substitute names in transferred files: `Agentic Coding Starter Template` → target's project name; `agentic-coding-starter-template` → target's slug; references to this template's `example/` package → target's primary surface.
@@ -350,7 +356,7 @@ Once approved, apply the approved items to the target. Order:
    - For candidate-bound evidence, validate the complete transferred bundle,
      confirm candidate identity covers tracked and nonignored-untracked state,
      and keep all target run evidence untouched.
-9. Run the parity verification sweep from `policies/cross-harness-parity.md` §Verification against the target. **Expected outcome: clean** — only `AGENTS.md OK` printed, because parity heals ran first (step 1) and any new content was wired up correctly (step 4). Any remaining "not a symlink" / "wrong target" / "missing peer" line indicates either a heal that was downgraded to DECIDE and skipped, a violation discovered post-Apply that the scan in Stage 1 missed (file a learning to extend the heal catalog), or a regression in step 4. Re-confirm catalog and stale-sweep coverage at the same time.
+9. Run the parity verification sweep from `policies/cross-harness-parity.md` §Verification against the target. **Expected outcome: clean** — only `AGENTS.md OK` printed, because parity heals ran first (step 1) and any new content was wired up correctly (step 4). Any remaining "not a symlink" / "wrong target" / "missing peer" line indicates either a heal that was downgraded to DECIDE and skipped, a violation discovered post-Apply that the scan in Stage 1 missed (file a lesson in Starter's `lessons/` — `source: teach`, proposing the heal-catalog extension — in a later session against Starter, since this repo is read-only during `teach`), or a regression in step 4. Re-confirm catalog and stale-sweep coverage at the same time.
 10. Run the target's `./bin/setup`, focused behavioral tests through
     `./bin/test`, and canonical full gate (`./bin/check all`) when the contract
     is present. Otherwise run the exact setup/test/gate commands declared by
@@ -387,6 +393,7 @@ Once approved, apply the approved items to the target. Order:
   format covers staged, unstaged, and nonignored untracked candidates; hot
   loops, mutation gates, and detached processes resolve the selected
   interpreter once and reuse it.
+- **Lessons-ledger transfer is atomic, and ledger content is target state.** Port the whole lessons bundle or none of it (per the stale-sweep bullet); ship an empty ledger to a target that lacks one; never seed it with Starter's lessons, never resolve or transfer the target's `scope: local` entries, and surface — never harvest — its `scope: methodology` candidates (harvest belongs to a `learn` run against the target).
 - **Mechanical parity heals always run, independent of `<desc>` scope.** Every `teach` invocation scans the target's parity surfaces and surfaces known-broken shapes (per the catalog in Stage 1 step 10) for repair. Even a narrow `teach` pass — "just bring policies up to date" — heals an `AGENTS.md`-as-file, a file-level `.agents/skills/<name>/SKILL.md`, or a stray `.agents/skills/stamp` it finds along the way. This is what closes the gap where broken parity shapes lingered because the teach pass didn't otherwise touch them.
 - **This repo is read-only.** Never write to this repository during `teach`. The starter learns via `learn`, not as a side effect of `teach`.
 - **Generality first.** Default to Tier 1+2 transfers. Specialize only when those are exhausted or the user's `<desc>` requested it.

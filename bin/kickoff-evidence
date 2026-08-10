@@ -1024,6 +1024,7 @@ def command_capture_change(arguments: argparse.Namespace) -> None:
         "selection_reason": arguments.selection_reason,
         "intentionally_unchanged": arguments.unchanged,
         "rebase_reasons": arguments.rebase_reason,
+        "failure_analysis": arguments.failure_analysis,
     }
     if arguments.metadata or arguments.metadata_artifact:
         supplied = (
@@ -1052,6 +1053,8 @@ def command_capture_change(arguments: argparse.Namespace) -> None:
         or not metadata["selection_reason"].strip()
     ):
         raise EvidenceError("change metadata selection_reason must be nonempty text")
+    if not isinstance(metadata["failure_analysis"], str):
+        raise EvidenceError("change metadata failure_analysis must be a string")
     risk_tags = sorted(set(metadata["risk_tags"]))
     invalid_tags = [
         tag for tag in risk_tags if tag not in RISK_TAGS and not tag.startswith("project:")
@@ -1064,6 +1067,8 @@ def command_capture_change(arguments: argparse.Namespace) -> None:
         if reviewed_change_path.exists()
         else set()
     )
+    if reviewed_change_path.exists() and not metadata["failure_analysis"].strip():
+        raise EvidenceError("change metadata failure_analysis must be nonempty on a revision round")
     new_risk_tags = sorted(set(risk_tags) - prior_risk_tags)
     change = {
         "schema_version": SCHEMA_VERSION,
@@ -1083,6 +1088,7 @@ def command_capture_change(arguments: argparse.Namespace) -> None:
         or bool(metadata["rebase_reasons"])
         or bool(prior_risk_tags and new_risk_tags),
         "rebase_reasons": sorted(set(metadata["rebase_reasons"])),
+        "failure_analysis": metadata["failure_analysis"].strip(),
     }
     atomic_json(arguments.run_dir / "change.json", change)
     atomic_json(arguments.run_dir / "candidate.json", current)
@@ -2179,6 +2185,16 @@ def command_packet(arguments: argparse.Namespace) -> None:
             )
     else:
         lines.append("- None.")
+    if arguments.kind == "code":
+        change = load_json(arguments.run_dir / "change.json")
+        lines.extend(
+            [
+                "",
+                "## Failure analysis",
+                "",
+                change["failure_analysis"] or "- None (initial implementation).",
+            ]
+        )
     lines.extend(["", "## Gate evidence", ""])
     if gates:
         for gate in gates:
@@ -2288,6 +2304,8 @@ def command_validate(arguments: argparse.Namespace) -> None:
             or not change["selection_reason"].strip()
         ):
             raise EvidenceError("change selection_reason must be nonempty text")
+        if not isinstance(change.get("failure_analysis"), str):
+            raise EvidenceError("change failure_analysis must be a string")
         for changed_file in change["changed_files"]:
             if not isinstance(changed_file, dict) or changed_file.get("change") not in {
                 "added",
@@ -2484,6 +2502,7 @@ def build_parser() -> argparse.ArgumentParser:
     capture.add_argument("--unchanged", action="append", default=[])
     capture.add_argument("--rebase-reason", action="append", default=[])
     capture.add_argument("--selection-reason")
+    capture.add_argument("--failure-analysis", default="")
     capture_metadata = capture.add_mutually_exclusive_group()
     capture_metadata.add_argument("--metadata", type=Path)
     capture_metadata.add_argument("--metadata-artifact", type=Path)

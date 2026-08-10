@@ -9,6 +9,7 @@ description: >-
   the new project's name and primary language. Invoke as /stamp <directory>
   [<description>] in Claude Code or $stamp <directory> [<description>] in Codex.
 argument-hint: "<directory> [<description>]"
+last-reviewed: 2026-08-10
 ---
 
 # Stamp — Bootstrap a new agentic-coding project
@@ -108,10 +109,15 @@ Follow [`briefs/agentic-bootstrap.md` §3](../../../briefs/agentic-bootstrap.md)
   .claude/skills/learn/
   .claude/skills/teach/
   .claude/skills/roles/
+  .claude/skills/sweep/
   .claude/agents/
   .codex/agents/
-  .agents/skills/         # (kickoff, methodology, learn, teach, roles added
-                          #  as directory symlinks in Step 2)
+  .agents/skills/         # (kickoff, methodology, learn, teach, roles, sweep
+                          #  added as directory symlinks in Step 2)
+  lessons/                # (empty ledger — .gitkeep only; policies/lessons.md)
+  lessons-archived/       # (empty — .gitkeep only)
+  user-actions/
+  user-actions-archived/
 ```
 
 Plus the language-specific deliverable directories. When `project_isolation` is enabled (the default for single-deliverable projects), the deliverable goes under `project/`:
@@ -135,6 +141,7 @@ Copy these files **from this template** into the new project, then run a name su
 - `.claude/skills/learn/SKILL.md`
 - `.claude/skills/teach/SKILL.md`
 - `.claude/skills/roles/SKILL.md`
+- `.claude/skills/sweep/SKILL.md`
 - `.claude/agents/phase-planner.md`
 - `.claude/agents/plan-reviewer.md`
 - `.claude/agents/phase-coder.md`
@@ -149,6 +156,7 @@ Copy these files **from this template** into the new project, then run a name su
 - `briefs/cross-agent-invocation.md` (verbatim — the cross-CLI invocation BCPs that `policies/role-models.md` cites are universal)
 - `briefs/incremental-orchestration.md` (verbatim — universal candidate-bound review, revision, verification, and protocol-recovery design)
 - `briefs/deterministic-orchestration.md` (verbatim — universal draft brief: decision criteria for a deterministic kickoff loop once every supported harness has a parity workflow primitive)
+- `briefs/harness-self-improvement.md` (verbatim — the two-tier improvement flywheel the lessons ledger, `sweep`, and the transfer skills implement)
 - `.githooks/pre-push` (verbatim — optional hook; it delegates to the canonical gate and is inert until explicitly installed)
 - `bin/setup`, `bin/test`, `bin/check`, and `bin/install-hooks`
   (`install-hooks` verbatim; the toolchain entry points are adapted together
@@ -162,6 +170,11 @@ Copy these files **from this template** into the new project, then run a name su
   `tests/test_kickoff_tree_id.py`, and `tests/test_kickoff_evidence.py`
   (verbatim — universal candidate identity and orchestration-evidence
   contract, governed by `policies/orchestration-evidence.md`)
+- `bin/lessons`, `bin/check-catalogs`, `tests/test_lessons.py`, and
+  `tests/test_check_catalogs.py` (verbatim — universal lessons-ledger and
+  catalog-fitness machinery, governed by `policies/lessons.md`). The
+  destination's ledger starts **empty**: create `lessons/.gitkeep` and
+  `lessons-archived/.gitkeep`; never copy Starter's lesson files.
 
 Then create the `.agents/skills/` **directory symlinks** for Codex CLI's native skill discovery. Each is a relative symlink whose target is the canonical skill *directory* (not the SKILL.md file inside it — Codex doesn't follow file-level symlinks inside a skill dir per [openai/codex#11314](https://github.com/openai/codex/issues/11314), but does traverse a symlinked skill directory):
 
@@ -173,6 +186,7 @@ ln -s ../../.claude/skills/methodology .agents/skills/methodology
 ln -s ../../.claude/skills/learn       .agents/skills/learn
 ln -s ../../.claude/skills/teach       .agents/skills/teach
 ln -s ../../.claude/skills/roles       .agents/skills/roles
+ln -s ../../.claude/skills/sweep       .agents/skills/sweep
 ```
 
 Verify each `readlink <dest>/.agents/skills/<name>` returns the expected target and `test -L <dest>/.agents/skills/<name> && test -d <dest>/.agents/skills/<name>` passes before moving on.
@@ -182,7 +196,8 @@ Verify each `readlink <dest>/.agents/skills/<name>` returns the expected target 
 The `bin/` directory, its `bin/README.md` convention preamble, and
 `policies/mechanistic-vs-intelligence.md` **are** carried over. The universal
 `bin/setup`, `bin/test`, `bin/check`, `bin/install-hooks`,
-`bin/kickoff-config`, `bin/kickoff-tree-id`, `bin/kickoff-evidence`, tracked
+`bin/kickoff-config`, `bin/kickoff-tree-id`, `bin/kickoff-evidence`,
+`bin/lessons`, `bin/check-catalogs`, tracked
 pre-push hook, and human-editable `kickoff.yaml` carry over too; Python targets
 also carry `bin/python`. Seed both config sections by running
 `<dest>/bin/kickoff-config reset all`; this preserves data under `extensions`
@@ -369,10 +384,14 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - `ls <dest>/.claude/skills/kickoff/` contains `SKILL.md`.
 - `ls <dest>/.claude/skills/methodology/` contains `SKILL.md`.
 - `ls <dest>/.claude/skills/stamp/` does **not** exist (we did not transfer it).
-- For each name in {kickoff, methodology, learn, teach, roles}: `readlink <dest>/.agents/skills/<name>` returns `../../.claude/skills/<name>`, `test -L <dest>/.agents/skills/<name>` and `test -d <dest>/.agents/skills/<name>` both pass, and `<dest>/.agents/skills/<name>/SKILL.md` is reachable through the directory symlink.
+- For each name in {kickoff, methodology, learn, teach, roles, sweep}: `readlink <dest>/.agents/skills/<name>` returns `../../.claude/skills/<name>`, `test -L <dest>/.agents/skills/<name>` and `test -d <dest>/.agents/skills/<name>` both pass, and `<dest>/.agents/skills/<name>/SKILL.md` is reachable through the directory symlink.
 - `<dest>/bin/kickoff-config show` runs; `<dest>/bin/README.md` retains its universal entry but **not** the `### check-anonymization.sh` entry.
 - `<dest>/bin/kickoff-tree-id` and `<dest>/bin/kickoff-evidence` are
   executable; their behavioral tests pass.
+- `<dest>/bin/lessons validate` and `<dest>/bin/check-catalogs` are executable
+  and pass against the fresh destination (empty ledger, synced catalogs, one
+  `⬅️`); `<dest>/lessons/.gitkeep` and `<dest>/lessons-archived/.gitkeep`
+  exist and no Starter lesson files were copied.
 - `<dest>/.agents/skills/stamp` does **not** exist (starter-only, must not propagate).
 - The new `CLAUDE.md`'s catalogs reference every file in `briefs/` and `policies/`.
 - `<dest>kickoff.yaml` exists; `show` prints the seeded cross-vendor model routing and portable timeout values; a scoped model edit preserves timeout comments/values; `<dest>/.gitignore` includes `.kickoff/`; the two role policies and invocation brief exist.
@@ -382,7 +401,8 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - `<dest>/bin/test` runs `tests/test_toolchain_entrypoints.py`,
   `tests/test_check.py`, `tests/test_install_hooks.py`,
   `tests/test_kickoff_config.py`, `tests/test_kickoff_tree_id.py`,
-  `tests/test_kickoff_evidence.py`, and the deliverable tests through
+  `tests/test_kickoff_evidence.py`, `tests/test_lessons.py`,
+  `tests/test_check_catalogs.py`, and the deliverable tests through
   committed locked environments; a focused repo-relative test argument runs
   only that selection.
 - `<dest>/bin/check test` delegates to `<dest>/bin/test`.

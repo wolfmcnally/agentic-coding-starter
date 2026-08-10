@@ -76,11 +76,18 @@ printf 'policy cwd=%s\\n' "$PWD" >> "$CHECK_TEST_LOG"
 printf 'config cwd=%s args=%s\\n' "$PWD" "$*" >> "$CHECK_TEST_LOG"
 """,
     )
+    _write_executable(
+        root / "bin" / "lessons",
+        """#!/usr/bin/env bash
+printf 'lessons cwd=%s args=%s\\n' "$PWD" "$*" >> "$CHECK_TEST_LOG"
+""",
+    )
     for executable, label in (
         ("execution-telemetry", "telemetry"),
         ("check-harness-parity", "parity"),
         ("check-toolchain-callers", "callers"),
         ("check-execution-dashboards", "dashboards"),
+        ("check-catalogs", "catalogs"),
     ):
         _write_executable(
             root / "bin" / executable,
@@ -127,14 +134,14 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
             "ruff check example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence "
             "../bin/kickoff-tree-id ../bin/execution-telemetry "
             "../bin/check-execution-dashboards ../bin/check-harness-parity "
-            "../bin/check-toolchain-callers ../tests"
+            "../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs ../tests"
         ),
         (
             f"uv cwd={root / 'project'} args=run --locked --managed-python ruff format --check "
             "example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence "
             "../bin/kickoff-tree-id ../bin/execution-telemetry "
             "../bin/check-execution-dashboards ../bin/check-harness-parity "
-            "../bin/check-toolchain-callers ../tests"
+            "../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs ../tests"
         ),
         (
             f"uv cwd={root} args=run --project {root / 'project'} --locked "
@@ -148,6 +155,8 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
         f"callers cwd={root}",
         f"dashboards cwd={root}",
         f"config cwd={root} args=show",
+        f"catalogs cwd={root}",
+        f"lessons cwd={root} args=validate",
         f"policy cwd={root}",
     ]
     assert "CHECK ALL PASS" in result.stdout
@@ -180,6 +189,8 @@ def test_named_mode_runs_only_selected_gate(
             f"callers cwd={root}",
             f"dashboards cwd={root}",
             f"config cwd={root} args=show",
+            f"catalogs cwd={root}",
+            f"lessons cwd={root} args=validate",
             f"policy cwd={root}",
         ]
     elif mode == "test":
@@ -251,6 +262,8 @@ def test_missing_project_contract_fails_clearly(
         "check-execution-dashboards",
         "check-harness-parity",
         "check-toolchain-callers",
+        "lessons",
+        "check-catalogs",
     ],
 )
 def test_missing_required_executable_fails_clearly(

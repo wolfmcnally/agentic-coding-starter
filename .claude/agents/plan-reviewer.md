@@ -137,6 +137,9 @@ Your final output MUST end with exactly one of these two headers as the first li
 ### Minor Corrections (if any)
 - [Adjustment the coder should incorporate]
 
+### Process Observations (if any)
+- [Friction or ambiguity in a brief, policy, phase file, or tool that a future phase should not re-learn — feeds the phase-close lessons harvest; "none" is fine]
+
 Plan is ready for implementation.
 ```
 
@@ -150,6 +153,9 @@ Plan is ready for implementation.
 
 ### Context
 [Brief explanation]
+
+### Process Observations (if any)
+- [Friction or ambiguity in a brief, policy, phase file, or tool that a future phase should not re-learn — feeds the phase-close lessons harvest; "none" is fine]
 ```
 
 ## Rules

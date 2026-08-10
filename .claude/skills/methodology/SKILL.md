@@ -8,6 +8,7 @@ description: >-
   new project, setting up a repo's planning structure, breaking a large
   initiative into phases, or reviewing the steps without reading the full
   brief. Invoke as /methodology in Claude Code or $methodology in Codex.
+last-reviewed: 2026-08-10
 ---
 
 # The Agentic Coding Methodology

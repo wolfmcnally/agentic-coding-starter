@@ -157,6 +157,9 @@ Your final output MUST end with exactly one of these two headers as the first li
 
 ### Observations (if any)
 - [Non-blocking notes the implementer may optionally address.]
+
+### Process Observations (if any)
+- [Distinct from Observations: not about this code, but about process — friction or ambiguity in a brief, policy, plan, or tool that a future phase should not re-learn. Feeds the phase-close lessons harvest; "none" is fine.]
 ```
 
 #### REVISE
@@ -169,6 +172,9 @@ Your final output MUST end with exactly one of these two headers as the first li
 
 ### Context
 [Why these changes matter]
+
+### Process Observations (if any)
+- [Distinct from Required Changes: process friction a future phase should not re-learn. Feeds the phase-close lessons harvest; "none" is fine.]
 ```
 
 ## Rules
