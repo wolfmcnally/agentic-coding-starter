@@ -103,7 +103,7 @@ This block records a correction to an already authorized goal; it does not reope
 
 ## Rules
 
-1. **Append-only.** Never edit a historical START or END block. Mistakes get a follow-up END block ("END (correction)") with the corrected information.
+1. **Append-only.** Never edit a historical START or END block. Mistakes get a follow-up END block ("END (correction)") with the corrected information. "Historical" begins at the first commit: the active run's own entry, while it has never been committed, may still be corrected in place when the run's final state changes before close — enshrining a count or claim already known to be false would be worse than the amendment. Once an entry has been committed, or belongs to any earlier run, corrections are append-only blocks.
 2. **`kickoff` writes; humans read.** Humans don't write to `LOG.md` directly. The exceptions are bootstrapping (creating the initial `# Activity Log` header) and recovery (when `kickoff` failed and left an inconsistent state).
 3. **Timestamps are real.** Use the orchestrator's actual wall-clock time when the block was written. Do not back-date.
 4. **The END block is a contract.** When the orchestrator writes an END block claiming the phase is done, the human is entitled to expect that every claim in the block is true. Fabricated evidence is the most dangerous failure mode this policy guards against; the orchestrator must never claim a build gate passed when it didn't, never claim a manual check was performed by the orchestrator, never embellish the file list.
