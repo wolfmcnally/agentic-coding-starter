@@ -238,7 +238,7 @@ If the user partially approves (a subset of items, whether via plan-mode revise-
 
 ## Stage 5 — Apply
 
-Once approved, apply the approved items. Order:
+Once approved, apply the approved items. Before importing any donor remedy for a defect — a hardening, a guard, an error-handling change — verify the defect actually **reproduces in this repo**: shared lineage makes the donor's diagnosis plausible, never established, and the destination may already have solved the same incident differently (sometimes more strictly, so the donor's "fix" would be a regression here). When the defect does not reproduce, record the divergence in the LOG entry instead of importing the remedy. This verification is per item, hunk by hunk — an atomic bundle can be half genuine gap, half regression-wearing-the-shape-of-a-fix. Order:
 
 1. Add NEW files (policies first, then briefs, then skills/agents, then plan files, then code).
 2. MODIFY existing files (smallest diffs first; one logical change per Edit call).
@@ -286,6 +286,7 @@ Once approved, apply the approved items. Order:
 
 - **The donor is read-only.** Never write to `<donor-dir>` under any circumstances. If the user wants to push improvements back to the donor, that is a separate `/teach <donor-dir>` invocation in Claude Code or `$teach <donor-dir>` invocation in Codex.
 - **Generality first.** Default to Tier 1+2 transfers. Specialize only when those are exhausted or the user's `<desc>` requested it.
+- **Direction of advance is established per item, never per repo.** A donor being "ahead" overall proves nothing about any one file, hunk, or fix. Before replacing a shared file, classify every hunk by direction (destination-ahead hunks are re-applied on top); before importing a donor remedy, verify its defect reproduces in the destination and record the divergence when it does not. Both failure modes are silent: reverting a stronger assertion or relaxing a stricter guard cannot fail any gate.
 - **Approval is mandatory.** No bytes change in this repo before explicit approval.
 - **Cross-harness parity is non-negotiable.** Any change touching `.claude/` or `.codex/` updates both surfaces in the same apply step.
 - **Catalog drift is forbidden.** `CLAUDE.md`'s catalogs reflect every file in `briefs/` and `policies/` after the apply finishes. Verify before reporting done.

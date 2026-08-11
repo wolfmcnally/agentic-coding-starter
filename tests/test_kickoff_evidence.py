@@ -145,6 +145,8 @@ def initialize(repository: Path, run_dir: Path) -> str:
         setup.span_id,
         "--review-lane",
         "full",
+        "--evidence-lane",
+        "full",
         "--follow-up-route",
         "direct-fix",
     )
@@ -370,6 +372,8 @@ def test_init_refuses_reused_nonempty_run_directory(repository: Path, tmp_path: 
         "--initial-orchestration-span-id",
         setup.span_id,
         "--review-lane",
+        "full",
+        "--evidence-lane",
         "full",
         "--follow-up-route",
         "direct-fix",
@@ -1535,6 +1539,8 @@ def test_pinned_tool_bundle_survives_live_tool_replacement(
             setup.span_id,
             "--review-lane",
             "full",
+            "--evidence-lane",
+            "full",
             "--follow-up-route",
             "direct-fix",
         ],
@@ -1946,6 +1952,8 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
         "--initial-orchestration-span-id",
         setup.span_id,
         "--review-lane",
+        "full",
+        "--evidence-lane",
         "full",
         "--follow-up-route",
         "initial",
@@ -3801,3 +3809,140 @@ def test_the_opt_out_reason_cannot_be_blank(repository: Path, tmp_path: Path) ->
 
     assert result.returncode == 2
     assert "nonempty reason" in result.stderr
+
+
+def open_setup_span(repository: Path) -> tuple:
+    handle = start_trace(
+        engine_root=repository,
+        scope_root=repository,
+        scope="engine",
+        scope_id="engine",
+        run_type="kickoff",
+        operation="phase.1.1",
+    )
+    setup = start_span(
+        engine_root=repository,
+        trace_id=handle.trace_id,
+        parent_span_id=handle.span_id,
+        category="reconciliation",
+        operation="orchestration.setup",
+    )
+    return handle, setup
+
+
+def lane_init(
+    repository: Path,
+    run_dir: Path,
+    *,
+    review_lane: str,
+    evidence_lane: str | None,
+    route: str,
+) -> subprocess.CompletedProcess[str]:
+    handle, setup = open_setup_span(repository)
+    arguments = [
+        "init",
+        "--run-dir",
+        str(run_dir),
+        "--root",
+        str(repository),
+        "--phase",
+        "1.1",
+        "--authority",
+        "phase.md",
+        "--telemetry-trace-id",
+        handle.trace_id,
+        "--telemetry-root-span-id",
+        handle.span_id,
+        "--initial-orchestration-span-id",
+        setup.span_id,
+        "--review-lane",
+        review_lane,
+        "--follow-up-route",
+        route,
+    ]
+    if evidence_lane is not None:
+        arguments[-2:-2] = ["--evidence-lane", evidence_lane]
+    return run(*arguments)
+
+
+def test_init_requires_an_evidence_lane(repository: Path, tmp_path: Path) -> None:
+    result = lane_init(
+        repository,
+        tmp_path / "run",
+        review_lane="full",
+        evidence_lane=None,
+        route="initial",
+    )
+
+    assert result.returncode == 2
+    assert "--evidence-lane" in result.stderr
+
+
+def test_one_shot_lane_derives_role_and_stage_requirements(
+    repository: Path, tmp_path: Path
+) -> None:
+    run_dir = tmp_path / "run"
+    result = lane_init(
+        repository,
+        run_dir,
+        review_lane="one-shot",
+        evidence_lane="full",
+        route="initial",
+    )
+
+    assert result.returncode == 0, result.stderr
+    metadata = json.loads((run_dir / "run.json").read_text())
+    assert metadata["review_lane"] == "one-shot"
+    assert metadata["evidence_lane"] == "full"
+    assert metadata["required_initial_role_operations"] == [
+        "role.code-review",
+        "role.implement",
+    ]
+    assert "orchestration.planning" not in metadata["required_orchestration_operations"]
+
+
+def test_one_shot_is_not_a_frontmatter_evidence_lane(repository: Path, tmp_path: Path) -> None:
+    result = lane_init(
+        repository,
+        tmp_path / "run",
+        review_lane="full",
+        evidence_lane="one-shot",
+        route="initial",
+    )
+
+    assert result.returncode == 2
+
+
+def test_light_evidence_lane_demotes_missing_role_requirement(
+    repository: Path, tmp_path: Path
+) -> None:
+    light_dir = tmp_path / "light-run"
+    initialized = lane_init(
+        repository,
+        light_dir,
+        review_lane="full",
+        evidence_lane="light",
+        route="initial",
+    )
+    assert initialized.returncode == 0, initialized.stderr
+
+    result = run("validate", "--run-dir", str(light_dir))
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_full_evidence_lane_still_requires_initial_roles(repository: Path, tmp_path: Path) -> None:
+    full_dir = tmp_path / "full-run"
+    initialized = lane_init(
+        repository,
+        full_dir,
+        review_lane="full",
+        evidence_lane="full",
+        route="initial",
+    )
+    assert initialized.returncode == 0, initialized.stderr
+
+    result = run("validate", "--run-dir", str(full_dir))
+
+    assert result.returncode == 2
+    assert "missing required initial role attempt" in result.stderr

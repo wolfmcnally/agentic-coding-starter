@@ -24,6 +24,9 @@
 ## <YYYY-MM-DD HH:MM> — START
 <Phase heading>
 
+Execution trace: <trace-id>
+Baseline: <commit id> — <baseline-dependent criteria that reference it>
+
 Planned work:
 - <deliverable 1>
 - <deliverable 2>
@@ -31,6 +34,12 @@ Planned work:
 ```
 
 The planned-work list is the phase file's Deliverables list, copied verbatim (trimmed to bullet text). If the phase has no Deliverables section, fall back to the phase's Goal paragraph rephrased as bullets.
+
+`Execution trace:` records the trace id opened for the phase ([`execution-telemetry.md`](execution-telemetry.md)), so START and END are mechanically joinable. The `Baseline:` line appears only when the phase carries a baseline-dependent acceptance criterion ("unchanged before and after", "byte-identical across the edit"): it records the commit id the comparison is against, per [`acceptance-empirical.md`](acceptance-empirical.md) § Baseline-dependent criteria. Omit the line when no criterion depends on a baseline.
+
+**Only a finalized trace may claim exact timing.** An END block's `Execution timing` section is the machine-generated projection from the finalized trace; an incomplete or unfinalized trace may not claim exact figures. Narrative wall-clock observations remain a separate field and are never presented as exact.
+
+**Multi-session phases use suffixed blocks.** A phase that pauses and resumes across sessions appends `## <ts> — START (resumed)` when work re-enters, paired with its own END; a continuation that re-derives evidence rather than re-doing work may annotate the suffix (`START (evidence continuation)`). Suffixed blocks keep every session's record distinct instead of overwriting or re-editing the original START — the same append-only discipline, extended to the phase's whole lifetime. The most recent unmatched START of any suffix is the resume anchor.
 
 ## END block format
 

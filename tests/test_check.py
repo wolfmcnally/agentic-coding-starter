@@ -88,6 +88,8 @@ printf 'lessons cwd=%s args=%s\\n' "$PWD" "$*" >> "$CHECK_TEST_LOG"
         ("check-toolchain-callers", "callers"),
         ("check-execution-dashboards", "dashboards"),
         ("check-catalogs", "catalogs"),
+        ("check-shell-syntax", "shellsyntax"),
+        ("new-name", "newname"),
     ):
         _write_executable(
             root / "bin" / executable,
@@ -134,14 +136,16 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
             "ruff check example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence "
             "../bin/kickoff-tree-id ../bin/execution-telemetry "
             "../bin/check-execution-dashboards ../bin/check-harness-parity "
-            "../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs ../tests"
+            "../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs "
+            "../bin/check-shell-syntax ../bin/new-name ../tests"
         ),
         (
             f"uv cwd={root / 'project'} args=run --locked --managed-python ruff format --check "
             "example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence "
             "../bin/kickoff-tree-id ../bin/execution-telemetry "
             "../bin/check-execution-dashboards ../bin/check-harness-parity "
-            "../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs ../tests"
+            "../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs "
+            "../bin/check-shell-syntax ../bin/new-name ../tests"
         ),
         (
             f"uv cwd={root} args=run --project {root / 'project'} --locked "
@@ -157,6 +161,7 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
         f"config cwd={root} args=show",
         f"catalogs cwd={root}",
         f"lessons cwd={root} args=validate",
+        f"shellsyntax cwd={root}",
         f"policy cwd={root}",
     ]
     assert "CHECK ALL PASS" in result.stdout
@@ -191,6 +196,7 @@ def test_named_mode_runs_only_selected_gate(
             f"config cwd={root} args=show",
             f"catalogs cwd={root}",
             f"lessons cwd={root} args=validate",
+            f"shellsyntax cwd={root}",
             f"policy cwd={root}",
         ]
     elif mode == "test":
@@ -264,6 +270,8 @@ def test_missing_project_contract_fails_clearly(
         "check-toolchain-callers",
         "lessons",
         "check-catalogs",
+        "check-shell-syntax",
+        "new-name",
     ],
 )
 def test_missing_required_executable_fails_clearly(

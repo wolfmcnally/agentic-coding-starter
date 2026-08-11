@@ -106,7 +106,8 @@ ROLE_OPERATIONS = {
 }
 ROLE_REASONS = {"initial", "revision", "resume", "rescue", "reexecution", "fallback"}
 ROLE_HARNESSES = {"native", "claude", "codex"}
-REVIEW_LANES = {"full", "light"}
+REVIEW_LANES = {"full", "light", "one-shot"}
+EVIDENCE_LANES = {"full", "light"}
 FOLLOW_UP_ROUTES = {"initial", "direct-fix", "coder-only", "full-cycle"}
 ORCHESTRATION_OPERATIONS = (
     "orchestration.setup",
@@ -321,6 +322,7 @@ def validate_run_dir(run_dir: Path) -> dict[str, Any]:
         "telemetry_trace_id",
         "telemetry_root_span_id",
         "review_lane",
+        "evidence_lane",
         "follow_up_route",
         "required_initial_role_operations",
         "required_orchestration_operations",
@@ -329,6 +331,10 @@ def validate_run_dir(run_dir: Path) -> dict[str, Any]:
     }
     if set(run) != required:
         raise EvidenceError("run metadata has unknown or missing fields")
+    if run.get("review_lane") not in REVIEW_LANES:
+        raise EvidenceError("run metadata has an unknown review lane")
+    if run.get("evidence_lane") not in EVIDENCE_LANES:
+        raise EvidenceError("run metadata has an unknown evidence lane")
     pinned = (run_dir / "tools" / "kickoff-evidence").resolve()
     if SCRIPT_PATH != pinned:
         raise EvidenceError(f"active run must use pinned tool: {pinned}")
@@ -416,22 +422,26 @@ def required_initial_roles(review_lane: str, route: str) -> list[str]:
         return ["role.implement"]
     if route == "full-cycle":
         return ["role.code-review", "role.implement"]
+    if review_lane == "one-shot":
+        # Operator-invoked lane: no planner attempt; the phase file is the
+        # binding contract and the invocation substitutes for plan review.
+        return ["role.code-review", "role.implement"]
     roles = ["role.code-review", "role.implement", "role.plan"]
     if review_lane == "full":
         roles.append("role.plan-review")
     return sorted(roles)
 
 
-def required_orchestration_operations(route: str) -> list[str]:
-    if route not in FOLLOW_UP_ROUTES:
-        raise EvidenceError("invalid follow-up route")
+def required_orchestration_operations(route: str, review_lane: str) -> list[str]:
+    if route not in FOLLOW_UP_ROUTES or review_lane not in REVIEW_LANES:
+        raise EvidenceError("invalid follow-up route or review lane")
     required = {
         "orchestration.setup",
         "orchestration.implementation",
         "orchestration.acceptance",
         "orchestration.close",
     }
-    if route == "initial":
+    if route == "initial" and review_lane != "one-shot":
         required.add("orchestration.planning")
     return sorted(required)
 
@@ -524,12 +534,13 @@ def command_init(arguments: argparse.Namespace) -> None:
             "telemetry_trace_id": arguments.telemetry_trace_id,
             "telemetry_root_span_id": arguments.telemetry_root_span_id,
             "review_lane": arguments.review_lane,
+            "evidence_lane": arguments.evidence_lane,
             "follow_up_route": arguments.follow_up_route,
             "required_initial_role_operations": required_initial_roles(
                 arguments.review_lane, arguments.follow_up_route
             ),
             "required_orchestration_operations": required_orchestration_operations(
-                arguments.follow_up_route
+                arguments.follow_up_route, arguments.review_lane
             ),
             "initial_orchestration_span_id": arguments.initial_orchestration_span_id,
             "tool_bundle": tool_bundle,
@@ -1703,7 +1714,9 @@ def validate_role_spans(run_dir: Path, run: dict[str, Any]) -> list[dict[str, An
         if sorted(attempts) != list(range(1, max(attempts) + 1)):
             raise EvidenceError(f"role attempts are not contiguous for {operation}")
     for operation in run["required_initial_role_operations"]:
-        if (operation, 1) not in keys:
+        if (operation, 1) not in keys and run.get("evidence_lane") != "light":
+            # In the light evidence lane role registration is validated when
+            # present, never required; the run metadata records the demotion.
             raise EvidenceError(f"missing required initial role attempt: {operation}")
     dispatches = load_jsonl(run_dir / "role-dispatch.jsonl")
     dispatch_by_key: dict[tuple[str, int], dict[str, Any]] = {}
@@ -1844,7 +1857,7 @@ def validate_orchestration_spans(
             span["operation"] == operation and span["outcome"] == "success" for span in candidates
         )
     ]
-    if missing:
+    if missing and run.get("evidence_lane") != "light":
         raise EvidenceError("missing successful orchestration stages: " + ", ".join(missing))
     ordered = sorted(candidates, key=lambda item: (item["start_offset_ns"], item["span_id"]))
     if (
@@ -1852,7 +1865,10 @@ def validate_orchestration_spans(
         or ordered[0]["operation"] != "orchestration.setup"
     ):
         raise EvidenceError("initial setup orchestration span is not first")
-    if ordered[-1]["operation"] != "orchestration.close":
+    close_present = any(span["operation"] == "orchestration.close" for span in ordered)
+    if ordered[-1]["operation"] != "orchestration.close" and (
+        close_present or run.get("evidence_lane") != "light"
+    ):
         raise EvidenceError("close preparation must be the final orchestration stage")
     for previous, current in zip(ordered, ordered[1:]):
         if current["start_offset_ns"] < previous["end_offset_ns"]:
@@ -1916,7 +1932,7 @@ def validate_preclose_telemetry(run: dict[str, Any], run_dir: Path, root: Path) 
             span["operation"] == operation and span["outcome"] == "success" for span in stage_spans
         )
     ]
-    if missing:
+    if missing and run.get("evidence_lane") != "light":
         raise EvidenceError(
             "missing successful pre-acceptance orchestration stages: " + ", ".join(missing)
         )
@@ -2474,6 +2490,7 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--telemetry-root-span-id", required=True)
     init.add_argument("--initial-orchestration-span-id", required=True)
     init.add_argument("--review-lane", choices=sorted(REVIEW_LANES), required=True)
+    init.add_argument("--evidence-lane", choices=sorted(EVIDENCE_LANES), required=True)
     init.add_argument("--follow-up-route", choices=sorted(FOLLOW_UP_ROUTES), required=True)
     init.set_defaults(handler=command_init)
 

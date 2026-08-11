@@ -1,0 +1,62 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Mechanistic shell-syntax component of the canonical repository gate.
+
+Runs ``bash -n`` over every shell script under the repo's shell-bearing
+roots (``bin/`` and ``.githooks/``), selected by shebang so Python and
+other non-shell executables are skipped. A parse failure in a gate or
+hook script would otherwise surface only when that script next runs —
+possibly inside the failure path it exists to guard.
+"""
+
+from __future__ import annotations
+
+import argparse
+import subprocess
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+SCAN_ROOTS = ("bin", ".githooks")
+
+
+def is_shell_script(target: Path) -> bool:
+    try:
+        first_line = target.open("rb").readline().decode("utf-8", "replace")
+    except OSError:
+        return False
+    if not first_line.startswith("#!"):
+        return False
+    interpreter = first_line[2:].strip()
+    if not interpreter:
+        return False
+    return "bash" in interpreter or interpreter.split()[0].endswith("sh")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=ROOT, help="repository root to scan")
+    arguments = parser.parse_args()
+    repo_root = arguments.root.resolve()
+    failures: list[str] = []
+    for root_name in SCAN_ROOTS:
+        root = repo_root / root_name
+        if not root.is_dir():
+            continue
+        for target in sorted(item for item in root.rglob("*") if item.is_file()):
+            relative = target.relative_to(repo_root).as_posix()
+            if "__pycache__" in relative or not is_shell_script(target):
+                continue
+            result = subprocess.run(
+                ["bash", "-n", str(target)], capture_output=True, text=True, check=False
+            )
+            if result.returncode != 0:
+                failures.append(f"{relative}: {result.stderr.strip()}")
+    for failure in failures:
+        print(f"ERROR: {failure}")
+    return 1 if failures else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

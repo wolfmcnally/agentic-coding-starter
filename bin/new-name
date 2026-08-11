@@ -1,0 +1,97 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["coolname>=2"]
+# ///
+"""Generate a random memorable slug for ledger files (lessons, user actions).
+
+Prints one hyphenated slug (default two words) that contains no filler
+tokens and does not collide with any existing basename in the repo's
+ledger directories (``lessons/``, ``lessons-archived/``, ``user-actions/``,
+``user-actions-archived/``). Collision checking spans all four directories
+so a slug is never reused across ledgers, matching the uniqueness rules in
+``policies/lessons.md`` and ``policies/user-actions.md``.
+
+Usage: ``bin/new-name [words]``
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+from coolname import generate_slug
+
+ROOT = Path(__file__).resolve().parents[1]
+LEDGER_DIRS = ("lessons", "lessons-archived", "user-actions", "user-actions-archived")
+
+# Connective tokens that read as filler inside a slug.
+FILLERS = frozenset(
+    {
+        "the",
+        "a",
+        "an",
+        "of",
+        "and",
+        "or",
+        "for",
+        "in",
+        "on",
+        "as",
+        "to",
+        "with",
+        "by",
+        "at",
+        "is",
+        "vs",
+        "into",
+        "from",
+        "onto",
+        "via",
+    }
+)
+
+MAX_ATTEMPTS = 50
+
+
+def existing_slugs(repo_root: Path) -> frozenset[str]:
+    taken: set[str] = set()
+    for dir_name in LEDGER_DIRS:
+        directory = repo_root / dir_name
+        if directory.is_dir():
+            taken.update(entry.stem for entry in directory.glob("*.md"))
+    return frozenset(taken)
+
+
+def is_clean(slug: str) -> bool:
+    return not any(token in FILLERS for token in slug.split("-"))
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("words", nargs="?", type=int, default=2, help="word count (default 2)")
+    parser.add_argument(
+        "--root", type=Path, default=ROOT, help="repository root for collision checks"
+    )
+    arguments = parser.parse_args()
+    words = arguments.words
+    if words < 2:
+        print("new-name: word count must be at least 2", file=sys.stderr)
+        return 2
+    taken = existing_slugs(arguments.root.resolve())
+    for _ in range(MAX_ATTEMPTS):
+        candidate = generate_slug(words)
+        if is_clean(candidate) and candidate not in taken:
+            print(candidate)
+            return 0
+    print(
+        f"new-name: gave up after {MAX_ATTEMPTS} attempts to find a "
+        f"filler-free, collision-free {words}-word slug",
+        file=sys.stderr,
+    )
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

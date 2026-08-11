@@ -167,6 +167,11 @@ SHIPPED_TIMEOUTS: dict[str, Any] = {
     },
 }
 
+# Per-phase self-resume budget between operator contacts; the doctrine's
+# "small budget" (policies/fail-closed-resume.md). 0 is a valid pin meaning
+# every park waits for the operator. An absent section means this default.
+SHIPPED_BUDGETS: dict[str, int] = {"self_resume": 3}
+
 
 def yaml_engine() -> YAML:
     engine = YAML()
@@ -318,12 +323,24 @@ def validate_timeouts(section: Any) -> MutableMapping[str, Any]:
     return section
 
 
+def validate_budgets(section: Any) -> None:
+    if section is None:
+        return
+    if not isinstance(section, MutableMapping):
+        die(f"{CONFIG}.run_budgets must be a mapping")
+    reject_unknown_keys(section, {"self_resume"}, "run_budgets")
+    if "self_resume" in section:
+        value = section["self_resume"]
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            die("run_budgets.self_resume must be a non-negative integer (0 is a valid pin)")
+
+
 def validate_document(document: Any) -> MutableMapping[str, Any]:
     if not isinstance(document, MutableMapping):
         die(f"{CONFIG} must be a YAML mapping")
     reject_unknown_keys(
         document,
-        {"version", "extensions", "role_models", "role_timeouts"},
+        {"version", "extensions", "role_models", "role_timeouts", "run_budgets"},
         str(CONFIG),
     )
     if document.get("version") != 1:
@@ -333,6 +350,7 @@ def validate_document(document: Any) -> MutableMapping[str, Any]:
         die(f"{CONFIG}.extensions must be a mapping")
     validate_models(document.get("role_models"))
     validate_timeouts(document.get("role_timeouts"))
+    validate_budgets(document.get("run_budgets"))
     return document
 
 
@@ -344,6 +362,7 @@ def load_document(*, allow_missing: bool = False) -> MutableMapping[str, Any]:
         document["version"] = 1
         document["role_models"] = commented(SHIPPED_MODELS)
         document["role_timeouts"] = commented(SHIPPED_TIMEOUTS)
+        document["run_budgets"] = commented(SHIPPED_BUDGETS)
         return document
     try:
         document = yaml_engine().load(CONFIG.read_text())
@@ -447,6 +466,26 @@ def show_timeouts(section: MutableMapping[str, Any]) -> None:
     )
 
 
+def resolve_self_resume(document: MutableMapping[str, Any]) -> int:
+    section = document.get("run_budgets")
+    if isinstance(section, MutableMapping) and "self_resume" in section:
+        return int(section["self_resume"])
+    return SHIPPED_BUDGETS["self_resume"]
+
+
+def show_budgets(document: MutableMapping[str, Any]) -> None:
+    section = document.get("run_budgets")
+    configured = isinstance(section, MutableMapping) and "self_resume" in section
+    value = resolve_self_resume(document)
+    source = "configured" if configured else "shipped default (section absent)"
+    print(f"Run budgets from {CONFIG}:")
+    print(f"  self_resume: {value} ({source})")
+    print(
+        "Per phase, between operator contacts; any operator relay restores it. "
+        "0 means every park waits for the operator. See policies/fail-closed-resume.md."
+    )
+
+
 def show(document: MutableMapping[str, Any], scope: str) -> None:
     if scope in ("all", "models"):
         show_models(document["role_models"])
@@ -454,6 +493,10 @@ def show(document: MutableMapping[str, Any], scope: str) -> None:
         print()
     if scope in ("all", "timeouts"):
         show_timeouts(document["role_timeouts"])
+    if scope == "all":
+        print()
+    if scope in ("all", "budgets"):
+        show_budgets(document)
 
 
 def set_models(arguments: list[str]) -> None:
@@ -499,12 +542,43 @@ def set_models(arguments: list[str]) -> None:
     show_models(load_document()["role_models"])
 
 
+def set_budgets(arguments: list[str]) -> None:
+    staged: dict[str, int] = {}
+    for assignment in arguments:
+        assignment = assignment.strip().strip(",")
+        if not assignment:
+            continue
+        if "=" not in assignment:
+            die(f"expected self_resume=<n>, got '{assignment}'")
+        key, raw_value = assignment.split("=", 1)
+        if key.strip().lower() != "self_resume":
+            die(f"unknown budget '{key.strip()}' (budgets: self_resume)")
+        try:
+            value = int(raw_value.strip())
+        except ValueError:
+            die(f"budget value must be an integer, got '{raw_value.strip()}'")
+        if value < 0:
+            die("run_budgets.self_resume must be a non-negative integer (0 is a valid pin)")
+        staged["self_resume"] = value
+    if not staged:
+        die("no budgets given")
+    document = load_document()
+    if "run_budgets" not in document or not isinstance(document["run_budgets"], MutableMapping):
+        document["run_budgets"] = CommentedMap()
+    for key, value in staged.items():
+        document["run_budgets"][key] = value
+    atomic_dump(document)
+    show_budgets(load_document())
+
+
 def reset(scope: str) -> None:
     document = load_document(allow_missing=True)
     if scope in ("models", "all"):
         document["role_models"] = commented(SHIPPED_MODELS)
     if scope in ("timeouts", "all"):
         document["role_timeouts"] = commented(SHIPPED_TIMEOUTS)
+    if scope in ("budgets", "all"):
+        document["run_budgets"] = commented(SHIPPED_BUDGETS)
     atomic_dump(document)
     show(load_document(), "all" if scope == "all" else scope)
 
@@ -1775,14 +1849,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     show_parser = subparsers.add_parser("show")
     show_parser.add_argument(
-        "scope", nargs="?", choices=("all", "models", "timeouts"), default="all"
+        "scope", nargs="?", choices=("all", "models", "timeouts", "budgets"), default="all"
     )
 
     set_parser = subparsers.add_parser("set-models")
     set_parser.add_argument("arguments", nargs=argparse.REMAINDER)
 
+    set_budgets_parser = subparsers.add_parser("set-budgets")
+    set_budgets_parser.add_argument("arguments", nargs=argparse.REMAINDER)
+
     reset_parser = subparsers.add_parser("reset")
-    reset_parser.add_argument("scope", choices=("models", "timeouts", "all"))
+    reset_parser.add_argument("scope", choices=("models", "timeouts", "budgets", "all"))
 
     subparsers.add_parser("preflight")
     subparsers.add_parser("recommend-timeouts")
@@ -1853,6 +1930,8 @@ def main() -> None:
         show(document, arguments.scope)
     elif arguments.action == "set-models":
         set_models(arguments.arguments)
+    elif arguments.action == "set-budgets":
+        set_budgets(arguments.arguments)
     elif arguments.action == "preflight":
         preflight(document["role_models"])
     elif arguments.action == "watch":

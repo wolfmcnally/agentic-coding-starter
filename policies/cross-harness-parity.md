@@ -64,6 +64,16 @@ Committed documentation must use the bare skill name in harness-neutral prose (f
 6. **Briefs, policies, and plan files are not duplicated.**
    - Both harnesses read the same files. There is no `.codex/briefs/` mirror; both `claude` and `codex` invocations read `briefs/`, `policies/`, and `plan/` directly.
 
+## Editorial parity
+
+Structural parity — every mirror present, symlinked, and pointing at the canonical file — is necessary but not sufficient. **Structural parity without editorial parity ships matched skeletons that produce mismatched output**: both harnesses read the same instruction text, yet make different operational decisions wherever that text leaves judgment underdetermined. Three authoring failure modes cause this, and any instruction surface both harnesses execute (skills, agent definitions, orchestration steps) is written to avoid them:
+
+- **Impressionistic standards.** "Keep it concise", "use good judgment", "when appropriate" — each harness's model resolves the impression differently. Replace with a decidable criterion or an explicit example of each side of the line.
+- **Advisory bands.** Ranges offered without a selection rule ("2–4 subagents", "roughly 100–200 lines") make the choice harness-dependent. State the default and the condition that moves off it.
+- **Missing compare-against.** An instruction to improve, shorten, or align something without naming the reference it is measured against lets each harness pick its own baseline. Name the comparand explicitly.
+
+The stability test is the **two-harness exercise**: run the same instruction surface under both harnesses on the same inputs and diff the operational decisions — not the prose style. A surface whose two runs diverge on a decision that matters has an editorial-parity defect in one of the three forms above; fix the instruction text at the canonical source, not the harness. Apply the exercise when authoring a new orchestration-bearing surface, and when a cross-harness behavioral difference is reported against an existing one.
+
 ## Onboarding a new harness
 
 When this template adopts a third harness (e.g., aider, OpenHands, Cursor, Continue):

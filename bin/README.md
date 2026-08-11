@@ -113,17 +113,19 @@ Behavioral coverage lives in `tests/test_install_hooks.py`.
 
 ### `kickoff-config` — human-editable `kickoff` configuration and enforcement
 
-Validates and safely edits repo-root `kickoff.yaml`, whose `role_models` and
-`role_timeouts` sections hold separate model/effort fields and execution
-budgets. Round-trip YAML handling preserves human comments and extension data.
-The manager also owns fail-closed venue preflight, generated cross-harness
-commands, strict review-output schemas, immutable role-attempt registration,
-progress-aware supervision, fresh-artifact enforcement, exact execution spans,
-and evidence-based timeout recommendations. A Python script run via `uv` with
+Validates and safely edits repo-root `kickoff.yaml`, whose `role_models`,
+`role_timeouts`, and `run_budgets` sections hold separate model/effort fields,
+execution budgets, and the per-phase self-resume budget. Round-trip YAML
+handling preserves human comments and extension data. The manager also owns
+fail-closed venue preflight, generated cross-harness commands, strict
+review-output schemas, immutable role-attempt registration, progress-aware
+supervision, fresh-artifact enforcement, exact execution spans, and
+evidence-based timeout recommendations. A Python script run via `uv` with
 PEP 723 `ruamel.yaml`. Governed by
 [`policies/role-models.md`](../policies/role-models.md),
-[`policies/role-timeouts.md`](../policies/role-timeouts.md), and
-[`policies/execution-telemetry.md`](../policies/execution-telemetry.md).
+[`policies/role-timeouts.md`](../policies/role-timeouts.md),
+[`policies/execution-telemetry.md`](../policies/execution-telemetry.md), and
+[`policies/fail-closed-resume.md`](../policies/fail-closed-resume.md).
 
 ```bash
 ./bin/kickoff-config show
@@ -135,6 +137,14 @@ PEP 723 `ruamel.yaml`. Governed by
 
 ```bash
 ./bin/kickoff-config reset models
+```
+
+```bash
+./bin/kickoff-config show budgets
+```
+
+```bash
+./bin/kickoff-config set-budgets self_resume=3
 ```
 
 ```bash
@@ -312,6 +322,36 @@ prose stay fine.
 ```
 
 Behavioral coverage lives in `tests/test_check_catalogs.py`.
+
+### `check-shell-syntax` — shell-script parse gate
+
+Runs `bash -n` over every shell script (selected by shebang) under `bin/` and
+`.githooks/`, so a parse error in a gate or hook script is caught by the gate
+rather than surfacing the next time that script runs — possibly inside the
+failure path it guards. Exit 0 clean; exit 1 with one `ERROR:` line per
+failing file. Part of `./bin/check policy` as `policy-shell-syntax`.
+
+```bash
+./bin/check-shell-syntax
+```
+
+Behavioral coverage lives in `tests/test_shell_syntax.py`.
+
+### `new-name` — ledger slug generator
+
+Prints one random, memorable, hyphenated slug (default two words) for naming
+`lessons/` and `user-actions/` files. Filters connective filler tokens and
+refuses candidates that collide with any existing basename across all four
+ledger directories (`lessons/`, `lessons-archived/`, `user-actions/`,
+`user-actions-archived/`). Exit 2 on a word count below 2; exit 1 if no
+acceptable slug is found within the attempt budget.
+
+```bash
+./bin/new-name        # two words (the ledger convention)
+./bin/new-name 3      # three words
+```
+
+Behavioral coverage lives in `tests/test_new_name.py`.
 
 ### `check-anonymization.sh` — pre-publish leak guard *(starter-only)*
 

@@ -398,6 +398,7 @@ The spine. Lay it down before any phase files exist:
   Status markers live only here.
 - `## Cross-Cutting Concerns` — the project's invariants, mirrored from `CLAUDE.md`'s "Architectural invariants" section. Keep the two lists in sync.
 - `## Critical-Files Map` — table of "concern → location." Initially sparse; populated as the project takes shape.
+- `## Decomposition ledger (convention)` — the typed-note vocabulary (deferred-work notes, protocol notes, phase launch gates, insertion/renumbering records with the append-only decoder-ring rule, slice-outcome notes) copied from the template's `plan/INDEX.md`. Empty at bootstrap; it is where the plan's own history accumulates as dated, operator-attributed prose.
 
 ### Step 8 — Write Phase 1 in full; sketch Phase 2+ to general specificity
 

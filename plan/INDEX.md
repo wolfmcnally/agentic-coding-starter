@@ -50,6 +50,16 @@ row is `🚧`; a complete project has zero; more than one is always invalid.
 
 As a plan grows, this file also records the *why* of its own shape, in prose near the phase table: when a sub-phase is inserted, note when it was drafted, at whose close, what it carved off, what invariant it must preserve, and why the numbering is what it is; when phases are renumbered or reordered, record the event and what it did (and did not) change in the dependency structure; and precede a large phase table with a short critical-path narrative — ordering rationale, parallelism opportunities, and any ratified reversals with their dates. Sub-phase insertion mechanics are governed by [`../policies/phase-ripple.md`](../policies/phase-ripple.md); this ledger is where their rationale survives. A one-phase plan (like this template's) has nothing to record yet.
 
+A mature plan's ledger converges on a small vocabulary of **typed, dated, operator-attributed notes** (observed across ~30 phases in a donor project); use these forms rather than inventing new ones:
+
+- **Deferred-work note** — work identified mid-phase but outside the active write set: record the operator decision date, mark it "not operative during phase N", and state the condition that supersedes it. Deferral notes are how a plan remembers without expanding the active phase (the monotonic-progress invariant's ledger half).
+- **Protocol note / protocol gap** — an operator clarification to the orchestration contract, recorded in-plan before (or instead of) graduating to a policy. When one recurs, it is a `lessons/` candidate.
+- **Phase launch gate** — a precondition on kicking off an already-`⬅️` phase ("holds the arrow but must not start until X"). Neither a dependency edge nor a status marker; it lives as a dated note naming its conditions.
+- **Insertion / renumbering record** — with the **append-only decoder-ring rule**: earlier dated notes keep their original wording; the renumbering note itself states how to read old numbers ("in notes dated before D, 'Phase X' means …"). History is never retroactively rewritten to match new numbering.
+- **Slice-outcome note** — at a sub-phase close, what this slice deliberately did *not* do and which later slice owns it.
+
+Large dependency graphs may annotate nodes beyond bare edges: `· GATE` (a phase other work must not pass), `· parallel track`, `· contingent`, `· optional`, epic clusters (disconnected subgraphs labeled `· separate epic`), and dotted edges for soft/optional influence versus solid hard dependencies. Define any annotation the first time it appears.
+
 ## Cross-Cutting Concerns (apply to every phase)
 
 These are the universals the template ships with. A project derived from this template inherits them and may add more. The canonical statements live in [`../CLAUDE.md`](../CLAUDE.md) §"Architectural invariants"; this list is a phase-work-flavored restatement for quick reference, not a second authority.

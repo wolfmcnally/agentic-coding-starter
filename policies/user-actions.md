@@ -68,13 +68,13 @@ Below the frontmatter, write the human-readable description: the context, the st
 
 Every action carries a **stable two-word slug** so it can be referenced unambiguously in conversation — "close out `warping-butterfly`," "did `elfish-tench` land?" The slug is the file's name and the item's handle for life.
 
-Recipe (recommended, using the starter's standard Python tooling):
+Recipe (recommended — filler-filtered and collision-checked against all four ledger directories before printing):
 
 ```bash
-uv run --with coolname python -c "from coolname import generate_slug; print(generate_slug(2))"
+./bin/new-name
 ```
 
-Any deterministic two-word generator is acceptable as long as the slug is unique across both `user-actions/` and `user-actions-archived/`. Confirm uniqueness before writing — a slug is just a filename, so a basename collision across the two directories is the thing to avoid:
+Any deterministic two-word generator is acceptable as long as the slug is unique across both `user-actions/` and `user-actions-archived/`. If generating some other way, confirm uniqueness before writing — a slug is just a filename, so a basename collision across the two directories is the thing to avoid:
 
 ```bash
 ls user-actions user-actions-archived 2>/dev/null | grep -E '^[a-z]+-[a-z]+\.md$' | sort | uniq -d

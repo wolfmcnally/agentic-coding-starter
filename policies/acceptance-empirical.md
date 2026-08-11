@@ -42,6 +42,37 @@ When acceptance leans on a test suite:
 - **Tests must exercise behavior, not type signatures.** A test that constructs a class and asserts it is not `None` is not a test. A test that calls the function and asserts on its output is.
 - **Hit real boundaries when feasible.** Integration tests that hit a real database, a real file system, or a real subprocess catch failures that mocks miss. Save mocking for genuinely external dependencies (network APIs, large datasets).
 
+## Baseline-dependent criteria
+
+Some criteria compare against a **prior** state rather than an absolute one:
+"byte-identical before and after", "the untouched surfaces' output does not
+change", "unchanged across the edit". These are the idiom for a *no-op*
+assertion, and they stay — a byte-diff is the weakest sufficient falsifier for
+"this surface must not change". A surface that is *expected* to change is
+asserted structurally instead; a byte-diff there is the wrong instrument and
+only generates noise.
+
+**The baseline is a commit, not a pile of artifacts.** A phase carrying any
+such criterion records its baseline as a commit id in the START block at phase
+start ([`log-discipline.md`](log-discipline.md) § START block format), naming
+the criteria that depend on it. That line is the whole obligation: it is
+cheap, it is visible from the first minute, and it converts an implicit
+"before" into a stated one.
+
+**Artifacts are derived lazily, never captured eagerly.** At acceptance, and
+only if the comparison is actually wanted, rebuild the baseline from a clean
+copy at the recorded commit and diff. Eager capture pays a build cost on every
+phase to serve the few that need it, and stores bytes that were derivable all
+along. Build determinism is the precondition for that rebuild; if a rebuild
+ever produces a spurious diff, that is a finding about the surface — a
+non-deterministic build is a defect worth its own work — not a reason to start
+capturing eagerly.
+
+**An unrecorded baseline is a protocol failure, not an unmet criterion.** The
+commit is recoverable from the log and the phase's own history, so the rebuild
+path always exists. "Unmet, substituted with a structural check" is never the
+honest terminal answer to a baseline-dependent criterion.
+
 ## A check must be able to fail
 
 A gate, test, or verification instrument earns trust only if it can report the

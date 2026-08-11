@@ -73,6 +73,7 @@ Evaluate in priority order:
 - **User demo protocols.** Per `policies/user-demo-protocols.md`, every phase addresses the policy explicitly: either with a `User Demo:` block (entry point, suggested inputs, what to look for, variations) when the phase touches a user-facing surface AND has something interactive to try, or with a `User Demo: N/A — <reason>` line otherwise. Silence is blocking. A contrived or trivially-deterministic "demo" is blocking — push back and recommend `N/A` instead.
 - **Repo-relative paths only.** No absolute paths in any committed file path the plan proposes.
 - **Cross-harness parity.** If the plan touches `.claude/`, it also touches the matching `.codex/` (or other harness) mirror, or explicitly relies on a symlink that exists.
+- **Lane fit.** Per `policies/review-lanes.md`, check any declared `evidence_lane: light` against the plan's actual blast radius: a `light` declaration over an authority surface (`policies/`, schemas, agent definitions, skills, evidence/gate tooling, `CLAUDE.md`), irreversible or external state, or a deploy seam is a **blocking issue**.
 - **Human decides done.** The plan does not include auto-commits, silent gate skips, or claims of subjective acceptance.
 
 **Concreteness**

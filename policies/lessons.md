@@ -69,8 +69,10 @@ Below the frontmatter, one to a few paragraphs stating the lesson: what happened
 Same recipe and rules as [`user-actions.md`](user-actions.md): a stable two-word slug, unique across both `lessons/` and `lessons-archived/`, never reused after closure.
 
 ```bash
-uv run --with coolname python -c "from coolname import generate_slug; print(generate_slug(2))"
+./bin/new-name
 ```
+
+The generator filters connective filler tokens and checks the candidate against all four ledger directories (`lessons*/`, `user-actions*/`) before printing it.
 
 ## Lifecycle
 

@@ -106,6 +106,7 @@ Hard-won rules for step 7 when the loop runs fail-closed and unattended:
 - **Preflight the environment before an unattended run** — a fail-closed probe ladder (repo baseline, identity, toolchain, platform capabilities, escalation mechanics, authoritative gate as pre-work baseline) runs before the tasking prompt; probes read-only or self-cleaning with a printed table; barriers surface one layer per round; fixes land as durable config, never session memory; after a green baseline, every failure is the run's own.
 - **Well-specified isolated tasks may run as goal-armed one-shots** instead of the four-role loop — complete operator-reviewed spec (substitutes for plan review), new-files-only write set with a park on widening, designed parks as satisfying stops, a durable goal carrying outcome + printed proof + park clause, independent verification against the recorded baseline before push. Goal durability is harness-specific — know whether compaction clears it before trusting continuation to it.
 - **Authoritative gates run in the native execution context** — sandboxed gate output can contain phantom failures in either direction; classify sandbox-vs-real with one native baseline before work; a gate that could not run is "not run," never "passed"; never cite in-sandbox gate output as evidence.
+- **Doctrine and ceremony grow only against incidents, and every review prunes** — a new binding step enters only with its motivating incident cited and the park it prevents named; foresight proposals stay in the `lessons/` ledger, never become rules; every review pass (plan review, code review, `sweep`) treats steps whose failure families are structurally dead as deletion candidates, because fail-closed pressure ratchets ceremony and only deliberate pruning reverses it.
 
 ## Run-lifecycle vocabulary
 
@@ -116,7 +117,7 @@ Hard-won rules for step 7 when the loop runs fail-closed and unattended:
 
 Full statement: `briefs/methodology.md` § Run-lifecycle vocabulary.
 
-**Enforcement status:** doctrine, not yet mechanics — until self-resume budgets, delta-merge tooling, and qualification harnesses land in `kickoff`, the prose loop and the human relay carry these rules. Full statement: `briefs/methodology.md` § Orchestration runtime doctrine.
+**Enforcement status:** mostly doctrine — self-resume budgets are mechanized (`policies/fail-closed-resume.md`; `kickoff.yaml` `run_budgets.self_resume` via `bin/kickoff-config`), while delta-merge tooling and qualification harnesses remain prose-and-relay. Full statement: `briefs/methodology.md` § Orchestration runtime doctrine.
 
 ## Source
 

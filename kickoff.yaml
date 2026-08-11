@@ -68,3 +68,11 @@ role_timeouts:
       claude_max_turns: 50
       hard_floor_seconds: 2700
       idle_floor_seconds: 600
+
+# Per-phase self-resume budget between operator contacts — the runtime
+# doctrine's "small budget" (policies/fail-closed-resume.md). Any operator
+# relay restores it to this value. 0 is a valid pin meaning every park waits
+# for the operator. A phase file may narrow the budget for its own run; it may
+# not widen it above this value.
+run_budgets:
+  self_resume: 3

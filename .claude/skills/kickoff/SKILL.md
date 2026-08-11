@@ -33,6 +33,7 @@ Raw arguments: `!{ARGUMENTS}`
 
 - If empty, Step 1 picks up the `⬅️` phase.
 - If `phase N` or `phase N.M` (e.g., `phase 1`, `phase 1.3`), target that specific phase file `plan/phase-<id>.md`.
+- If the arguments carry the token `one-shot` (e.g., `phase 2.1 one-shot`), the user is invoking the one-shot review lane for this cycle per [`policies/review-lanes.md`](../../../policies/review-lanes.md); Step 0 checks eligibility.
 - If free text describes a concrete build/test failure or user-requested correction to an active or recently completed phase, treat it as a **follow-up revision** under [`policies/review-lanes.md`](../../../policies/review-lanes.md), not as a phase description.
 - Otherwise, treat free text as a phase description and try to match it against a phase row in `plan/INDEX.md`. If nothing matches, ask the user which phase they mean rather than guess.
 
@@ -142,6 +143,10 @@ same state machine.
 
 Then resolve the **review lane** per [`policies/review-lanes.md`](../../../policies/review-lanes.md): read `review_lane:` from the target phase file's frontmatter. Absent or `full` → **full** lane. `light` → **light** lane: Step 4 (plan review) will be skipped; the code critic still runs and guards the lane. You may upgrade a declared `light` to `full` when the phase's actual deliverables look non-mechanical — note the upgrade and why. Never downgrade `full` to `light` on your own.
 
+**One-shot is invocation-only.** If the invocation line carries the `one-shot` token, check eligibility (binding-spec bar + isolation, per the policy): eligible → run the one-shot lane (Steps 3–4 skipped; coder → orchestrator vet → code critic → normal acceptance close; the mechanically derived role set drops `role.plan` and the `orchestration.planning` stage); ineligible → refuse with the stated reason and run the phase file's declared lane. A frontmatter `review_lane: one-shot` is invalid — refuse and ask. Escalation (a park, a write-set widening, a second gate failure, or the critic's `Escalate: full lane`) cannot continue in the same evidence run: finalize the one-shot run truthfully as paused, re-init a fresh full-lane run, carry open findings forward in the revision packet, and record `one-shot → full (escalated: <reason>)` in the END block.
+
+Also resolve the **evidence lane**: read optional `evidence_lane:` frontmatter (absent or `full` → full apparatus; `light` → structural tests, the operator gate, and the mandatory seal at close, with role registration/span joins/stage envelopes validated-if-present). Refuse a `light` declaration whose deliverables touch an authority surface, irreversible or external state, or a deploy seam; you may upgrade `light` → `full`, never downgrade. Report both lanes in the opening report and END block.
+
 Tell the user which phase you are picking up, the path to its file (`plan/phase-<id>.md`), and the resolved review lane.
 
 ### Step 1a: Sub-phase decomposition (parent phases only — just-in-time, one at a time)
@@ -175,7 +180,7 @@ from an earlier or interrupted run. Initialize it through
 `./bin/kickoff-evidence init` per
 [the orchestration-evidence policy](../../../policies/orchestration-evidence.md).
 Pass the phase id, authority list, trace id, root span id, open setup span id,
-resolved review lane, and follow-up route. Authorities, in governing order, are
+resolved review lane, resolved evidence lane, and follow-up route. Authorities, in governing order, are
 `plan/INDEX.md`; target and parent phase files; cited briefs; declared
 dependencies; the immediately preceding completed phase; `CLAUDE.md`; and
 every applicable policy. Use repo-relative paths with optional `::locator`
@@ -209,13 +214,16 @@ Append a START entry to `LOG.md`. Create `LOG.md` if it does not exist (with the
 ## <YYYY-MM-DD HH:MM> — START
 <Phase heading>
 
+Execution trace: <trace-id>
+Baseline: <commit id> — <baseline-dependent criteria> <only when such criteria exist>
+
 Planned work:
 - <deliverable 1>
 - <deliverable 2>
 - ...
 ```
 
-Use the phase's "Deliverables" list from `plan/phase-<id>.md` verbatim (trimmed to the bullet text). If the phase has no Deliverables section, fall back to the phase's Goal paragraph rephrased as bullets.
+Use the phase's "Deliverables" list from `plan/phase-<id>.md` verbatim (trimmed to the bullet text). If the phase has no Deliverables section, fall back to the phase's Goal paragraph rephrased as bullets. `Execution trace:` is the trace id opened in Step 1. Include the `Baseline:` line only when an acceptance criterion compares against prior state ("unchanged before and after"); record the commit id it compares against per `policies/acceptance-empirical.md` § Baseline-dependent criteria. On re-entering a paused phase, append `START (resumed)` rather than a bare START (`policies/log-discipline.md` § Multi-session phases).
 
 Close `orchestration.setup` successfully and immediately open
 `orchestration.planning`. Recompute the candidate through
@@ -599,7 +607,10 @@ Build status:
 - ...
 
 Review lane (per `policies/review-lanes.md`):
-- full | light | light → full (escalated: <reason>) | light → full (orchestrator upgrade: <reason>)
+- full | light | one-shot | light → full (escalated: <reason>) | light → full (orchestrator upgrade: <reason>) | one-shot → full (escalated: <reason>) | one-shot refused (<reason>) → <declared lane>
+
+Evidence lane (per `policies/review-lanes.md`):
+- full | light | light → full (orchestrator upgrade: <reason>) | light refused (<trigger>) → full
 
 Follow-up route (per `policies/review-lanes.md`):
 - N/A (initial implementation) | direct fix — <risk/size reason> | coder only — <risk/size reason> | full cycle — <risk/size reason>
@@ -754,8 +765,9 @@ Then report to the user:
 - Per-role model/venue ([`policies/role-models.md`](../../../policies/role-models.md)): `kickoff.yaml`'s human-editable `role_models` section (set directly or via `roles`) resolves each of the four roles to separate model and effort fields plus an implied venue at Step 0a, scoped by which harness is orchestrating. Step 0b live-validates every non-native CLI/model/access target and aborts before phase mutation on any upstream failure. The shipped default routes reviewer + critic to the *other* harness (cross-vendor review — there is no separate on/off token) and leaves planner + coder native; a project may resolve any role anywhere. A role resolving to a CLI is invoked there with the resolved model/effort overrides (write-enabled for the coder), resuming the same session across the role's rounds. Orchestration and build gates always run on the session model — never pinnable. A later runtime failure after successful preflight may still fall back per-stage and surfaces a 🚨 in the Step 10 report. The recursion guard env var is `KICKOFF_DELEGATION_DEPTH` (a delegated role never re-delegates). Recipes and handoff hygiene: [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md).
 - Per-role execution budgets ([`policies/role-timeouts.md`](../../../policies/role-timeouts.md)): Step 0c loads portable defaults from `kickoff.yaml`'s `role_timeouts` section. Every external initial/resume/rescue call runs through the generated-command watcher; native calls use the same budgets through the harness wait mechanism. The finalized shared trace is authoritative; `.kickoff/role-timings.jsonl` remains local protocol/recalibration diagnostics.
 - Exact execution telemetry ([`policies/execution-telemetry.md`](../../../policies/execution-telemetry.md)): monotonic nanoseconds, overlap-safe unions, exclusive attribution, candidate/role/gate joins, truthful recovery, and deterministic offline reports are one acceptance-bound contract. UTC is correlation only, wait mirrors are not extra work, and missing measurement never becomes a reassuring zero.
-- Review lanes and follow-up routing ([`policies/review-lanes.md`](../../../policies/review-lanes.md)): a phase's `review_lane: light` frontmatter skips Step 4 for mechanical initial work. The code critic runs on every initial implementation and guards the light lane. Later test- or user-driven corrections use direct fix, coder-only, or full-cycle routing according to risk and size; only the full-cycle route repeats independent review.
+- Review lanes and follow-up routing ([`policies/review-lanes.md`](../../../policies/review-lanes.md)): a phase's `review_lane: light` frontmatter skips Step 4 for mechanical initial work; the invocation-only `one-shot` token additionally skips Step 3 for well-specified isolated work. The code critic runs on every initial implementation and guards both lanes. The orthogonal `evidence_lane: light` frontmatter reduces evidence ceremony (never the close seal) for phases off the authority/irreversible/deploy triggers. Later test- or user-driven corrections use direct fix, coder-only, or full-cycle routing according to risk and size; only the full-cycle route repeats independent review.
 - Candidate-bound evidence ([`policies/orchestration-evidence.md`](../../../policies/orchestration-evidence.md)): every run uses a fresh isolated evidence directory; revisions use stable findings and deterministic packets; final gates name the unchanged approved candidate.
+- Fail-closed park and diagnosed resume ([`policies/fail-closed-resume.md`](../../../policies/fail-closed-resume.md)): any first-encountered defect finishes the run truthfully — dispatches stopped, spans closed with the failure outcome, artifacts preserved, candidate restoration or lineage proved — and records a five-part failure signature in the phase's append-only `.kickoff/failure-signatures.jsonl` ledger. A **novel**, fully diagnosed signature with a recorded causal correction may open a fresh corrective trace against the phase's self-resume budget (`kickoff.yaml` `run_budgets.self_resume`, shipped default 3, restored by any operator relay; `0` pins every park to the operator). A **recurring** signature always stops for the operator. Prelaunch dispatcher rejections are corrected-and-relaunched at most once without consuming budget. Sealing is a close-time act: never re-run whole-repository sealing per fix inside a convergence loop.
 - `ingest-findings` **requires `--review-span-id`** and refuses without it. The convergence integers attach to the review pass's own intelligence span, and a span is immutable once the trace is finalized — so an omitted flag makes `timing-summary` refuse for the entire run and cannot be repaired afterward. Preserve each reviewer's and critic's intelligence span id when you dispatch it. For an ingest that is genuinely **not** a review pass — most commonly the orchestrator recording an `open → addressed` transition after a *plan* revision, since `phase-planner` emits a revised plan rather than a `## Finding Evidence` block — pass `--no-review-span '<reason>'`, which records the omission in `review-metrics-omitted.jsonl` instead of hiding it.
 - Human wall-clock efficiency is an ambient judgment, not a timer-driven
   program: act or surface only when a substantial, low-risk gain is reasonably

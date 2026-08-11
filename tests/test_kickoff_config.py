@@ -196,6 +196,8 @@ def managed_watch_context(
             setup.span_id,
             "--review-lane",
             "full",
+            "--evidence-lane",
+            "full",
             "--follow-up-route",
             "direct-fix",
         ],
@@ -310,6 +312,66 @@ def test_direct_edit_typos_fail_validation(
 
     assert result.returncode == 2
     assert expected in result.stderr
+
+
+def test_absent_run_budgets_resolves_shipped_default(tmp_path: Path) -> None:
+    result = run_manager(seeded_config(tmp_path), "show", "budgets")
+
+    assert result.returncode == 0, result.stderr
+    assert "self_resume: 3" in result.stdout
+    assert "shipped default" in result.stdout
+
+
+def test_set_budgets_accepts_zero_pin_and_preserves_other_sections(tmp_path: Path) -> None:
+    config = seeded_config(tmp_path)
+    original = config.read_text().replace(
+        "extensions: {}", 'extensions:\n  quoted: "keep me" # preserve this comment'
+    )
+    config.write_text(original)
+    timeout_block = original.split("role_timeouts:", 1)[1]
+
+    result = run_manager(config, "set-budgets", "self_resume=0")
+
+    assert result.returncode == 0, result.stderr
+    assert "self_resume: 0 (configured)" in result.stdout
+    updated = config.read_text()
+    assert 'quoted: "keep me" # preserve this comment' in updated
+    assert updated.split("role_timeouts:", 1)[1].split("run_budgets:", 1)[0].rstrip() == (
+        timeout_block.rstrip()
+    )
+    assert "run_budgets:" in updated
+    assert "self_resume: 0" in updated
+
+
+@pytest.mark.parametrize(
+    "assignment,expected",
+    [
+        ("self_resume=-1", "non-negative integer"),
+        ("self_resume=lots", "must be an integer"),
+        ("retries=2", "unknown budget"),
+    ],
+)
+def test_set_budgets_rejects_invalid_input_atomically(
+    tmp_path: Path, assignment: str, expected: str
+) -> None:
+    config = seeded_config(tmp_path)
+    before = config.read_bytes()
+
+    result = run_manager(config, "set-budgets", assignment)
+
+    assert result.returncode == 2
+    assert expected in result.stderr
+    assert config.read_bytes() == before
+
+
+def test_direct_edit_invalid_budget_fails_validation(tmp_path: Path) -> None:
+    config = seeded_config(tmp_path)
+    config.write_text(config.read_text() + "\nrun_budgets:\n  self_resume: -2\n")
+
+    result = run_manager(config, "show")
+
+    assert result.returncode == 2
+    assert "non-negative integer" in result.stderr
 
 
 def test_watch_extracts_fresh_claude_result_and_telemetry(tmp_path: Path) -> None:

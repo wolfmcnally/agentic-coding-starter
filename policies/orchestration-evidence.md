@@ -20,6 +20,17 @@ dependencies, and the immediately preceding completed phase as authorities.
 Original files remain authoritative; the manifest is an index and drift
 sensor, not a summary that replaces them.
 
+`init` requires both lane declarations (`--review-lane full|light|one-shot`,
+`--evidence-lane full|light` — [`review-lanes.md`](review-lanes.md)) and
+derives the run's required role operations and orchestration stages from them:
+`one-shot` drops the planner attempt and the planning stage mechanically. Both
+lanes are recorded immutably in the run metadata. In the `light` evidence
+lane, role registration, span joins, and stage envelopes are validated when
+present but their absence does not fail validation — the recorded lane is the
+auditable declaration of that demotion. Everything else in this policy is
+lane-independent, and the final candidate-bound gate under
+`validate --require-final` is mandatory in every lane.
+
 ## Candidate identity
 
 `./bin/python bin/kickoff-tree-id` is the sole candidate-identity implementation. It hashes

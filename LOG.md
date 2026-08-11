@@ -345,3 +345,52 @@ The application return-path review filed two candidates: wholesale donor-file
 copies can silently revert destination-ahead hunks, and mechanizing a policy's
 verification can silently narrow the contract when the prose delegation lands
 ahead of the gate's implementation.
+
+## 2026-08-11 14:18 MDT — LEARN
+Donor: Donor A @ <sha withheld>
+Items absorbed: 13, by tier T1=11/T2=2/T3=0/T4=0
+Donor lessons harvested: 2 (1 absorbed as rule proposal; 1 filed to lessons/)
+Application-found return candidates: 1 filed to lessons/ (a required contract
+member must be swept across every independent fixture inventory — three
+inventories carried the evidence-init call; two were caught only by the gate)
+Stale-in-light-of-learning migrations: 4 AUTO; 0 DECIDE; 1 DEFER (agent-actionable work queue — revisit when a bounded maintenance loop exists to consume it)
+Files touched: 35
+
+Doctrine gained its fifteenth rule — ceremony and doctrine grow only against
+incidents, and every review prunes — wired into the sweep skill's policy audit
+and the self-improvement brief as the ceremony-audit pattern. The learn skill
+gained the direction-verification rule graduated from the donor's ledger: a
+donor's fix must be shown to reproduce in the destination before its remedy is
+imported, hunk by hunk within atomic bundles. The donor's second methodology
+lesson (an instrument whose production firings are all comparator false
+positives is measuring its model, not the work) was filed as a new ledger
+candidate rather than codified.
+
+Mechanized bundles: the fail-closed park/resume policy landed with
+`kickoff.yaml`'s `run_budgets.self_resume` key, manager support
+(`show budgets` / `set-budgets` / `reset budgets`), and behavioral tests —
+closing the doctrine's largest doctrine-to-mechanics gap. Review lanes gained
+the invocation-only one-shot lane and the orthogonal evidence-lane axis:
+`kickoff-evidence init` now requires both lane declarations, derives role and
+stage requirements from them (one-shot drops the planner attempt and planning
+stage), and demotes light-lane existence requirements to validated-if-present
+while the close seal stays mandatory in every lane. Role-models absorbed four
+operationally hardened sections (tool-stance enforcement is venue-dependent;
+native fallback carries the resolved tier; credential precedence and
+spawn-point scrubs; cold-artifact review handoff with plumbing-first
+diagnosis). Log discipline gained trace/baseline START fields, suffixed
+multi-session blocks, and the finalized-trace-only exact-timing rule;
+acceptance gained baseline-as-a-commit semantics. New surfaces: the
+session-context-compaction brief, the editorial-parity section of the
+cross-harness policy, three CLAUDE.md conventions (scratch-path captures,
+the five-surface rules-not-memory routing ladder, product-vs-methodology
+routing), the plan-INDEX typed-note taxonomy, and two bin utilities
+(`check-shell-syntax` gate member, `new-name` slug generator) with tests.
+
+Declined on inspection, per the new direction-verification rule: the donor's
+thin-persona refactor (this repo's mirrors already read one canonical body),
+its log-rotation rule and structured-output-at-generation and trace-bound
+attempt sections (already present here), and its review-handoff measurements
+(already carried by the invocation brief, which cites the published source).
+The donor's monolithic owner queue, unrotated logs, and inline dated owner
+directives were recorded as confirmations of existing rules, not learnings.
