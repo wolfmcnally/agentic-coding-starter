@@ -1,7 +1,7 @@
 ---
 slug: fortunate-shoebill
 title: Wholesale donor-file copies can silently revert destination-ahead hunks
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: skill
 filed: 2026-08-10
@@ -9,6 +9,10 @@ source: learn
 occurrences:
   - date: 2026-08-10
     ref: "LEARN from Donor A — porting a shared behavioral test file"
+  - date: 2026-08-11
+    ref: "LEARN from Donor A — direction-verification rule landed in the learn skill; four planned imports declined on inspection"
+closed: 2026-08-11
+graduated_to: .claude/skills/learn/SKILL.md
 ---
 
 When `learn` or `teach` absorbs a donor's version of a file both repos share, the efficient move is a wholesale copy followed by targeted re-edits. The hazard: the destination may itself be ahead of the donor on some hunks — its own advances landed after the repos last synced — and a wholesale copy silently reverts them. Nothing fails; the destination just quietly loses work it already ratified.
