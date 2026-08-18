@@ -158,13 +158,15 @@ Copy these files **from this template** into the new project, then run a name su
 - `briefs/deterministic-orchestration.md` (verbatim — universal draft brief: decision criteria for a deterministic kickoff loop once every supported harness has a parity workflow primitive)
 - `briefs/harness-self-improvement.md` (verbatim — the two-tier improvement flywheel the lessons ledger, `sweep`, and the transfer skills implement)
 - `.githooks/pre-push` (verbatim — optional hook; it delegates to the canonical gate and is inert until explicitly installed)
-- `bin/setup`, `bin/test`, `bin/check`, and `bin/install-hooks`
-  (`install-hooks` verbatim; the toolchain entry points are adapted together
-  in Step 5)
+- `bin/setup`, `bin/test`, `bin/check`, `bin/install-hooks`, and
+  `bin/check-hooks-installed`
+  (`install-hooks` and `check-hooks-installed` verbatim; the toolchain entry
+  points are adapted together in Step 5)
 - `bin/_python-toolchain` and `bin/python` for a Python target (adapted in
   Step 5; omit both when Python is not a deliverable runtime)
 - `tests/test_toolchain_entrypoints.py` and `tests/test_check.py` (adapted with
-  the toolchain in Step 5), plus `tests/test_install_hooks.py` (verbatim)
+  the toolchain in Step 5), plus `tests/test_install_hooks.py` and
+  `tests/test_check_hooks_installed.py` (verbatim)
 - `tests/test_kickoff_config.py` (verbatim — universal behavioral coverage for the manager/watchdog contract)
 - `bin/kickoff-tree-id`, `bin/kickoff-evidence`,
   `tests/test_kickoff_tree_id.py`, and `tests/test_kickoff_evidence.py`
@@ -203,8 +205,8 @@ Verify each `readlink <dest>/.agents/skills/<name>` returns the expected target 
 The `bin/` directory, its `bin/README.md` convention preamble, and
 `policies/mechanistic-vs-intelligence.md` **are** carried over. The universal
 `bin/setup`, `bin/test`, `bin/check`, `bin/install-hooks`,
-`bin/kickoff-config`, `bin/kickoff-tree-id`, `bin/kickoff-evidence`,
-`bin/lessons`, `bin/check-catalogs`, tracked
+`bin/check-hooks-installed`, `bin/kickoff-config`, `bin/kickoff-tree-id`,
+`bin/kickoff-evidence`, `bin/lessons`, `bin/check-catalogs`, tracked
 pre-push hook, and human-editable `kickoff.yaml` carry over too; Python targets
 also carry `bin/python`. Seed both config sections by running
 `<dest>/bin/kickoff-config reset all`; this preserves data under `extensions`

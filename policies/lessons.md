@@ -60,6 +60,40 @@ graduated_to: policies/role-timeouts.md   # required when codified — the surfa
 
 No other new frontmatter keys without amending this policy.
 
+### One row per instance — the counting rule
+
+**An occurrence row is one observation, not one filing session.** Several
+instances of the same shape seen on the same day, in the same phase, or sharing
+one root cause each get their own row. Batching them into a single row with a
+compound `ref` under-counts the lesson.
+
+This is not bookkeeping pedantry: the three-occurrence graduation threshold is
+evaluated by `bin/lessons candidates` over **row count**, so a batched filing
+silently suppresses the trigger. A donor project's sweep turned up three
+lessons in this state — one documenting three distinct instances in a single
+row, and therefore sitting at the threshold invisibly since the day it was
+filed. A rule whose trigger can be defeated by formatting is a rule wired to
+nothing.
+
+**There is deliberately no automated check for this, and the failed attempt is
+worth recording so nobody rebuilds it.** Three lexical detectors were written
+against the donor's ledger and all three were cut. Matching `, then ` and
+lists of three fired on 17 of 46 lessons and was right about 3 — ordinary
+narrative trips both ("recurred four times, then parked the phase" is one
+observation). Matching "N times in …" fired 4 times and was right once,
+because that phrase usually counts how often some *tool* misbehaved during a
+single incident. The survivor — matching only a row that says outright it
+covers two — fired once across the whole ledger and was blind to the shape
+that caused the problem: a row that merely narrates its instances without
+counting them.
+
+The property "this sentence describes more than one observation" is not
+reliably visible in the sentence. A near-silent guard is worse than none,
+because a clean `LESSONS OK` then reads as coverage the check never had. So
+the enforcement is the rule above, applied when filing, and **`sweep`'s
+lessons audit, which reads each `ref` against its own body** — the only thing
+that has ever actually caught this.
+
 ### Body
 
 Below the frontmatter, one to a few paragraphs stating the lesson: what happened, why, and what should be done differently. Concrete beats abstract — "run X before Y because Z bit us in Phase N," not "be careful with X." An optional `## Evidence` section may cite transcripts, logs, or diffs.
@@ -81,6 +115,27 @@ The generator filters connective filler tokens and checks the candidate against 
 3. **Graduate (human-only).** Graduation is a user-ratified edit to the target surface plus archival of the lesson: set `status: codified`, add `closed:` and `graduated_to:`, and move the file to `lessons-archived/`. Agents *propose* graduation — as `DECIDE`-style items in a phase's END block or a `sweep` plan — and never apply it. A rejected proposal is archived `status: rejected`; a lesson absorbed by another is `status: superseded`.
 
 Archived files **stay on disk** — they are the audit trail linking every rule back to the incidents that earned it, and the record of what was considered and declined.
+
+## Named families
+
+A family is a set of open lessons whose **diagnoses rhyme**. Naming one does not
+merge its members and does not change any occurrence count: each lesson keeps
+its own slug, evidence, and remedy. The name exists so the next lesson of that
+shape can be filed **against** the family rather than beside it, and so a body
+of evidence stops reading as a pile of unrelated one-offs.
+
+**Do not collapse a family into a single entry.** A rule general enough to
+cover every member is too abstract to fire — the failure the counting rule
+above exists to prevent, in another costume. Merge two lessons only when their
+**remedies** coincide, not when their diagnoses do — that is a `superseded`
+archival with the occurrences carried onto the survivor, and it needs the same
+human ratification as any graduation.
+
+Membership is a judgment recorded in the sweep or the policy that names the
+family, not a frontmatter key — a lesson can sit in a family and still graduate
+on its own evidence. (Two families the donor named, offered here as worked
+examples of the shape: *the fix covers the named instance, not the class*, and
+*the instrument reports positive and proves nothing*.)
 
 ### Who writes
 

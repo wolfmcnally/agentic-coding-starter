@@ -214,6 +214,15 @@ contain no duplicate toolchain command list. Their installer is idempotent,
 reports conflicting configuration, and requires an explicit force option to
 replace it.
 
+Opt-in needs a liveness witness, because `core.hooksPath` is local Git
+configuration that does not survive a clone and can be silently repointed —
+a component whose failure mode is silence needs an external witness that can
+say "not running." `bin/check-hooks-installed` is that witness, and the
+`check` policy lane runs it: an unset hooks path passes as the healthy
+not-opted-in state (opting in is never mandated), a set-but-wrong path fails
+as the silent disablement it is, and the tracked hooks themselves must exist
+and stay executable in every checkout regardless of opt-in.
+
 ## Verification
 
 Behavioral tests prove:

@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
+import re
+import runpy
 import shutil
 import signal
 import subprocess
 import sys
 import time
+import types
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -38,6 +43,7 @@ def run_manager(
     *arguments: str,
     extra_env: dict[str, str] | None = None,
     cli: Path | None = None,
+    manager: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
     environment = os.environ.copy()
     environment["KICKOFF_CONFIG_FILE"] = str(config)
@@ -50,14 +56,36 @@ def run_manager(
     if extra_env:
         environment.update(extra_env)
     return subprocess.run(
-        [UV, "run", "--script", str(MANAGER), *arguments],
+        [UV, "run", "--script", str(manager or MANAGER), *arguments],
         cwd=ROOT,
         env=environment,
         capture_output=True,
         text=True,
-        timeout=20,
+        timeout=60,
         check=False,
     )
+
+
+def manager_namespace(run_name: str) -> dict[str, object]:
+    """Load the manager in-process for unit tests of its pure functions.
+
+    The manager is a uv script whose only third-party dependency is
+    ruamel.yaml, which the test environment deliberately lacks. The functions
+    under test through this loader never touch YAML, so a module stub
+    satisfies the import without changing what is measured.
+    """
+    if "ruamel" not in sys.modules and importlib.util.find_spec("ruamel") is None:
+        package = types.ModuleType("ruamel")
+        yaml_module = types.ModuleType("ruamel.yaml")
+        comments = types.ModuleType("ruamel.yaml.comments")
+        yaml_module.YAML = type("YAML", (), {})
+        comments.CommentedMap = dict
+        yaml_module.comments = comments
+        package.yaml = yaml_module
+        sys.modules["ruamel"] = package
+        sys.modules["ruamel.yaml"] = yaml_module
+        sys.modules["ruamel.yaml.comments"] = comments
+    return runpy.run_path(str(MANAGER), run_name=run_name)
 
 
 def fake_cli(tmp_path: Path, name: str, body: str) -> Path:
@@ -152,6 +180,20 @@ def watch_arguments(
 
 def read_record(path: Path) -> dict[str, object]:
     return json.loads(path.read_text().splitlines()[-1])
+
+
+def dispatch_events(run_dir: Path) -> list[dict[str, object]]:
+    return [
+        json.loads(line)
+        for line in (run_dir / "role-dispatch.jsonl").read_text().splitlines()
+        if line.strip()
+    ]
+
+
+def terminal_dispatch(run_dir: Path) -> dict[str, object]:
+    return next(
+        event for event in reversed(dispatch_events(run_dir)) if event.get("state") != "opened"
+    )
 
 
 def managed_watch_context(
@@ -410,6 +452,7 @@ def test_watch_extracts_fresh_claude_result_and_telemetry(tmp_path: Path) -> Non
     assert "input_tokens" not in record
     assert record["output_tokens"] == 2
     assert record["usage_scope"] == "invocation"
+    assert record["teardown_diagnostics"] == []
 
 
 def test_watch_refuses_the_append_only_ledger_as_a_registration(
@@ -502,7 +545,7 @@ def test_watch_binds_registered_role_to_intelligence_and_wait_spans(
     wait = next(item for item in spans if item["category"] == "wait")
     assert intelligence["parent_span_id"] == root.span_id
     assert wait["parent_span_id"] == intelligence["span_id"]
-    dispatch = json.loads((run_dir / "role-dispatch.jsonl").read_text())
+    dispatch = terminal_dispatch(run_dir)
     assert dispatch["accepted"] is True
     assert dispatch["wait_span_id"] == wait["span_id"]
 
@@ -676,7 +719,7 @@ exit 127""",
         cli=cli,
     )
     assert result.returncode == 127
-    dispatch = json.loads((run_dir / "role-dispatch.jsonl").read_text())
+    dispatch = terminal_dispatch(run_dir)
     assert dispatch["accepted"] is True and dispatch["wait_span_id"]
     validated = subprocess.run(
         [
@@ -1720,3 +1763,526 @@ def test_the_manager_runs_where_git_is_absent(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     assert str(copy / "kickoff.yaml") in result.stdout
+
+
+# --- The dispatch-open/amend lifecycle and the candidate the watcher observes --
+
+RESULT_EVENT = (
+    """printf '%s\\n' '{"type":"result","result":"OK","""
+    """"usage":{"input_tokens":1,"output_tokens":2}}'"""
+)
+
+
+def watched_repo(tmp_path: Path) -> Path:
+    """A real repository root the child may write to, so the live tree never moves.
+
+    The pinned watcher honours `KICKOFF_ENGINE_ROOT`, which is exactly how the
+    orchestrator runs it (`$RUN_DIR/tools/kickoff-config`), so a run can be
+    rooted here while the code under test stays the shipped code.
+    """
+    root = tmp_path / "watched-repo"
+    root.mkdir()
+    subprocess.run(["git", "init", "-b", "master"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "fixture@example.invalid"],
+        cwd=root,
+        check=True,
+    )
+    subprocess.run(["git", "config", "user.name", "Fixture"], cwd=root, check=True)
+    (root / ".gitignore").write_text(".kickoff/\n")
+    (root / "policies").mkdir()
+    (root / "policies" / "orchestration-evidence.md").write_bytes(
+        (ROOT / "policies" / "orchestration-evidence.md").read_bytes()
+    )
+    (root / "plan").mkdir()
+    (root / "plan" / "phase-1.md").write_text("# Phase\n")
+    subprocess.run(["git", "add", "."], cwd=root, check=True)
+    subprocess.run(["git", "commit", "-m", "fixture"], cwd=root, check=True, capture_output=True)
+    return root
+
+
+def watched_dispatch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    child_body: str,
+    extra_watch: tuple[str, ...] = (),
+) -> tuple[Path, Path, dict[str, object]]:
+    """One full pinned-watcher dispatch rooted at a disposable repository tree.
+
+    Returns `(repository root, run dir, terminal dispatch row)`.
+    """
+    repo = watched_repo(tmp_path)
+    spool = tmp_path / "spool"
+    monkeypatch.setenv("AGENTIC_STARTER_EXECUTION_TELEMETRY_DIR", str(spool))
+    root = telemetry.start_trace(
+        engine_root=repo,
+        scope_root=repo,
+        scope="engine",
+        scope_id="engine",
+        run_type="kickoff",
+        operation="phase.test",
+    )
+    setup = telemetry.start_span(
+        engine_root=repo,
+        trace_id=root.trace_id,
+        parent_span_id=root.span_id,
+        category="reconciliation",
+        operation="orchestration.setup",
+    )
+    run_dir = tmp_path / "run"
+    environment = os.environ.copy()
+    initialized = subprocess.run(
+        [
+            str(EVIDENCE),
+            "init",
+            "--run-dir",
+            str(run_dir),
+            "--root",
+            str(repo),
+            "--phase",
+            "test",
+            "--authority",
+            "plan/phase-1.md",
+            "--telemetry-trace-id",
+            root.trace_id,
+            "--telemetry-root-span-id",
+            root.span_id,
+            "--initial-orchestration-span-id",
+            setup.span_id,
+            "--review-lane",
+            "full",
+            "--evidence-lane",
+            "full",
+            "--follow-up-route",
+            "direct-fix",
+        ],
+        cwd=ROOT,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert initialized.returncode == 0, initialized.stderr
+    registration = run_dir / "role.json"
+    registered = subprocess.run(
+        [
+            str(run_dir / "tools" / "kickoff-evidence"),
+            "register-role-attempt",
+            "--run-dir",
+            str(run_dir),
+            "--operation",
+            "role.code-review",
+            "--attempt",
+            "1",
+            "--role",
+            "critic",
+            "--harness",
+            "claude",
+            "--model",
+            "opus",
+            "--effort",
+            "high",
+            "--reason",
+            "initial",
+            "--output",
+            str(registration),
+        ],
+        cwd=ROOT,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert registered.returncode == 0, registered.stderr
+    result = run_manager(
+        seeded_config(tmp_path),
+        *watch_arguments(
+            tmp_path,
+            role="critic",
+            extra_watch=(
+                "--telemetry-trace-id",
+                root.trace_id,
+                "--telemetry-parent-span-id",
+                root.span_id,
+                "--telemetry-operation",
+                "role.code-review",
+                "--telemetry-attempt",
+                "1",
+                "--telemetry-role-registration",
+                str(registration),
+                *extra_watch,
+            ),
+        ),
+        extra_env={
+            "AGENTIC_STARTER_EXECUTION_TELEMETRY_DIR": str(spool),
+            "KICKOFF_TIMING_LOG": str(tmp_path / "timings.jsonl"),
+            "KICKOFF_ENGINE_ROOT": str(repo),
+            "WATCHED_REPO": str(repo),
+            "DISPATCH_ROW": str(run_dir / "role-dispatch.jsonl"),
+        },
+        cli=fake_cli(tmp_path, "claude", child_body),
+        # The pinned watcher, which is what `$WATCHER_TOOL` resolves to in a
+        # real run and the only form that honours KICKOFF_ENGINE_ROOT.
+        manager=run_dir / "tools" / "kickoff-config",
+    )
+    assert result.returncode == 0, (
+        "dispatch opening was not visible before the child ran\n" + result.stderr
+    )
+    row = terminal_dispatch(run_dir)
+    return repo, run_dir, row
+
+
+def test_the_dispatch_pair_spans_the_childs_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The opening precedes the child and its amendment observes the return."""
+    # Waiting on the durable opening makes the ordering causal. A close-only
+    # writer reaches no row until after the child exits and therefore fails
+    # with 91; append-then-amend lets the child observe its own opening.
+    repo, run_dir, row = watched_dispatch(
+        tmp_path,
+        monkeypatch,
+        extra_watch=(
+            "--first-event-timeout",
+            "15",
+            "--idle-timeout",
+            "20",
+            "--hard-timeout",
+            "40",
+        ),
+        child_body=(
+            """printf '%s\\n' '{"type":"system"}'\n"""
+            "waited=0\n"
+            'while [ "$waited" -lt 100 ]; do\n'
+            '  if [ -s "$DISPATCH_ROW" ]; then break; fi\n'
+            "  sleep 0.1\n"
+            "  waited=$((waited + 1))\n"
+            "done\n"
+            'if [ ! -s "$DISPATCH_ROW" ]; then exit 91; fi\n'
+            'mkdir -p "$WATCHED_REPO/lessons"\n'
+            "printf '%s\\n' '# Landed mid-dispatch' "
+            '> "$WATCHED_REPO/lessons/concurrent.md"\n' + RESULT_EVENT
+        ),
+    )
+
+    assert (repo / "lessons" / "concurrent.md").is_file()
+    events = dispatch_events(run_dir)
+    assert [event.get("state") for event in events] == ["opened", "accepted"]
+    assert events[1]["opened_at"] == events[0]["recorded_at"]
+    assert row["dispatch_candidate_id"] != row["return_candidate_id"], (
+        "both recorded candidates were taken before the child ran, so the pair "
+        "cannot span the dispatch it describes"
+    )
+    accepted = subprocess.run(
+        [
+            str(run_dir / "tools" / "kickoff-evidence"),
+            "accept-candidate-drift",
+            "--run-dir",
+            str(run_dir),
+            "--operation",
+            "role.code-review",
+            "--attempt",
+            "1",
+            "--cause",
+            "a concurrent session wrote while the critic was running",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert accepted.returncode == 0, accepted.stderr
+    assert "lessons/concurrent.md" in accepted.stdout
+
+
+def test_a_quiet_child_leaves_the_dispatch_pair_equal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The converse the policy asserts: equal really does mean nothing moved."""
+    _, run_dir, row = watched_dispatch(tmp_path, monkeypatch, child_body=RESULT_EVENT)
+
+    assert row["dispatch_candidate_id"] == row["return_candidate_id"]
+    refused = subprocess.run(
+        [
+            str(run_dir / "tools" / "kickoff-evidence"),
+            "accept-candidate-drift",
+            "--run-dir",
+            str(run_dir),
+            "--operation",
+            "role.code-review",
+            "--attempt",
+            "1",
+            "--cause",
+            "nothing moved",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert refused.returncode == 2
+    assert "did not move the candidate" in refused.stderr
+
+
+def test_watch_records_the_candidate_it_dispatched_against(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The watcher captures the dispatch-open candidate; nobody hands it one.
+
+    The shipped pins route every reviewer role through the watcher, so the
+    orchestrator never invokes `record-role-dispatch` itself for them. If the
+    watcher does not capture the open candidate, the field is null on every
+    external dispatch of every real run, and both the seam warning and
+    `accept-candidate-drift` are unreachable in exactly the configuration the
+    template ships. Note that no `--dispatch-candidate` appears anywhere in
+    this invocation.
+    """
+    root, registration, run_dir = managed_watch_context(tmp_path, monkeypatch)
+    cli = fake_cli(tmp_path, "claude", RESULT_EVENT)
+
+    result = run_manager(
+        seeded_config(tmp_path),
+        *watch_arguments(
+            tmp_path,
+            extra_watch=(
+                "--telemetry-trace-id",
+                root.trace_id,
+                "--telemetry-parent-span-id",
+                root.span_id,
+                "--telemetry-operation",
+                "role.plan-review",
+                "--telemetry-attempt",
+                "1",
+                "--telemetry-role-registration",
+                str(registration),
+            ),
+        ),
+        extra_env={
+            "AGENTIC_STARTER_EXECUTION_TELEMETRY_DIR": str(tmp_path / "spool"),
+            "KICKOFF_TIMING_LOG": str(tmp_path / "timings.jsonl"),
+        },
+        cli=cli,
+    )
+
+    assert result.returncode == 0, result.stderr
+    dispatch = terminal_dispatch(run_dir)
+    opened = dispatch["dispatch_candidate_id"]
+    assert opened is not None, (
+        "the watcher recorded no dispatch-open candidate, so the drift "
+        "mechanism is unreachable for every external role"
+    )
+    assert re.fullmatch(r"[0-9a-f]{64}", opened)
+    # Captured through the pinned evidence tool, so the manifest the classifier
+    # will need is in the run's store rather than only the id.
+    stored = run_dir / "candidates" / f"{opened}.json"
+    assert stored.is_file()
+    assert json.loads(stored.read_text())["candidate_id"] == opened
+    assert opened in [
+        json.loads(line)["candidate_id"]
+        for line in (run_dir / "lineage.jsonl").read_text().splitlines()
+        if line.strip()
+    ]
+    assert "dispatch-open-candidate:" not in result.stderr
+
+
+def test_both_killpg_permission_errors_are_diagnostics_not_exceptions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    namespace = manager_namespace("killpg_permission_test")
+    ticks = iter((0.0, 6.0, 7.0, 10.0))
+    # runpy.run_path returns a *copy* of the module globals, so assigning into
+    # `namespace` cannot reach the running functions. Patch the globals the
+    # module's own functions actually resolve against.
+    module_globals = namespace["terminate_group"].__globals__
+    monkeypatch.setitem(
+        module_globals,
+        "time",
+        SimpleNamespace(
+            monotonic=lambda: next(ticks),
+            sleep=lambda _seconds: None,
+        ),
+    )
+    signals: list[int] = []
+
+    def deny_killpg(_group_id: int, signum: int) -> None:
+        signals.append(signum)
+        raise PermissionError(f"denied signal {signum}")
+
+    monkeypatch.setattr(namespace["os"], "killpg", deny_killpg)
+    process = SimpleNamespace(pid=4242, poll=lambda: 0)
+
+    errors = namespace["terminate_group"](process)
+
+    assert signal.SIGTERM in signals
+    assert signal.SIGKILL in signals
+    assert any("SIGTERM killpg permission denied" in item for item in errors)
+    assert any("SIGKILL killpg permission denied" in item for item in errors)
+
+
+def test_teardown_errors_do_not_skip_dispatch_amendment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, registration, run_dir = managed_watch_context(tmp_path, monkeypatch)
+    config = seeded_config(tmp_path)
+    timing = tmp_path / "timings.jsonl"
+    cli = fake_cli(
+        tmp_path,
+        "claude",
+        """printf '%s\\n' '{"type":"assistant","message":{"content":"working"}}'
+while :; do sleep 1; done""",
+    )
+    monkeypatch.setenv("KICKOFF_CONFIG_FILE", str(config))
+    monkeypatch.setenv("KICKOFF_CLI_CLAUDE", str(cli))
+    monkeypatch.setenv("KICKOFF_TIMING_LOG", str(timing))
+    monkeypatch.delenv("KICKOFF_DELEGATION_DEPTH", raising=False)
+    namespace = manager_namespace("teardown_recording_test")
+
+    def teardown_with_diagnostics(process: subprocess.Popen[bytes]) -> list[str]:
+        os.killpg(process.pid, signal.SIGKILL)
+        process.wait(timeout=2)
+        return [
+            "SIGTERM killpg permission denied: simulated",
+            "SIGKILL killpg permission denied: simulated",
+        ]
+
+    # See the note above: patch the module's real globals, not runpy's copy,
+    # or the substitution is silently inert and this test proves nothing.
+    monkeypatch.setitem(
+        namespace["terminate_group"].__globals__,
+        "terminate_group",
+        teardown_with_diagnostics,
+    )
+    arguments = namespace["build_parser"]().parse_args(
+        watch_arguments(
+            tmp_path,
+            extra_watch=(
+                "--hard-timeout",
+                "0.4",
+                "--idle-timeout",
+                "0.3",
+                "--first-event-timeout",
+                "1",
+                "--telemetry-trace-id",
+                root.trace_id,
+                "--telemetry-parent-span-id",
+                root.span_id,
+                "--telemetry-operation",
+                "role.plan-review",
+                "--telemetry-attempt",
+                "1",
+                "--telemetry-role-registration",
+                str(registration),
+            ),
+        )
+    )
+    section = {
+        "first_event_timeout_seconds": 1,
+        "roles": {
+            "reviewer": {
+                "idle_timeout_seconds": 1,
+                "hard_timeout_seconds": 2,
+                "claude_max_turns": 50,
+            }
+        },
+    }
+
+    exit_code = namespace["watch"](arguments, section)
+
+    assert exit_code == 124
+    events = dispatch_events(run_dir)
+    assert [event.get("state") for event in events] == ["opened", "accepted"]
+    diagnostic = read_record(timing)
+    assert diagnostic["telemetry_complete"] is True
+    assert diagnostic["telemetry_error"] is None
+    assert diagnostic["teardown_diagnostics"]
+    assert "SIGTERM killpg permission denied" in str(diagnostic["teardown_diagnostics"])
+    assert "SIGKILL killpg permission denied" in str(diagnostic["teardown_diagnostics"])
+
+
+def stub_pinned_evidence(run_dir: Path, body: str) -> Path:
+    """A stand-in for the run's pinned evidence binary, at its exact path."""
+    tools = run_dir / "tools"
+    tools.mkdir(parents=True, exist_ok=True)
+    executable = tools / "kickoff-evidence"
+    executable.write_text(f"#!/bin/sh\n{body}\n")
+    executable.chmod(0o755)
+    return executable
+
+
+def test_capture_dispatch_candidate_asks_the_pinned_tool(tmp_path: Path) -> None:
+    """The watcher observes the open candidate itself, through the pinned tool.
+
+    The shipped pins route every reviewer role externally, and an external call
+    goes through the watcher, so the orchestrator never invokes
+    `record-role-dispatch` for them. Without this capture the dispatch-open
+    candidate is null on every external dispatch of every real run and the
+    whole drift mechanism — the seam warning and `accept-candidate-drift`
+    alike — is unreachable in the shipped configuration.
+    """
+    namespace = manager_namespace("dispatch_candidate_test")
+    run_dir = tmp_path / "run"
+    argv_log = tmp_path / "argv.txt"
+    candidate = "a" * 64
+    stub_pinned_evidence(
+        run_dir,
+        f'printf \'%s\\n\' "$@" > "{argv_log}"\nprintf \'%s\\n\' "{candidate}"',
+    )
+    registration = run_dir / "role.json"
+    registration.write_text("{}")
+
+    observed, error = namespace["capture_dispatch_candidate"](
+        SimpleNamespace(
+            telemetry_role_registration=str(registration),
+            telemetry_operation="role.plan-review",
+            telemetry_attempt=2,
+        )
+    )
+
+    assert error is None
+    assert observed == candidate, (
+        "the watcher captured no dispatch-open candidate, so the drift "
+        "mechanism is unreachable for every external role"
+    )
+    assert argv_log.read_text().splitlines() == [
+        "current-candidate",
+        "--run-dir",
+        str(run_dir),
+        "--reason",
+        "dispatch-open role.plan-review#2",
+    ]
+
+
+@pytest.mark.parametrize(
+    "body,expected",
+    [
+        ("echo boom >&2\nexit 1", "boom"),
+        ("printf '%s\\n' 'not-a-candidate'", "not a candidate id"),
+        # The likeliest failure of the three, and the only one that used to
+        # escape as a traceback and kill the dispatch before the child started.
+        (None, "cannot run the pinned evidence tool"),
+    ],
+)
+def test_capture_dispatch_candidate_fails_closed(
+    tmp_path: Path, body: str | None, expected: str
+) -> None:
+    """A failed capture degrades like a telemetry failure, never into a guess."""
+    namespace = manager_namespace("dispatch_candidate_failure_test")
+    run_dir = tmp_path / "run"
+    if body is None:
+        (run_dir / "tools").mkdir(parents=True)
+    else:
+        stub_pinned_evidence(run_dir, body)
+    registration = run_dir / "role.json"
+    registration.write_text("{}")
+
+    observed, error = namespace["capture_dispatch_candidate"](
+        SimpleNamespace(
+            telemetry_role_registration=str(registration),
+            telemetry_operation="role.code-review",
+            telemetry_attempt=1,
+        )
+    )
+
+    assert observed is None
+    assert error is not None and expected in error

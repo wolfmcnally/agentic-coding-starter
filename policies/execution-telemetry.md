@@ -21,7 +21,15 @@ Outcomes are `success`, `error`, `timeout`, `cancelled`, or
 
 Review spans may carry nonnegative `findings_reported` and
 `actionable_findings`, attached only by validated finding ingestion. These
-values are never estimated.
+values are never estimated. `findings_reported` is the number of validated
+entries in that pass's Finding Evidence block; `actionable_findings` is the
+number of findings in the **whole merged ledger** — not the batch alone —
+whose id carries that review namespace and whose post-reconciliation state is
+still `open`, `addressed`, or `blocked-owner`. An approved empty block records
+zero. Final timing validation rejects an accepted review pass without both
+integers, unless the run carries a recomputed derived-metrics overlay for it
+(`policies/orchestration-evidence.md § Derived convergence metrics for a
+refused batch`); the span itself is never written after the fact.
 
 ## Clock and accounting contract
 

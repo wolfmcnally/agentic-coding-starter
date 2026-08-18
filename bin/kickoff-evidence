@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import fnmatch
 import hashlib
 import json
 import os
@@ -116,10 +117,149 @@ ORCHESTRATION_OPERATIONS = (
     "orchestration.acceptance",
     "orchestration.close",
 )
+REVIEW_OPERATIONS = {
+    "role.plan-review": "plan",
+    "role.code-review": "code",
+}
+REVIEW_METRIC_KEYS = ("findings_reported", "actionable_findings")
+# Each refusal class names the exact set of ingest refusal codes a batch must
+# have carried to be derivable. The class is a machine-checkable fact about
+# which rule fired, not a description of how a human recovered a number: a
+# batch whose journal row carries any other code had a substance defect and was
+# never a measurable review pass.
+DERIVED_REFUSAL_CLASSES = {
+    "finding-id-format": ("id-format",),
+    "resolved-in-not-current-candidate": ("resolved-in-not-current",),
+    "immutable-field-restated": ("immutable-changed",),
+}
+# The fields two artifacts of the same review pass must agree on. `id` is
+# excluded because a bijection may rename it; `introduced_in` is excluded
+# because it is a candidate-lineage stamp that legitimately advances between a
+# refused emission and its re-emission, and neither integer depends on it.
+DERIVED_IDENTITY_FIELDS = (
+    "severity",
+    "state",
+    "classification",
+    "authority",
+    "evidence",
+    "required_outcome",
+    "disposition",
+    "affected_paths",
+)
+# The delta the declared class names — permitted, and required to be real.
+DERIVED_CLASS_DELTAS = {
+    "finding-id-format": frozenset(),
+    "resolved-in-not-current-candidate": frozenset({"resolved_in"}),
+    "immutable-field-restated": frozenset({"authority", "required_outcome", "introduced_in"}),
+}
+DERIVED_METRIC_FIELDS = frozenset(
+    {
+        "schema_version",
+        "recorded_at",
+        "operation",
+        "attempt",
+        "span_id",
+        "refusal_class",
+        "refused_artifact_sha256",
+        "corroborating_artifact_sha256",
+        "id_map",
+        "findings_reported",
+        "actionable_findings",
+        "journal_recorded_at",
+        "cause",
+    }
+)
+INGEST_JOURNAL_FIELDS = frozenset(
+    {
+        "schema_version",
+        "recorded_at",
+        "kind",
+        "candidate_id",
+        "review_span_id",
+        "artifact_sha256",
+        "findings_reported",
+        "ledger_before",
+        "outcome",
+        "refusal_codes",
+        "refusal_detail",
+        "actionable_findings",
+    }
+)
+# The drift partition vocabulary is SOURCED from the governing policy, never
+# restated here. `policies/orchestration-evidence.md` is the contract, and a
+# second copy in code would be exactly the divergence this arrangement exists
+# to remove.
+DRIFT_PARTITION_BLOCK = re.compile(
+    r"```yaml\s*\n# kickoff-evidence drift partitions\n(.*?)```", re.S
+)
+CANDIDATE_DRIFT_FIELDS = frozenset(
+    {
+        "schema_version",
+        "recorded_at",
+        "operation",
+        "attempt",
+        "dispatch_candidate_id",
+        "return_candidate_id",
+        "drifted_paths",
+        "cause",
+    }
+)
+LEGACY_ROLE_DISPATCH_FIELDS = frozenset(
+    {
+        "schema_version",
+        "recorded_at",
+        "operation",
+        "attempt",
+        "accepted",
+        "idle_telemetry",
+        "intelligence_span_id",
+        "wait_span_id",
+        "dispatch_candidate_id",
+        "return_candidate_id",
+    }
+)
+OPEN_ROLE_DISPATCH_FIELDS = frozenset(
+    {
+        "schema_version",
+        "recorded_at",
+        "state",
+        "operation",
+        "attempt",
+        "intelligence_span_id",
+        "dispatch_candidate_id",
+    }
+)
+AMENDED_ROLE_DISPATCH_FIELDS = LEGACY_ROLE_DISPATCH_FIELDS | {
+    "state",
+    "opened_at",
+}
+DISPATCH_OPEN_OMISSION_FIELDS = frozenset(
+    {
+        "schema_version",
+        "recorded_at",
+        "operation",
+        "attempt",
+        "reason",
+    }
+)
 
 
 class EvidenceError(ValueError):
     """A fail-closed evidence validation error."""
+
+
+class FindingValidationError(EvidenceError):
+    """A finding refusal that carries one typed code beside each message.
+
+    The codes are what let `attach-derived-metrics` establish *which* rule
+    refused a batch as a machine-checkable fact rather than trusting an
+    operator's account of it. `str()` remains the joined messages, so every
+    diagnostic this tool has ever emitted is unchanged.
+    """
+
+    def __init__(self, errors: list[tuple[str, str]]) -> None:
+        self.errors = errors
+        super().__init__("\n".join(message for _, message in errors))
 
 
 def now() -> str:
@@ -567,14 +707,55 @@ def command_init(arguments: argparse.Namespace) -> None:
     (run_dir / "gates.jsonl").touch()
     (run_dir / "role-attempts.jsonl").touch()
     (run_dir / "role-dispatch.jsonl").touch()
+    (run_dir / "dispatch-open-omitted.jsonl").touch()
     (run_dir / "packets.jsonl").touch()
     (run_dir / "lineage.jsonl").touch()
-    record_lineage(run_dir, candidate["candidate_id"], "init")
+    record_lineage(run_dir, candidate, "init")
     print(candidate["candidate_id"])
 
 
-def record_lineage(run_dir: Path, candidate_id: str, reason: str) -> bool:
-    """Append a candidate to this run's lineage. Returns True when it is new.
+def candidate_store_path(run_dir: Path, candidate_id: str) -> Path:
+    return run_dir / "candidates" / f"{candidate_id}.json"
+
+
+def store_candidate_manifest(run_dir: Path, manifest: dict[str, Any]) -> None:
+    """Persist a candidate's full manifest, content-addressed and write-once.
+
+    Only two manifests were ever kept per run — `candidate.json` and
+    `reviewed-candidate.json`, both overwritten in place — so by the time a
+    batch was refused, the manifest the role had been dispatched against was
+    already gone and the drift was unclassifiable. A file whose name is its own
+    digest cannot legitimately change, so the many observations that share a
+    candidate deduplicate and nothing is ever rewritten.
+    """
+    path = candidate_store_path(run_dir, manifest["candidate_id"])
+    if path.exists():
+        return
+    atomic_json(path, manifest)
+
+
+def stored_candidate_manifest(run_dir: Path, candidate_id: str, *, label: str) -> dict[str, Any]:
+    """One stored manifest, still present and still hashing to its own name."""
+    path = candidate_store_path(run_dir, candidate_id)
+    if not path.is_file():
+        raise EvidenceError(
+            f"no stored candidate manifest for the {label} candidate "
+            f"{candidate_id[:12]}…: a drift cannot be classified from ids alone, "
+            "and an unclassifiable drift is never assumed disjoint"
+        )
+    manifest = load_json(path)
+    validate_candidate_manifest(manifest)
+    if manifest["candidate_id"] != candidate_id:
+        raise EvidenceError(
+            f"stored candidate manifest {candidate_id[:12]}… names a different candidate"
+        )
+    return manifest
+
+
+def record_lineage(run_dir: Path, manifest: dict[str, Any], reason: str) -> bool:
+    """Record a candidate in this run's lineage and store its manifest.
+
+    Returns True when the candidate is new to the lineage.
 
     The lineage is what makes a finding's `introduced_in` checkable against
     something other than the head of the tree. A run's candidate changes for
@@ -582,7 +763,12 @@ def record_lineage(run_dir: Path, candidate_id: str, reason: str) -> bool:
     marker and the START log block are both tracked files — so "the id the tree
     has right now" is the wrong question to ask of a reviewer that observed the
     tree minutes ago.
+
+    The manifest travels with the id rather than beside it: `lineage.jsonl`
+    carries ids only, and an id alone cannot say which paths moved.
     """
+    candidate_id = manifest["candidate_id"]
+    store_candidate_manifest(run_dir, manifest)
     path = run_dir / "lineage.jsonl"
     known = {item["candidate_id"] for item in load_jsonl(path)}
     if candidate_id in known:
@@ -621,7 +807,7 @@ def command_current_candidate(arguments: argparse.Namespace) -> None:
     run = validate_run_dir(arguments.run_dir)
     current = tree_manifest(Path(run["repository_root"]))
     candidate_id = current["candidate_id"]
-    if record_lineage(arguments.run_dir, candidate_id, arguments.reason):
+    if record_lineage(arguments.run_dir, current, arguments.reason):
         print(
             f"kickoff-evidence: candidate advanced to {candidate_id[:12]}… ({arguments.reason})",
             file=sys.stderr,
@@ -646,6 +832,187 @@ def load_jsonl(file_path: Path) -> list[dict[str, Any]]:
             raise EvidenceError(f"invalid record in {file_path.name} line {number}")
         records.append(value)
     return records
+
+
+def validate_dispatch_key(record: dict[str, Any], label: str) -> tuple[str, int]:
+    operation = record.get("operation")
+    attempt = record.get("attempt")
+    if operation not in ROLE_OPERATIONS:
+        raise EvidenceError(f"{label} has an invalid role operation")
+    if not isinstance(attempt, int) or isinstance(attempt, bool) or attempt < 1:
+        raise EvidenceError(f"{label} has an invalid attempt")
+    return operation, attempt
+
+
+def validate_terminal_dispatch(record: dict[str, Any], label: str) -> None:
+    validate_dispatch_key(record, label)
+    if not isinstance(record.get("accepted"), bool):
+        raise EvidenceError(f"{label} has an invalid accepted flag")
+    if record.get("idle_telemetry") not in {
+        "available",
+        "unavailable",
+        "not-dispatched",
+    }:
+        raise EvidenceError(f"{label} has invalid idle telemetry")
+    if record["accepted"] and record["idle_telemetry"] == "not-dispatched":
+        raise EvidenceError(f"{label} marks an accepted dispatch as not dispatched")
+    if not record["accepted"] and record["idle_telemetry"] != "not-dispatched":
+        raise EvidenceError(f"{label} gives a rejected dispatch idle telemetry")
+    if not record["accepted"] and record.get("wait_span_id") is not None:
+        raise EvidenceError(f"{label} gives a rejected dispatch a wait span")
+    for field in ("intelligence_span_id", "wait_span_id"):
+        if record.get(field) is not None:
+            validate_span_identifier(record[field], f"{label} {field}")
+    if record.get("dispatch_candidate_id") is not None:
+        validate_candidate_id(record["dispatch_candidate_id"], f"{label} dispatch-open candidate")
+    validate_candidate_id(record.get("return_candidate_id"), f"{label} return candidate")
+
+
+def load_dispatch_open_omissions(
+    run_dir: Path,
+) -> dict[tuple[str, int], dict[str, Any]]:
+    path = run_dir / "dispatch-open-omitted.jsonl"
+    if not path.exists():
+        return {}
+    records: dict[tuple[str, int], dict[str, Any]] = {}
+    for line_number, record in enumerate(load_jsonl(path), 1):
+        label = f"{path.name} line {line_number}"
+        if (
+            set(record) != DISPATCH_OPEN_OMISSION_FIELDS
+            or record.get("schema_version") != SCHEMA_VERSION
+            or not isinstance(record.get("recorded_at"), str)
+            or not record["recorded_at"].strip()
+            or not isinstance(record.get("reason"), str)
+            or not record["reason"].strip()
+        ):
+            raise EvidenceError(f"invalid {label}")
+        key = validate_dispatch_key(record, label)
+        if key in records:
+            raise EvidenceError(f"duplicate dispatch-open omission for {key[0]}#{key[1]}")
+        records[key] = record
+    return records
+
+
+def role_dispatch_ledger(
+    run_dir: Path,
+    *,
+    allow_opened: bool = False,
+    allow_orphan_omissions: bool = False,
+) -> tuple[
+    list[dict[str, Any]],
+    dict[tuple[str, int], dict[str, Any]],
+    dict[tuple[str, int], dict[str, Any]],
+]:
+    """Fold append-only dispatch lifecycle events into terminal dispatches."""
+    path = run_dir / "role-dispatch.jsonl"
+    omissions = load_dispatch_open_omissions(run_dir)
+    consumed_omissions: set[tuple[str, int]] = set()
+    opened: dict[tuple[str, int], tuple[dict[str, Any], int]] = {}
+    closed: dict[tuple[str, int], dict[str, Any]] = {}
+    for line_number, record in enumerate(load_jsonl(path), 1):
+        label = f"{path.name} line {line_number}"
+        fields = set(record)
+        if fields == LEGACY_ROLE_DISPATCH_FIELDS and record.get("schema_version") == SCHEMA_VERSION:
+            validate_terminal_dispatch(record, label)
+            key = validate_dispatch_key(record, label)
+            if key in opened or key in closed:
+                raise EvidenceError(
+                    f"duplicate role dispatch record for {key[0]}#{key[1]} at {label}"
+                )
+            closed[key] = record
+            continue
+        if (
+            fields == OPEN_ROLE_DISPATCH_FIELDS
+            and record.get("schema_version") == SCHEMA_VERSION
+            and record.get("state") == "opened"
+        ):
+            key = validate_dispatch_key(record, label)
+            if key in opened or key in closed:
+                raise EvidenceError(
+                    f"duplicate role dispatch opening for {key[0]}#{key[1]} at {label}"
+                )
+            if not isinstance(record.get("recorded_at"), str) or not record["recorded_at"].strip():
+                raise EvidenceError(f"{label} has an invalid opening timestamp")
+            if record.get("intelligence_span_id") is not None:
+                validate_span_identifier(
+                    record["intelligence_span_id"], f"{label} intelligence span id"
+                )
+            if record.get("dispatch_candidate_id") is not None:
+                validate_candidate_id(
+                    record["dispatch_candidate_id"],
+                    f"{label} dispatch-open candidate",
+                )
+            opened[key] = (record, line_number)
+            continue
+        if (
+            fields == AMENDED_ROLE_DISPATCH_FIELDS
+            and record.get("schema_version") == SCHEMA_VERSION
+            and record.get("state") in {"accepted", "rejected"}
+        ):
+            validate_terminal_dispatch(record, label)
+            key = validate_dispatch_key(record, label)
+            if record["accepted"] != (record["state"] == "accepted"):
+                raise EvidenceError(f"{label} state and accepted flag do not agree")
+            if key in closed:
+                raise EvidenceError(
+                    f"duplicate role dispatch amendment for {key[0]}#{key[1]} at {label}"
+                )
+            opening = opened.pop(key, None)
+            if opening is None:
+                if record.get("opened_at") is not None:
+                    raise EvidenceError(f"{label} names an opening that is absent from the ledger")
+                if key not in omissions:
+                    raise EvidenceError(
+                        f"{label} has no opened row and no recorded reasoned opt-out"
+                    )
+                consumed_omissions.add(key)
+            else:
+                opened_record, opened_line = opening
+                if record.get("opened_at") != opened_record["recorded_at"]:
+                    raise EvidenceError(
+                        f"{label} does not amend its role-dispatch.jsonl line {opened_line} opening"
+                    )
+                if record.get("dispatch_candidate_id") != opened_record.get(
+                    "dispatch_candidate_id"
+                ):
+                    raise EvidenceError(
+                        f"{label} changes the dispatch-open candidate recorded on "
+                        f"line {opened_line}"
+                    )
+                opened_span = opened_record.get("intelligence_span_id")
+                if opened_span is not None and record.get("intelligence_span_id") != opened_span:
+                    raise EvidenceError(
+                        f"{label} changes the intelligence span recorded on line {opened_line}"
+                    )
+                if key in omissions:
+                    raise EvidenceError(
+                        f"{label} has both an opened row and a dispatch-open opt-out"
+                    )
+            closed[key] = {field: record[field] for field in LEGACY_ROLE_DISPATCH_FIELDS}
+            continue
+        raise EvidenceError(f"invalid role-dispatch record schema at {label}")
+    if opened and not allow_opened:
+        key, (_, line_number) = sorted(opened.items())[0]
+        raise EvidenceError(
+            "interrupted role dispatch remains opened: "
+            f"{key[0]}#{key[1]} (role-dispatch.jsonl line {line_number}); "
+            "no terminal amendment was recorded, so the run is incomplete"
+        )
+    orphan_omissions = set(omissions) - consumed_omissions
+    if orphan_omissions and not allow_orphan_omissions:
+        operation, attempt = sorted(orphan_omissions)[0]
+        raise EvidenceError(
+            f"dispatch-open omission names no terminal dispatch: {operation}#{attempt}"
+        )
+    return (
+        list(closed.values()),
+        {key: record for key, (record, _) in opened.items()},
+        omissions,
+    )
+
+
+def load_role_dispatches(run_dir: Path) -> list[dict[str, Any]]:
+    return role_dispatch_ledger(run_dir)[0]
 
 
 def validate_role_record(record: dict[str, Any], run: dict[str, Any]) -> None:
@@ -782,9 +1149,11 @@ def native_span_recipe(record: dict[str, Any]) -> dict[str, Any]:
         "wait": argv("wait", "<INTELLIGENCE_SPAN_ID>"),
         "wait_parent_placeholder": "<INTELLIGENCE_SPAN_ID>",
         "note": (
-            "Run `intelligence` first, then substitute its span id for "
-            "<INTELLIGENCE_SPAN_ID> in `wait`. Close wait before intelligence, "
-            "then record the pair with `record-role-dispatch`."
+            "Run `intelligence` first, record `record-role-dispatch --state "
+            "opened` before launching the role, then substitute its span id "
+            "for <INTELLIGENCE_SPAN_ID> in `wait`. Close wait before "
+            "intelligence, then append the accepted or rejected terminal "
+            "amendment with `record-role-dispatch`."
         ),
     }
 
@@ -909,24 +1278,45 @@ def command_record_role_dispatch(arguments: argparse.Namespace) -> None:
         != 1
     ):
         raise EvidenceError("dispatch registration is not uniquely registered")
+    opened_state = arguments.state == "opened"
     accepted = arguments.state == "accepted"
+    key = (registration["operation"], registration["attempt"])
+    closed, opened, omissions = role_dispatch_ledger(
+        arguments.run_dir,
+        allow_opened=True,
+        allow_orphan_omissions=True,
+    )
+    if any(item["operation"] == key[0] and item["attempt"] == key[1] for item in closed):
+        raise EvidenceError("duplicate role dispatch result")
+    if opened_state:
+        if key in opened:
+            raise EvidenceError("duplicate role dispatch opening")
+        if arguments.no_open_row is not None:
+            raise EvidenceError("an opened dispatch cannot opt out of its own opening")
+        if arguments.idle_telemetry != "not-dispatched":
+            raise EvidenceError("an opened dispatch has not accumulated idle telemetry yet")
+        if arguments.wait_span_id is not None:
+            raise EvidenceError("an opened dispatch cannot name a wait span")
+    elif key in omissions and key in opened:
+        raise EvidenceError("dispatch has both an opened row and a dispatch-open opt-out")
     if accepted and arguments.wait_span_id is None:
         # Record the truthful accepted topology even when wait telemetry failed.
         pass
-    if not accepted and arguments.wait_span_id is not None:
+    if not opened_state and not accepted and arguments.wait_span_id is not None:
         raise EvidenceError("rejected dispatch cannot name a wait span")
-    if accepted and arguments.idle_telemetry == "not-dispatched":
+    if not opened_state and accepted and arguments.idle_telemetry == "not-dispatched":
         raise EvidenceError("accepted dispatch must state idle telemetry availability")
-    if not accepted and arguments.idle_telemetry != "not-dispatched":
+    if not opened_state and not accepted and arguments.idle_telemetry != "not-dispatched":
         raise EvidenceError("rejected dispatch idle telemetry must be not-dispatched")
-    if arguments.intelligence_span_id is None:
+    if not opened_state and arguments.intelligence_span_id is None:
         # Validation requires exactly one closed intelligence span per registered
         # attempt, rejections included: a refused attempt still consumed a
         # registration and still has to be accounted for. Accepting a span-less
-        # record here writes an IMMUTABLE row that `validate` then refuses
-        # forever, and the run cannot be repaired afterwards -- creating the span
-        # late only moves the error to "dispatch and intelligence span ids do not
-        # agree". Refuse at write time, where the caller can still fix it.
+        # terminal amendment here writes append-only evidence that `validate`
+        # then refuses forever, and the run cannot be repaired afterwards --
+        # creating the span late only moves the error to "dispatch and
+        # intelligence span ids do not agree". Refuse at write time, where the
+        # caller can still fix it.
         raise EvidenceError(
             "dispatch must name an intelligence span. A rejected dispatch opens "
             "one and closes it error 127 at rejection time, with no wait span; "
@@ -950,23 +1340,104 @@ def command_record_role_dispatch(arguments: argparse.Namespace) -> None:
             "wait",
             arguments.intelligence_span_id,
         )
+    # The freeze convention's executable half. `--dispatch-candidate` is the
+    # candidate the role was actually handed; the return candidate is recomputed
+    # only in the terminal amendment. A dispatch whose two differ moved under
+    # the role, and the folded pair says so instead of leaving it to be
+    # discovered at ingest. The open candidate remains optional because a
+    # failed capture must not erase the fact that the dispatch happened.
+    dispatch_candidate: str | None = None
+    if arguments.dispatch_candidate is not None:
+        dispatch_candidate = validate_candidate_id(
+            arguments.dispatch_candidate, "dispatch candidate"
+        )
+        if dispatch_candidate not in set(lineage_candidates(arguments.run_dir)):
+            raise EvidenceError(
+                f"dispatch candidate {dispatch_candidate[:12]}… is not a "
+                "candidate this run recorded"
+            )
+        stored_candidate_manifest(arguments.run_dir, dispatch_candidate, label="dispatch-open")
+    if opened_state:
+        record = {
+            "schema_version": SCHEMA_VERSION,
+            "recorded_at": now(),
+            "state": "opened",
+            "operation": registration["operation"],
+            "attempt": registration["attempt"],
+            "intelligence_span_id": arguments.intelligence_span_id,
+            "dispatch_candidate_id": dispatch_candidate,
+        }
+        append_jsonl(arguments.run_dir / "role-dispatch.jsonl", record)
+        print("dispatch-opened")
+        return
+    opening = opened.get(key)
+    omission_reason = (
+        arguments.no_open_row.strip() if isinstance(arguments.no_open_row, str) else None
+    )
+    if opening is None:
+        if arguments.no_open_row is None:
+            raise EvidenceError(
+                "record-role-dispatch requires an opened row written before "
+                "launch: without it, an externally killed watcher leaves no "
+                "dispatch evidence and the run can appear complete. Record "
+                "--state opened before launch, or pass --no-open-row '<reason>' "
+                "for a legitimate exception; the reason is written to "
+                "dispatch-open-omitted.jsonl."
+            )
+        if not omission_reason:
+            raise EvidenceError("--no-open-row requires a nonempty reason")
+        existing_omission = omissions.get(key)
+        if existing_omission is None:
+            append_jsonl(
+                arguments.run_dir / "dispatch-open-omitted.jsonl",
+                {
+                    "schema_version": SCHEMA_VERSION,
+                    "recorded_at": now(),
+                    "operation": registration["operation"],
+                    "attempt": registration["attempt"],
+                    "reason": omission_reason,
+                },
+            )
+        elif existing_omission["reason"] != omission_reason:
+            raise EvidenceError(
+                "dispatch-open omission was already recorded with a different reason"
+            )
+    else:
+        if arguments.no_open_row is not None:
+            raise EvidenceError("--no-open-row cannot accompany a dispatch that has an opened row")
+        opened_candidate = opening.get("dispatch_candidate_id")
+        if dispatch_candidate is not None and dispatch_candidate != opened_candidate:
+            raise EvidenceError("terminal dispatch candidate does not match its opened row")
+        dispatch_candidate = opened_candidate
+        opened_span = opening.get("intelligence_span_id")
+        if opened_span is not None and arguments.intelligence_span_id != opened_span:
+            raise EvidenceError("terminal intelligence span does not match its opened row")
+    returned = tree_manifest(Path(run["repository_root"]))
+    record_lineage(arguments.run_dir, returned, "dispatch-return")
     record = {
         "schema_version": SCHEMA_VERSION,
         "recorded_at": now(),
+        "state": arguments.state,
+        "opened_at": opening["recorded_at"] if opening is not None else None,
         "operation": registration["operation"],
         "attempt": registration["attempt"],
         "accepted": accepted,
         "idle_telemetry": arguments.idle_telemetry,
         "intelligence_span_id": arguments.intelligence_span_id,
         "wait_span_id": arguments.wait_span_id,
+        "dispatch_candidate_id": dispatch_candidate,
+        "return_candidate_id": returned["candidate_id"],
     }
-    existing = load_jsonl(arguments.run_dir / "role-dispatch.jsonl")
-    if any(
-        item.get("operation") == record["operation"] and item.get("attempt") == record["attempt"]
-        for item in existing
-    ):
-        raise EvidenceError("duplicate role dispatch result")
     append_jsonl(arguments.run_dir / "role-dispatch.jsonl", record)
+    if dispatch_candidate is not None and dispatch_candidate != returned["candidate_id"]:
+        print(
+            "kickoff-evidence: the candidate moved under "
+            f"{record['operation']}#{record['attempt']}: "
+            f"{dispatch_candidate[:12]}… -> {returned['candidate_id'][:12]}…. "
+            "Re-run the review against the current candidate, or classify the "
+            "drift with `accept-candidate-drift`.",
+            file=sys.stderr,
+        )
     print("dispatch-recorded")
 
 
@@ -1004,6 +1475,330 @@ def changed_entries(reviewed: dict[str, Any], current: dict[str, Any]) -> list[d
     return changes
 
 
+def load_drift_partitions(root: Path) -> tuple[str, ...]:
+    """The inert-set vocabulary, parsed from the policy that owns it.
+
+    Sourced rather than restated: the fenced block in
+    `policies/orchestration-evidence.md` is the single source of truth, and it
+    is deliberately read live — a record is never accepted, or re-accepted at
+    `validate`, on a vocabulary that has since been withdrawn.
+    """
+    contract = root / "policies" / "orchestration-evidence.md"
+    try:
+        text = contract.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        # `UnicodeDecodeError` is a `ValueError`, not an `OSError`, so it would
+        # escape `main`'s exception tuple as a traceback rather than a
+        # diagnostic if it were not named here.
+        raise EvidenceError(
+            "cannot read the drift partition vocabulary from "
+            f"policies/orchestration-evidence.md: {exc}"
+        ) from exc
+    matches = list(DRIFT_PARTITION_BLOCK.finditer(text))
+    if len(matches) != 1:
+        # Exactly one, as `extract_json_block` demands of its own fences. A
+        # policy document that documents its own block format is a plausible
+        # place for a second copy to appear, and silently taking the first would
+        # make which one governs depend on document order.
+        raise EvidenceError(
+            f"policies/orchestration-evidence.md carries {len(matches)} "
+            "'# kickoff-evidence drift partitions' yaml blocks; exactly one is "
+            "the vocabulary"
+        )
+    match = matches[0]
+    entries: list[str] = []
+    inside = False
+    for raw in match.group(1).splitlines():
+        line = raw.split("#", 1)[0].rstrip()
+        if not line.strip():
+            continue
+        head = line.strip()
+        if head == "inert:":
+            inside = True
+        elif head.startswith("- ") and inside:
+            entries.append(head[2:].strip())
+        else:
+            raise EvidenceError(f"unparseable drift partition line: {raw!r}")
+    if not entries:
+        raise EvidenceError("the declared drift partition inert set is empty")
+    if len(set(entries)) != len(entries):
+        raise EvidenceError("the declared drift partition inert set repeats an entry")
+    for entry in entries:
+        body = entry[:-1] if entry.endswith("/") else entry
+        if not body or Path(body).is_absolute() or ".." in Path(body).parts:
+            raise EvidenceError(f"invalid drift partition entry: {entry!r}")
+    return tuple(entries)
+
+
+def path_is_inert(path: str, entries: tuple[str, ...]) -> bool:
+    """Whether one repository-relative path lies inside the declared inert set.
+
+    A trailing `/` is a directory prefix. Anything else matches component by
+    component, so `*` never crosses a `/`: a root-level glob entry names only
+    root-level files and can never reach a nested path with the same basename.
+    """
+    components = path.split("/")
+    for entry in entries:
+        if entry.endswith("/"):
+            if path.startswith(entry):
+                return True
+            continue
+        pattern = entry.split("/")
+        if len(pattern) == len(components) and all(
+            fnmatch.fnmatchcase(component, glob) for component, glob in zip(components, pattern)
+        ):
+            return True
+    return False
+
+
+def classify_candidate_drift(
+    run_dir: Path, root: Path, before_id: str, after_id: str
+) -> tuple[list[str], list[str]]:
+    """Every path that moved between two candidates, and every reason to refuse.
+
+    Three checks, each able to refuse a drift the other two accept:
+
+    1. **Partition** — every drifted path lies in the declared inert set.
+    2. **Reviewed surface** — no drifted path is in `change.json`'s
+       `changed_files` or in any ledger finding's `affected_paths`.
+    3. **Authority** — no drifted path is a declared authority.
+
+    All three are evaluated; none short-circuits. A layered rule whose layers
+    are never isolated is one check plus two decorations, and the caller has to
+    be able to see which layer spoke. A path the partition cannot place fails
+    closed, and so does a drift whose manifests are not both in the store.
+    """
+    before = stored_candidate_manifest(run_dir, before_id, label="dispatch-open")
+    after = stored_candidate_manifest(run_dir, after_id, label="dispatch-return")
+    drifted = [item["path"] for item in changed_entries(before, after)]
+    refusals: list[str] = []
+
+    partitions = load_drift_partitions(root)
+    unplaceable = [path for path in drifted if not path_is_inert(path, partitions)]
+    if unplaceable:
+        refusals.append(
+            "drift-partition: "
+            + ", ".join(unplaceable)
+            + " lies outside the inert set declared in "
+            "policies/orchestration-evidence.md"
+        )
+
+    reviewed: dict[str, set[str]] = {}
+    change_path = run_dir / "change.json"
+    if change_path.exists():
+        # Indexed, not `.get(..., [])`: this is an input to a refusal, and a
+        # default of "nothing was reviewed" is the one wrong answer a malformed
+        # change manifest could give here.
+        for item in load_json(change_path)["changed_files"]:
+            reviewed.setdefault(item["path"], set()).add("change.json changed_files")
+    for item in load_json(run_dir / "findings.json")["findings"]:
+        for affected in item["affected_paths"]:
+            reviewed.setdefault(affected, set()).add(item["id"])
+    examined = [path for path in drifted if path in reviewed]
+    if examined:
+        refusals.append(
+            "drift-reviewed-surface: "
+            + ", ".join(f"{path} ({', '.join(sorted(reviewed[path]))})" for path in examined)
+            + " is part of what this review examined"
+        )
+
+    declared = {item["path"] for item in load_json(run_dir / "authority.json")["authorities"]}
+    authorities = [path for path in drifted if path in declared]
+    if authorities:
+        refusals.append(
+            "drift-authority: " + ", ".join(authorities) + " is a declared authority of this review"
+        )
+    return drifted, refusals
+
+
+def load_candidate_drift(run_dir: Path) -> dict[tuple[str, int], dict[str, Any]]:
+    """Accepted candidate-drift records, keyed by the dispatch each describes."""
+    records: dict[tuple[str, int], dict[str, Any]] = {}
+    path = run_dir / "candidate-drift.jsonl"
+    if not path.exists():
+        return records
+    for entry in load_jsonl(path):
+        if (
+            set(entry) != CANDIDATE_DRIFT_FIELDS
+            or entry.get("schema_version") != SCHEMA_VERSION
+            or entry.get("operation") not in ROLE_OPERATIONS
+            or not isinstance(entry.get("attempt"), int)
+            or isinstance(entry["attempt"], bool)
+            or entry["attempt"] < 1
+            or not isinstance(entry.get("cause"), str)
+            or not entry["cause"].strip()
+        ):
+            raise EvidenceError("invalid candidate-drift record")
+        validate_candidate_id(
+            entry.get("dispatch_candidate_id"), "candidate-drift dispatch candidate"
+        )
+        validate_candidate_id(entry.get("return_candidate_id"), "candidate-drift return candidate")
+        validate_relative_paths(entry.get("drifted_paths"), "candidate-drift drifted_paths")
+        key = (entry["operation"], entry["attempt"])
+        if key in records:
+            raise EvidenceError("duplicate candidate-drift record")
+        records[key] = entry
+    return records
+
+
+def drift_record_matches_dispatch(record: dict[str, Any], dispatch: dict[str, Any] | None) -> bool:
+    """Whether a drift record describes exactly this accepted dispatch row.
+
+    Both readers of the ledger apply this — `validate` and the `resolved_in`
+    relaxation in `ingest-findings` — so a poisoned record refuses at the
+    earliest point it is consulted rather than only at the gate.
+    """
+    return (
+        dispatch is not None
+        and bool(dispatch.get("accepted"))
+        and dispatch.get("dispatch_candidate_id") == record["dispatch_candidate_id"]
+        and dispatch.get("return_candidate_id") == record["return_candidate_id"]
+    )
+
+
+def validate_candidate_drift(run_dir: Path, run: dict[str, Any]) -> list[dict[str, Any]]:
+    """Re-derive every accepted drift from the stored manifests and re-classify it.
+
+    Recomputed, never trusted — the analogue of the derived-metrics rule, and
+    for the same reason: without a reader that can contradict it, the ledger
+    would be write-only. Re-*classified* rather than merely re-diffed, because
+    the reviewed surface grows as findings are ingested, so a record that was
+    disjoint this morning can stop being disjoint — and a validator that went on
+    publishing it would be publishing a classification nothing checks.
+    """
+    records = load_candidate_drift(run_dir)
+    if not records:
+        return []
+    dispatches = {
+        (item["operation"], item["attempt"]): item for item in load_role_dispatches(run_dir)
+    }
+    root = Path(run["repository_root"])
+    projected: list[dict[str, Any]] = []
+    for key in sorted(records):
+        record = records[key]
+        if not drift_record_matches_dispatch(record, dispatches.get(key)):
+            raise EvidenceError(
+                "candidate-drift record does not describe an accepted dispatch of "
+                f"this run: {key[0]} attempt {key[1]}"
+            )
+        drifted, refusals = classify_candidate_drift(
+            run_dir,
+            root,
+            record["dispatch_candidate_id"],
+            record["return_candidate_id"],
+        )
+        if drifted != record["drifted_paths"]:
+            raise EvidenceError(
+                f"candidate-drift paths do not recompute for {key[0]} attempt "
+                f"{key[1]}: recorded {record['drifted_paths']}, recomputed "
+                f"{drifted}"
+            )
+        if refusals:
+            # There is deliberately no withdrawal verb: `candidate-drift.jsonl`
+            # is append-only, and a record that can be retracted is a record
+            # that proves nothing. So the refusal names the way out, which is a
+            # fresh evidence run whose review sees the current tree — not an
+            # edit to this ledger.
+            raise EvidenceError(
+                "an accepted candidate drift no longer classifies as disjoint for "
+                f"{key[0]} attempt {key[1]}:\n- "
+                + "\n- ".join(refusals)
+                + "\nA later capture or finding brought the drifted paths inside "
+                "the reviewed surface. The record is append-only and cannot be "
+                "withdrawn: re-run the review against the current candidate in a "
+                "fresh evidence run."
+            )
+        projected.append(
+            {
+                "operation": key[0],
+                "attempt": key[1],
+                "dispatch_candidate_id": record["dispatch_candidate_id"],
+                "return_candidate_id": record["return_candidate_id"],
+                "drifted_paths": record["drifted_paths"],
+                "cause": record["cause"],
+            }
+        )
+    return projected
+
+
+def command_accept_candidate_drift(arguments: argparse.Namespace) -> None:
+    """Record one dispatch's candidate drift as proven disjoint.
+
+    The natural repair for a batch refused on a moved candidate is
+    falsification: rewriting `resolved_in` to the ingesting candidate records
+    that a reviewer verified a tree it never saw, and hand-reconstructing the
+    reviewed tree has been tried and failed to reproduce the candidate
+    byte-exactly. This is the other sound recovery — accept the mismatch only
+    with a recorded, proven-disjoint classification — and the alternative to it
+    is re-running the review, never a looser rule.
+
+    Neither candidate nor the drifted path list is an operator input: both come
+    from the dispatch row and the stored manifests. And every check the reader
+    applies is applied here, because `candidate-drift.jsonl` is append-only and
+    a record accepted against a wrong dispatch would refuse every later
+    `validate` permanently, with hand-editing the ledger as the only way out.
+    """
+    run = validate_run_dir(arguments.run_dir)
+    if not arguments.cause.strip():
+        raise EvidenceError("a candidate-drift record requires its cause")
+    if arguments.attempt < 1:
+        raise EvidenceError("attempt must be a positive integer")
+    dispatches = [
+        item
+        for item in load_role_dispatches(arguments.run_dir)
+        if item.get("operation") == arguments.operation and item.get("attempt") == arguments.attempt
+    ]
+    if len(dispatches) != 1 or not dispatches[0].get("accepted"):
+        raise EvidenceError(
+            "no accepted role dispatch is recorded for "
+            f"{arguments.operation} attempt {arguments.attempt}; a drift record "
+            "describes movement under a dispatch this run actually made"
+        )
+    row = dispatches[0]
+    dispatch_candidate = row.get("dispatch_candidate_id")
+    if dispatch_candidate is None:
+        raise EvidenceError(
+            f"the dispatch for {arguments.operation} attempt {arguments.attempt} "
+            "records no dispatch-open candidate, so the tree the role saw is not "
+            "reconstructible; pass --dispatch-candidate to record-role-dispatch. "
+            "Re-run the review against the current candidate instead."
+        )
+    validate_candidate_id(dispatch_candidate, "recorded dispatch candidate")
+    return_candidate = validate_candidate_id(
+        row.get("return_candidate_id"), "recorded return candidate"
+    )
+    if dispatch_candidate == return_candidate:
+        raise EvidenceError(
+            f"{arguments.operation} attempt {arguments.attempt} did not move the "
+            "candidate, so there is no drift to classify"
+        )
+    if (arguments.operation, arguments.attempt) in load_candidate_drift(arguments.run_dir):
+        raise EvidenceError("duplicate candidate-drift record")
+    drifted, refusals = classify_candidate_drift(
+        arguments.run_dir,
+        Path(run["repository_root"]),
+        dispatch_candidate,
+        return_candidate,
+    )
+    if refusals:
+        raise EvidenceError(
+            f"the drift under {arguments.operation} attempt {arguments.attempt} "
+            "is not proven disjoint:\n- " + "\n- ".join(refusals)
+        )
+    record = {
+        "schema_version": SCHEMA_VERSION,
+        "recorded_at": now(),
+        "operation": arguments.operation,
+        "attempt": arguments.attempt,
+        "dispatch_candidate_id": dispatch_candidate,
+        "return_candidate_id": return_candidate,
+        "drifted_paths": drifted,
+        "cause": arguments.cause.strip(),
+    }
+    append_jsonl(arguments.run_dir / "candidate-drift.jsonl", record)
+    print(f"drift accepted {arguments.operation}#{arguments.attempt}: " + ", ".join(drifted))
+
+
 def authority_drift(run_dir: Path, root: Path) -> list[dict[str, str]]:
     manifest = load_json(run_dir / "authority.json")
     drift: list[dict[str, str]] = []
@@ -1027,7 +1822,7 @@ def command_capture_change(arguments: argparse.Namespace) -> None:
     reviewed = load_json(arguments.run_dir / "reviewed-candidate.json")
     validate_candidate_manifest(reviewed)
     current = tree_manifest(root)
-    record_lineage(arguments.run_dir, current["candidate_id"], "capture-change")
+    record_lineage(arguments.run_dir, current, "capture-change")
     drift = authority_drift(arguments.run_dir, root)
     metadata = {
         "risk_tags": arguments.risk_tag,
@@ -1110,7 +1905,7 @@ def command_mark_reviewed(arguments: argparse.Namespace) -> None:
     run = validate_run_dir(arguments.run_dir)
     root = Path(run["repository_root"])
     current = tree_manifest(root)
-    record_lineage(arguments.run_dir, current["candidate_id"], "mark-reviewed")
+    record_lineage(arguments.run_dir, current, "mark-reviewed")
     if arguments.expected_candidate:
         expected = validate_candidate_id(arguments.expected_candidate, "expected candidate")
         if current["candidate_id"] != expected:
@@ -1208,10 +2003,10 @@ def normalize_finding(value: Any, index: int) -> tuple[Any, list[tuple[str, str,
 
 def validate_finding(value: Any, index: int) -> dict[str, Any]:
     if not isinstance(value, dict):
-        raise EvidenceError(f"finding[{index}] must be an object")
+        raise FindingValidationError([("not-an-object", f"finding[{index}] must be an object")])
     raw_id = value.get("id")
     label = raw_id.strip() if isinstance(raw_id, str) and raw_id.strip() else f"finding[{index}]"
-    errors: list[str] = []
+    errors: list[tuple[str, str]] = []
 
     def text_field(field: str, *, optional: bool = False) -> str | None:
         raw = value.get(field)
@@ -1220,13 +2015,13 @@ def validate_finding(value: Any, index: int) -> dict[str, Any]:
         try:
             return require_text(raw, label, field)
         except EvidenceError as exc:
-            errors.append(str(exc))
+            errors.append(("text-missing", str(exc)))
             return None
 
     finding_id = text_field("id") or label
     if finding_id != label or isinstance(raw_id, str):
         if not FINDING_ID.fullmatch(finding_id):
-            errors.append(f"{label} field id is invalid: {finding_id}")
+            errors.append(("id-format", f"{label} field id is invalid: {finding_id}"))
     severity = text_field("severity")
     state = text_field("state")
     classification = text_field("classification")
@@ -1235,38 +2030,48 @@ def validate_finding(value: Any, index: int) -> dict[str, Any]:
     required_outcome = text_field("required_outcome")
     disposition = text_field("disposition", optional=True)
     if severity is not None and severity not in SEVERITIES:
-        errors.append(f"{label} field severity is invalid: {severity}")
+        errors.append(("severity-invalid", f"{label} field severity is invalid: {severity}"))
     if state is not None and state not in STATES:
-        errors.append(f"{label} field state is invalid: {state}")
+        errors.append(("state-invalid", f"{label} field state is invalid: {state}"))
     if classification is not None and classification not in CLASSIFICATIONS:
-        errors.append(f"{label} field classification is invalid: {classification}")
+        errors.append(
+            (
+                "classification-invalid",
+                f"{label} field classification is invalid: {classification}",
+            )
+        )
     affected_paths = value.get("affected_paths")
     if not isinstance(affected_paths, list):
-        errors.append(f"{label} field affected_paths must be an array")
+        errors.append(("affected-paths-invalid", f"{label} field affected_paths must be an array"))
         affected_paths = []
     elif affected_paths:
         try:
             validate_relative_paths(affected_paths, f"{label} field affected_paths")
         except EvidenceError as exc:
-            errors.append(str(exc))
+            errors.append(("affected-paths-invalid", str(exc)))
     introduced_in: str | None = None
     try:
         introduced_in = validate_candidate_id(
             value.get("introduced_in"), f"{label} field introduced_in"
         )
     except EvidenceError as exc:
-        errors.append(str(exc))
+        errors.append(("introduced-in-invalid", str(exc)))
     resolved_value = value.get("resolved_in")
     resolved_in: str | None = None
     if resolved_value is not None:
         try:
             resolved_in = validate_candidate_id(resolved_value, f"{label} field resolved_in")
         except EvidenceError as exc:
-            errors.append(str(exc))
+            errors.append(("resolved-in-invalid", str(exc)))
     if state in {"verified", "closed", "rejected-with-evidence", "superseded"} and not resolved_in:
-        errors.append(f"{label} field resolved_in is required for state {state}")
+        errors.append(
+            (
+                "resolved-in-required",
+                f"{label} field resolved_in is required for state {state}",
+            )
+        )
     if errors:
-        raise EvidenceError("\n".join(errors))
+        raise FindingValidationError(errors)
     assert (
         severity is not None
         and state is not None
@@ -1305,6 +2110,7 @@ def command_ingest_findings(arguments: argparse.Namespace) -> None:
         raise EvidenceError(
             f"candidate mismatch: expected {expected_candidate}, found {current['candidate_id']}"
         )
+    source_path = arguments.input if arguments.input else arguments.artifact
     incoming_document = (
         load_json(arguments.input) if arguments.input else read_role_artifact(arguments.artifact)
     )
@@ -1312,16 +2118,18 @@ def command_ingest_findings(arguments: argparse.Namespace) -> None:
         incoming_document.get("findings"), list
     ):
         raise EvidenceError("finding input must be an object with a findings array")
+    artifact_sha256 = source_digest(source_path)
+    reported = len(incoming_document["findings"])
     incoming: list[dict[str, Any]] = []
-    validation_errors: list[str] = []
+    validation_errors: list[tuple[str, str]] = []
     normalization_notices: list[tuple[str, str, str, str]] = []
     for index, raw_finding in enumerate(incoming_document["findings"]):
         normalized, notices = normalize_finding(raw_finding, index)
         normalization_notices.extend(notices)
         try:
             incoming.append(validate_finding(normalized, index))
-        except EvidenceError as exc:
-            validation_errors.extend(str(exc).splitlines())
+        except FindingValidationError as exc:
+            validation_errors.extend(exc.errors)
     for label, field, original, replacement in normalization_notices:
         print(
             f"kickoff-evidence: normalized {label} field {field}: {original} -> {replacement}",
@@ -1335,11 +2143,20 @@ def command_ingest_findings(arguments: argparse.Namespace) -> None:
         }
     )
     if duplicate_ids:
-        validation_errors.append("duplicate field id: " + ", ".join(duplicate_ids))
+        validation_errors.append(
+            ("duplicate-id", "duplicate field id: " + ", ".join(duplicate_ids))
+        )
     ledger = load_json(arguments.run_dir / "findings.json")
     existing = {item["id"]: item for item in ledger["findings"]}
+    prefix = f"{arguments.kind.upper()}-"
+    # Captured before any mutation: this is what makes the merge replayable
+    # after `findings.json` has been rewritten wholesale, and it is the base
+    # term `actionable_findings` counts over.
+    ledger_before = {
+        item["id"]: item["state"] for item in ledger["findings"] if item["id"].startswith(prefix)
+    }
     reopened = int(ledger.get("reopened_count", 0))
-    relationship_errors: list[str] = []
+    relationship_errors: list[tuple[str, str]] = []
     # A new finding's `introduced_in` may name any candidate this run recorded,
     # not only the current head. The tree's identity changes for reasons that
     # have nothing to do with the code under review — the status marker and the
@@ -1349,32 +2166,81 @@ def command_ingest_findings(arguments: argparse.Namespace) -> None:
     # run never observed is still refused.
     accepted_lineage = set(lineage_candidates(arguments.run_dir))
     accepted_lineage.add(expected_candidate)
+    # A `resolved_in` still names the current candidate, with exactly one
+    # recorded exception. When this pass's *own* dispatch carries an accepted,
+    # proven-disjoint drift record whose return candidate is the candidate being
+    # ingested, the candidate the reviewer was dispatched against is admissible
+    # too. Rewriting the stamp instead would record that a reviewer verified a
+    # tree it never saw. An ingest with `--no-review-span` names no dispatch and
+    # gets nothing, and a drift record for some other pass proves nothing here.
+    accepted_resolutions = {expected_candidate}
+    admitted_drift: dict[str, Any] | None = None
+    if arguments.review_span_id is not None:
+        drift_records = load_candidate_drift(arguments.run_dir)
+        for item in load_role_dispatches(arguments.run_dir):
+            if item.get("intelligence_span_id") != arguments.review_span_id or not item.get(
+                "accepted"
+            ):
+                continue
+            drift = drift_records.get((item["operation"], item["attempt"]))
+            if drift is None:
+                continue
+            if not drift_record_matches_dispatch(drift, item):
+                # The same check `validate` applies, applied where it is
+                # cheapest to fix. An orchestrator error, not a batch defect:
+                # nothing is wrong with the review pass's findings.
+                raise EvidenceError(
+                    "candidate-drift record does not describe the accepted "
+                    f"dispatch it names: {item['operation']} attempt "
+                    f"{item['attempt']}"
+                )
+            if drift["return_candidate_id"] == expected_candidate:
+                accepted_resolutions.add(drift["dispatch_candidate_id"])
+                admitted_drift = drift
     for finding in incoming:
-        expected_prefix = f"{arguments.kind.upper()}-"
-        if not finding["id"].startswith(expected_prefix):
+        if not finding["id"].startswith(prefix):
             relationship_errors.append(
-                f"{finding['id']} field id must use the {expected_prefix}FNNN namespace"
+                (
+                    "namespace-mismatch",
+                    f"{finding['id']} field id must use the {prefix}FNNN namespace",
+                )
             )
         prior = existing.get(finding["id"])
         if prior is None and finding["introduced_in"] not in accepted_lineage:
             relationship_errors.append(
-                f"{finding['id']} field introduced_in {finding['introduced_in'][:12]}… "
-                "is not a candidate this run recorded"
+                (
+                    "introduced-in-unrecorded",
+                    f"{finding['id']} field introduced_in "
+                    f"{finding['introduced_in'][:12]}… "
+                    "is not a candidate this run recorded",
+                )
             )
-        if finding["resolved_in"] is not None and finding["resolved_in"] != expected_candidate:
+        if (
+            finding["resolved_in"] is not None
+            and finding["resolved_in"] not in accepted_resolutions
+        ):
             relationship_errors.append(
-                f"{finding['id']} field resolved_in does not match the reviewed candidate"
+                (
+                    "resolved-in-not-current",
+                    f"{finding['id']} field resolved_in does not match the reviewed candidate",
+                )
             )
         if prior:
             for immutable in ("authority", "required_outcome", "introduced_in"):
                 if prior[immutable] != finding[immutable]:
                     relationship_errors.append(
-                        f"{finding['id']} changes immutable field {immutable}"
+                        (
+                            "immutable-changed",
+                            f"{finding['id']} changes immutable field {immutable}",
+                        )
                     )
             if finding["state"] not in ALLOWED_TRANSITIONS[prior["state"]]:
                 relationship_errors.append(
-                    f"{finding['id']} field state has invalid transition: "
-                    f"{prior['state']} -> {finding['state']}"
+                    (
+                        "transition-invalid",
+                        f"{finding['id']} field state has invalid transition: "
+                        f"{prior['state']} -> {finding['state']}",
+                    )
                 )
             if (
                 prior["state"] in {"closed", "verified", "rejected-with-evidence"}
@@ -1384,13 +2250,56 @@ def command_ingest_findings(arguments: argparse.Namespace) -> None:
         existing[finding["id"]] = finding
     all_errors = [*validation_errors, *relationship_errors]
     if all_errors:
-        raise EvidenceError("finding validation failed:\n- " + "\n- ".join(all_errors))
+        detail = "finding validation failed:\n- " + "\n- ".join(
+            message for _, message in all_errors
+        )
+        # Content refusals only, and only from here: everything above is an
+        # orchestrator error — a bad run directory, inconsistent flags, the
+        # wrong candidate, an unreadable artifact — not a defect in a review
+        # pass's own findings, and a journal that recorded those would be
+        # describing something other than a batch.
+        append_jsonl(
+            arguments.run_dir / "ingest-log.jsonl",
+            {
+                "schema_version": SCHEMA_VERSION,
+                "recorded_at": now(),
+                "kind": arguments.kind,
+                "candidate_id": expected_candidate,
+                "review_span_id": arguments.review_span_id,
+                "artifact_sha256": artifact_sha256,
+                "findings_reported": reported,
+                "ledger_before": ledger_before,
+                "outcome": "refused",
+                "refusal_codes": sorted({code for code, _ in all_errors}),
+                "refusal_detail": detail,
+                "actionable_findings": None,
+            },
+        )
+        raise EvidenceError(detail)
+    if admitted_drift is not None and any(
+        item["resolved_in"] == admitted_drift["dispatch_candidate_id"] for item in incoming
+    ):
+        print(
+            "kickoff-evidence: admitted resolved_in "
+            f"{admitted_drift['dispatch_candidate_id'][:12]}… under the accepted "
+            f"candidate drift for {admitted_drift['operation']}"
+            f"#{admitted_drift['attempt']} "
+            f"({', '.join(admitted_drift['drifted_paths'])})",
+            file=sys.stderr,
+        )
     updated = {
         "schema_version": SCHEMA_VERSION,
         "updated_at": now(),
         "reopened_count": reopened,
         "findings": [existing[key] for key in sorted(existing)],
     }
+    # The whole merged ledger, namespace-filtered — the policy's "that
+    # namespace's actionable findings remaining after reconciliation". Any
+    # replay of this number must reproduce this expression, base term included.
+    actionable = sum(
+        item["id"].startswith(prefix) and item["state"] in ACTIONABLE_STATES
+        for item in updated["findings"]
+    )
     # Convergence metrics live on the review pass's own intelligence span, and a
     # span is immutable once its trace is finalized. An omitted --review-span-id
     # is therefore unrepairable after the fact: `timing-summary` refuses for the
@@ -1431,7 +2340,7 @@ def command_ingest_findings(arguments: argparse.Namespace) -> None:
         }[arguments.kind]
         dispatches = [
             item
-            for item in load_jsonl(arguments.run_dir / "role-dispatch.jsonl")
+            for item in load_role_dispatches(arguments.run_dir)
             if item.get("intelligence_span_id") == arguments.review_span_id
         ]
         if (
@@ -1442,11 +2351,6 @@ def command_ingest_findings(arguments: argparse.Namespace) -> None:
             raise EvidenceError(
                 "review finding metrics require the matching accepted review dispatch"
             )
-        prefix = f"{arguments.kind.upper()}-"
-        actionable = sum(
-            item["id"].startswith(prefix) and item["state"] in ACTIONABLE_STATES
-            for item in updated["findings"]
-        )
         try:
             attach_review_metrics(
                 engine_root=Path(run["repository_root"]),
@@ -1458,6 +2362,25 @@ def command_ingest_findings(arguments: argparse.Namespace) -> None:
         except TelemetryError as exc:
             raise EvidenceError(f"cannot attach review convergence metrics: {exc}") from exc
     atomic_json(arguments.run_dir / "findings.json", updated)
+    # After the merge lands, never before: a journal that claimed a merge which
+    # never happened would be exactly the fiction this ledger exists to prevent.
+    append_jsonl(
+        arguments.run_dir / "ingest-log.jsonl",
+        {
+            "schema_version": SCHEMA_VERSION,
+            "recorded_at": now(),
+            "kind": arguments.kind,
+            "candidate_id": expected_candidate,
+            "review_span_id": arguments.review_span_id,
+            "artifact_sha256": artifact_sha256,
+            "findings_reported": reported,
+            "ledger_before": ledger_before,
+            "outcome": "accepted",
+            "refusal_codes": [],
+            "refusal_detail": None,
+            "actionable_findings": actionable,
+        },
+    )
     print(len(updated["findings"]))
 
 
@@ -1471,8 +2394,11 @@ def command_record_gate(arguments: argparse.Namespace) -> None:
             f"candidate mismatch: expected {expected}, found {current['candidate_id']}"
         )
     artifact_digest = None
-    if not arguments.command.strip():
-        raise EvidenceError("gate command must be nonempty")
+    argv = list(arguments.argv)
+    if argv and argv[0] == "--":
+        argv = argv[1:]
+    if not argv or any(not isinstance(item, str) or not item for item in argv):
+        raise EvidenceError("record-gate requires exact argv after --")
     if not arguments.selection_reason.strip():
         raise EvidenceError("gate selection reason must be nonempty")
     if arguments.warning_count < 0:
@@ -1488,8 +2414,8 @@ def command_record_gate(arguments: argparse.Namespace) -> None:
         "recorded_at": now(),
         "candidate_id": expected,
         "candidate_after_id": expected,
-        "argv": [arguments.command.strip()],
-        "command": arguments.command.strip(),
+        "argv": argv,
+        "command": shlex.join(argv),
         "operation": "gate.imported",
         "attempt": 1,
         "selection_reason": arguments.selection_reason.strip(),
@@ -1718,7 +2644,7 @@ def validate_role_spans(run_dir: Path, run: dict[str, Any]) -> list[dict[str, An
             # In the light evidence lane role registration is validated when
             # present, never required; the run metadata records the demotion.
             raise EvidenceError(f"missing required initial role attempt: {operation}")
-    dispatches = load_jsonl(run_dir / "role-dispatch.jsonl")
+    dispatches = load_role_dispatches(run_dir)
     dispatch_by_key: dict[tuple[str, int], dict[str, Any]] = {}
     for dispatch in dispatches:
         required_dispatch = {
@@ -1730,6 +2656,8 @@ def validate_role_spans(run_dir: Path, run: dict[str, Any]) -> list[dict[str, An
             "idle_telemetry",
             "intelligence_span_id",
             "wait_span_id",
+            "dispatch_candidate_id",
+            "return_candidate_id",
         }
         if (
             set(dispatch) != required_dispatch
@@ -1738,6 +2666,9 @@ def validate_role_spans(run_dir: Path, run: dict[str, Any]) -> list[dict[str, An
             or dispatch.get("idle_telemetry") not in {"available", "unavailable", "not-dispatched"}
         ):
             raise EvidenceError("invalid role-dispatch record")
+        validate_candidate_id(dispatch.get("return_candidate_id"), "dispatch return candidate")
+        if dispatch["dispatch_candidate_id"] is not None:
+            validate_candidate_id(dispatch["dispatch_candidate_id"], "dispatch-open candidate")
         key = (dispatch.get("operation"), dispatch.get("attempt"))
         if key in dispatch_by_key:
             raise EvidenceError("duplicate role-dispatch record")
@@ -1876,15 +2807,537 @@ def validate_orchestration_spans(
     return ordered
 
 
-def validate_review_metrics(bundle: dict[str, Any], run_dir: Path) -> None:
-    spans = {item["span_id"]: item for item in bundle["spans"]}
-    for dispatch in load_jsonl(run_dir / "role-dispatch.jsonl"):
-        if not dispatch.get("accepted") or dispatch.get("operation") not in {
-            "role.plan-review",
-            "role.code-review",
-        }:
+def load_ingest_journal(run_dir: Path) -> list[dict[str, Any]]:
+    """Every ingest this run attempted, accepted and refused alike.
+
+    Absent is the ordinary case for a run that has ingested nothing, which is
+    different from a journal that is unreadable. There is deliberately **no**
+    duplicate-key refusal here: a review pass whose batch was refused is
+    normally re-ingested, so repeated rows for one artifact are the expected
+    shape rather than a defect.
+    """
+    path = run_dir / "ingest-log.jsonl"
+    if not path.exists():
+        return []
+    rows = load_jsonl(path)
+    for entry in rows:
+        if (
+            set(entry) != INGEST_JOURNAL_FIELDS
+            or entry.get("schema_version") != SCHEMA_VERSION
+            or entry.get("kind") not in {"plan", "code"}
+            or entry.get("outcome") not in {"accepted", "refused"}
+            or not isinstance(entry.get("ledger_before"), dict)
+            or any(
+                not isinstance(key, str) or value not in STATES
+                for key, value in entry["ledger_before"].items()
+            )
+            or not isinstance(entry.get("refusal_codes"), list)
+            or any(not isinstance(code, str) or not code for code in entry["refusal_codes"])
+            or not isinstance(entry.get("findings_reported"), int)
+            or isinstance(entry["findings_reported"], bool)
+            or entry["findings_reported"] < 0
+        ):
+            raise EvidenceError("invalid ingest journal record")
+        validate_candidate_id(entry.get("candidate_id"), "ingest journal candidate")
+        validate_candidate_id(entry.get("artifact_sha256"), "ingest journal artifact hash")
+        if entry["review_span_id"] is not None:
+            validate_span_identifier(entry["review_span_id"], "ingest journal review span id")
+        if entry["outcome"] == "accepted":
+            if (
+                entry["refusal_codes"]
+                or entry["refusal_detail"] is not None
+                or not isinstance(entry["actionable_findings"], int)
+                or isinstance(entry["actionable_findings"], bool)
+                or entry["actionable_findings"] < 0
+            ):
+                raise EvidenceError("invalid accepted ingest journal record")
+        elif (
+            not entry["refusal_codes"]
+            or not isinstance(entry["refusal_detail"], str)
+            or not entry["refusal_detail"].strip()
+            or entry["actionable_findings"] is not None
+        ):
+            raise EvidenceError("invalid refused ingest journal record")
+    return rows
+
+
+def matching_refused_ingests(
+    journal: list[dict[str, Any]],
+    *,
+    kind: str,
+    artifact_sha256: str,
+    refusal_class: str,
+    review_span_id: str,
+) -> list[dict[str, Any]]:
+    """Refused rows for this artifact, span, and exactly this class's codes.
+
+    Extra codes refuse by construction: a batch that also carried a substance
+    defect was never a measurable review pass, whatever else was wrong with it.
+    The span binding is what stops one refused artifact backing a derivation for
+    some other pass — the ingest that was refused named the span it was for.
+    """
+    expected = sorted(DERIVED_REFUSAL_CLASSES[refusal_class])
+    return [
+        row
+        for row in journal
+        if row["outcome"] == "refused"
+        and row["kind"] == kind
+        and row["artifact_sha256"] == artifact_sha256
+        and row["review_span_id"] == review_span_id
+        and sorted(set(row["refusal_codes"])) == expected
+    ]
+
+
+def read_review_batch(
+    path: Path, *, label: str, id_map: dict[str, str] | None = None
+) -> tuple[Any, list[dict[str, Any]]]:
+    """Parse one review artifact into its verdict and validated findings."""
+    document = read_role_artifact(path)
+    if not isinstance(document, dict) or not isinstance(document.get("findings"), list):
+        raise EvidenceError(f"{label} must be an object with a findings array")
+    findings: list[dict[str, Any]] = []
+    errors: list[str] = []
+    for index, raw_finding in enumerate(document["findings"]):
+        item = raw_finding
+        if id_map and isinstance(item, dict) and isinstance(item.get("id"), str):
+            replacement = id_map.get(item["id"].strip())
+            if replacement is not None:
+                item = {**item, "id": replacement}
+        normalized, _ = normalize_finding(item, index)
+        try:
+            findings.append(validate_finding(normalized, index))
+        except FindingValidationError as exc:
+            errors.extend(message for _, message in exc.errors)
+    if errors:
+        raise EvidenceError(
+            f"{label} does not validate once the declared class is suppressed:\n- "
+            + "\n- ".join(errors)
+        )
+    identifiers = [item["id"] for item in findings]
+    if len(set(identifiers)) != len(identifiers):
+        raise EvidenceError(f"{label} carries duplicate finding ids")
+    return document.get("verdict"), findings
+
+
+def raw_finding_identifiers(path: Path, *, label: str) -> list[str]:
+    """The `id` each finding in an artifact carries, before any substitution."""
+    document = read_role_artifact(path)
+    if not isinstance(document, dict) or not isinstance(document.get("findings"), list):
+        raise EvidenceError(f"{label} must be an object with a findings array")
+    identifiers: list[str] = []
+    for index, raw_finding in enumerate(document["findings"]):
+        value = raw_finding.get("id") if isinstance(raw_finding, dict) else None
+        if not isinstance(value, str) or not value.strip():
+            raise EvidenceError(f"{label} finding[{index}] has no textual id to map")
+        identifiers.append(value.strip())
+    return identifiers
+
+
+def validate_id_bijection(
+    id_map: dict[str, str], *, raw_identifiers: list[str], prefix: str
+) -> None:
+    """A rename is admissible only as a total, injective, legal substitution.
+
+    Total over the ids that actually failed `FINDING_ID`, injective into ids
+    that pass it and belong to this namespace, and never onto an id the batch
+    already uses. Whether a target may legally land on an existing ledger entry
+    is settled downstream by `replay_refused_batch`, which applies
+    `ALLOWED_TRANSITIONS` against the recorded prior state.
+    """
+    malformed = sorted({value for value in raw_identifiers if not FINDING_ID.fullmatch(value)})
+    if sorted(id_map) != malformed:
+        raise EvidenceError(
+            "--id-map must name exactly the artifact's malformed finding ids: "
+            f"expected {', '.join(malformed) or 'none'}, got "
+            f"{', '.join(sorted(id_map)) or 'none'}"
+        )
+    targets = list(id_map.values())
+    if len(set(targets)) != len(targets):
+        raise EvidenceError("--id-map must be injective")
+    for target in sorted(targets):
+        if not FINDING_ID.fullmatch(target):
+            raise EvidenceError(f"--id-map target is not a valid finding id: {target}")
+        if not target.startswith(prefix):
+            raise EvidenceError(f"--id-map target {target} must use the {prefix}FNNN namespace")
+        if target in raw_identifiers:
+            raise EvidenceError(
+                f"--id-map target {target} already names another finding in the batch"
+            )
+
+
+def replay_refused_batch(
+    *,
+    findings: list[dict[str, Any]],
+    row: dict[str, Any],
+    refusal_class: str,
+    lineage: set[str],
+) -> int:
+    """Merge a refused batch into its recorded base with only its class suppressed.
+
+    Replays the four rules the recorded base can answer — namespace prefix,
+    `introduced_in` lineage, `resolved_in` currency, and `ALLOWED_TRANSITIONS`
+    — skipping only the declared class's own rule.
+
+    The immutable-field check is **not** replayed and cannot be: `ledger_before`
+    records `{id: state}`, not the prior `authority`/`required_outcome`/
+    `introduced_in` it would compare against. Nothing recorded is wrong for
+    want of it — for `immutable-field-restated` it is the suppressed rule, and
+    for the other two classes its absence from the recorded refusal codes
+    proves it never fired — but the replay is those four rules, not "every rule
+    the ingest would have applied".
+
+    The returned count reproduces the expression `ingest-findings` evaluates
+    over the whole merged ledger, so the pre-existing actionable entries that
+    survive the merge are counted exactly as they are on the accepted path.
+    """
+    prefix = f"{row['kind'].upper()}-"
+    states = dict(row["ledger_before"])
+    errors: list[str] = []
+    for item in findings:
+        identifier = item["id"]
+        if not identifier.startswith(prefix):
+            errors.append(f"{identifier} field id must use the {prefix}FNNN namespace")
+        prior = states.get(identifier)
+        if prior is None and item["introduced_in"] not in lineage:
+            errors.append(
+                f"{identifier} field introduced_in {item['introduced_in'][:12]}… "
+                "is not a candidate this run recorded"
+            )
+        if (
+            item["resolved_in"] is not None
+            and item["resolved_in"] != row["candidate_id"]
+            and refusal_class != "resolved-in-not-current-candidate"
+        ):
+            errors.append(f"{identifier} field resolved_in does not match the reviewed candidate")
+        if prior is not None and item["state"] not in ALLOWED_TRANSITIONS[prior]:
+            errors.append(
+                f"{identifier} field state has invalid transition: {prior} -> {item['state']}"
+            )
+        states[identifier] = item["state"]
+    if errors:
+        raise EvidenceError(
+            "the refused batch fails rules the declared class does not cover:\n- "
+            + "\n- ".join(errors)
+        )
+    return sum(
+        identifier.startswith(prefix) and state in ACTIONABLE_STATES
+        for identifier, state in states.items()
+    )
+
+
+def verify_batch_identity(
+    *,
+    refused: tuple[Any, list[dict[str, Any]]],
+    corroborating: tuple[Any, list[dict[str, Any]]],
+    refusal_class: str,
+) -> None:
+    """Two artifacts are the same review pass, differing only where declared."""
+    refused_verdict, refused_findings = refused
+    other_verdict, other_findings = corroborating
+    if refused_verdict != other_verdict:
+        raise EvidenceError("corroborating artifact records a different batch verdict")
+    if len(refused_findings) != len(other_findings):
+        raise EvidenceError(
+            "corroborating artifact reports a different number of findings: "
+            f"{len(other_findings)} against {len(refused_findings)}"
+        )
+    by_id = {item["id"]: item for item in other_findings}
+    if set(by_id) != {item["id"] for item in refused_findings}:
+        raise EvidenceError("corroborating artifact reports a different finding set")
+    permitted = DERIVED_CLASS_DELTAS[refusal_class]
+    compared = (
+        *DERIVED_IDENTITY_FIELDS,
+        *sorted(permitted - set(DERIVED_IDENTITY_FIELDS)),
+    )
+    observed_deltas: set[str] = set()
+    for item in refused_findings:
+        other = by_id[item["id"]]
+        for field in compared:
+            if item[field] == other[field]:
+                continue
+            if field not in permitted:
+                raise EvidenceError(
+                    f"corroborating artifact differs from the refused artifact in "
+                    f"{item['id']} field {field}, which the declared refusal class "
+                    "does not permit"
+                )
+            observed_deltas.add(field)
+    if permitted and not observed_deltas:
+        raise EvidenceError(
+            f"corroborating artifact shows no {refusal_class} delta, so the "
+            "declared refusal class describes nothing the two artifacts disagree on"
+        )
+
+
+def load_derived_metrics(run_dir: Path) -> dict[tuple[str, int], dict[str, Any]]:
+    """Derived convergence records, keyed by the review pass that owns each one."""
+    records: dict[tuple[str, int], dict[str, Any]] = {}
+    path = run_dir / "derived-metrics.jsonl"
+    if not path.exists():
+        return records
+    for entry in load_jsonl(path):
+        if (
+            set(entry) != DERIVED_METRIC_FIELDS
+            or entry.get("schema_version") != SCHEMA_VERSION
+            or entry.get("operation") not in REVIEW_OPERATIONS
+            or not isinstance(entry.get("attempt"), int)
+            or isinstance(entry["attempt"], bool)
+            or entry["attempt"] < 1
+            or entry.get("refusal_class") not in DERIVED_REFUSAL_CLASSES
+            or not isinstance(entry.get("id_map"), dict)
+            or any(
+                not isinstance(key, str) or not isinstance(value, str)
+                for key, value in entry["id_map"].items()
+            )
+            or not isinstance(entry.get("cause"), str)
+            or not entry["cause"].strip()
+            or not isinstance(entry.get("journal_recorded_at"), str)
+            or not entry["journal_recorded_at"].strip()
+            or any(
+                not isinstance(entry.get(key), int)
+                or isinstance(entry.get(key), bool)
+                or entry[key] < 0
+                for key in ("findings_reported", "actionable_findings")
+            )
+        ):
+            raise EvidenceError("invalid derived-metrics record")
+        validate_span_identifier(entry["span_id"], "derived-metrics span id")
+        validate_candidate_id(
+            entry["refused_artifact_sha256"], "derived-metrics refused artifact hash"
+        )
+        if entry["corroborating_artifact_sha256"] is not None:
+            validate_candidate_id(
+                entry["corroborating_artifact_sha256"],
+                "derived-metrics corroborating artifact hash",
+            )
+        if (entry["refusal_class"] == "finding-id-format") != bool(entry["id_map"]):
+            raise EvidenceError(
+                "derived-metrics id_map is required exactly for the finding-id-format refusal class"
+            )
+        key = (entry["operation"], entry["attempt"])
+        if key in records:
+            raise EvidenceError("duplicate derived-metrics record")
+        records[key] = entry
+    return records
+
+
+def derived_artifact_path(run_dir: Path, digest: str) -> Path:
+    return run_dir / "derived-artifacts" / f"{digest}.json"
+
+
+def stored_artifact(run_dir: Path, digest: str, *, label: str) -> Path:
+    path = derived_artifact_path(run_dir, digest)
+    if not path.is_file() or source_digest(path) != digest:
+        raise EvidenceError(f"derived-metrics {label} artifact is absent or altered: {digest}")
+    return path
+
+
+def pinned_refused_ingest(record: dict[str, Any], journal: list[dict[str, Any]]) -> dict[str, Any]:
+    """The one journal row this record was derived from, still resolving uniquely.
+
+    The pin is the row's `recorded_at` on top of the ordinary class match, so
+    the resolution stays deterministic even though the journal keeps growing:
+    repeated ingests of one artifact are the normal shape, and "the latest
+    match" would otherwise move under a record that has already been written.
+    """
+    candidates = [
+        row
+        for row in matching_refused_ingests(
+            journal,
+            kind=REVIEW_OPERATIONS[record["operation"]],
+            artifact_sha256=record["refused_artifact_sha256"],
+            refusal_class=record["refusal_class"],
+            review_span_id=record["span_id"],
+        )
+        if row["recorded_at"] == record["journal_recorded_at"]
+    ]
+    if len(candidates) != 1:
+        raise EvidenceError(
+            "derived-metrics record names no unique refused ingest: "
+            f"{record['operation']} attempt {record['attempt']}"
+        )
+    return candidates[0]
+
+
+def require_stored_artifacts(record: dict[str, Any], run_dir: Path) -> tuple[Path, Path | None]:
+    """Both recorded artifacts, still present in the run at their recorded digests."""
+    refused = stored_artifact(run_dir, record["refused_artifact_sha256"], label="refused")
+    corroborating = (
+        stored_artifact(run_dir, record["corroborating_artifact_sha256"], label="corroborating")
+        if record["corroborating_artifact_sha256"] is not None
+        else None
+    )
+    return refused, corroborating
+
+
+def recompute_derived_metrics(record: dict[str, Any], run_dir: Path) -> tuple[int, int]:
+    """Re-derive both integers from the artifacts and the journal on disk.
+
+    This is the whole reason the record is a measurement rather than an
+    assertion. It is the analogue of the telemetry declaration's "every excused
+    field must really be defective": without it the ledger would have no reader
+    that could ever contradict it.
+    """
+    kind = REVIEW_OPERATIONS[record["operation"]]
+    journal = load_ingest_journal(run_dir)
+    row = pinned_refused_ingest(record, journal)
+    # A cross-ledger consistency check, not a duplicate of the span test above:
+    # an accepted ingest that named this span must have measured it, so a
+    # journal claiming otherwise while the span reads unmeasured means one of
+    # the two ledgers has been altered. Supersession is the case where the two
+    # legitimately disagree, and it never reaches here.
+    if any(
+        entry["outcome"] == "accepted" and entry["review_span_id"] == record["span_id"]
+        for entry in journal
+    ):
+        raise EvidenceError("derived-metrics record names a span whose ingest did land")
+    refused_path, corroborating_path = require_stored_artifacts(record, run_dir)
+    prefix = f"{kind.upper()}-"
+    if record["refusal_class"] == "finding-id-format":
+        validate_id_bijection(
+            record["id_map"],
+            raw_identifiers=raw_finding_identifiers(refused_path, label="refused artifact"),
+            prefix=prefix,
+        )
+    refused_batch = read_review_batch(
+        refused_path,
+        label="refused artifact",
+        id_map=record["id_map"] or None,
+    )
+    lineage = set(lineage_candidates(run_dir)) | {row["candidate_id"]}
+    actionable = replay_refused_batch(
+        findings=refused_batch[1],
+        row=row,
+        refusal_class=record["refusal_class"],
+        lineage=lineage,
+    )
+    if corroborating_path is not None:
+        verify_batch_identity(
+            refused=refused_batch,
+            corroborating=read_review_batch(corroborating_path, label="corroborating artifact"),
+            refusal_class=record["refusal_class"],
+        )
+    return len(refused_batch[1]), actionable
+
+
+def span_metric_count(span: dict[str, Any]) -> int:
+    """How many of the two convergence integers this span actually carries."""
+    return sum(
+        isinstance(span.get(key), int) and not isinstance(span.get(key), bool)
+        for key in REVIEW_METRIC_KEYS
+    )
+
+
+def require_derivable_span(span: dict[str, Any], operation: str) -> None:
+    """The span a derivation may stand in for: right shape, successful, unmeasured."""
+    expected_role = {"role.plan-review": "reviewer", "role.code-review": "critic"}[operation]
+    if (
+        span.get("category") != "intelligence"
+        or span.get("operation") != operation
+        or span.get("role") != expected_role
+        or span.get("outcome") != "success"
+    ):
+        raise EvidenceError("derived review metrics require a successful review intelligence span")
+    if span_metric_count(span) > 0:
+        raise EvidenceError(
+            "the review span already carries convergence metrics; an ingest "
+            "measured this pass, so there is nothing to derive"
+        )
+
+
+def verify_derived_record(
+    record: dict[str, Any], span: dict[str, Any], run_dir: Path
+) -> dict[str, Any]:
+    """Admit one derived record only if the trace and the disk still agree."""
+    if record["span_id"] != span["span_id"]:
+        raise EvidenceError(
+            "derived-metrics record names a span the dispatch does not: "
+            f"declared {record['span_id']}, dispatched {span['span_id']}"
+        )
+    require_derivable_span(span, record["operation"])
+    reported, actionable = recompute_derived_metrics(record, run_dir)
+    if (reported, actionable) != (
+        record["findings_reported"],
+        record["actionable_findings"],
+    ):
+        raise EvidenceError(
+            "derived review metrics do not recompute: recorded "
+            f"{record['findings_reported']}/{record['actionable_findings']}, "
+            f"recomputed {reported}/{actionable}"
+        )
+    return {
+        "operation": record["operation"],
+        "attempt": record["attempt"],
+        "span_id": record["span_id"],
+        "refusal_class": record["refusal_class"],
+        "findings_reported": reported,
+        "actionable_findings": actionable,
+        "corroborated": record["corroborating_artifact_sha256"] is not None,
+        "superseded": False,
+        "cause": record["cause"],
+    }
+
+
+def supersede_derived_record(
+    record: dict[str, Any], span: dict[str, Any], run_dir: Path
+) -> dict[str, Any]:
+    """Report a derivation whose span later acquired the real measurement.
+
+    Deriving and then honestly re-ingesting the same pass is the *better*
+    outcome, not a defect — but the record would otherwise become an orphan and
+    refuse the run forever, so the operator who did the more honest thing would
+    be the one blocked.
+
+    The integers are not recomputed, and that is not a shortcut: supersession
+    entails both `span_metric_count(span) == 2` and an accepted journal row
+    naming the span, so the full path would raise twice over reasons that have
+    stopped mattering, reinstating the very deadlock this branch removes. The
+    span's own measurement is what is reported; the record's two integers are
+    read by nothing.
+
+    What is *not* inert is what this entry still publishes. `refusal_class`,
+    `cause`, and the corroboration flag go on being printed in both
+    `timing-summary` formats, and after supersession nothing else in the run
+    references `derived-artifacts/` — so it is exactly what a cleanup removes
+    first, silently, while the entry keeps appearing. So the floor is the middle
+    one: the pinned journal row must still resolve uniquely and both recorded
+    artifacts must still be on disk at their recorded digests. Whenever a
+    record's verification is relaxed, the question is what is still being
+    published on the strength of it.
+    """
+    if record["span_id"] != span["span_id"]:
+        raise EvidenceError(
+            "derived-metrics record names a span the dispatch does not: "
+            f"declared {record['span_id']}, dispatched {span['span_id']}"
+        )
+    pinned_refused_ingest(record, load_ingest_journal(run_dir))
+    require_stored_artifacts(record, run_dir)
+    return {
+        "operation": record["operation"],
+        "attempt": record["attempt"],
+        "span_id": record["span_id"],
+        "refusal_class": record["refusal_class"],
+        "findings_reported": span["findings_reported"],
+        "actionable_findings": span["actionable_findings"],
+        "corroborated": record["corroborating_artifact_sha256"] is not None,
+        "superseded": True,
+        "cause": record["cause"],
+    }
+
+
+def review_metric_status(
+    spans: list[dict[str, Any]], run_dir: Path
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Split accepted review passes into the unmeasured and the derived."""
+    by_id = {item["span_id"]: item for item in spans}
+    derived = load_derived_metrics(run_dir)
+    unmeasured: list[dict[str, Any]] = []
+    projected: list[dict[str, Any]] = []
+    consumed: set[tuple[str, int]] = set()
+    for dispatch in load_role_dispatches(run_dir):
+        if not dispatch.get("accepted") or dispatch.get("operation") not in REVIEW_OPERATIONS:
             continue
-        span = spans.get(dispatch.get("intelligence_span_id"))
+        span = by_id.get(dispatch.get("intelligence_span_id"))
         if span is None:
             raise EvidenceError("accepted review dispatch span is absent from trace")
         if span.get("outcome") != "success":
@@ -1895,14 +3348,265 @@ def validate_review_metrics(bundle: dict[str, Any], run_dir: Path) -> None:
             # rather than merely recorded. The failed attempt keeps its own
             # truthful outcome and exit code in the trace.
             continue
-        if not all(
-            isinstance(span.get(key), int) and not isinstance(span.get(key), bool)
-            for key in ("findings_reported", "actionable_findings")
+        key = (dispatch["operation"], dispatch["attempt"])
+        record = derived.get(key)
+        if span_metric_count(span) == len(REVIEW_METRIC_KEYS):
+            # Measured natively. A derivation for this pass is not an orphan —
+            # it is a record the operator superseded by re-ingesting honestly.
+            if record is not None:
+                projected.append(supersede_derived_record(record, span, run_dir))
+                consumed.add(key)
+            continue
+        if record is None:
+            unmeasured.append(
+                {
+                    "operation": dispatch["operation"],
+                    "attempt": dispatch["attempt"],
+                    "span_id": span["span_id"],
+                }
+            )
+            continue
+        projected.append(verify_derived_record(record, span, run_dir))
+        consumed.add(key)
+    orphans = sorted(set(derived) - consumed)
+    if orphans:
+        named = ", ".join(f"{operation}#{attempt}" for operation, attempt in orphans)
+        raise EvidenceError(
+            f"derived-metrics records name attempts that are not unmeasured review passes: {named}"
+        )
+    return (
+        sorted(unmeasured, key=lambda item: (item["operation"], item["attempt"])),
+        sorted(projected, key=lambda item: (item["operation"], item["attempt"])),
+    )
+
+
+def unmeasured_review_passes(run_dir: Path, run: dict[str, Any]) -> list[dict[str, Any]]:
+    """Successful review passes with no metrics anywhere, on an **open** trace.
+
+    Runtime spans, not the finalized bundle: the repair for an unmeasured pass
+    is a re-ingest, and a re-ingest is possible only while the trace is still
+    open. Checking this at `timing-summary` alone discovered the gap after
+    finalization, when nothing could be repaired.
+    """
+    try:
+        spans = closed_spans(
+            engine_root=Path(run["repository_root"]),
+            trace_id=run["telemetry_trace_id"],
+        )
+    except TelemetryError as exc:
+        raise EvidenceError(f"cannot read review convergence metrics: {exc}") from exc
+    return review_metric_status(spans, run_dir)[0]
+
+
+def validate_review_metrics(bundle: dict[str, Any], run_dir: Path) -> list[dict[str, Any]]:
+    unmeasured, derived = review_metric_status(bundle["spans"], run_dir)
+    if unmeasured:
+        item = unmeasured[0]
+        raise EvidenceError(
+            f"review pass lacks convergence metrics: {item['operation']} "
+            f"attempt {item['attempt']} (span {item['span_id']}). While the trace "
+            "is open, re-ingest that pass with --review-span-id; once it is "
+            "finalized the span is immutable and the only sanctioned route is "
+            "`attach-derived-metrics`, which requires a recorded ingest refusal."
+        )
+    return derived
+
+
+def parse_id_map(specifications: list[str]) -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for specification in specifications:
+        source, separator, target = specification.partition("=")
+        if not separator or not source.strip() or not target.strip():
+            raise EvidenceError(f"--id-map must be SOURCE=TARGET, got {specification!r}")
+        if source.strip() in mapping:
+            raise EvidenceError(f"--id-map names {source.strip()} twice")
+        mapping[source.strip()] = target.strip()
+    return mapping
+
+
+def command_attach_derived_metrics(arguments: argparse.Namespace) -> None:
+    """Derive one review pass's convergence integers from artifacts on disk.
+
+    For the residue the pre-finalization latch cannot reach: a review pass that
+    genuinely succeeded and whose batch was structurally refused, discovered
+    after the trace closed. The record is an **overlay**, never a span attach —
+    a span is immutable once finalized, and laundering a derived number onto a
+    span whose ingest never produced it would erase the distinction this record
+    exists to keep. Both integers are computed here and recomputed by
+    `validate`; neither is ever an operator input.
+
+    Every check the reader applies is applied here as well, because the
+    reader's refusal has no undo: `derived-metrics.jsonl` is append-only, so a
+    record written with a wrong `--attempt` would pass at write time and then
+    refuse every later `validate` and `timing-summary` permanently, with
+    hand-editing an append-only ledger as the only way out.
+    """
+    run = validate_run_dir(arguments.run_dir)
+    if run.get("evidence_lane") == "light":
+        raise EvidenceError(
+            "derived review metrics belong to the full evidence lane; light-lane "
+            "reviews record their omission in review-metrics-omitted.jsonl"
+        )
+    validate_span_identifier(arguments.span_id, "span id")
+    if not arguments.cause.strip():
+        raise EvidenceError("a derived-metrics record requires its cause")
+    if arguments.attempt < 1:
+        raise EvidenceError("attempt must be a positive integer")
+    id_map = parse_id_map(arguments.id_map)
+    if arguments.refusal_class == "finding-id-format" and not id_map:
+        raise EvidenceError(
+            "--id-map is required for refusal class finding-id-format: the "
+            "derivation has to state which valid id each malformed one stands for"
+        )
+    if arguments.refusal_class != "finding-id-format" and id_map:
+        raise EvidenceError("--id-map applies only to refusal class finding-id-format")
+    kind = REVIEW_OPERATIONS[arguments.operation]
+    dispatches = [
+        item
+        for item in load_role_dispatches(arguments.run_dir)
+        if item.get("operation") == arguments.operation and item.get("attempt") == arguments.attempt
+    ]
+    if len(dispatches) != 1 or not dispatches[0].get("accepted"):
+        raise EvidenceError(
+            "no accepted review dispatch is recorded for "
+            f"{arguments.operation} attempt {arguments.attempt}; a derivation "
+            "stands in for a pass this run actually dispatched"
+        )
+    if dispatches[0].get("intelligence_span_id") != arguments.span_id:
+        raise EvidenceError(
+            f"the dispatch for {arguments.operation} attempt {arguments.attempt} "
+            f"names intelligence span {dispatches[0].get('intelligence_span_id')}, "
+            f"not the declared {arguments.span_id}"
+        )
+    try:
+        dispatched_span = closed_span(
+            engine_root=Path(run["repository_root"]),
+            trace_id=run["telemetry_trace_id"],
+            span_id=arguments.span_id,
+        )
+    except TelemetryError as exc:
+        raise EvidenceError(f"review span is unreadable: {exc}") from exc
+    require_derivable_span(dispatched_span, arguments.operation)
+    for label, path in (
+        ("refused", arguments.refused_artifact),
+        ("corroborating", arguments.corroborating_artifact),
+    ):
+        if path is not None and not path.is_file():
+            raise EvidenceError(f"{label} artifact does not exist: {path}")
+    refused_digest = source_digest(arguments.refused_artifact)
+    corroborating_digest = (
+        source_digest(arguments.corroborating_artifact)
+        if arguments.corroborating_artifact is not None
+        else None
+    )
+    if corroborating_digest == refused_digest:
+        raise EvidenceError(
+            "a corroborating artifact must be a different artifact from the refused one"
+        )
+    journal = load_ingest_journal(arguments.run_dir)
+    rows = matching_refused_ingests(
+        journal,
+        kind=kind,
+        artifact_sha256=refused_digest,
+        refusal_class=arguments.refusal_class,
+        review_span_id=arguments.span_id,
+    )
+    if not rows:
+        attempted = [
+            entry
+            for entry in journal
+            if entry["outcome"] == "refused"
+            and entry["kind"] == kind
+            and entry["artifact_sha256"] == refused_digest
+        ]
+        if not attempted:
+            raise EvidenceError(
+                "no refused ingest of this artifact is recorded: a derivation "
+                "stands on an ingest that was attempted and structurally refused, "
+                "not on one that was never run"
+            )
+        for_span = [entry for entry in attempted if entry["review_span_id"] == arguments.span_id]
+        if not for_span:
+            raise EvidenceError(
+                "the recorded refusal of this artifact names a different review "
+                "span, so it is evidence about some other pass"
+            )
+        observed = sorted({code for entry in for_span for code in entry["refusal_codes"]})
+        raise EvidenceError(
+            "the recorded refusal does not match the declared class "
+            f"{arguments.refusal_class}: expected exactly "
+            f"{', '.join(DERIVED_REFUSAL_CLASSES[arguments.refusal_class])}, "
+            f"observed {', '.join(observed)}. A batch that also carried a "
+            "substance defect was never a measurable review pass."
+        )
+    # Repeated attempts are the normal case, so the journal has no duplicate-key
+    # refusal; the most recent attempt is the one whose recorded base is closest
+    # to the ledger the pass actually met.
+    row = rows[-1]
+    if any(
+        entry["outcome"] == "accepted" and entry["review_span_id"] == arguments.span_id
+        for entry in journal
+    ):
+        raise EvidenceError(
+            "an accepted ingest already attached metrics to this span; there is nothing to derive"
+        )
+    derived = load_derived_metrics(arguments.run_dir)
+    if (arguments.operation, arguments.attempt) in derived:
+        raise EvidenceError("duplicate derived-metrics record")
+    if corroborating_digest is not None:
+        if any(
+            record["corroborating_artifact_sha256"] == corroborating_digest
+            for record in derived.values()
         ):
             raise EvidenceError(
-                f"review pass lacks convergence metrics: {dispatch['operation']} "
-                f"attempt {dispatch['attempt']}"
+                "this corroborating artifact already supports another derivation: "
+                "one measured pass corroborates one derived pass, never a fan-out"
             )
+        if not any(
+            entry["outcome"] == "accepted"
+            and entry["artifact_sha256"] == corroborating_digest
+            and entry["review_span_id"] is not None
+            for entry in journal
+        ):
+            raise EvidenceError(
+                "a corroborating artifact must itself have been ingested with "
+                "convergence metrics attached to its own review span; a source "
+                "that was only ever derived cannot corroborate anything"
+            )
+    store = arguments.run_dir / "derived-artifacts"
+    store.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(
+        arguments.refused_artifact,
+        derived_artifact_path(arguments.run_dir, refused_digest),
+    )
+    if corroborating_digest is not None:
+        shutil.copy2(
+            arguments.corroborating_artifact,
+            derived_artifact_path(arguments.run_dir, corroborating_digest),
+        )
+    record = {
+        "schema_version": SCHEMA_VERSION,
+        "recorded_at": now(),
+        "operation": arguments.operation,
+        "attempt": arguments.attempt,
+        "span_id": arguments.span_id,
+        "refusal_class": arguments.refusal_class,
+        "refused_artifact_sha256": refused_digest,
+        "corroborating_artifact_sha256": corroborating_digest,
+        "id_map": id_map,
+        "findings_reported": 0,
+        "actionable_findings": 0,
+        "journal_recorded_at": row["recorded_at"],
+        "cause": arguments.cause.strip(),
+    }
+    reported, actionable = recompute_derived_metrics(record, arguments.run_dir)
+    record["findings_reported"] = reported
+    record["actionable_findings"] = actionable
+    append_jsonl(arguments.run_dir / "derived-metrics.jsonl", record)
+    print(
+        f"derived {arguments.operation}#{arguments.attempt}: "
+        f"findings_reported={reported}, actionable_findings={actionable}"
+    )
 
 
 def validate_preclose_telemetry(run: dict[str, Any], run_dir: Path, root: Path) -> None:
@@ -1946,10 +3650,19 @@ def validate_preclose_telemetry(run: dict[str, Any], run_dir: Path, root: Path) 
     for previous, current in zip(ordered, ordered[1:]):
         if current["start_offset_ns"] < previous["end_offset_ns"]:
             raise EvidenceError("orchestration stage spans must not overlap")
-    validate_review_metrics({"spans": spans}, run_dir)
+    # Light-lane review metrics ride the omission ledger instead of the span
+    # (`review-metrics-omitted.jsonl`); the join requirement is full-lane only.
+    if run.get("evidence_lane") != "light":
+        validate_review_metrics({"spans": spans}, run_dir)
 
 
-def validate_gate_record(gate: dict[str, Any], run: dict[str, Any], root: Path) -> None:
+def validate_gate_record(
+    gate: dict[str, Any],
+    run: dict[str, Any],
+    root: Path,
+    *,
+    label: str = "gate record",
+) -> None:
     required = {
         "schema_version",
         "recorded_at",
@@ -1971,12 +3684,21 @@ def validate_gate_record(gate: dict[str, Any], run: dict[str, Any], root: Path) 
         "telemetry_complete",
     }
     if set(gate) != required or gate.get("schema_version") != SCHEMA_VERSION:
-        raise EvidenceError("invalid gate record schema")
+        raise EvidenceError(f"invalid {label} schema")
     validate_candidate_id(gate.get("candidate_id"), "gate candidate")
     validate_candidate_id(gate.get("candidate_after_id"), "gate candidate after")
     argv = validate_string_list(gate.get("argv"), "gate argv")
     if gate.get("command") != shlex.join(argv):
-        raise EvidenceError("gate command is not canonical argv display")
+        legacy_detail = (
+            " This is the legacy record-gate encoding that stored a whole "
+            "multi-word command as one argv element."
+            if len(argv) == 1 and argv[0] == gate.get("command") and " " in argv[0]
+            else ""
+        )
+        raise EvidenceError(
+            f"{label} has non-canonical argv: command={gate.get('command')!r}, "
+            f"argv={argv!r}, canonical={shlex.join(argv)!r}.{legacy_detail}"
+        )
     if not isinstance(gate.get("attempt"), int) or gate["attempt"] < 1:
         raise EvidenceError("invalid gate attempt")
     if gate["telemetry_trace_id"] != run["telemetry_trace_id"]:
@@ -2100,15 +3822,29 @@ def command_timing_summary(arguments: argparse.Namespace) -> None:
         raise EvidenceError(f"trace is not durably finalized: {exc}") from exc
     degraded = validate_role_spans(arguments.run_dir, run)
     validate_orchestration_spans(bundle, run)
-    validate_review_metrics(bundle, arguments.run_dir)
+    derived_metrics: list[dict[str, Any]] = []
+    if run.get("evidence_lane") != "light":
+        derived_metrics = validate_review_metrics(bundle, arguments.run_dir)
     gates = load_jsonl(arguments.run_dir / "gates.jsonl")
-    for gate in gates:
-        validate_gate_record(gate, run, Path(run["repository_root"]))
+    for line_number, gate in enumerate(gates, 1):
+        validate_gate_record(
+            gate,
+            run,
+            Path(run["repository_root"]),
+            label=f"gates.jsonl line {line_number}",
+        )
     validate_gate_span_join(gates, run, Path(run["repository_root"]))
     projection = timing_projection(bundle)
     # Carried in the projection rather than only printed: a consumer that reads
     # the JSON must be able to see that an attempt's measurement is partial.
     projection["telemetry_incomplete"] = degraded
+    # Same reason as telemetry_incomplete: a consumer reading the JSON must be
+    # able to see that a pass's integers were recomputed rather than measured.
+    projection["derived_review_metrics"] = derived_metrics
+    # And that a review pass was admitted against a tree the ingest did not
+    # hold. A run that accepted drift says so where anyone reading its close
+    # will see it.
+    projection["candidate_drift"] = validate_candidate_drift(arguments.run_dir, run)
     if arguments.format == "json":
         print(json.dumps(projection, sort_keys=True, separators=(",", ":")))
         return
@@ -2158,6 +3894,66 @@ def command_timing_summary(arguments: argparse.Namespace) -> None:
             "and durations are exact, and only the named wait-span metadata is "
             "absent. The defect is recorded rather than repaired because a "
             "closed span is immutable."
+        )
+    if derived_metrics:
+        print()
+        print("#### Derived review convergence metrics")
+        print()
+        for item in derived_metrics:
+            corroboration = (
+                "corroborated by a natively measured re-ingest"
+                if item["corroborated"]
+                else "uncorroborated"
+            )
+            standing = (
+                "superseded by a later ingest that measured the span natively"
+                if item["superseded"]
+                else corroboration
+            )
+            print(
+                f"- `{item['operation']}` attempt {item['attempt']} — review span "
+                f"`{item['span_id']}`, refusal class `{item['refusal_class']}`, "
+                f"{standing}: findings_reported {item['findings_reported']}, "
+                f"actionable_findings {item['actionable_findings']}. "
+                f"{item['cause']}"
+            )
+        print()
+        print(
+            "These integers were recomputed from the refused artifact and the "
+            "ingest journal's recorded pre-merge ledger, not produced by an "
+            "ingest. They are an overlay on a span whose ingest was structurally "
+            "refused; the span itself carries no metrics, and validation "
+            "re-derives every value above rather than trusting the record."
+        )
+        if any(item["superseded"] for item in derived_metrics):
+            print()
+            print(
+                "An entry marked superseded is the exception: its pass was later "
+                "re-ingested honestly, so the integers shown are the span's own "
+                "measurement and the derivation is retained only for the trail."
+            )
+    if projection["candidate_drift"]:
+        print()
+        print("#### Accepted candidate drift")
+        print()
+        for item in projection["candidate_drift"]:
+            print(
+                f"- `{item['operation']}` attempt {item['attempt']} — the tree "
+                f"moved from `{item['dispatch_candidate_id'][:12]}…` to "
+                f"`{item['return_candidate_id'][:12]}…` under the dispatch: "
+                + ", ".join(f"`{path}`" for path in item["drifted_paths"])
+                + f". {item['cause']}"
+            )
+        print()
+        print(
+            "Each drift above was proven disjoint from the review it ran under: "
+            "every path lies in the inert partition declared in "
+            "policies/orchestration-evidence.md, none appears in the reviewed "
+            "change surface or any finding's affected paths, and none is a "
+            "declared authority. Validation re-derives the path set from the "
+            "stored candidate manifests and re-runs all three checks rather than "
+            "trusting the record. The relaxation is `resolved_in` only; the "
+            "candidate-bound final gate is untouched."
         )
 
 
@@ -2354,6 +4150,31 @@ def command_validate(arguments: argparse.Namespace) -> None:
         open_required=arguments.require_final,
     )
     validate_role_spans(arguments.run_dir, run)
+    # Unconditional, not `--require-final`. Convergence metrics are repairable
+    # only while the trace is open, and checking them at `timing-summary` alone
+    # let a run pass validation all night with unmeasured passes and discover
+    # the gap after finalization, when the only "repair" left was re-ingesting
+    # earlier artifacts and driving `verified -> open`.
+    if run.get("evidence_lane") != "light":
+        unmeasured = unmeasured_review_passes(arguments.run_dir, run)
+        if unmeasured:
+            named = ", ".join(
+                f"{item['operation']}#{item['attempt']} (span {item['span_id']})"
+                for item in unmeasured
+            )
+            raise EvidenceError(
+                "review passes lack convergence metrics: "
+                + named
+                + ". Re-ingest each pass's findings with --review-span-id now, "
+                "while this trace is still open. A span is immutable once the "
+                "trace is finalized, after which the only sanctioned route is "
+                "`attach-derived-metrics`, and that requires a recorded ingest "
+                "refusal."
+            )
+    # Lane-independent, and unconditional for the same reason as the latch
+    # above: a drift classification that has stopped holding must stop being
+    # published while the run can still re-review, not at close.
+    validate_candidate_drift(arguments.run_dir, run)
     change_path = arguments.run_dir / "change.json"
     if change_path.exists():
         change = load_json(change_path)
@@ -2419,7 +4240,7 @@ def command_validate(arguments: argparse.Namespace) -> None:
             records.append(record)
         ledgers[ledger_name] = records
     for line_number, gate in enumerate(ledgers["gates.jsonl"], 1):
-        validate_gate_record(gate, run, root)
+        validate_gate_record(gate, run, root, label=f"gates.jsonl line {line_number}")
         artifact_hash = gate.get("artifact_sha256")
         if artifact_hash is not None:
             validate_candidate_id(artifact_hash, f"artifact hash in gates.jsonl line {line_number}")
@@ -2547,6 +4368,39 @@ def build_parser() -> argparse.ArgumentParser:
     incomplete.add_argument("--cause", required=True)
     incomplete.set_defaults(handler=command_record_telemetry_incomplete)
 
+    derived = subparsers.add_parser(
+        "attach-derived-metrics",
+        description=(
+            "Record convergence metrics for a review pass that succeeded and "
+            "whose finding batch was then structurally refused. The record is "
+            "an overlay in derived-metrics.jsonl, never a span attach: a "
+            "finalized span is immutable, and a derived number must stay "
+            "visibly derived. Both integers are computed from the refused "
+            "artifact and the ingest journal's recorded pre-merge ledger, and "
+            "`validate` recomputes and compares them — they are never operator "
+            "inputs."
+        ),
+    )
+    add_run_dir(derived)
+    derived.add_argument("--operation", choices=sorted(REVIEW_OPERATIONS), required=True)
+    derived.add_argument("--attempt", type=int, required=True)
+    derived.add_argument("--span-id", required=True)
+    derived.add_argument("--refusal-class", choices=sorted(DERIVED_REFUSAL_CLASSES), required=True)
+    derived.add_argument("--refused-artifact", type=Path, required=True)
+    derived.add_argument("--corroborating-artifact", type=Path)
+    derived.add_argument(
+        "--id-map",
+        action="append",
+        default=[],
+        metavar="SOURCE=TARGET",
+        help=(
+            "required exactly for --refusal-class finding-id-format: the valid "
+            "finding id each malformed one stands for"
+        ),
+    )
+    derived.add_argument("--cause", required=True)
+    derived.set_defaults(handler=command_attach_derived_metrics)
+
     repin = subparsers.add_parser(
         "repin-tools",
         description=(
@@ -2560,7 +4414,7 @@ def build_parser() -> argparse.ArgumentParser:
     dispatch = subparsers.add_parser("record-role-dispatch")
     add_run_dir(dispatch)
     dispatch.add_argument("--registration", type=Path, required=True)
-    dispatch.add_argument("--state", choices=("accepted", "rejected"), required=True)
+    dispatch.add_argument("--state", choices=("opened", "accepted", "rejected"), required=True)
     dispatch.add_argument(
         "--idle-telemetry",
         choices=("available", "unavailable", "not-dispatched"),
@@ -2568,7 +4422,42 @@ def build_parser() -> argparse.ArgumentParser:
     )
     dispatch.add_argument("--intelligence-span-id")
     dispatch.add_argument("--wait-span-id")
+    dispatch.add_argument(
+        "--no-open-row",
+        metavar="REASON",
+        help=(
+            "record a terminal dispatch without a preceding opened row only "
+            "for a legitimate exception; the omission and reason are appended "
+            "to dispatch-open-omitted.jsonl"
+        ),
+    )
+    dispatch.add_argument(
+        "--dispatch-candidate",
+        help=(
+            "the candidate the role was actually dispatched against, as printed "
+            "by `current-candidate` immediately before the dispatch. Recording "
+            "it is what makes a candidate that moves mid-dispatch detectable at "
+            "the seam, and it is the precondition for `accept-candidate-drift`."
+        ),
+    )
     dispatch.set_defaults(handler=command_record_role_dispatch)
+
+    drift = subparsers.add_parser(
+        "accept-candidate-drift",
+        description=(
+            "Record one dispatch's candidate drift as proven disjoint from the "
+            "review it ran under. Requires the dispatch to have recorded both "
+            "candidates; classifies the paths that moved against the partition "
+            "declared in policies/orchestration-evidence.md, the reviewed "
+            "surface, and the declared authorities, all three independently and "
+            "all fail-closed. It relaxes `resolved_in` and nothing else."
+        ),
+    )
+    add_run_dir(drift)
+    drift.add_argument("--operation", choices=sorted(ROLE_OPERATIONS), required=True)
+    drift.add_argument("--attempt", type=int, required=True)
+    drift.add_argument("--cause", required=True)
+    drift.set_defaults(handler=command_accept_candidate_drift)
 
     capture = subparsers.add_parser("capture-change")
     add_run_dir(capture)
@@ -2648,12 +4537,12 @@ def build_parser() -> argparse.ArgumentParser:
     gate = subparsers.add_parser("record-gate")
     add_run_dir(gate)
     gate.add_argument("--candidate", required=True)
-    gate.add_argument("--command", required=True)
     gate.add_argument("--selection-reason", required=True)
     gate.add_argument("--exit-code", type=int, required=True)
     gate.add_argument("--warning-count", type=int, required=True)
     gate.add_argument("--artifact", type=Path)
     gate.add_argument("--final", action="store_true")
+    gate.add_argument("argv", nargs=argparse.REMAINDER)
     gate.set_defaults(handler=command_record_gate)
 
     run_gate = subparsers.add_parser("run-gate")

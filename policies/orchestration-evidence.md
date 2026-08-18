@@ -36,7 +36,8 @@ lane-independent, and the final candidate-bound gate under
 `./bin/python bin/kickoff-tree-id` is the sole candidate-identity implementation. It hashes
 tracked content regardless of staging, tracked deletions, normalized modes,
 symlink targets, and nonignored untracked files in bytewise path order.
-Ignored runtime state, standalone book checkouts, `.gates/`, and nested engine repositories do not enter the engine candidate. A clean submodule
+Ignored runtime state, `.gates/`, and nested repositories do not enter the
+candidate. A clean submodule
 contributes its checked-out commit; a dirty submodule fails closed. Staging
 alone does not change identity.
 
@@ -46,8 +47,13 @@ warning or an assumed continuation.
 
 **The candidate is recomputed, never cached.** A run's tree identity changes for
 reasons that have nothing to do with the code under review: `plan/INDEX.md` and
-the top-level `LOG.md` are tracked files, so the marker flip and the START block
-both move it before any role is dispatched. `kickoff-evidence current-candidate`
+the top-level `LOG*.md` logs are tracked files, so the marker flip and the START
+block both move it before any role is dispatched. The phase-close harvest and
+the user-action lifecycle move it the same way and for the same kind of reason,
+through `lessons/`, `lessons-archived/`, `user-actions/`, and
+`user-actions-archived/`. Those six surfaces are the orchestrator's own
+bookkeeping candidate-movers, and they are the whole of it.
+`kickoff-evidence current-candidate`
 recomputes it and records it in the run's **lineage**, and that recomputed id is
 what roles receive. The lineage is the run's own history — seeded at `init` and
 extended wherever the tool observes a candidate — not a list anyone maintains.
@@ -58,7 +64,9 @@ truth; rejecting it discards correct work over the orchestrator's bookkeeping,
 which is exactly what happened to a seven-finding plan review. The set stays
 closed: an id the run never observed is still refused, because a finding bound
 to a tree nobody saw is bound to nothing. A `resolved_in` still requires the
-current candidate — resolution is a claim about the tree as it stands now.
+current candidate — resolution is a claim about the tree as it stands now — with
+one recorded exception, under *Candidate drift under an in-flight dispatch*
+below.
 
 ## Evidence records
 
@@ -104,8 +112,10 @@ is classified `introduced-by-revision`, `newly-exposed-by-resolution`, or
 Continue a loop only while at least one blocking finding advances and no
 closed finding reopens at equal or greater severity. Escalate on recurrence,
 oscillation, authority disagreement, or two consecutive rounds that reduce
-neither open severity nor uncertainty. The five-cycle cap remains a hard
-runaway backstop.
+neither open severity nor uncertainty. The ten-cycle cap remains a hard
+runaway backstop; below it, continuation is the supervising authority's
+judgment call
+([`four-canonical-agents.md § Runaway backstop`](four-canonical-agents.md)).
 
 ## Revision packets and rebasing
 
@@ -139,6 +149,25 @@ Use three levels:
 3. the complete phase-prescribed sequence and `./bin/check all` once after
    code-critic approval, against the unchanged approved candidate.
 
+**Rehearse before an expensive or irreversible acceptance step.** When a phase's
+acceptance includes a long or externally-irreversible run — a live data
+migration, a deploy, a bulk external operation — the complete gate and the
+affected consumer probes run *first*, as recorded **non-final** rows, before
+that run begins:
+
+1. `./bin/check all` green, so cheap failures surface in minutes rather than
+   after hours of irreversible work;
+2. every identity the change touched resolved through its **production
+   consumer**, not merely inspected in place — a data repair that satisfies
+   file-and-ledger inspection can still fail the first thing that consumes it,
+   and neither a coder forbidden from the live run nor a read-only critic can
+   see that.
+
+The final-gate contract is unchanged: `./bin/check all` still runs once and
+last against the unchanged approved candidate, and the rehearsal rows are
+explicitly non-final. Only the discovery of cheap failures moves earlier. Both
+halves were paid for the hard way in a derived project's production phase.
+
 Record every executed gate and its selection reason. Focused selection may be
 agent-judged or supplied by a project-specific dependency tool, but uncertain
 impact fails closed to broader verification. A relevant candidate change
@@ -171,10 +200,11 @@ validation still demands exactly one closed `intelligence` span for it. A
 rejected dispatch opens that span and closes it **error 127 at rejection time**,
 records `--idle-telemetry not-dispatched`, and creates **no** wait span.
 `record-role-dispatch` refuses a dispatch that names no intelligence span, and
-that refusal is deliberate: the dispatch record is immutable, so a span-less row
-makes the whole run unvalidatable and cannot be repaired afterwards — creating
-the span late only moves the error to "dispatch and intelligence span ids do not
-agree". Correctness is required at write time, not forgiven at read time.
+that refusal is deliberate: terminal amendments are append-only, so a
+span-less terminal row makes the whole run unvalidatable and cannot be repaired
+afterwards — creating the span late only moves the error to "dispatch and
+intelligence span ids do not agree". Correctness is required at write time, not
+forgiven at read time.
 
 ## Native span recipes and declared telemetry gaps
 
@@ -213,6 +243,295 @@ exact.
 manifest digests. It exists for the case the snapshot cannot serve — a repair
 the active run itself needs — and is deliberately explicit rather than silent.
 
+## An unmeasured review pass is caught while it can still be repaired
+
+`validate` refuses, unconditionally in the full evidence lane and not only
+under `--require-final`, whenever an accepted review dispatch closed
+successfully and its intelligence span carries no convergence integers. It
+names each `operation#attempt` with its span id.
+
+The check has to run there because the repair only exists there. Re-ingesting
+the pass's findings with `--review-span-id` attaches the metrics to a live
+span; once the trace finalizes the span is immutable and that route is gone.
+Checking only at `timing-summary` meant a run passed validation all night with
+unmeasured passes and discovered the gap after finalization, when the only
+remaining "repair" would re-ingest earlier artifacts, drive `verified → open`,
+and reopen resolved findings to satisfy a validator. The check runs on the
+run's **runtime** spans, not a finalized bundle, precisely so it works on an
+open trace.
+
+Four of the five incidents recorded upstream were not uningestable batches at
+all: the ingest was chained into a command block ending in a backgrounded
+dispatch, so its refusal was never read. The batches were repairable at the
+time and nothing looked. This latch is what looks.
+
+## Derived convergence metrics for a refused batch
+
+A review pass that genuinely succeeded and whose batch was then **structurally
+refused** closes with a successful span and no metrics, and the latch above
+cannot help once the trace is closed. `attach-derived-metrics` is the
+sanctioned recovery. It is an **overlay** — the record lives in
+`derived-metrics.jsonl` and `validate` reads it when the span has none — never
+a span attach. Two reasons: a finalized span cannot be written at all, which is
+exactly where the gap bites; and a derived number written onto a span whose
+ingest never produced it would be indistinguishable from a measured one.
+
+Every ingest, accepted or refused, appends one row to the run's append-only
+`ingest-log.jsonl`, carrying the artifact digest, the reported finding count,
+the namespace-restricted `{id: state}` ledger captured **before** any mutation,
+and — on a refusal — the typed refusal codes. That recorded base is what makes
+the merge replayable after `findings.json` has been rewritten wholesale. Only
+refusals about the batch's own content are journaled; a bad run directory,
+inconsistent flags, a candidate mismatch, or an unreadable artifact is an
+orchestrator error, not a defect in a review pass. On the accepted path the row
+is appended after the ledger is written, so the journal can never claim a merge
+that did not land.
+
+The derivation declares a **refusal class** — the machine-checkable fact of
+which rule fired — from a closed set:
+
+- `finding-id-format`
+- `resolved-in-not-current-candidate`
+- `immutable-field-restated`
+
+It supplies no integers. There is no `--findings-reported` and no
+`--actionable-findings`: operator-supplied numbers are what make a record an
+assertion instead of a measurement. The tool computes both from the refused
+artifact and the journal row's recorded base, and `validate` **recomputes and
+compares** them on every run. That recomputation is the analogue of "every
+excused field must really be defective" above; without it this would be a
+write-only ledger with no reader that could ever contradict it.
+
+One operator input does reach a recorded integer, and it is named here rather
+than left implicit: **`--id-map`**, on the `finding-id-format` class alone. The
+bijection must be total over the malformed ids, injective, in-namespace, and
+free of collisions *within the batch* — but a target may legally land on an
+existing ledger entry, because `open → open` is an allowed transition. Mapping
+a malformed id onto an existing `open` finding therefore merges two actionable
+entries and lowers `actionable_findings` by one, in the flattering direction.
+This grants no power the ordinary ingest path lacks — a reviewer can emit that
+same id directly — and `--corroborating-artifact` removes the discretion
+entirely, because the identity check then pins every id to a batch that was
+measured natively.
+
+The record is not a bypass:
+
+- the declared class must match a **recorded** refusal — of that exact artifact,
+  named against that exact review span — with **exactly** that class's codes;
+  extra codes refuse, because a batch that also carried a substance defect was
+  never a measurable review pass, and an ingest that was never attempted proves
+  nothing at all;
+- the span must be the pass's own successful review intelligence span and must
+  **not** already carry metrics; a pass whose ingest landed has nothing to
+  derive;
+- both integers must **recompute** from artifacts still present at their
+  recorded digests, replaying the four rules the recorded base can answer —
+  namespace prefix, `introduced_in` lineage, `resolved_in` currency, and the
+  allowed state transitions — with only the declared class's own rule
+  suppressed. The immutable-field check is not among them and cannot be: the
+  recorded base is `{id: state}`, not the prior fields it would compare
+  against. Nothing recorded is wrong for want of it, because that rule is
+  either the suppressed one or provably never fired, but the replay is those
+  four rules and the policy says so rather than claiming all of them;
+- an optional corroborating artifact must itself have been ingested with
+  metrics attached to its own review span (no chaining), may support exactly
+  one derivation (no fan-out), and must be identical to the refused artifact in
+  severity, state, classification, authority, evidence, required outcome,
+  disposition, affected paths, batch verdict, and cardinality — the only
+  permitted delta is the one the declared class names, and that delta must
+  really be present.
+
+The verb enforces every one of those checks itself, including the ones its
+reader would apply later — the dispatch for `(operation, attempt)` must exist,
+be accepted, name the declared span, and that span must be successful and
+unmeasured. **A verb that appends to an append-only evidence ledger enforces
+every check its reader will apply, because the reader's refusal has no undo:** a
+record accepted at write time with a wrong attempt would refuse every later
+`validate` and `timing-summary` permanently, and the only recovery would be
+hand-editing an append-only ledger.
+
+For the same reason, deriving and then **honestly re-ingesting** the same pass
+is not an error. Once the span carries its own measurement, the real numbers
+win, the derived record is reported as **superseded** rather than orphaned, and
+the run still closes. The operator who did the more honest thing must never be
+the one who gets blocked.
+
+A superseded record is not recomputed — supersession entails both that the span
+carries metrics and that an accepted ingest named it, so the full check would
+refuse twice over conditions that have stopped mattering. But it is not
+unverified either, because it goes on **publishing** its refusal class, its
+cause, and its corroboration state in `timing-summary`. Two checks therefore
+survive supersession: the pinned journal row must still resolve uniquely, and
+both recorded artifacts must still be present at their recorded digests. After
+supersession nothing else in the run references those artifacts, so they are
+the first thing a cleanup removes — and without this floor that removal would
+be silent while the entry kept being published. **Whenever a record's
+verification is relaxed, ask immediately what is still being published on the
+strength of it.**
+
+Two deliberate divergences from the `record-telemetry-incomplete` precedent,
+stated so neither reads as an oversight:
+
+1. **The ingest journal has no duplicate-key refusal.** Re-ingesting a refused
+   batch is the normal recovery, so repeated rows for one artifact are the
+   expected shape. `derived-metrics.jsonl` does refuse a duplicate
+   `(operation, attempt)`, as the telemetry ledger does.
+2. **The record is an overlay, not an attach.** The telemetry declaration
+   annotates a span that exists and is malformed; this one supplies a value the
+   span will never hold, and keeps it visibly derived. `timing-summary` prints
+   it in its own `#### Derived review convergence metrics` section and carries
+   it in a `derived_review_metrics` projection array, stating that the integers
+   were recomputed from artifacts on disk rather than produced by an ingest.
+
+## Candidate drift under an in-flight dispatch
+
+`kickoff-tree-id` hashes nonignored untracked files, so **any** write by **any**
+session moves the candidate. A role dispatched against candidate A returns
+findings honestly stamped A, `ingest-findings` binds to the current candidate B,
+and the whole batch is refused. A shared working tree is stricter for
+tree-hashed evidence than for staging: one stray write invalidates an entire
+review.
+
+**The freeze convention.** While a role dispatch is in flight, the repository
+tree belongs to one writer. Announce dispatch-open and dispatch-return; queue
+other sessions' writes for the gaps, or hand them to the active writer to land
+at a candidate boundary. "Harmless" is not a property of an edit — it is a
+property of the timing. Gitignored runtime state is structurally invisible to
+the candidate: the freeze covers nonignored paths only.
+
+**The convention is now observed rather than merely stated.** Every folded
+dispatch carries both the candidate it opened against and the candidate it
+returned at, and **the pair brackets the child's run**: a dispatch whose two
+candidates differ moved under the role, and — this is the half worth stating,
+because it is the one an operator will rely on — a dispatch whose two
+candidates are equal really did not move.
+
+That converse is a property of *when* each observation is taken, not of whether
+both are recorded, and it is easy to ship a version where only the second is
+true. The open side is captured **by whoever is closest to the child**: for an
+external role — which under the shipped pins is every reviewer role —
+`kickoff-config watch` calls the run's pinned `current-candidate` immediately
+before it spawns the child, later and therefore truer than any id the
+orchestrator could hand down. The watcher appends that opening before spawning
+the child. The return side is recomputed by the terminal `record-role-dispatch`
+amendment **after the child has terminated**. Writing both observations at open
+would carry two dispatch-open candidates, and then a concurrent write during
+the role's run — the case this whole mechanism exists for — would leave them
+equal and earn a "did not move the candidate" refusal that is simply false.
+
+A native dispatch has no watcher, so there the orchestrator passes
+`--dispatch-candidate` itself, naming a candidate that must already be in the
+run's lineage, appends `--state opened` before launch, and appends the terminal
+amendment once the role has returned. A dispatch that records no open candidate
+is not refused, but no drift recovery is available for it: the recovery below
+needs both sides, and an unrecorded one is not reconstructible afterwards. A
+failed candidate capture is recorded as a telemetry incompleteness rather than
+killing the dispatch, and costs exactly that recovery; failure to append the
+opening itself refuses launch.
+
+**The manifest store.** Only two manifests were ever persisted per run
+(`candidate.json`, `reviewed-candidate.json`), both overwritten in place, and
+`lineage.jsonl` carries ids only — so at the moment a batch was refused, the
+manifest the role had been dispatched against was already gone and the drift was
+unclassifiable. Every candidate the tool observes is therefore also written to
+`<run>/candidates/<candidate_id>.json`, content-addressed and **write-once**: a
+manifest whose name is its own digest cannot legitimately change. A
+classification whose manifests are not both present in that store **refuses**;
+it never assumes disjointness.
+
+**The repair is not falsification.** Rewriting `resolved_in` to the ingesting
+candidate records that a reviewer verified a tree it never saw, and
+hand-reconstructing the reviewed tree has been tried upstream and failed to
+reproduce the candidate byte-exactly. The sound recoveries are to re-run the
+review against the current candidate, or to accept the mismatch **only** with a
+recorded, proven-disjoint drift classification.
+
+### Three independent acceptance checks
+
+`accept-candidate-drift` classifies the paths that changed between a dispatch's
+two candidates, recomputed from the two stored manifests. Acceptance requires
+**all three** of the following, and each is independently capable of refusing a
+drift the other two accept:
+
+1. **Partition** — every drifted path lies in the declared inert set below.
+2. **Reviewed surface** — no drifted path appears in `change.json`'s
+   `changed_files`, nor in any ledger finding's `affected_paths`.
+3. **Authority** — no drifted path is a declared authority in `authority.json`.
+
+The third is not implied by the first: `plan/` splits. `plan/INDEX.md` is inert
+bookkeeping and sits in the partition, while `plan/phase-N.md` is the review's
+own specification — and `plan/INDEX.md` is itself routinely a *declared
+authority*, so the authority check is what stops an inert-partition path from
+being waved through when the review was bound to its content.
+
+Any check failing, **or any path the classifier cannot place**, fails closed. A
+false refusal costs one re-review; a false accept records a review of a tree
+nobody read.
+
+### The partition vocabulary
+
+A path partition is a stand-in for "could this drift have changed what the
+review means." Its dangerous direction is the false accept — a path in the inert
+set that actually mattered — which is precisely why checks 2 and 3 exist and are
+independent. The vocabulary is deliberately tiny: only the surfaces this
+document already names as the orchestrator's own bookkeeping candidate-movers.
+Everything unlisted fails closed. This block is the single source of truth and
+is parsed by `bin/kickoff-evidence`; it is not restated in code.
+
+```yaml
+# kickoff-evidence drift partitions
+inert:
+  - LOG*.md
+  - plan/INDEX.md
+  - lessons/
+  - lessons-archived/
+  - user-actions/
+  - user-actions-archived/
+```
+
+An entry ending in `/` is a directory prefix; any other entry is a single
+path matched component by component, so `*` never crosses a `/` and `LOG*.md`
+names only root-level logs, never a nested file with the same basename. The
+list is read from this file at classification time and again at every
+`validate`, so a record is never accepted on a vocabulary that has since been
+withdrawn.
+
+### The record
+
+`accept-candidate-drift` appends to the run's append-only
+`<run>/candidate-drift.jsonl`: the dispatch it describes, both candidate ids,
+the exact drifted paths, and a mandatory nonempty `cause`. Neither candidate nor
+the path list is an operator input — all three are read from the dispatch row and
+recomputed from the stored manifests, which is what makes the record a
+measurement rather than an assertion. A duplicate `(operation, attempt)`
+refuses, as the telemetry ledger does.
+
+The verb enforces every check its reader will apply, because the reader's
+refusal has no undo: the dispatch must exist, be accepted, name both candidates,
+and the two must actually differ. `validate` then **re-derives** the drifted-path
+set from the two stored manifests and re-runs all three checks on every run;
+a record whose paths no longer recompute, or whose classification no longer
+holds, refuses. Accepted drift is published in both `timing-summary` formats —
+markdown section and a `candidate_drift` projection array — because a run that
+accepted a review of a tree the ingest did not hold must say so where anyone
+reading its close will see it.
+
+### What the drift record does *not* relax
+
+- **`resolved_in` only.** With an accepted record for the review pass's own
+  dispatch, and only when the record's return candidate is the candidate the
+  ingest binds to, a finding's `resolved_in` may name that dispatch's open
+  candidate. An ingest with `--no-review-span` has no dispatch to bind to and
+  gets no relaxation.
+- **Gate rows and the final seal are untouched.** `validate --require-final`
+  still demands the final candidate-bound gate row with equal
+  before/after/current candidates. A gate whose candidates differ has measured a
+  tree other than the one being accepted, and that is lane- and drift-independent.
+- **`introduced_in`** is already relaxed to the run's lineage and needs nothing.
+- **The batch-level candidate mismatch in `ingest-findings`** stays an
+  orchestrator error, not a content refusal — an ingest bound to the wrong
+  candidate is a bad invocation, not a defect in a review pass.
+
 ## Protocol recovery
 
 Delegated execution uses a three-signal result: child status, artifact
@@ -241,7 +560,17 @@ that namespace's actionable findings remaining after reconciliation. An empty
 approved evidence block is measured zero, not omitted. These per-pass values
 are the durable convergence series; cumulative ledger size is not a substitute.
 
-Evidence contains engine-relative paths, hashes, findings, and nondisclosing gate results—not
+**`actionable_findings` counts the whole merged ledger, namespace-filtered —
+never the batch alone.** After the batch is merged, it is every finding whose id
+carries that review namespace and whose state is `open`, `addressed`, or
+`blocked-owner`, including entries the batch never mentioned. A rule that
+counted only the batch's own non-merging findings gives the same answer whenever
+the pre-existing actionable set happens to be empty, and a different one
+otherwise; the coincidence is what makes the error survive a spot check. Any
+recomputation of this number — by hand, or by `attach-derived-metrics` — must
+reproduce the whole-ledger expression, base term included.
+
+Evidence contains repository-relative paths, hashes, findings, and nondisclosing gate results—not
 secrets, environment dumps, credentials, ignored private data, or arbitrary
 source copies. Project-specific high-assurance profiles may restrict evidence
 further; they may not weaken candidate binding or the final full gate.
@@ -254,6 +583,31 @@ initial role set, and required orchestration-stage set. Every dispatch is
 preceded by an immutable `register-role-attempt` row and atomic handoff.
 Validation joins registrations one-to-one with closed intelligence/wait spans,
 rejecting omissions, duplicates, metadata drift, gaps, and unregistered spans.
+
+`role-dispatch.jsonl` uses an append-then-amend lifecycle. Immediately before
+launch, the watcher appends a `state: opened` row naming the registered attempt,
+its intelligence span when available, and the dispatch-open candidate when
+capture succeeded. After the child terminates, it appends an accepted or
+rejected terminal amendment with the return candidate and completed span
+topology. Readers fold the pair. An opening with no amendment is an interrupted
+dispatch and makes the run incomplete; it is evidence that work began, not a
+malformed row to discard. This opening is the layer that survives an externally
+killed watcher.
+
+Teardown hardening is a separate in-process layer. A `PermissionError` from
+either the SIGTERM or SIGKILL process-group call, or another cleanup exception,
+becomes a diagnostic and cannot prevent span bookkeeping or the terminal
+amendment. It does nothing when the watcher itself is externally killed; the
+pre-launch opening is what covers that case. Failing to kill is recoverable
+through timeout bookkeeping; failing to record is not.
+
+A terminal `record-role-dispatch` with no opening refuses because an external
+watcher death would otherwise disappear from the ledger and make an incomplete
+trace appear complete. A legitimate recovery must pass
+`--no-open-row '<reason>'`; the tool appends that reason to the separate
+`dispatch-open-omitted.jsonl` audit artifact, and validation requires the
+terminal row and omission record to correspond one-to-one. The opt-out is an
+audited exception, not a silent compatibility path.
 
 Sequential reconciliation spans measure setup, planning, implementation,
 acceptance, and close preparation. Final timing validation requires the
@@ -269,6 +623,11 @@ which records the omission in `review-metrics-omitted.jsonl` rather than leaving
 it silent.
 
 Managed gates use `run-gate`; `record-gate` is nonfinal imported evidence only.
+Both verbs take exact positional argv after `--` and derive the display command
+with `shlex.join`, so a writer cannot emit the noncanonical command/argv pair
+that its validator refuses. Historical imported rows with the old whole-command
+single-element argv remain readable; validation refuses each by its exact
+`gates.jsonl` line, recorded command, argv, and canonical display.
 Final eligibility requires a complete matching span, exact argv, and equal
 before/after/current candidates. Acceptance validates while the root is open;
 finalization and `timing-summary` precede completion bookkeeping.

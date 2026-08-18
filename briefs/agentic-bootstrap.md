@@ -37,6 +37,7 @@ A project derived from this template contains the following **portable structure
     check                  # Authoritative lint/format/test/policy gates
     <runtime>              # Optional selected runtime (for example, python)
     install-hooks          # Explicit opt-in to tracked Git hooks
+    check-hooks-installed  # Opt-in-aware hook-liveness witness
     kickoff-config         # Round-trip editor, preflight, watchdog, calibration
     kickoff-tree-id        # Complete review candidate identity
     kickoff-evidence       # Authority/change/finding/packet/gate records
@@ -47,6 +48,7 @@ A project derived from this template contains the following **portable structure
     test_toolchain_entrypoints.py # Setup/test/runtime behavioral coverage
     test_check.py          # Full-gate behavioral coverage
     test_install_hooks.py  # Hook-installer behavioral coverage
+    test_check_hooks_installed.py # Hook-liveness witness coverage
     test_kickoff_config.py # Universal manager/watchdog behavioral coverage
     test_kickoff_tree_id.py # Candidate identity behavioral coverage
     test_kickoff_evidence.py # Evidence/packet/gate behavioral coverage
@@ -606,13 +608,16 @@ Bootstrap is complete when **all** of the following hold:
 [ ] bin/lessons and bin/check-catalogs are executable; lessons/.gitkeep and
     lessons-archived/.gitkeep exist; ledger, document-link, and phase-lifecycle
     fitness tests pass
-[ ] bin/setup, bin/test, bin/check, and bin/install-hooks are executable;
+[ ] bin/setup, bin/test, bin/check, bin/install-hooks, and
+    bin/check-hooks-installed are executable;
     the language runtime wrapper exists when applicable; .githooks/pre-push
-    calls bin/check; hook installation remains explicit and opt-in
+    calls bin/check; hook installation remains explicit and opt-in, with the
+    opt-in-aware liveness witness in the check policy lane
 [ ] Runtime version metadata, package manifest, and lockfile form a complete
     language profile; no workflow assumes a versioned runtime binary on PATH
 [ ] tests/test_toolchain_entrypoints.py, tests/test_check.py,
-    tests/test_install_hooks.py, tests/test_kickoff_config.py,
+    tests/test_install_hooks.py, tests/test_check_hooks_installed.py,
+    tests/test_kickoff_config.py,
     tests/test_kickoff_tree_id.py, tests/test_kickoff_evidence.py,
     tests/test_lessons.py, and tests/test_check_catalogs.py pass
     through bin/test

@@ -81,6 +81,9 @@ PROTOCOL_EXIT = 65
 RECOVERABLE_PROTOCOL_EXIT = 66
 PREFLIGHT_SENTINEL = "KICKOFF_PREFLIGHT_OK"
 PREFLIGHT_TIMEOUT_SECONDS = 120
+# Shape only. `kickoff-evidence` owns candidate identity; this is the watcher
+# refusing to pass along something that is not one.
+CANDIDATE_ID = re.compile(r"^[0-9a-f]{64}$")
 
 # The canonical reviewer/coder tool stances, by access mode. On the Codex venue
 # `-s read-only` enforces the stance at the sandbox; on the Claude venue
@@ -939,8 +942,9 @@ def utc_now() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def terminate_group(process: subprocess.Popen[bytes]) -> None:
+def terminate_group(process: subprocess.Popen[bytes]) -> list[str]:
     group_id = process.pid
+    errors: list[str] = []
 
     def group_exists() -> bool:
         try:
@@ -964,21 +968,30 @@ def terminate_group(process: subprocess.Popen[bytes]) -> None:
         return not group_exists()
 
     try:
-        os.killpg(group_id, signal.SIGTERM)
-    except ProcessLookupError:
-        pass
-    if not wait_group(5):
         try:
-            os.killpg(group_id, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        wait_group(2)
-    if process.poll() is None:
-        try:
-            process.wait(timeout=2)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait()
+            os.killpg(group_id, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError) as exc:
+            if isinstance(exc, PermissionError):
+                errors.append(f"SIGTERM killpg permission denied: {exc}")
+        if not wait_group(5):
+            try:
+                os.killpg(group_id, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError) as exc:
+                if isinstance(exc, PermissionError):
+                    errors.append(f"SIGKILL killpg permission denied: {exc}")
+            wait_group(2)
+        if process.poll() is None:
+            try:
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+    except Exception as exc:
+        # Killing is cleanup; recording the timeout or cancellation is the
+        # durable fact. A teardown failure is diagnostic evidence, never a
+        # reason to skip span closure and the dispatch amendment below.
+        errors.append(f"{type(exc).__name__}: {exc}")
+    return errors
 
 
 def open_artifact(path: str | None) -> BinaryIO | None:
@@ -1324,12 +1337,69 @@ def validate_telemetry_registration(arguments: argparse.Namespace) -> dict[str, 
     return registration
 
 
+def capture_dispatch_candidate(
+    arguments: argparse.Namespace,
+) -> tuple[str | None, str | None]:
+    """The candidate the child is about to be dispatched against.
+
+    Returns `(candidate, error)`. The watcher is the **last thing to touch the
+    tree before the child starts**, so it is the only place that can observe
+    this truthfully — an id handed down from the orchestrator is already stale
+    by however long the watcher's own routing, containment, and span setup
+    took. Recording it is what makes a candidate that moves under an in-flight
+    role detectable at the seam instead of surfacing later as a wholesale
+    refused batch, and it is the precondition for `kickoff-evidence
+    accept-candidate-drift`.
+
+    Every role is external under the shipped pins, so without this the field is
+    null on every dispatch of every real run and both halves of the mechanism
+    are unreachable. A capture failure degrades exactly like a telemetry
+    failure: recorded, non-fatal, and the recovery is simply unavailable for
+    that attempt.
+    """
+    if arguments.telemetry_role_registration is None:
+        return None, None
+    registration = Path(arguments.telemetry_role_registration)
+    executable = registration.parent / "tools" / "kickoff-evidence"
+    environment = os.environ.copy()
+    environment["KICKOFF_ENGINE_ROOT"] = str(REPO_ROOT)
+    try:
+        result = subprocess.run(
+            [
+                str(executable),
+                "current-candidate",
+                "--run-dir",
+                str(registration.parent),
+                "--reason",
+                f"dispatch-open {arguments.telemetry_operation}#{arguments.telemetry_attempt}",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=environment,
+        )
+    except OSError as exc:
+        # The likeliest failure of all — a missing or non-executable pinned
+        # tool — is an exec error, not a nonzero exit. Unguarded it escapes as a
+        # traceback and kills the dispatch before the child starts, which is the
+        # exact opposite of the degradation this function promises.
+        return None, f"cannot run the pinned evidence tool {executable}: {exc}"
+    if result.returncode != 0:
+        return None, result.stderr.strip() or "dispatch-open candidate capture failed"
+    candidate = result.stdout.strip()
+    if not CANDIDATE_ID.fullmatch(candidate):
+        return None, f"dispatch-open candidate is not a candidate id: {candidate!r}"
+    return candidate, None
+
+
 def record_dispatch_topology(
     arguments: argparse.Namespace,
     *,
-    accepted: bool,
+    state: str,
     intelligence_span_id: str | None,
     wait_span_id: str | None,
+    dispatch_candidate: str | None = None,
+    no_open_reason: str | None = None,
 ) -> str | None:
     if arguments.telemetry_role_registration is None:
         return None
@@ -1343,14 +1413,18 @@ def record_dispatch_topology(
         "--registration",
         str(registration),
         "--state",
-        "accepted" if accepted else "rejected",
+        state,
         "--idle-telemetry",
-        "available" if accepted else "not-dispatched",
+        "available" if state == "accepted" else "not-dispatched",
     ]
     if intelligence_span_id is not None:
         command.extend(["--intelligence-span-id", intelligence_span_id])
     if wait_span_id is not None:
         command.extend(["--wait-span-id", wait_span_id])
+    if dispatch_candidate is not None:
+        command.extend(["--dispatch-candidate", dispatch_candidate])
+    if no_open_reason is not None:
+        command.extend(["--no-open-row", no_open_reason])
     environment = os.environ.copy()
     environment["KICKOFF_ENGINE_ROOT"] = str(REPO_ROOT)
     result = subprocess.run(command, capture_output=True, text=True, check=False, env=environment)
@@ -1373,6 +1447,7 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
     wait_span = None
     telemetry_complete = registration is not None
     telemetry_errors: list[str] = []
+    teardown_diagnostics: list[str] = []
     if registration is not None:
         metadata = {
             "harness": arguments.venue,
@@ -1425,6 +1500,54 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
     stderr_file = open_artifact(arguments.stderr_file)
     result_path = prepare_output_path(arguments.result_file)
     required_output_path = prepare_output_path(arguments.required_output_file)
+    # The last thing that observes the repository candidate before the child
+    # starts. The run-scoped dispatch opening appended immediately afterward is
+    # ignored runtime state and cannot move that candidate. Both happen before
+    # the clocks start, so neither tree hashing nor durable bookkeeping is
+    # charged against the child's first-event budget.
+    dispatch_candidate, candidate_error = capture_dispatch_candidate(arguments)
+    if candidate_error:
+        telemetry_complete = False
+        telemetry_errors.append(f"dispatch-open-candidate: {candidate_error}")
+    opening_error = record_dispatch_topology(
+        arguments,
+        state="opened",
+        intelligence_span_id=intelligence.span_id if intelligence else None,
+        wait_span_id=None,
+        dispatch_candidate=dispatch_candidate,
+    )
+    if opening_error:
+        if stdout_file:
+            stdout_file.close()
+        if stderr_file:
+            stderr_file.close()
+        if intelligence is not None:
+            try:
+                finish_span(
+                    engine_root=REPO_ROOT,
+                    trace_id=intelligence.trace_id,
+                    span_id=intelligence.span_id,
+                    outcome="error",
+                    exit_code=127,
+                )
+            except TelemetryError as telemetry_exc:
+                telemetry_errors.append(f"intelligence-finish: {telemetry_exc}")
+        rejection_error = record_dispatch_topology(
+            arguments,
+            state="rejected",
+            intelligence_span_id=intelligence.span_id if intelligence else None,
+            wait_span_id=None,
+            dispatch_candidate=dispatch_candidate,
+            no_open_reason=f"dispatch opening failed before launch: {opening_error}",
+        )
+        if rejection_error:
+            print(
+                "kickoff-config: telemetry incomplete: "
+                f"dispatch-open: {opening_error}; dispatch-rejection: "
+                f"{rejection_error}",
+                file=sys.stderr,
+            )
+        die(f"could not open dispatch evidence before launch: {opening_error}")
     started_iso = utc_now()
     started = time.monotonic()
     last_activity = started
@@ -1460,9 +1583,10 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
                 telemetry_errors.append(f"intelligence-finish: {telemetry_exc}")
         topology_error = record_dispatch_topology(
             arguments,
-            accepted=False,
+            state="rejected",
             intelligence_span_id=intelligence.span_id if intelligence else None,
             wait_span_id=None,
+            dispatch_candidate=dispatch_candidate,
         )
         if topology_error:
             print(f"kickoff-config: telemetry incomplete: {topology_error}", file=sys.stderr)
@@ -1485,18 +1609,13 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
         except TelemetryError as exc:
             telemetry_complete = False
             telemetry_errors.append(f"wait-start: {exc}")
-    topology_error = record_dispatch_topology(
-        arguments,
-        accepted=True,
-        intelligence_span_id=intelligence.span_id if intelligence else None,
-        wait_span_id=wait_span.span_id if wait_span else None,
-    )
-    if topology_error:
-        telemetry_complete = False
-        telemetry_errors.append(f"dispatch-topology: {topology_error}")
     selector = selectors.DefaultSelector()
     cancelled_signal: int | None = None
     prior_handlers: dict[int, Any] = {}
+
+    def teardown_process() -> None:
+        for error in terminate_group(process):
+            teardown_diagnostics.append(error)
 
     def cancel_handler(signum: int, _frame: Any) -> None:
         nonlocal cancelled_signal
@@ -1511,7 +1630,7 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
     try:
         while True:
             if cancelled_signal is not None:
-                terminate_group(process)
+                teardown_process()
                 break
             now = time.monotonic()
             if now - started >= hard_limit:
@@ -1578,7 +1697,7 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
         if cancelled_signal is not None:
             return_code = 128 + cancelled_signal
         elif timeout_kind:
-            terminate_group(process)
+            teardown_process()
             return_code = TIMEOUT_EXIT
         else:
             return_code = process.wait()
@@ -1696,6 +1815,22 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
         except TelemetryError as exc:
             telemetry_complete = False
             telemetry_errors.append(f"span-read: {exc}")
+    # The append-only opening written before `Popen` proves the dispatch began
+    # even if the watcher itself is killed. This terminal event amends it after
+    # the child returns, when `record-role-dispatch` can recompute the return
+    # candidate. Readers fold the pair; an opening with no amendment is an
+    # interrupted dispatch, never a silently missing one. Teardown errors have
+    # already been reduced to diagnostics above, so they cannot skip this write.
+    topology_error = record_dispatch_topology(
+        arguments,
+        state="accepted",
+        intelligence_span_id=intelligence.span_id if intelligence else None,
+        wait_span_id=wait_span.span_id if wait_span else None,
+        dispatch_candidate=dispatch_candidate,
+    )
+    if topology_error:
+        telemetry_complete = False
+        telemetry_errors.append(f"dispatch-topology: {topology_error}")
     diagnostic = {
         "schema_version": 3,
         "phase": arguments.phase,
@@ -1727,6 +1862,7 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
         "program": Path(command[program_index]).name,
         "telemetry_complete": telemetry_complete,
         "telemetry_error": "; ".join(telemetry_errors) if telemetry_errors else None,
+        "teardown_diagnostics": teardown_diagnostics,
     }
     if input_tokens is not None:
         diagnostic["input_tokens"] = input_tokens
@@ -1739,6 +1875,11 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
     if telemetry_errors:
         print(
             f"kickoff-config: telemetry incomplete: {'; '.join(telemetry_errors)}",
+            file=sys.stderr,
+        )
+    if teardown_diagnostics:
+        print(
+            f"kickoff-config: process teardown diagnostics: {'; '.join(teardown_diagnostics)}",
             file=sys.stderr,
         )
     if timeout_kind:

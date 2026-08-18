@@ -143,6 +143,35 @@ The orchestrator reports the selected route, the risk/size reason, files changed
 
 The stronger the coder model, the larger the fraction of mechanical phases whose initial reviews approve first-cycle with nothing to say — and the more the uniform four-role loop overpays. Lanes recover that cost at phase scale; proportional follow-up routing recovers it at correction scale. Work that makes decisions or carries significant blast radius still gets independent review. See also [`briefs/methodology.md`](../briefs/methodology.md) §6 on capability-indexed phase sizing — the same calibration, applied to bite size instead of review depth.
 
+## Containment-claim review checklist
+
+Whenever the work under review asserts an **isolation, containment, or
+firewall property** — a sweep can't reach X, a lane is self-contained, a
+surface is withheld — the critic reads the claim against this five-entry
+catalogue and, for each claim, asks which entry it is most likely to be.
+Every entry was observed surviving at least one real review in the donor
+project before being caught; several arrived through locally-correct work.
+(Graduated there from a three-occurrence lesson, owner-ratified 2026-08-17.)
+
+1. **A fix aimed at availability silently spends isolation.** The fix's
+   success criterion (it runs) and the property's (it contains) are
+   different criteria — check both are being watched.
+2. **It holds at the level it was checked.** The assertion tests the
+   mechanism the author was thinking about, not the path the runtime takes
+   (an env var asserted absent while a symlink reaches the same store).
+   The repo's own policy prose is a review input here.
+3. **It holds at the scale it was checked.** Controls that pass only at
+   fixture size; wall time is a first-class gate result — a pass count
+   over unbounded runtime is a verification that can only say "good."
+4. **It holds at the top level and fails one level down.** State
+   containment transitively (*no path reachable from the lane resolves
+   outside it*) — that phrasing admits a test; "the directory is
+   lane-owned" does not.
+5. **A reordering turns a real control vacuous.** A control that names a
+   guard must match *that guard's refusal*, not any refusal —
+   `pytest.raises(SomeError)` without a message predicate is a control
+   waiting to be reassigned by a correct refactor.
+
 ## Relationship to other policies
 
 - [`four-canonical-agents.md`](four-canonical-agents.md) — the roles, tool stances, verdict headers, and cycle caps are unchanged. `light` skips one initial *invocation* of `plan-reviewer`; `one-shot` skips the initial invocations of `phase-planner` and `plan-reviewer`; follow-up routing may omit role invocations without changing the roles themselves.

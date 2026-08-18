@@ -101,12 +101,91 @@ ordering unless those properties are the contract. Comparisons use a fixed
 baseline captured at operation start, not a moving reference such as
 `origin/master` or "now."
 
+**A check that passes on an empty result** (vacuous green) is the third mode,
+and the hardest to see: the instrument ran, found nothing, and reported
+satisfaction. An empty result set indicts the instrument before it establishes
+absence. `assert every_x_is_valid(xs)` and `assert not any_bad(xs)` both pass
+when `xs` is empty — and `xs` goes empty for reasons that have nothing to do
+with the property: a query whose subject moved, a probe reading transient state
+that a successful run legitimately drained, a path that resolved to the wrong
+root, a filter that over-matched.
+
+- **Assert positive cardinality first.** A probe over a known population states
+  the population size it expects (`assert len(pairs) == 4`) before asserting
+  anything about the members. Then an empty read fails loudly as itself rather
+  than silently as success.
+- **Prefer durable state over transient state as a probe's subject.** A check
+  built on a workspace, queue, or pending set that completion drains cannot
+  outlive the completion it was guarding — it passes before the run and fails,
+  or worse passes vacuously, after. Read the folded/committed record instead.
+- **Treat a newly-empty result as an instrument fault until proven otherwise.**
+  The first question is "did I lose my subject?", not "is the subject clean?"
+
+**A survey that reports perfect uniformity** (vacuous *finding*) is the fourth
+mode, and it is the most dangerous because it does not read as an absence at
+all — it reads as a result you can build on. A probe over a real population
+that comes back completely uniform is more often measuring a field that cannot
+vary than discovering that the population is uniform.
+
+- **Worked case (a derived project's format survey).** A survey over 134 legacy
+  documents reported one version constant on all 134, and that uniformity was
+  taken as a strong population finding. The probed field was a compatibility
+  constant; the field that carries the version was one the probe never read.
+  The real distribution was 128/6 across two versions. A phase file, an
+  implementation plan, a review requirement, and a parser validity check were
+  all built on the constant before the corpus refuted it — and the first
+  correction would have shipped a converter with 0% recall.
+- **Real corpora are messy.** Near-perfect uniformity across a population
+  assembled by many tools over many years is itself the trigger to ask what the
+  instrument is reading, not a finding to act on.
+- **Prove the instrument can produce a different answer.** Not merely "can it
+  find something" (the mutation test below), but "can it return anything other
+  than what it just returned." Run it against a deliberately different input
+  and confirm the output changes.
+
+**The unifying rule.** Zero results, all-positive results, empty results, and
+uniform results are one defect wearing four faces: **the instrument could
+return only one answer, so its answer carried no information.** Before
+believing any instrument, establish that its output space has more than one
+reachable member.
+
 For every new gate, state what makes it fail and demonstrate the failure.
 Where practical, use mutation testing: temporarily remove or invert the guard,
 prove the test fails for the intended reason, then restore it. Exception tests
 name the message or state transition they expect; a bare
 `pytest.raises(SomeType)` may pass because an unrelated guard raised the same
 type.
+
+## One truth, one fold
+
+A closure question — "is this batch done", "did this wave converge", "are all
+inputs terminal" — has exactly **one** authoritative fold, and every other
+instrument reports that fold rather than re-deriving the answer at its own
+scope.
+
+Secondary instruments that re-derive a closure claim will disagree with it, and
+the disagreement is an artifact of scope rather than a finding. In the donor
+incident, a batch-scoped audit asked whether a *wave* had closed and answered
+`all_inputs_terminal: false` because two of its inputs reached terminal state
+in sibling batches of the same wave; a wave-closure-scoped counter was required
+to equal a batch-scoped container count, which could only ever produce false
+mismatches. In one phase, four instruments answered one question at four scopes
+and two orchestrator misclassifications rode on the disagreements.
+
+The rule, therefore:
+
+- **Name the authoritative fold** for any closure claim, and make every other
+  surface read it. A second implementation of the same question is a second
+  answer, not a cross-check.
+- A genuine cross-check compares an instrument against the **authoritative
+  fold**, never against another instrument's independent re-derivation.
+- When two instruments disagree about closure, **establish which scopes they
+  are folding over before treating either as a defect.** Different scopes
+  answering differently is the expected behaviour of a system that has more
+  than one scope, not evidence that something is broken.
+- A claim of the form "X is complete" must state the scope it is complete
+  *over*. An unscoped closure claim cannot be verified, because no instrument
+  can tell whether it agrees with it.
 
 The repository-owned toolchain wrappers are tested like product code. See
 [`build-gates.md`](build-gates.md): cwd independence, runtime selection,
@@ -144,6 +223,34 @@ falls back to ambient packages and calls the result equivalent. When a human
 explicitly overrides the runtime for compatibility testing, the override is
 the only candidate: validate it with the repository's load/run probe and fail
 if it cannot exercise the real dependency chain.
+
+### Cross-tree defect reports are leads, not findings
+
+A defect report arriving from another tree — a sibling checkout, a donor repo
+under `learn`, a peer session working a different worktree — transfers its
+**artifact** cheaply and its **mechanism** not at all. The symptom, the file
+path, and the proposed fix all copy across intact and cost nothing to believe.
+Whether the same cause is present here does not copy at all. So an inbound
+finding is a **lead, not a finding**, until its mechanism is re-derived in the
+tree where it is asserted:
+
+- **Re-derive the mechanism locally before acting on the fix.** In the donor's
+  worked case, a shebang defect whose artifact matched exactly had no local
+  mechanism, and the proposed fix would have broken a pinned-tool bundle.
+  Matching the symptom is not confirming the cause.
+- **Treat a divergence as the finding, not as noise.** A guard reported dead in
+  a sibling's frozen tree was alive here; the divergence was the whole answer,
+  and reconciling it to the sibling's verdict would have destroyed the
+  information.
+- **Read relayed arguments and commands whole.** A relayed invocation was
+  misattributed because its `-C` argument was read in part rather than entire.
+- **Say which tree a claim was verified in.** A verdict is scoped to the tree
+  that produced it, and a report that omits its tree cannot be checked against
+  another one.
+
+This is the cross-tree instance of the general rule above that evidence is
+scoped to the environment that produced it; the `learn` skill's
+direction-verification rule is its donor-remedy special case.
 
 ## When acceptance can't be automated
 

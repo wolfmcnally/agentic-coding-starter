@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import os
 import re
@@ -101,6 +102,31 @@ def run(
     )
 
 
+def open_role_dispatch(
+    run_dir: Path,
+    registration: Path,
+    intelligence_span_id: str | None,
+    *,
+    dispatch_candidate: str | None = None,
+) -> subprocess.CompletedProcess[str]:
+    arguments = [
+        "record-role-dispatch",
+        "--run-dir",
+        str(run_dir),
+        "--registration",
+        str(registration),
+        "--state",
+        "opened",
+        "--idle-telemetry",
+        "not-dispatched",
+    ]
+    if intelligence_span_id is not None:
+        arguments.extend(["--intelligence-span-id", intelligence_span_id])
+    if dispatch_candidate is not None:
+        arguments.extend(["--dispatch-candidate", dispatch_candidate])
+    return run(*arguments)
+
+
 def lineage_of(run_dir: Path) -> list[str]:
     return [
         json.loads(line)["candidate_id"]
@@ -109,7 +135,15 @@ def lineage_of(run_dir: Path) -> list[str]:
     ]
 
 
-def initialize(repository: Path, run_dir: Path) -> str:
+def initialize(
+    repository: Path,
+    run_dir: Path,
+    *,
+    review_lane: str = "full",
+    evidence_lane: str = "full",
+    follow_up_route: str = "direct-fix",
+    authorities: tuple[str, ...] = ("phase.md::Acceptance", "policy.md"),
+) -> str:
     handle = start_trace(
         engine_root=repository,
         scope_root=repository,
@@ -133,10 +167,7 @@ def initialize(repository: Path, run_dir: Path) -> str:
         str(repository),
         "--phase",
         "1.1",
-        "--authority",
-        "phase.md::Acceptance",
-        "--authority",
-        "policy.md",
+        *[item for authority in authorities for item in ("--authority", authority)],
         "--telemetry-trace-id",
         handle.trace_id,
         "--telemetry-root-span-id",
@@ -144,14 +175,105 @@ def initialize(repository: Path, run_dir: Path) -> str:
         "--initial-orchestration-span-id",
         setup.span_id,
         "--review-lane",
-        "full",
+        review_lane,
         "--evidence-lane",
-        "full",
+        evidence_lane,
         "--follow-up-route",
-        "direct-fix",
+        follow_up_route,
     )
     assert result.returncode == 0, result.stderr
     return result.stdout.strip()
+
+
+def native_accepted_attempt(
+    repository: Path,
+    run_dir: Path,
+    operation: str,
+    role: str,
+    attempt: int,
+    *,
+    reason: str = "initial",
+) -> str:
+    """Register, span, and record one accepted native role attempt.
+
+    Returns the intelligence span id so review attempts can attach
+    convergence metrics afterwards.
+    """
+    metadata = json.loads((run_dir / "run.json").read_text())
+    trace_id = metadata["telemetry_trace_id"]
+    root_span_id = metadata["telemetry_root_span_id"]
+    handoff = run_dir / f"{operation}-{attempt}.json"
+    registered = run(
+        "register-role-attempt",
+        "--run-dir",
+        str(run_dir),
+        "--operation",
+        operation,
+        "--attempt",
+        str(attempt),
+        "--role",
+        role,
+        "--harness",
+        "native",
+        "--reason",
+        reason,
+        "--output",
+        str(handoff),
+    )
+    assert registered.returncode == 0, registered.stderr
+    intelligence = start_span(
+        engine_root=repository,
+        trace_id=trace_id,
+        parent_span_id=root_span_id,
+        category="intelligence",
+        operation=operation,
+        attempt=attempt,
+        role=role,
+        harness="native",
+    )
+    opened = open_role_dispatch(run_dir, handoff, intelligence.span_id)
+    assert opened.returncode == 0, opened.stderr
+    wait = start_span(
+        engine_root=repository,
+        trace_id=trace_id,
+        parent_span_id=intelligence.span_id,
+        category="wait",
+        operation=operation,
+        attempt=attempt,
+        role=role,
+        harness="native",
+    )
+    finish_span(
+        engine_root=repository,
+        trace_id=trace_id,
+        span_id=wait.span_id,
+        outcome="success",
+        exit_code=0,
+    )
+    finish_span(
+        engine_root=repository,
+        trace_id=trace_id,
+        span_id=intelligence.span_id,
+        outcome="success",
+        exit_code=0,
+    )
+    dispatched = run(
+        "record-role-dispatch",
+        "--run-dir",
+        str(run_dir),
+        "--registration",
+        str(handoff),
+        "--state",
+        "accepted",
+        "--idle-telemetry",
+        "unavailable",
+        "--intelligence-span-id",
+        intelligence.span_id,
+        "--wait-span-id",
+        wait.span_id,
+    )
+    assert dispatched.returncode == 0, dispatched.stderr
+    return intelligence.span_id
 
 
 def complete_orchestration(repository: Path, run_dir: Path) -> None:
@@ -482,6 +604,8 @@ def test_finding_ingestion_attaches_review_convergence_metrics(
         role="reviewer",
         harness="native",
     )
+    opened = open_role_dispatch(run_dir, registration, review.span_id)
+    assert opened.returncode == 0, opened.stderr
     wait = start_span(
         engine_root=repository,
         trace_id=metadata["telemetry_trace_id"],
@@ -1030,17 +1154,87 @@ def test_gate_record_rejects_stale_candidate_and_hashes_artifact(
         str(run_dir),
         "--candidate",
         candidate,
-        "--command",
-        "./bin/check all",
         "--selection-reason",
         "Final authoritative gate",
         "--exit-code",
         "0",
         "--warning-count",
         "0",
+        "--",
+        "./bin/check",
+        "all",
     )
     assert stale.returncode == 2
     assert "candidate mismatch" in stale.stderr
+
+
+def test_record_gate_round_trips_multiword_argv_through_validate(
+    repository: Path, tmp_path: Path
+) -> None:
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir, evidence_lane="light")
+
+    recorded = run(
+        "record-gate",
+        "--run-dir",
+        str(run_dir),
+        "--candidate",
+        candidate,
+        "--selection-reason",
+        "Imported venue-fallback gate",
+        "--exit-code",
+        "0",
+        "--warning-count",
+        "0",
+        "--",
+        "./bin/test",
+        "tests/test_check.py",
+        "-q",
+    )
+
+    assert recorded.returncode == 0, recorded.stderr
+    gate = json.loads((run_dir / "gates.jsonl").read_text())
+    assert gate["argv"] == ["./bin/test", "tests/test_check.py", "-q"]
+    assert gate["command"] == "./bin/test tests/test_check.py -q"
+    validated = run("validate", "--run-dir", str(run_dir))
+    assert validated.returncode == 0, validated.stderr
+
+
+def test_legacy_record_gate_row_is_readable_and_refused_precisely(
+    repository: Path, tmp_path: Path
+) -> None:
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir, evidence_lane="light")
+    metadata = json.loads((run_dir / "run.json").read_text())
+    command = "./bin/test tests/test_check.py -q"
+    legacy = {
+        "schema_version": 3,
+        "recorded_at": "2026-08-16T00:00:00+00:00",
+        "candidate_id": candidate,
+        "candidate_after_id": candidate,
+        "argv": [command],
+        "command": command,
+        "operation": "gate.imported",
+        "attempt": 1,
+        "selection_reason": "Legacy imported gate",
+        "exit_code": 0,
+        "outcome": "success",
+        "warning_count": 0,
+        "artifact_sha256": None,
+        "final": False,
+        "telemetry_trace_id": metadata["telemetry_trace_id"],
+        "telemetry_span_id": None,
+        "duration_ns": None,
+        "telemetry_complete": False,
+    }
+    (run_dir / "gates.jsonl").write_text(json.dumps(legacy) + "\n")
+
+    validated = run("validate", "--run-dir", str(run_dir))
+
+    assert validated.returncode == 2
+    assert "gates.jsonl line 1 has non-canonical argv" in validated.stderr
+    assert repr([command]) in validated.stderr
+    assert "legacy record-gate encoding" in validated.stderr
 
 
 def test_findings_reject_wrong_namespace_and_noncurrent_candidate(
@@ -1116,7 +1310,7 @@ def test_pre_dispatch_rejected_attempt_validates_with_an_error_127_span(
     stay refused: correctness belongs at write time, not forgiveness at read
     time. Observed in Phase 26.9.2, where a span-less rejected dispatch made the
     whole run unvalidatable and could not be repaired afterwards, because the
-    dispatch record is immutable.
+    terminal amendment is append-only.
     """
     run_dir = tmp_path / "run"
     initialize(repository, run_dir)
@@ -1176,6 +1370,8 @@ def test_pre_dispatch_rejected_attempt_validates_with_an_error_127_span(
         model="sol",
         effort="high",
     )
+    opened = open_role_dispatch(run_dir, registration, intelligence.span_id)
+    assert opened.returncode == 0, opened.stderr
     finish_span(
         engine_root=repository,
         trace_id=trace_id,
@@ -1335,6 +1531,8 @@ def test_role_registration_spans_and_finalized_timing_summary(
         role="coder",
         harness="native",
     )
+    opened = open_role_dispatch(run_dir, handoff, intelligence.span_id)
+    assert opened.returncode == 0, opened.stderr
     wait = start_span(
         engine_root=repository,
         trace_id=metadata["telemetry_trace_id"],
@@ -1432,6 +1630,8 @@ def test_wait_metadata_drift_is_rejected(repository: Path, tmp_path: Path) -> No
         role="coder",
         harness="native",
     )
+    opened = open_role_dispatch(run_dir, handoff, intelligence.span_id)
+    assert opened.returncode == 0, opened.stderr
     wait = start_span(
         engine_root=repository,
         trace_id=metadata["telemetry_trace_id"],
@@ -1474,7 +1674,12 @@ def test_wait_metadata_drift_is_rejected(repository: Path, tmp_path: Path) -> No
     assert (
         "wait span harness does not match registration: span='claude', registration='native'"
     ) in result.stderr
-    assert (run_dir / "role-dispatch.jsonl").read_text() == ""
+    rows = [
+        json.loads(line)
+        for line in (run_dir / "role-dispatch.jsonl").read_text().splitlines()
+        if line.strip()
+    ]
+    assert len(rows) == 1 and rows[0]["state"] == "opened"
 
 
 def test_pinned_tool_bundle_survives_live_tool_replacement(
@@ -1646,7 +1851,7 @@ def test_pinned_tool_bundle_survives_live_tool_replacement(
         check=False,
     )
     assert watched.returncode == 0, watched.stderr
-    dispatch = json.loads((run_dir / "role-dispatch.jsonl").read_text())
+    dispatch = json.loads((run_dir / "role-dispatch.jsonl").read_text().splitlines()[-1])
     assert dispatch["accepted"] is True
     assert dispatch["idle_telemetry"] == "available"
     plan = tmp_path / "plan.md"
@@ -1743,7 +1948,7 @@ def test_pinned_tool_bundle_survives_live_tool_replacement(
         check=False,
     )
     assert gated.returncode == 0, gated.stderr
-    review_dispatch = json.loads((run_dir / "role-dispatch.jsonl").read_text())
+    review_dispatch = json.loads((run_dir / "role-dispatch.jsonl").read_text().splitlines()[-1])
     attach_review_metrics(
         engine_root=repository,
         trace_id=root.trace_id,
@@ -2075,6 +2280,8 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
             attempt=attempt,
             **metadata,
         )
+        opened = open_role_dispatch(run_dir, handoff, intelligence.span_id)
+        assert opened.returncode == 0, opened.stderr
         wait = start_span(
             engine_root=repository,
             trace_id=root.trace_id,
@@ -2147,7 +2354,10 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
         effort="high",
     )
     dispatches = [
-        json.loads(line) for line in (run_dir / "role-dispatch.jsonl").read_text().splitlines()
+        dispatch
+        for line in (run_dir / "role-dispatch.jsonl").read_text().splitlines()
+        for dispatch in [json.loads(line)]
+        if dispatch.get("state") != "opened"
     ]
     for dispatch in dispatches:
         if dispatch["operation"] in {"role.plan-review", "role.code-review"}:
@@ -2272,6 +2482,8 @@ def test_native_dispatch_topologies_preserve_truthful_outcomes(
         role="coder",
         harness="native",
     )
+    opened = open_role_dispatch(run_dir, handoff, intelligence.span_id)
+    assert opened.returncode == 0, opened.stderr
     wait = None
     if accepted:
         wait = start_span(
@@ -3000,6 +3212,8 @@ def broken_native_wait_join(
         attempt=1,
         **routing,
     )
+    opened = open_role_dispatch(run_dir, handoff, intelligence.span_id)
+    assert opened.returncode == 0, opened.stderr
     wait_routing = {"role": "critic", "harness": "native"} if omit_metadata else routing
     wait = start_span(
         engine_root=repository,
@@ -3084,10 +3298,6 @@ def test_a_declared_broken_wait_join_degrades_visibly(repository: Path, tmp_path
         "native wait span opened without routing metadata",
     )
     assert declared.returncode == 0, declared.stderr
-    validated = run("validate", "--run-dir", str(run_dir))
-    assert validated.returncode == 0, validated.stderr
-
-    complete_orchestration(repository, run_dir)
     metadata = json.loads((run_dir / "run.json").read_text())
     attach_review_metrics(
         engine_root=repository,
@@ -3096,6 +3306,10 @@ def test_a_declared_broken_wait_join_degrades_visibly(repository: Path, tmp_path
         findings_reported=0,
         actionable_findings=0,
     )
+    validated = run("validate", "--run-dir", str(run_dir))
+    assert validated.returncode == 0, validated.stderr
+
+    complete_orchestration(repository, run_dir)
     finish_span(
         engine_root=repository,
         trace_id=metadata["telemetry_trace_id"],
@@ -3159,6 +3373,8 @@ def test_a_declaration_cannot_excuse_a_wait_span_that_is_simply_absent(
         role="critic",
         harness="native",
     )
+    opened = open_role_dispatch(run_dir, handoff, intelligence.span_id)
+    assert opened.returncode == 0, opened.stderr
     finish_span(
         engine_root=repository,
         trace_id=metadata["telemetry_trace_id"],
@@ -3396,6 +3612,8 @@ def review_dispatch_with_outcome(
         attempt=1,
         **routing,
     )
+    opened = open_role_dispatch(run_dir, handoff, intelligence.span_id)
+    assert opened.returncode == 0, opened.stderr
     wait = start_span(
         engine_root=repository,
         trace_id=trace_id,
@@ -3946,3 +4164,2130 @@ def test_full_evidence_lane_still_requires_initial_roles(repository: Path, tmp_p
 
     assert result.returncode == 2
     assert "missing required initial role attempt" in result.stderr
+
+
+# --- The pre-finalization latch and the derived-metrics overlay ----------------
+#
+# Two halves of one contract. The latch refuses an unmeasured review pass while
+# the trace is still open, which is the only window in which an honest re-ingest
+# can repair it. The overlay is the sanctioned recovery for the residue the
+# latch cannot reach: a pass that really succeeded, whose batch was structurally
+# refused, discovered after the trace closed.
+
+
+def review_artifact(path: Path, findings: list[dict[str, object]], **extra: object) -> Path:
+    """A critic artifact in the markdown envelope the native venues emit."""
+    document: dict[str, object] = {"verdict": "REVISE", "findings": findings, **extra}
+    path.write_text(
+        "## Finding Evidence\n```json\n" + json.dumps(document) + "\n```\n\n## Verdict: REVISE\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def ingest_artifact(
+    run_dir: Path, candidate: str, artifact: Path, span_id: str
+) -> subprocess.CompletedProcess[str]:
+    return run(
+        "ingest-findings",
+        "--run-dir",
+        str(run_dir),
+        "--kind",
+        "code",
+        "--candidate",
+        candidate,
+        "--review-span-id",
+        span_id,
+        "--artifact",
+        str(artifact),
+    )
+
+
+def journal_of(run_dir: Path) -> list[dict[str, object]]:
+    path = run_dir / "ingest-log.jsonl"
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+
+
+def derived_records(run_dir: Path) -> list[dict[str, object]]:
+    path = run_dir / "derived-metrics.jsonl"
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+
+
+def derive(
+    run_dir: Path,
+    *,
+    attempt: int,
+    span_id: str,
+    refusal_class: str,
+    artifact: Path,
+    corroborating: Path | None = None,
+    id_map: tuple[str, ...] = (),
+    cause: str = "the critic pass ran; its batch was structurally refused",
+) -> subprocess.CompletedProcess[str]:
+    arguments = [
+        "attach-derived-metrics",
+        "--run-dir",
+        str(run_dir),
+        "--operation",
+        "role.code-review",
+        "--attempt",
+        str(attempt),
+        "--span-id",
+        span_id,
+        "--refusal-class",
+        refusal_class,
+        "--refused-artifact",
+        str(artifact),
+    ]
+    if corroborating is not None:
+        arguments.extend(["--corroborating-artifact", str(corroborating)])
+    for entry in id_map:
+        arguments.extend(["--id-map", entry])
+    arguments.extend(["--cause", cause])
+    return run(*arguments)
+
+
+def stale_resolution(
+    repository: Path,
+    tmp_path: Path,
+    run_dir: Path,
+    *,
+    seed: list[dict[str, object]] | None = None,
+    batch: list[dict[str, object]] | None = None,
+    attempt: int = 1,
+    name: str = "critic-review.md",
+) -> tuple[str, str, Path]:
+    """A successful critic pass whose batch was refused on a stale `resolved_in`.
+
+    Returns the candidate, the review span id, and the refused artifact.
+    """
+    candidate = initialize(repository, run_dir)
+    if seed:
+        assert ingest(run_dir, tmp_path, seed, candidate=candidate).returncode == 0
+    span_id = native_accepted_attempt(repository, run_dir, "role.code-review", "critic", attempt)
+    findings = batch or [
+        finding("CODE-F002", candidate, resolved_in="0" * 64),
+        finding("CODE-F003", candidate),
+    ]
+    artifact = review_artifact(tmp_path / name, findings)
+    refused = ingest_artifact(run_dir, candidate, artifact, span_id)
+    assert refused.returncode == 2, refused.stdout
+    assert "resolved_in does not match" in refused.stderr
+    return candidate, span_id, artifact
+
+
+def test_an_unmeasured_review_pass_refuses_at_validate_before_finalization(
+    repository: Path, tmp_path: Path
+) -> None:
+    """The latch. A repair exists only while the trace is open.
+
+    `validate` used to check review metrics only under `--require-final`, so a
+    run passed validation all night with unmeasured passes and discovered the
+    gap at `timing-summary`, after finalization, when the only "repair" left
+    was re-ingesting earlier artifacts and driving `verified -> open`.
+    """
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    span_id = native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 1)
+
+    validated = run("validate", "--run-dir", str(run_dir))
+
+    assert validated.returncode == 2, "validate accepted a run with an unmeasured review pass"
+    assert "review passes lack convergence metrics" in validated.stderr
+    assert "role.code-review#1" in validated.stderr
+    assert span_id in validated.stderr
+    # The refusal has to name the repair, and the window it is available in.
+    assert "--review-span-id" in validated.stderr
+    assert "attach-derived-metrics" in validated.stderr
+
+
+def test_the_latch_leaves_a_measured_pass_alone(repository: Path, tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    span_id = native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 1)
+    artifact = review_artifact(tmp_path / "critic.md", [finding("CODE-F001", candidate)])
+    assert ingest_artifact(run_dir, candidate, artifact, span_id).returncode == 0
+
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
+
+
+def test_the_latch_keeps_the_failed_dispatch_exemption(repository: Path, tmp_path: Path) -> None:
+    """A venue failure produced no pass, so the latch has nothing to demand."""
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    review_dispatch_with_outcome(repository, run_dir, "error", 1)
+
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
+
+
+def test_the_light_evidence_lane_is_untouched_by_the_latch(
+    repository: Path, tmp_path: Path
+) -> None:
+    """Light-lane metrics ride `review-metrics-omitted.jsonl`, not the span."""
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir, evidence_lane="light")
+    native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 1)
+
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
+
+
+def test_a_refused_ingest_is_journaled_with_its_typed_codes(
+    repository: Path, tmp_path: Path
+) -> None:
+    """The journal is what makes a refusal a machine-checkable fact later."""
+    run_dir = tmp_path / "run"
+    candidate, span_id, artifact = stale_resolution(repository, tmp_path, run_dir)
+
+    rows = journal_of(run_dir)
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["outcome"] == "refused"
+    assert row["kind"] == "code"
+    assert row["refusal_codes"] == ["resolved-in-not-current"]
+    assert row["review_span_id"] == span_id
+    assert row["candidate_id"] == candidate
+    assert row["findings_reported"] == 2
+    assert row["actionable_findings"] is None
+    assert "resolved_in does not match" in row["refusal_detail"]
+    assert row["artifact_sha256"] == hashlib.sha256(artifact.read_bytes()).hexdigest()
+    # Captured before any mutation, and the refusal really left the ledger alone.
+    assert row["ledger_before"] == {}
+    assert json.loads((run_dir / "findings.json").read_text())["findings"] == []
+
+
+def test_an_accepted_ingest_is_journaled_after_the_merge_lands(
+    repository: Path, tmp_path: Path
+) -> None:
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    span_id = native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 1)
+    artifact = review_artifact(
+        tmp_path / "critic.md",
+        [finding("CODE-F001", candidate), finding("CODE-F002", candidate)],
+    )
+    assert ingest_artifact(run_dir, candidate, artifact, span_id).returncode == 0
+
+    rows = journal_of(run_dir)
+    assert len(rows) == 1
+    assert rows[0]["outcome"] == "accepted"
+    assert rows[0]["refusal_codes"] == []
+    assert rows[0]["refusal_detail"] is None
+    assert rows[0]["findings_reported"] == 2
+    assert rows[0]["actionable_findings"] == 2
+    assert rows[0]["ledger_before"] == {}
+    # The row is written after `findings.json`, so it can never claim a merge
+    # that did not land.
+    assert len(json.loads((run_dir / "findings.json").read_text())["findings"]) == 2
+
+
+def test_an_orchestrator_error_is_never_journaled(repository: Path, tmp_path: Path) -> None:
+    """The journal describes review batches, not malformed invocations."""
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    span_id = native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 1)
+    artifact = review_artifact(tmp_path / "critic.md", [finding("CODE-F001", candidate)])
+
+    mismatched = run(
+        "ingest-findings",
+        "--run-dir",
+        str(run_dir),
+        "--kind",
+        "code",
+        "--candidate",
+        "e" * 64,
+        "--review-span-id",
+        span_id,
+        "--artifact",
+        str(artifact),
+    )
+    assert mismatched.returncode == 2
+    assert "candidate mismatch" in mismatched.stderr
+
+    conflicting = run(
+        "ingest-findings",
+        "--run-dir",
+        str(run_dir),
+        "--kind",
+        "code",
+        "--candidate",
+        candidate,
+        "--review-span-id",
+        span_id,
+        "--no-review-span",
+        "both at once",
+        "--artifact",
+        str(artifact),
+    )
+    assert conflicting.returncode == 2
+    assert "mutually exclusive" in conflicting.stderr
+
+    assert journal_of(run_dir) == []
+
+    # ...while a refusal about the batch's own content does land, so the absence
+    # above is a boundary rather than a journal that never writes anything.
+    stale = review_artifact(
+        tmp_path / "stale.md",
+        [finding("CODE-F002", candidate, resolved_in="0" * 64)],
+    )
+    assert ingest_artifact(run_dir, candidate, stale, span_id).returncode == 2
+    assert [row["refusal_codes"] for row in journal_of(run_dir)] == [["resolved-in-not-current"]]
+
+
+def test_repeated_refused_ingests_append_rather_than_refuse(
+    repository: Path, tmp_path: Path
+) -> None:
+    """A deliberate divergence from `record-telemetry-incomplete`.
+
+    Re-ingesting a refused batch is the normal recovery, so repeated rows for
+    one artifact are the expected shape rather than a duplicate-key defect.
+    """
+    run_dir = tmp_path / "run"
+    candidate, span_id, artifact = stale_resolution(repository, tmp_path, run_dir)
+
+    again = ingest_artifact(run_dir, candidate, artifact, span_id)
+    assert again.returncode == 2
+
+    rows = journal_of(run_dir)
+    assert len(rows) == 2
+    assert {row["artifact_sha256"] for row in rows} == {rows[0]["artifact_sha256"]}
+
+
+def test_a_derivation_counts_the_whole_ledger_not_only_its_own_batch(
+    repository: Path, tmp_path: Path
+) -> None:
+    """The regression the policy names: pre-existing actionable entries count.
+
+    `ingest-findings` computes `actionable_findings` over the *whole merged
+    ledger*, namespace-filtered. A by-hand rule that counted only the batch's
+    own non-merging findings would answer 2 here; the ledger already holds one
+    `open` entry the batch never mentions, so the answer is 3.
+    """
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    assert (
+        ingest(run_dir, tmp_path, [finding("CODE-F001", candidate)], candidate=candidate).returncode
+        == 0
+    )
+    span_id = native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 1)
+    artifact = review_artifact(
+        tmp_path / "critic.md",
+        [
+            finding("CODE-F002", candidate, resolved_in="0" * 64),
+            finding("CODE-F003", candidate),
+        ],
+    )
+    assert ingest_artifact(run_dir, candidate, artifact, span_id).returncode == 2
+    assert journal_of(run_dir)[-1]["ledger_before"] == {"CODE-F001": "open"}
+
+    derived = derive(
+        run_dir,
+        attempt=1,
+        span_id=span_id,
+        refusal_class="resolved-in-not-current-candidate",
+        artifact=artifact,
+    )
+
+    assert derived.returncode == 0, derived.stderr
+    assert "findings_reported=2" in derived.stdout
+    assert "actionable_findings=3" in derived.stdout, (
+        "the derived count dropped the base term: a pre-existing open "
+        "ledger entry the batch never mentioned was not counted"
+    )
+    record = derived_records(run_dir)[0]
+    assert record["findings_reported"] == 2
+    assert record["actionable_findings"] == 3
+
+
+def test_a_derivation_never_attaches_to_the_span(repository: Path, tmp_path: Path) -> None:
+    """The record is an overlay. Laundering it onto the span is the failure mode.
+
+    `attach_review_metrics` refuses on a finalized trace, which is exactly where
+    this gap bites, and a derived number written onto a span its ingest never
+    produced would be indistinguishable from a measured one.
+    """
+    run_dir = tmp_path / "run"
+    _, span_id, artifact = stale_resolution(repository, tmp_path, run_dir)
+    assert (
+        derive(
+            run_dir,
+            attempt=1,
+            span_id=span_id,
+            refusal_class="resolved-in-not-current-candidate",
+            artifact=artifact,
+        ).returncode
+        == 0
+    )
+
+    metadata = json.loads((run_dir / "run.json").read_text())
+    span = closed_span(
+        engine_root=repository,
+        trace_id=metadata["telemetry_trace_id"],
+        span_id=span_id,
+    )
+    assert "findings_reported" not in span
+    assert "actionable_findings" not in span
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
+
+
+def test_a_derivation_refuses_when_the_ingest_was_never_attempted(
+    repository: Path, tmp_path: Path
+) -> None:
+    """A derivation stands on a recorded refusal, never on an account of one."""
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    span_id = native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 1)
+    artifact = review_artifact(
+        tmp_path / "critic.md", [finding("CODE-F002", candidate, resolved_in="0" * 64)]
+    )
+
+    derived = derive(
+        run_dir,
+        attempt=1,
+        span_id=span_id,
+        refusal_class="resolved-in-not-current-candidate",
+        artifact=artifact,
+    )
+
+    assert derived.returncode == 2
+    assert "no refused ingest of this artifact is recorded" in derived.stderr
+    assert derived_records(run_dir) == []
+
+
+def test_a_derivation_refuses_a_batch_that_carried_another_defect(
+    repository: Path, tmp_path: Path
+) -> None:
+    """Extra codes refuse: a batch with a substance defect was not a pass."""
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    span_id = native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 1)
+    broken = finding("CODE-F002", candidate, resolved_in="0" * 64)
+    broken["severity"] = "catastrophic"
+    artifact = review_artifact(tmp_path / "critic.md", [broken])
+    assert ingest_artifact(run_dir, candidate, artifact, span_id).returncode == 2
+    assert sorted(journal_of(run_dir)[-1]["refusal_codes"]) == ["severity-invalid"]
+
+    derived = derive(
+        run_dir,
+        attempt=1,
+        span_id=span_id,
+        refusal_class="resolved-in-not-current-candidate",
+        artifact=artifact,
+    )
+
+    assert derived.returncode == 2
+    assert "does not match the declared class" in derived.stderr
+    assert "severity-invalid" in derived.stderr
+
+
+def test_a_derivation_refuses_a_refusal_recorded_against_another_span(
+    repository: Path, tmp_path: Path
+) -> None:
+    """One refused artifact is evidence about the pass whose ingest named it."""
+    run_dir = tmp_path / "run"
+    _, span_id, artifact = stale_resolution(repository, tmp_path, run_dir)
+    other = native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 2)
+
+    derived = derive(
+        run_dir,
+        attempt=2,
+        span_id=other,
+        refusal_class="resolved-in-not-current-candidate",
+        artifact=artifact,
+    )
+
+    assert derived.returncode == 2, "a refusal recorded against another span backed this derivation"
+    assert "names a different review span" in derived.stderr
+    assert span_id != other
+
+
+def test_a_derivation_refuses_when_the_span_already_carries_metrics(
+    repository: Path, tmp_path: Path
+) -> None:
+    """A pass whose ingest did land has nothing to derive."""
+    run_dir = tmp_path / "run"
+    candidate, span_id, artifact = stale_resolution(repository, tmp_path, run_dir)
+    corrected = review_artifact(
+        tmp_path / "critic-2.md",
+        [finding("CODE-F002", candidate), finding("CODE-F003", candidate)],
+    )
+    assert ingest_artifact(run_dir, candidate, corrected, span_id).returncode == 0
+
+    derived = derive(
+        run_dir,
+        attempt=1,
+        span_id=span_id,
+        refusal_class="resolved-in-not-current-candidate",
+        artifact=artifact,
+    )
+
+    assert derived.returncode == 2
+    assert "already carries convergence metrics" in derived.stderr
+
+
+def test_a_duplicate_derivation_refuses(repository: Path, tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    _, span_id, artifact = stale_resolution(repository, tmp_path, run_dir)
+    first = derive(
+        run_dir,
+        attempt=1,
+        span_id=span_id,
+        refusal_class="resolved-in-not-current-candidate",
+        artifact=artifact,
+    )
+    assert first.returncode == 0, first.stderr
+
+    second = derive(
+        run_dir,
+        attempt=1,
+        span_id=span_id,
+        refusal_class="resolved-in-not-current-candidate",
+        artifact=artifact,
+    )
+
+    assert second.returncode == 2
+    assert "duplicate derived-metrics record" in second.stderr
+
+
+def malformed_id_run(repository: Path, tmp_path: Path, run_dir: Path) -> tuple[str, str, Path]:
+    """A critic pass whose batch was refused for malformed finding ids."""
+    candidate = initialize(repository, run_dir)
+    span_id = native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 1)
+    artifact = review_artifact(
+        tmp_path / "critic.md",
+        [finding("CODE-F1", candidate), finding("CODE-F2", candidate)],
+    )
+    refused = ingest_artifact(run_dir, candidate, artifact, span_id)
+    assert refused.returncode == 2
+    assert sorted(journal_of(run_dir)[-1]["refusal_codes"]) == ["id-format"]
+    return candidate, span_id, artifact
+
+
+def test_an_id_format_derivation_requires_a_total_injective_bijection(
+    repository: Path, tmp_path: Path
+) -> None:
+    run_dir = tmp_path / "run"
+    _, span_id, artifact = malformed_id_run(repository, tmp_path, run_dir)
+
+    missing = derive(
+        run_dir,
+        attempt=1,
+        span_id=span_id,
+        refusal_class="finding-id-format",
+        artifact=artifact,
+    )
+    assert missing.returncode == 2
+    assert "--id-map is required" in missing.stderr
+
+    partial = derive(
+        run_dir,
+        attempt=1,
+        span_id=span_id,
+        refusal_class="finding-id-format",
+        artifact=artifact,
+        id_map=("CODE-F1=CODE-F011",),
+    )
+    assert partial.returncode == 2
+    assert "must name exactly the artifact's malformed finding ids" in partial.stderr
+
+    collapsing = derive(
+        run_dir,
+        attempt=1,
+        span_id=span_id,
+        refusal_class="finding-id-format",
+        artifact=artifact,
+        id_map=("CODE-F1=CODE-F011", "CODE-F2=CODE-F011"),
+    )
+    assert collapsing.returncode == 2
+    assert "must be injective" in collapsing.stderr
+
+    wrong_namespace = derive(
+        run_dir,
+        attempt=1,
+        span_id=span_id,
+        refusal_class="finding-id-format",
+        artifact=artifact,
+        id_map=("CODE-F1=PLAN-F011", "CODE-F2=CODE-F012"),
+    )
+    assert wrong_namespace.returncode == 2
+    assert "must use the CODE-FNNN namespace" in wrong_namespace.stderr
+
+    accepted = derive(
+        run_dir,
+        attempt=1,
+        span_id=span_id,
+        refusal_class="finding-id-format",
+        artifact=artifact,
+        id_map=("CODE-F1=CODE-F011", "CODE-F2=CODE-F012"),
+    )
+    assert accepted.returncode == 0, accepted.stderr
+    assert "actionable_findings=2" in accepted.stdout
+    assert len(derived_records(run_dir)) == 1
+
+
+def test_an_id_map_is_refused_for_a_class_that_renames_nothing(
+    repository: Path, tmp_path: Path
+) -> None:
+    run_dir = tmp_path / "run"
+    _, span_id, artifact = stale_resolution(repository, tmp_path, run_dir)
+
+    derived = derive(
+        run_dir,
+        attempt=1,
+        span_id=span_id,
+        refusal_class="resolved-in-not-current-candidate",
+        artifact=artifact,
+        id_map=("CODE-F002=CODE-F009",),
+    )
+
+    assert derived.returncode == 2
+    assert "applies only to refusal class finding-id-format" in derived.stderr
+
+
+def corroborated_id_format_run(
+    repository: Path, tmp_path: Path, run_dir: Path
+) -> tuple[str, str, Path, Path]:
+    """A refused id-format batch plus the corrected batch that really ingested."""
+    candidate, span_id, artifact = malformed_id_run(repository, tmp_path, run_dir)
+    second = native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 2)
+    corrected = review_artifact(
+        tmp_path / "critic-2.md",
+        [finding("CODE-F011", candidate), finding("CODE-F012", candidate)],
+    )
+    assert ingest_artifact(run_dir, candidate, corrected, second).returncode == 0
+    return candidate, span_id, artifact, corrected
+
+
+def test_a_corroborated_derivation_verifies_batch_identity(
+    repository: Path, tmp_path: Path
+) -> None:
+    run_dir = tmp_path / "run"
+    _, span_id, artifact, corrected = corroborated_id_format_run(repository, tmp_path, run_dir)
+
+    derived = derive(
+        run_dir,
+        attempt=1,
+        span_id=span_id,
+        refusal_class="finding-id-format",
+        artifact=artifact,
+        corroborating=corrected,
+        id_map=("CODE-F1=CODE-F011", "CODE-F2=CODE-F012"),
+    )
+
+    assert derived.returncode == 0, derived.stderr
+    assert derived_records(run_dir)[0]["corroborating_artifact_sha256"] is not None
+
+
+def test_a_bijection_is_refused_when_a_non_id_field_differs(
+    repository: Path, tmp_path: Path
+) -> None:
+    """The only permitted delta is the one the declared class names."""
+    run_dir = tmp_path / "run"
+    candidate, span_id, artifact = malformed_id_run(repository, tmp_path, run_dir)
+    second = native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 2)
+    divergent = finding("CODE-F011", candidate)
+    divergent["severity"] = "low"
+    corrected = review_artifact(
+        tmp_path / "critic-2.md", [divergent, finding("CODE-F012", candidate)]
+    )
+    assert ingest_artifact(run_dir, candidate, corrected, second).returncode == 0
+
+    derived = derive(
+        run_dir,
+        attempt=1,
+        span_id=span_id,
+        refusal_class="finding-id-format",
+        artifact=artifact,
+        corroborating=corrected,
+        id_map=("CODE-F1=CODE-F011", "CODE-F2=CODE-F012"),
+    )
+
+    assert derived.returncode == 2, (
+        "a corroborating artifact with a different severity was accepted"
+    )
+    assert "field severity, which the declared refusal class does not permit" in (derived.stderr)
+    assert derived_records(run_dir) == []
+
+
+def test_a_corroborating_source_cannot_support_two_derivations(
+    repository: Path, tmp_path: Path
+) -> None:
+    """One measured pass corroborates one derived pass, never a fan-out."""
+    run_dir = tmp_path / "run"
+    candidate, span_id, artifact, corrected = corroborated_id_format_run(
+        repository, tmp_path, run_dir
+    )
+    assert (
+        derive(
+            run_dir,
+            attempt=1,
+            span_id=span_id,
+            refusal_class="finding-id-format",
+            artifact=artifact,
+            corroborating=corrected,
+            id_map=("CODE-F1=CODE-F011", "CODE-F2=CODE-F012"),
+        ).returncode
+        == 0
+    )
+    third = native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 3)
+    other = review_artifact(
+        tmp_path / "critic-3.md",
+        [finding("CODE-F3", candidate), finding("CODE-F4", candidate)],
+    )
+    assert ingest_artifact(run_dir, candidate, other, third).returncode == 2
+
+    derived = derive(
+        run_dir,
+        attempt=3,
+        span_id=third,
+        refusal_class="finding-id-format",
+        artifact=other,
+        corroborating=corrected,
+        id_map=("CODE-F3=CODE-F011", "CODE-F4=CODE-F012"),
+    )
+
+    assert derived.returncode == 2, "one corroborating artifact supported a second derivation"
+    assert "already supports another derivation" in derived.stderr
+
+
+def test_a_corroborating_source_without_native_metrics_refuses(
+    repository: Path, tmp_path: Path
+) -> None:
+    """No chaining: a source that was never measured corroborates nothing."""
+    run_dir = tmp_path / "run"
+    candidate, span_id, artifact = malformed_id_run(repository, tmp_path, run_dir)
+    unmeasured = review_artifact(
+        tmp_path / "critic-2.md",
+        [finding("CODE-F011", candidate), finding("CODE-F012", candidate)],
+    )
+    # Ingested as an orchestrator-authored transition, so no span ever measured it.
+    assert (
+        run(
+            "ingest-findings",
+            "--run-dir",
+            str(run_dir),
+            "--kind",
+            "code",
+            "--candidate",
+            candidate,
+            "--no-review-span",
+            "orchestrator-authored",
+            "--artifact",
+            str(unmeasured),
+        ).returncode
+        == 0
+    )
+
+    derived = derive(
+        run_dir,
+        attempt=1,
+        span_id=span_id,
+        refusal_class="finding-id-format",
+        artifact=artifact,
+        corroborating=unmeasured,
+        id_map=("CODE-F1=CODE-F011", "CODE-F2=CODE-F012"),
+    )
+
+    assert derived.returncode == 2, "an artifact that was never measured corroborated a derivation"
+    assert "attached to its own review span" in derived.stderr
+
+
+def test_a_tampered_derived_record_fails_recomputation(repository: Path, tmp_path: Path) -> None:
+    """The recomputation is what makes this a measurement, not an assertion.
+
+    Without it the ledger would be another write-only record with no reader
+    anywhere that could contradict it.
+    """
+    run_dir = tmp_path / "run"
+    _, span_id, artifact = stale_resolution(repository, tmp_path, run_dir)
+    assert (
+        derive(
+            run_dir,
+            attempt=1,
+            span_id=span_id,
+            refusal_class="resolved-in-not-current-candidate",
+            artifact=artifact,
+        ).returncode
+        == 0
+    )
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
+
+    record = derived_records(run_dir)[0]
+    record["actionable_findings"] = 0
+    (run_dir / "derived-metrics.jsonl").write_text(
+        json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n"
+    )
+
+    validated = run("validate", "--run-dir", str(run_dir))
+    assert validated.returncode == 2, "validate accepted derived integers that do not recompute"
+    assert "do not recompute" in validated.stderr
+
+
+def test_a_derived_record_cannot_outlive_its_artifact(repository: Path, tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    _, span_id, artifact = stale_resolution(repository, tmp_path, run_dir)
+    assert (
+        derive(
+            run_dir,
+            attempt=1,
+            span_id=span_id,
+            refusal_class="resolved-in-not-current-candidate",
+            artifact=artifact,
+        ).returncode
+        == 0
+    )
+    stored = next((run_dir / "derived-artifacts").iterdir())
+    stored.write_text("{}\n")
+
+    validated = run("validate", "--run-dir", str(run_dir))
+    assert validated.returncode == 2
+    assert "absent or altered" in validated.stderr
+
+
+def test_a_derived_record_for_an_attempt_that_needs_none_refuses(
+    repository: Path, tmp_path: Path
+) -> None:
+    """Mirrors the telemetry declaration naming an unregistered attempt."""
+    run_dir = tmp_path / "run"
+    _, span_id, artifact = stale_resolution(repository, tmp_path, run_dir)
+    assert (
+        derive(
+            run_dir,
+            attempt=1,
+            span_id=span_id,
+            refusal_class="resolved-in-not-current-candidate",
+            artifact=artifact,
+        ).returncode
+        == 0
+    )
+    record = derived_records(run_dir)[0]
+    record["attempt"] = 9
+    (run_dir / "derived-metrics.jsonl").write_text(
+        json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n"
+    )
+
+    validated = run("validate", "--run-dir", str(run_dir))
+    assert validated.returncode == 2
+    assert "not unmeasured review passes" in validated.stderr
+
+
+def test_a_derived_pass_closes_the_run_and_is_visible_in_both_summaries(
+    repository: Path, tmp_path: Path
+) -> None:
+    """The whole point: the overlay works identically after finalization."""
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    assert (
+        ingest(run_dir, tmp_path, [finding("CODE-F001", candidate)], candidate=candidate).returncode
+        == 0
+    )
+    span_id = native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 1)
+    artifact = review_artifact(
+        tmp_path / "critic.md",
+        [
+            finding("CODE-F002", candidate, resolved_in="0" * 64),
+            finding("CODE-F003", candidate),
+        ],
+    )
+    assert ingest_artifact(run_dir, candidate, artifact, span_id).returncode == 2
+    assert (
+        derive(
+            run_dir,
+            attempt=1,
+            span_id=span_id,
+            refusal_class="resolved-in-not-current-candidate",
+            artifact=artifact,
+            cause="ingest refusal was chained behind a backgrounded dispatch",
+        ).returncode
+        == 0
+    )
+    finalize_for_summary(repository, run_dir)
+
+    summary = run("timing-summary", "--run-dir", str(run_dir), "--format", "json")
+    assert summary.returncode == 0, summary.stderr
+    projected = json.loads(summary.stdout)["derived_review_metrics"]
+    assert len(projected) == 1
+    assert projected[0]["operation"] == "role.code-review"
+    assert projected[0]["attempt"] == 1
+    assert projected[0]["span_id"] == span_id
+    assert projected[0]["refusal_class"] == "resolved-in-not-current-candidate"
+    assert projected[0]["findings_reported"] == 2
+    assert projected[0]["actionable_findings"] == 3
+    assert projected[0]["corroborated"] is False
+
+    markdown = run("timing-summary", "--run-dir", str(run_dir), "--format", "markdown")
+    assert markdown.returncode == 0, markdown.stderr
+    assert "Derived review convergence metrics" in markdown.stdout
+    assert span_id in markdown.stdout
+    assert "`resolved-in-not-current-candidate`" in markdown.stdout
+    assert "actionable_findings 3" in markdown.stdout
+    assert "ingest refusal was chained behind a backgrounded dispatch" in markdown.stdout
+    # The reader must see that these were recomputed, not measured.
+    assert "recomputed from the refused artifact" in markdown.stdout
+
+
+def test_an_unmeasured_pass_with_no_derivation_still_refuses_at_summary(
+    repository: Path, tmp_path: Path
+) -> None:
+    """The overlay is opt-in and evidence-bound. Silence is still not a pass."""
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 1)
+    finalize_for_summary(repository, run_dir)
+
+    refused = run("timing-summary", "--run-dir", str(run_dir), "--format", "json")
+
+    assert refused.returncode == 2
+    assert "lacks convergence metrics" in refused.stderr
+    assert "attach-derived-metrics" in refused.stderr
+
+
+def test_a_derivation_refuses_a_batch_that_trips_a_rule_outside_its_class(
+    repository: Path, tmp_path: Path
+) -> None:
+    """Suppressing one rule is not suppressing the rest.
+
+    A `finding-id-format` batch never reaches the relationship loop at all — its
+    findings fail `validate_finding` before they get there — so the namespace,
+    lineage, `resolved_in`, and transition rules have never run on them. The
+    replay is where they run, and it is the load-bearing claim of the whole
+    id-format path: without it a mapped id could land on a terminal ledger entry
+    and be counted as if the ingest had accepted it.
+    """
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    # A terminal entry: `superseded` accepts no transition but itself.
+    assert (
+        ingest(
+            run_dir,
+            tmp_path,
+            [finding("CODE-F011", candidate, state="superseded", resolved_in=candidate)],
+            candidate=candidate,
+        ).returncode
+        == 0
+    )
+    span_id = native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 1)
+    artifact = review_artifact(tmp_path / "critic.md", [finding("CODE-F1", candidate)])
+    assert ingest_artifact(run_dir, candidate, artifact, span_id).returncode == 2
+    assert sorted(journal_of(run_dir)[-1]["refusal_codes"]) == ["id-format"]
+    assert journal_of(run_dir)[-1]["ledger_before"] == {"CODE-F011": "superseded"}
+
+    derived = derive(
+        run_dir,
+        attempt=1,
+        span_id=span_id,
+        refusal_class="finding-id-format",
+        artifact=artifact,
+        id_map=("CODE-F1=CODE-F011",),
+    )
+
+    assert derived.returncode == 2, (
+        "a batch tripping a rule outside the declared class was derived anyway"
+    )
+    assert "fails rules the declared class does not cover" in derived.stderr
+    assert "invalid transition: superseded -> open" in derived.stderr
+    assert derived_records(run_dir) == []
+
+
+def test_a_derivation_refuses_an_attempt_that_was_never_dispatched(
+    repository: Path, tmp_path: Path
+) -> None:
+    """The verb binds its own attempt, rather than leaving it to the reader.
+
+    `derived-metrics.jsonl` is append-only, so a record accepted with a wrong
+    `--attempt` would pass at write time and then refuse every later `validate`
+    and `timing-summary` permanently, with no verb to withdraw it. The refusal
+    has to land before the record exists.
+    """
+    run_dir = tmp_path / "run"
+    _, span_id, artifact = stale_resolution(repository, tmp_path, run_dir)
+
+    derived = derive(
+        run_dir,
+        attempt=7,
+        span_id=span_id,
+        refusal_class="resolved-in-not-current-candidate",
+        artifact=artifact,
+    )
+
+    assert derived.returncode == 2, (
+        "a derivation was recorded for an attempt this run never dispatched"
+    )
+    assert "no accepted review dispatch is recorded" in derived.stderr
+    assert derived_records(run_dir) == []
+    # And the run is still closable, which is the point of refusing early.
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 2
+    assert (
+        "review passes lack convergence metrics"
+        in run("validate", "--run-dir", str(run_dir)).stderr
+    )
+
+
+def test_a_derivation_refuses_a_span_the_dispatch_does_not_name(
+    repository: Path, tmp_path: Path
+) -> None:
+    run_dir = tmp_path / "run"
+    _, span_id, artifact = stale_resolution(repository, tmp_path, run_dir)
+    other = native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 2)
+
+    derived = derive(
+        run_dir,
+        attempt=1,
+        span_id=other,
+        refusal_class="resolved-in-not-current-candidate",
+        artifact=artifact,
+    )
+
+    assert derived.returncode == 2, (
+        "a derivation named an attempt and a span that belong to different passes"
+    )
+    assert "not the declared" in derived.stderr
+    assert span_id != other
+
+
+def test_an_honest_re_ingest_after_a_derivation_supersedes_it(
+    repository: Path, tmp_path: Path
+) -> None:
+    """The more honest path must not be the one that deadlocks.
+
+    Deriving before finalization and then re-ingesting the pass properly used to
+    strand the derived record as an orphan and refuse the run forever. The real
+    measurement wins; the record is retained, reported as superseded, and the
+    run still closes.
+    """
+    run_dir = tmp_path / "run"
+    candidate, span_id, artifact = stale_resolution(repository, tmp_path, run_dir)
+    assert (
+        derive(
+            run_dir,
+            attempt=1,
+            span_id=span_id,
+            refusal_class="resolved-in-not-current-candidate",
+            artifact=artifact,
+        ).returncode
+        == 0
+    )
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
+
+    corrected = review_artifact(
+        tmp_path / "critic-2.md",
+        [finding("CODE-F002", candidate), finding("CODE-F003", candidate)],
+    )
+    assert ingest_artifact(run_dir, candidate, corrected, span_id).returncode == 0
+
+    validated = run("validate", "--run-dir", str(run_dir))
+    assert validated.returncode == 0, "an honest re-ingest after a derivation deadlocked the run"
+
+    finalize_for_summary(repository, run_dir)
+    summary = run("timing-summary", "--run-dir", str(run_dir), "--format", "json")
+    assert summary.returncode == 0, summary.stderr
+    projected = json.loads(summary.stdout)["derived_review_metrics"]
+    assert len(projected) == 1
+    assert projected[0]["superseded"] is True
+    # The span's own measurement is what is reported, not the derivation's.
+    metadata = json.loads((run_dir / "run.json").read_text())
+    span = closed_span(
+        engine_root=repository,
+        trace_id=metadata["telemetry_trace_id"],
+        span_id=span_id,
+    )
+    assert projected[0]["findings_reported"] == span["findings_reported"]
+    assert projected[0]["actionable_findings"] == span["actionable_findings"]
+
+    markdown = run("timing-summary", "--run-dir", str(run_dir), "--format", "markdown")
+    assert markdown.returncode == 0, markdown.stderr
+    assert "superseded by a later ingest" in markdown.stdout
+    assert "retained only for the trail" in markdown.stdout
+
+
+def test_a_superseded_derivation_still_needs_the_evidence_it_publishes(
+    repository: Path, tmp_path: Path
+) -> None:
+    """Relaxing recomputation does not relax what the entry stands on.
+
+    A superseded record reports the span's integers, so its own two are read by
+    nothing — but `timing-summary` goes on publishing its refusal class and its
+    cause, and after supersession nothing else in the run references
+    `derived-artifacts/`. That makes those artifacts the first thing a cleanup
+    removes, and without this floor the removal would be silent while the entry
+    kept being printed.
+    """
+    run_dir = tmp_path / "run"
+    candidate, span_id, artifact = stale_resolution(repository, tmp_path, run_dir)
+    assert (
+        derive(
+            run_dir,
+            attempt=1,
+            span_id=span_id,
+            refusal_class="resolved-in-not-current-candidate",
+            artifact=artifact,
+        ).returncode
+        == 0
+    )
+    corrected = review_artifact(
+        tmp_path / "critic-2.md",
+        [finding("CODE-F002", candidate), finding("CODE-F003", candidate)],
+    )
+    assert ingest_artifact(run_dir, candidate, corrected, span_id).returncode == 0
+    # Superseded and closable, before the artifact goes missing.
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
+
+    stored = next((run_dir / "derived-artifacts").iterdir())
+    stored.write_text("{}\n")
+
+    validated = run("validate", "--run-dir", str(run_dir))
+    assert validated.returncode == 2, (
+        "a superseded entry kept publishing a refusal class its artifact no longer backs"
+    )
+    assert "absent or altered" in validated.stderr
+
+    finalize_for_summary(repository, run_dir)
+    summary = run("timing-summary", "--run-dir", str(run_dir), "--format", "json")
+    assert summary.returncode == 2
+    assert "absent or altered" in summary.stderr
+
+
+def test_a_superseded_derivation_still_needs_its_pinned_journal_row(
+    repository: Path, tmp_path: Path
+) -> None:
+    """The other half of the same floor: the refusal it names must still exist."""
+    run_dir = tmp_path / "run"
+    candidate, span_id, artifact = stale_resolution(repository, tmp_path, run_dir)
+    assert (
+        derive(
+            run_dir,
+            attempt=1,
+            span_id=span_id,
+            refusal_class="resolved-in-not-current-candidate",
+            artifact=artifact,
+        ).returncode
+        == 0
+    )
+    corrected = review_artifact(
+        tmp_path / "critic-2.md",
+        [finding("CODE-F002", candidate), finding("CODE-F003", candidate)],
+    )
+    assert ingest_artifact(run_dir, candidate, corrected, span_id).returncode == 0
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
+
+    kept = [
+        line
+        for line in (run_dir / "ingest-log.jsonl").read_text().splitlines()
+        if line.strip() and json.loads(line)["outcome"] != "refused"
+    ]
+    (run_dir / "ingest-log.jsonl").write_text("\n".join(kept) + "\n")
+
+    validated = run("validate", "--run-dir", str(run_dir))
+    assert validated.returncode == 2, (
+        "a superseded entry kept publishing a refusal the journal no longer records"
+    )
+    assert "no unique refused ingest" in validated.stderr
+
+
+# --- Candidate drift under an in-flight dispatch ------------------------------
+#
+# `kickoff-tree-id` hashes nonignored untracked files, so any write by any
+# session moves the candidate. The three acceptance checks below are exercised
+# for independence on purpose: each of the first three tests constructs a drift
+# that passes the other two checks and fails only its own, because a layered
+# rule whose layers are never isolated is one check plus two decorations.
+
+
+DRIFT_MARKERS = ("drift-partition:", "drift-reviewed-surface:", "drift-authority:")
+
+
+def install_drift_policy(repository: Path) -> None:
+    """Give the fixture the real policy file that owns the partition vocabulary.
+
+    The block in `policies/orchestration-evidence.md` is the single source of
+    truth, so the tests read the shipped vocabulary rather than a paraphrase of
+    it that could agree with a wrong implementation.
+    """
+    destination = repository / "policies" / "orchestration-evidence.md"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_bytes((ROOT / "policies" / "orchestration-evidence.md").read_bytes())
+
+
+def write_repo_file(repository: Path, relative: str, text: str) -> None:
+    target = repository / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(text, encoding="utf-8")
+
+
+def dispatch_rows(run_dir: Path) -> list[dict[str, object]]:
+    return [
+        row
+        for line in (run_dir / "role-dispatch.jsonl").read_text().splitlines()
+        if line.strip()
+        for row in [json.loads(line)]
+        if row.get("state") != "opened"
+    ]
+
+
+def drift_records(run_dir: Path) -> list[dict[str, object]]:
+    path = run_dir / "candidate-drift.jsonl"
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+
+
+def drifting_attempt(
+    repository: Path,
+    run_dir: Path,
+    mutate,
+    *,
+    operation: str = "role.code-review",
+    role: str = "critic",
+    attempt: int = 1,
+    accepted: bool = True,
+    record_open_candidate: bool = True,
+) -> tuple[str, str, str]:
+    """One dispatch whose tree moved between dispatch-open and dispatch-return.
+
+    Returns `(dispatch candidate, return candidate, intelligence span id)`.
+    """
+    metadata = json.loads((run_dir / "run.json").read_text())
+    trace_id = metadata["telemetry_trace_id"]
+    root_span_id = metadata["telemetry_root_span_id"]
+    handoff = run_dir / f"{operation}-{attempt}.json"
+    registered = run(
+        "register-role-attempt",
+        "--run-dir",
+        str(run_dir),
+        "--operation",
+        operation,
+        "--attempt",
+        str(attempt),
+        "--role",
+        role,
+        "--harness",
+        "native",
+        "--reason",
+        "initial",
+        "--output",
+        str(handoff),
+    )
+    assert registered.returncode == 0, registered.stderr
+    opened = run("current-candidate", "--run-dir", str(run_dir), "--reason", "dispatch")
+    assert opened.returncode == 0, opened.stderr
+    dispatch_candidate = opened.stdout.strip()
+    intelligence = start_span(
+        engine_root=repository,
+        trace_id=trace_id,
+        parent_span_id=root_span_id,
+        category="intelligence",
+        operation=operation,
+        attempt=attempt,
+        role=role,
+        harness="native",
+    )
+    dispatch_opened = open_role_dispatch(
+        run_dir,
+        handoff,
+        intelligence.span_id,
+        dispatch_candidate=(dispatch_candidate if record_open_candidate else None),
+    )
+    assert dispatch_opened.returncode == 0, dispatch_opened.stderr
+    wait = start_span(
+        engine_root=repository,
+        trace_id=trace_id,
+        parent_span_id=intelligence.span_id,
+        category="wait",
+        operation=operation,
+        attempt=attempt,
+        role=role,
+        harness="native",
+    )
+    mutate(repository)
+    for span_id in (wait.span_id, intelligence.span_id):
+        finish_span(
+            engine_root=repository,
+            trace_id=trace_id,
+            span_id=span_id,
+            outcome="success",
+            exit_code=0,
+        )
+    arguments = [
+        "record-role-dispatch",
+        "--run-dir",
+        str(run_dir),
+        "--registration",
+        str(handoff),
+        "--state",
+        "accepted" if accepted else "rejected",
+        "--idle-telemetry",
+        "unavailable" if accepted else "not-dispatched",
+        "--intelligence-span-id",
+        intelligence.span_id,
+    ]
+    if accepted:
+        arguments.extend(["--wait-span-id", wait.span_id])
+    dispatched = run(*arguments)
+    assert dispatched.returncode == 0, dispatched.stderr
+    row = [
+        item
+        for item in dispatch_rows(run_dir)
+        if item["operation"] == operation and item["attempt"] == attempt
+    ][0]
+    return dispatch_candidate, str(row["return_candidate_id"]), intelligence.span_id
+
+
+def accept_drift(
+    run_dir: Path,
+    *,
+    operation: str = "role.code-review",
+    attempt: int = 1,
+    cause: str = "a concurrent supervision session appended a lesson mid-dispatch",
+) -> subprocess.CompletedProcess[str]:
+    return run(
+        "accept-candidate-drift",
+        "--run-dir",
+        str(run_dir),
+        "--operation",
+        operation,
+        "--attempt",
+        str(attempt),
+        "--cause",
+        cause,
+    )
+
+
+def add_lesson(repository: Path) -> None:
+    write_repo_file(repository, "lessons/silent-guard-drift.md", "# Lesson\n")
+
+
+def stale_batch(tmp_path: Path, dispatch: str, name: str = "critic.md") -> Path:
+    """A critic batch stamped with the candidate the critic was dispatched at."""
+    return review_artifact(
+        tmp_path / name,
+        [
+            finding(
+                "CODE-F002",
+                dispatch,
+                state="rejected-with-evidence",
+                resolved_in=dispatch,
+            )
+        ],
+    )
+
+
+def sole_marker(text: str) -> set[str]:
+    return {marker for marker in DRIFT_MARKERS if marker in text}
+
+
+def test_the_partition_check_alone_refuses_a_path_it_cannot_place(
+    repository: Path, tmp_path: Path
+) -> None:
+    """Check 1 in isolation: `bin/` is nothing the bookkeeping touches.
+
+    Nothing is captured, so no reviewed surface exists, and the drifted path is
+    not a declared authority — checks 2 and 3 have nothing to say about it. Only
+    the partition can refuse this drift, and an unplaceable path must fail
+    closed rather than default to disjoint.
+    """
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+
+    def mutate(root: Path) -> None:
+        write_repo_file(root, "bin/tool.py", "VALUE = 2\n")
+
+    drifting_attempt(repository, run_dir, mutate)
+
+    refused = accept_drift(run_dir)
+
+    assert refused.returncode == 2, "an unplaceable drifted path was accepted"
+    assert sole_marker(refused.stderr) == {"drift-partition:"}, refused.stderr
+    assert "bin/tool.py" in refused.stderr
+    assert drift_records(run_dir) == []
+
+
+def test_the_reviewed_surface_check_alone_refuses_a_path_a_finding_names(
+    repository: Path, tmp_path: Path
+) -> None:
+    """Check 2 in isolation, via `affected_paths`.
+
+    `lessons/` is squarely inside the inert partition and is not a declared
+    authority, so checks 1 and 3 pass. A ledger finding names the very path that
+    drifted, which makes the drift part of what the review was about.
+    """
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    named = dict(finding("CODE-F001", candidate))
+    named["affected_paths"] = ["lessons/silent-guard-drift.md"]
+    assert ingest(run_dir, tmp_path, [named], candidate=candidate).returncode == 0
+
+    drifting_attempt(repository, run_dir, add_lesson)
+
+    refused = accept_drift(run_dir)
+
+    assert refused.returncode == 2, (
+        "a drift the review's own findings point at was accepted as disjoint"
+    )
+    assert sole_marker(refused.stderr) == {"drift-reviewed-surface:"}, refused.stderr
+    assert "CODE-F001" in refused.stderr
+    assert drift_records(run_dir) == []
+
+
+def test_the_reviewed_surface_check_alone_refuses_a_captured_change_path(
+    repository: Path, tmp_path: Path
+) -> None:
+    """The other half of check 2: `change.json`'s own `changed_files`."""
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    add_lesson(repository)
+    capture(repository, run_dir)
+    assert "lessons/silent-guard-drift.md" in {
+        item["path"] for item in json.loads((run_dir / "change.json").read_text())["changed_files"]
+    }
+
+    def mutate(root: Path) -> None:
+        write_repo_file(root, "lessons/silent-guard-drift.md", "# Lesson, revised\n")
+
+    drifting_attempt(repository, run_dir, mutate)
+
+    refused = accept_drift(run_dir)
+
+    assert refused.returncode == 2, (
+        "a drift inside the captured change surface was accepted as disjoint"
+    )
+    assert sole_marker(refused.stderr) == {"drift-reviewed-surface:"}, refused.stderr
+    assert drift_records(run_dir) == []
+
+
+def test_the_authority_check_alone_refuses_a_drifted_authority_in_the_inert_set(
+    repository: Path, tmp_path: Path
+) -> None:
+    """Check 3 in isolation — the sharp edge, and why `plan/` cannot be one class.
+
+    `plan/INDEX.md` is inert bookkeeping and sits in the partition, so check 1
+    passes; nothing is captured and no finding names it, so check 2 passes. But
+    it is a *declared authority* of this very review, which is exactly the case
+    a path partition inverts on. Only the authority check can refuse it.
+    """
+    install_drift_policy(repository)
+    write_repo_file(repository, "plan/INDEX.md", "| 1 | ready |\n")
+    run_dir = tmp_path / "run"
+    initialize(
+        repository,
+        run_dir,
+        authorities=("phase.md::Acceptance", "plan/INDEX.md"),
+    )
+
+    def mutate(root: Path) -> None:
+        write_repo_file(root, "plan/INDEX.md", "| 1 | done |\n")
+
+    drifting_attempt(repository, run_dir, mutate)
+
+    refused = accept_drift(run_dir)
+
+    assert refused.returncode == 2, (
+        "a declared authority drifted under the review and was waved through "
+        "because its path prefix is inert bookkeeping"
+    )
+    assert sole_marker(refused.stderr) == {"drift-authority:"}, refused.stderr
+    assert "plan/INDEX.md" in refused.stderr
+    assert drift_records(run_dir) == []
+
+
+def test_a_proven_disjoint_drift_is_accepted_and_recorded(repository: Path, tmp_path: Path) -> None:
+    """All three checks pass: a concurrent session's lesson file mid-dispatch."""
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+
+    dispatch, returned, span_id = drifting_attempt(repository, run_dir, add_lesson)
+
+    accepted = accept_drift(run_dir)
+
+    assert accepted.returncode == 0, accepted.stderr
+    record = drift_records(run_dir)[0]
+    assert record["operation"] == "role.code-review"
+    assert record["attempt"] == 1
+    assert record["dispatch_candidate_id"] == dispatch
+    assert record["return_candidate_id"] == returned
+    assert dispatch != returned
+    assert record["drifted_paths"] == ["lessons/silent-guard-drift.md"]
+    assert record["cause"].startswith("a concurrent supervision session")
+    assert (
+        ingest_artifact(run_dir, returned, stale_batch(tmp_path, dispatch), span_id).returncode == 0
+    )
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
+
+
+def test_an_accepted_drift_lets_the_stale_resolution_ingest(
+    repository: Path, tmp_path: Path
+) -> None:
+    """The refusal this mechanism exists for, and the only one it relaxes.
+
+    The critic honestly stamped the candidate it was dispatched against; the
+    tree then moved under it. Rewriting `resolved_in` to the ingesting candidate
+    would record that a reviewer verified a tree it never saw, so the batch is
+    admitted only once the drift between the two is proven disjoint.
+    """
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    dispatch, returned, span_id = drifting_attempt(repository, run_dir, add_lesson)
+    artifact = review_artifact(
+        tmp_path / "critic.md",
+        [
+            finding(
+                "CODE-F002",
+                dispatch,
+                state="rejected-with-evidence",
+                resolved_in=dispatch,
+            )
+        ],
+    )
+
+    before = ingest_artifact(run_dir, returned, artifact, span_id)
+    assert before.returncode == 2, "a stale resolution was admitted with no record"
+    assert "resolved_in does not match" in before.stderr
+
+    assert accept_drift(run_dir).returncode == 0
+    after = ingest_artifact(run_dir, returned, artifact, span_id)
+
+    assert after.returncode == 0, after.stderr
+    ledger = json.loads((run_dir / "findings.json").read_text())["findings"]
+    assert [item["resolved_in"] for item in ledger] == [dispatch]
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
+
+
+def test_drift_acceptance_is_bound_to_the_reviews_own_dispatch(
+    repository: Path, tmp_path: Path
+) -> None:
+    """A record for one pass does not launder another pass's stale resolution."""
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    dispatch, returned, _ = drifting_attempt(repository, run_dir, add_lesson)
+    assert accept_drift(run_dir).returncode == 0
+    other = native_accepted_attempt(repository, run_dir, "role.code-review", "critic", 2)
+    artifact = review_artifact(
+        tmp_path / "critic-2.md",
+        [
+            finding(
+                "CODE-F003",
+                dispatch,
+                state="rejected-with-evidence",
+                resolved_in=dispatch,
+            )
+        ],
+    )
+
+    refused = ingest_artifact(run_dir, returned, artifact, other)
+
+    assert refused.returncode == 2, (
+        "one pass's drift record admitted another pass's stale resolution"
+    )
+    assert "resolved_in does not match" in refused.stderr
+
+
+def test_an_ingest_beyond_the_recorded_return_candidate_still_refuses(
+    repository: Path, tmp_path: Path
+) -> None:
+    """The record spans exactly one dispatch, and later movement is unclassified."""
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    dispatch, _, span_id = drifting_attempt(repository, run_dir, add_lesson)
+    assert accept_drift(run_dir).returncode == 0
+    write_repo_file(repository, "lessons/second.md", "# Another\n")
+    moved = run("current-candidate", "--run-dir", str(run_dir), "--reason", "ingest")
+    assert moved.returncode == 0
+    artifact = review_artifact(
+        tmp_path / "critic.md",
+        [
+            finding(
+                "CODE-F002",
+                dispatch,
+                state="rejected-with-evidence",
+                resolved_in=dispatch,
+            )
+        ],
+    )
+
+    refused = ingest_artifact(run_dir, moved.stdout.strip(), artifact, span_id)
+
+    assert refused.returncode == 2, (
+        "a drift record was stretched across movement it never classified"
+    )
+    assert "resolved_in does not match" in refused.stderr
+
+
+def test_a_drift_record_requires_both_stored_manifests(repository: Path, tmp_path: Path) -> None:
+    """Without the manifests the drift is unclassifiable, never assumed disjoint.
+
+    Only `candidate.json` and `reviewed-candidate.json` were ever persisted
+    before the store existed, both overwritten in place, so at the moment a
+    batch was refused the manifest the role saw was already gone.
+    """
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    dispatch, _, _ = drifting_attempt(repository, run_dir, add_lesson)
+    (run_dir / "candidates" / f"{dispatch}.json").unlink()
+
+    refused = accept_drift(run_dir)
+
+    assert refused.returncode == 2, "an unclassifiable drift defaulted to disjoint"
+    assert "no stored candidate manifest" in refused.stderr
+    assert drift_records(run_dir) == []
+
+
+def test_the_candidate_store_is_content_addressed_and_write_once(
+    repository: Path, tmp_path: Path
+) -> None:
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    stored = run_dir / "candidates" / f"{candidate}.json"
+    assert json.loads(stored.read_text())["candidate_id"] == candidate
+    before = stored.read_bytes()
+
+    # The same candidate observed again deduplicates rather than rewriting.
+    assert (
+        run("current-candidate", "--run-dir", str(run_dir), "--reason", "dispatch").returncode == 0
+    )
+    assert stored.read_bytes() == before
+
+    add_lesson(repository)
+    moved = run("current-candidate", "--run-dir", str(run_dir), "--reason", "dispatch")
+    assert moved.returncode == 0
+    assert (run_dir / "candidates" / f"{moved.stdout.strip()}.json").is_file()
+    assert sorted(lineage_of(run_dir)) == sorted(
+        path.stem for path in (run_dir / "candidates").iterdir()
+    )
+
+
+def test_a_tampered_drift_record_fails_recomputation(repository: Path, tmp_path: Path) -> None:
+    """The recomputation is what makes the classification a measurement."""
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    dispatch, returned, span_id = drifting_attempt(repository, run_dir, add_lesson)
+    assert accept_drift(run_dir).returncode == 0
+    assert (
+        ingest_artifact(run_dir, returned, stale_batch(tmp_path, dispatch), span_id).returncode == 0
+    )
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
+
+    record = drift_records(run_dir)[0]
+    record["drifted_paths"] = []
+    (run_dir / "candidate-drift.jsonl").write_text(
+        json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n"
+    )
+
+    validated = run("validate", "--run-dir", str(run_dir))
+
+    assert validated.returncode == 2, (
+        "validate trusted a recorded drift path set instead of re-deriving it"
+    )
+    assert "do not recompute" in validated.stderr
+
+
+def test_validate_re_runs_the_classification_it_published(repository: Path, tmp_path: Path) -> None:
+    """A record accepted under one ledger is re-checked against the ledger now.
+
+    A finding ingested after the acceptance can bring the drifted path into the
+    reviewed surface, and the entry must stop being published on the strength of
+    a classification that no longer holds.
+    """
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    dispatch, returned, span_id = drifting_attempt(repository, run_dir, add_lesson)
+    assert accept_drift(run_dir).returncode == 0
+    assert (
+        ingest_artifact(run_dir, returned, stale_batch(tmp_path, dispatch), span_id).returncode == 0
+    )
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
+
+    named = dict(finding("CODE-F009", returned))
+    named["affected_paths"] = ["lessons/silent-guard-drift.md"]
+    assert ingest(run_dir, tmp_path, [named], candidate=returned).returncode == 0
+
+    validated = run("validate", "--run-dir", str(run_dir))
+
+    assert validated.returncode == 2, (
+        "an accepted drift kept being published after the reviewed surface grew to cover it"
+    )
+    assert "drift-reviewed-surface:" in validated.stderr
+
+
+def test_a_drift_record_binds_an_accepted_dispatch(repository: Path, tmp_path: Path) -> None:
+    """Append-only means the reader's refusal has no undo, so the verb checks."""
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    drifting_attempt(repository, run_dir, add_lesson)
+
+    never = accept_drift(run_dir, attempt=4)
+
+    assert never.returncode == 2, "a drift record was written for a dispatch this run never made"
+    assert "no accepted role dispatch is recorded" in never.stderr
+    assert drift_records(run_dir) == []
+
+
+def test_a_rejected_dispatch_cannot_carry_a_drift_record(repository: Path, tmp_path: Path) -> None:
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    drifting_attempt(repository, run_dir, add_lesson, accepted=False)
+
+    refused = accept_drift(run_dir)
+
+    assert refused.returncode == 2
+    assert "no accepted role dispatch is recorded" in refused.stderr
+    assert drift_records(run_dir) == []
+
+
+def test_a_dispatch_with_no_recorded_open_candidate_has_no_recovery(
+    repository: Path, tmp_path: Path
+) -> None:
+    """The freeze convention's executable half: unrecorded is unreconstructible.
+
+    Nothing forces `--dispatch-candidate`, because the delegated watcher records
+    the topology and cannot know it. What is enforced is that its absence costs
+    the recovery outright rather than being silently filled in later.
+    """
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    drifting_attempt(repository, run_dir, add_lesson, record_open_candidate=False)
+    assert dispatch_rows(run_dir)[0]["dispatch_candidate_id"] is None
+
+    refused = accept_drift(run_dir)
+
+    assert refused.returncode == 2, (
+        "a drift was classified for a dispatch that recorded no open candidate"
+    )
+    assert "records no dispatch-open candidate" in refused.stderr
+    assert drift_records(run_dir) == []
+
+
+def test_a_dispatch_that_did_not_move_the_tree_has_no_drift(
+    repository: Path, tmp_path: Path
+) -> None:
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    dispatch, returned, _ = drifting_attempt(repository, run_dir, lambda root: None)
+    assert dispatch == returned
+
+    refused = accept_drift(run_dir)
+
+    assert refused.returncode == 2
+    assert "did not move" in refused.stderr
+    assert drift_records(run_dir) == []
+
+
+def test_a_duplicate_drift_record_refuses(repository: Path, tmp_path: Path) -> None:
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    drifting_attempt(repository, run_dir, add_lesson)
+    assert accept_drift(run_dir).returncode == 0
+
+    again = accept_drift(run_dir)
+
+    assert again.returncode == 2
+    assert "duplicate candidate-drift record" in again.stderr
+    assert len(drift_records(run_dir)) == 1
+
+
+def test_a_drift_record_requires_a_cause(repository: Path, tmp_path: Path) -> None:
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    drifting_attempt(repository, run_dir, add_lesson)
+
+    refused = accept_drift(run_dir, cause="   ")
+
+    assert refused.returncode == 2
+    assert "requires its cause" in refused.stderr
+    assert drift_records(run_dir) == []
+
+
+def test_accepted_drift_is_published_in_both_summary_formats(
+    repository: Path, tmp_path: Path
+) -> None:
+    """A run that accepted a review of a tree the ingest did not hold says so."""
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    dispatch, returned, span_id = drifting_attempt(repository, run_dir, add_lesson)
+    artifact = review_artifact(
+        tmp_path / "critic.md",
+        [
+            finding(
+                "CODE-F002",
+                dispatch,
+                state="rejected-with-evidence",
+                resolved_in=dispatch,
+            )
+        ],
+    )
+    assert (
+        accept_drift(
+            run_dir, cause="a supervision session appended a lesson mid-dispatch"
+        ).returncode
+        == 0
+    )
+    assert ingest_artifact(run_dir, returned, artifact, span_id).returncode == 0
+    finalize_for_summary(repository, run_dir)
+
+    summary = run("timing-summary", "--run-dir", str(run_dir), "--format", "json")
+    assert summary.returncode == 0, summary.stderr
+    projected = json.loads(summary.stdout)["candidate_drift"]
+    assert len(projected) == 1
+    assert projected[0]["operation"] == "role.code-review"
+    assert projected[0]["attempt"] == 1
+    assert projected[0]["dispatch_candidate_id"] == dispatch
+    assert projected[0]["return_candidate_id"] == returned
+    assert projected[0]["drifted_paths"] == ["lessons/silent-guard-drift.md"]
+
+    markdown = run("timing-summary", "--run-dir", str(run_dir), "--format", "markdown")
+    assert markdown.returncode == 0, markdown.stderr
+    assert "Accepted candidate drift" in markdown.stdout
+    assert "lessons/silent-guard-drift.md" in markdown.stdout
+    assert "a supervision session appended a lesson mid-dispatch" in markdown.stdout
+    assert dispatch[:12] in markdown.stdout
+
+
+def test_accepted_drift_does_not_relax_the_final_seal(repository: Path, tmp_path: Path) -> None:
+    """The seal is lane- and drift-independent.
+
+    A gate whose candidates differ measured a tree other than the one being
+    accepted, and an accepted drift record buys exactly nothing here.
+    """
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    dispatch, returned, span_id = drifting_attempt(repository, run_dir, add_lesson)
+    artifact = review_artifact(
+        tmp_path / "critic.md",
+        [
+            finding(
+                "CODE-F002",
+                dispatch,
+                state="rejected-with-evidence",
+                resolved_in=dispatch,
+            )
+        ],
+    )
+    assert accept_drift(run_dir).returncode == 0
+    assert ingest_artifact(run_dir, returned, artifact, span_id).returncode == 0
+    complete_orchestration(repository, run_dir)
+    assert run_final_gate(run_dir, returned).returncode == 0
+    assert (
+        run(
+            "validate",
+            "--run-dir",
+            str(run_dir),
+            "--require-final",
+            "--required-final-command",
+            "./bin/check all",
+        ).returncode
+        == 0
+    )
+
+    # One more inert-set write, and the seal refuses even though the very same
+    # partition was proven disjoint minutes ago.
+    write_repo_file(repository, "lessons/later.md", "# Later\n")
+
+    sealed = run(
+        "validate",
+        "--run-dir",
+        str(run_dir),
+        "--require-final",
+        "--required-final-command",
+        "./bin/check all",
+    )
+
+    assert sealed.returncode == 2, (
+        "an accepted drift classification was allowed to stand in for the "
+        "candidate-bound final gate"
+    )
+    assert "no successful final gate" in sealed.stderr
+
+
+def test_a_dispatch_records_both_candidates(repository: Path, tmp_path: Path) -> None:
+    """The detection half: a moved candidate is visible at the seam."""
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+
+    dispatch, returned, _ = drifting_attempt(repository, run_dir, add_lesson)
+
+    row = dispatch_rows(run_dir)[0]
+    assert row["dispatch_candidate_id"] == dispatch
+    assert row["return_candidate_id"] == returned
+    assert dispatch != returned
+    assert dispatch in lineage_of(run_dir)
+    assert returned in lineage_of(run_dir)
+
+
+def test_a_dispatch_candidate_outside_the_lineage_refuses(repository: Path, tmp_path: Path) -> None:
+    """A candidate this run never observed is not an anchor for anything."""
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    handoff = run_dir / "critic.json"
+    assert (
+        run(
+            "register-role-attempt",
+            "--run-dir",
+            str(run_dir),
+            "--operation",
+            "role.code-review",
+            "--attempt",
+            "1",
+            "--role",
+            "critic",
+            "--harness",
+            "native",
+            "--reason",
+            "initial",
+            "--output",
+            str(handoff),
+        ).returncode
+        == 0
+    )
+    metadata = json.loads((run_dir / "run.json").read_text())
+    intelligence = start_span(
+        engine_root=repository,
+        trace_id=metadata["telemetry_trace_id"],
+        parent_span_id=metadata["telemetry_root_span_id"],
+        category="intelligence",
+        operation="role.code-review",
+        attempt=1,
+        role="critic",
+        harness="native",
+    )
+    finish_span(
+        engine_root=repository,
+        trace_id=metadata["telemetry_trace_id"],
+        span_id=intelligence.span_id,
+        outcome="success",
+        exit_code=0,
+    )
+
+    refused = run(
+        "record-role-dispatch",
+        "--run-dir",
+        str(run_dir),
+        "--registration",
+        str(handoff),
+        "--state",
+        "accepted",
+        "--idle-telemetry",
+        "unavailable",
+        "--intelligence-span-id",
+        intelligence.span_id,
+        "--dispatch-candidate",
+        "b" * 64,
+    )
+
+    assert refused.returncode == 2
+    assert "is not a candidate this run recorded" in refused.stderr
+    assert dispatch_rows(run_dir) == []
+
+
+# --- The vocabulary's own fail-closed behaviour --------------------------------
+#
+# Sourcing the partition from a policy document rather than restating it in
+# code is only safe if the tool refuses when the document does not parse. Every
+# branch below is reachable: a `return DEFAULT_ENTRIES` in place of the
+# absent-block raise would pass the entire drift suite without these tests.
+
+
+def rewrite_drift_policy(repository: Path, transform) -> None:
+    """Edit the fixture's copy of the policy that owns the vocabulary."""
+    target = repository / "policies" / "orchestration-evidence.md"
+    target.write_text(transform(target.read_text(encoding="utf-8")), encoding="utf-8")
+
+
+def drop_vocabulary_block(text: str) -> str:
+    start = text.index("```yaml\n# kickoff-evidence drift partitions")
+    end = text.index("```", text.index("\n", start)) + 3
+    return text[:start] + text[end:]
+
+
+def vocabulary_block(text: str) -> str:
+    start = text.index("```yaml\n# kickoff-evidence drift partitions")
+    end = text.index("```", text.index("\n", start)) + 3
+    return text[start:end]
+
+
+def drifted_run_awaiting_classification(repository: Path, tmp_path: Path) -> Path:
+    """A run with one recorded, unclassified inert-set drift ready to accept."""
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    drifting_attempt(repository, run_dir, add_lesson)
+    return run_dir
+
+
+def test_an_absent_vocabulary_block_refuses(repository: Path, tmp_path: Path) -> None:
+    """No block, no classification. The document is the contract or nothing is."""
+    run_dir = drifted_run_awaiting_classification(repository, tmp_path)
+    rewrite_drift_policy(repository, drop_vocabulary_block)
+
+    refused = accept_drift(run_dir)
+
+    assert refused.returncode == 2, (
+        "a drift was classified against a vocabulary the policy no longer carries"
+    )
+    assert "carries 0" in refused.stderr
+    assert "drift partitions" in refused.stderr
+    assert drift_records(run_dir) == []
+
+
+def test_a_duplicated_vocabulary_block_refuses(repository: Path, tmp_path: Path) -> None:
+    """Exactly one, as this file's fenced-JSON reader already demands.
+
+    Silently taking the first would make which block governs depend on document
+    order, in a document that documents its own block format.
+    """
+    run_dir = drifted_run_awaiting_classification(repository, tmp_path)
+    rewrite_drift_policy(repository, lambda text: text + "\n" + vocabulary_block(text) + "\n")
+
+    refused = accept_drift(run_dir)
+
+    assert refused.returncode == 2, "a second vocabulary block was resolved silently to the first"
+    assert "carries 2" in refused.stderr
+    assert drift_records(run_dir) == []
+
+
+def test_an_unparseable_vocabulary_line_refuses(repository: Path, tmp_path: Path) -> None:
+    """A dropped list marker is a silently smaller inert set, so it is an error."""
+    run_dir = drifted_run_awaiting_classification(repository, tmp_path)
+    rewrite_drift_policy(repository, lambda text: text.replace("  - lessons/\n", "  lessons/\n", 1))
+
+    refused = accept_drift(run_dir)
+
+    assert refused.returncode == 2, "an unparseable vocabulary line was skipped instead of refusing"
+    assert "unparseable drift partition line" in refused.stderr
+    assert drift_records(run_dir) == []
+
+
+def test_an_empty_inert_set_refuses(repository: Path, tmp_path: Path) -> None:
+    """An empty set would refuse every drift — correct, but for the wrong reason.
+
+    It has to be distinguishable from a vocabulary that genuinely places
+    nothing, or a truncated policy reads as a very strict one.
+    """
+    run_dir = drifted_run_awaiting_classification(repository, tmp_path)
+    rewrite_drift_policy(
+        repository,
+        lambda text: text.replace(
+            vocabulary_block(text),
+            "```yaml\n# kickoff-evidence drift partitions\ninert:\n```",
+        ),
+    )
+
+    refused = accept_drift(run_dir)
+
+    assert refused.returncode == 2
+    assert "inert set is empty" in refused.stderr
+    assert drift_records(run_dir) == []
+
+
+def test_a_single_component_entry_never_matches_a_nested_path(
+    repository: Path, tmp_path: Path
+) -> None:
+    """`*` never crosses a `/`, which is the whole safety of the `LOG*.md` entry.
+
+    A naive `fnmatch(path, entry)` matches `LOGS/notes/x.md` against `LOG*.md`,
+    because `*` there spans separators — so a directory whose name merely starts
+    with `LOG` would become inert, along with everything under it. The shipped
+    vocabulary is used verbatim; only the path is contrived.
+    """
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+
+    def mutate(root: Path) -> None:
+        write_repo_file(root, "LOGS/notes/x.md", "# Not a root log\n")
+
+    drifting_attempt(repository, run_dir, mutate)
+
+    refused = accept_drift(run_dir)
+
+    assert refused.returncode == 2, (
+        "a nested path was placed in the inert set by a single-component entry, "
+        "so `*` crossed a `/`"
+    )
+    assert sole_marker(refused.stderr) == {"drift-partition:"}, refused.stderr
+    assert "LOGS/notes/x.md" in refused.stderr
+    assert drift_records(run_dir) == []
+
+
+def test_the_root_log_entry_still_matches_what_it_is_for(repository: Path, tmp_path: Path) -> None:
+    """The other side of the same rule: `LOG*.md` does place the root log."""
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+
+    def mutate(root: Path) -> None:
+        write_repo_file(root, "LOG.md", "# START\n")
+
+    drifting_attempt(repository, run_dir, mutate)
+
+    accepted = accept_drift(run_dir)
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert drift_records(run_dir)[0]["drifted_paths"] == ["LOG.md"]
+
+
+def test_a_poisoned_drift_record_refuses_at_ingest_too(repository: Path, tmp_path: Path) -> None:
+    """Both readers apply the dispatch check, not just the gate at the end."""
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    dispatch, returned, span_id = drifting_attempt(repository, run_dir, add_lesson)
+    assert accept_drift(run_dir).returncode == 0
+
+    record = drift_records(run_dir)[0]
+    record["dispatch_candidate_id"] = "c" * 64
+    (run_dir / "candidate-drift.jsonl").write_text(
+        json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n"
+    )
+
+    refused = ingest_artifact(run_dir, returned, stale_batch(tmp_path, dispatch), span_id)
+
+    assert refused.returncode == 2, (
+        "a poisoned drift record was consulted at ingest without the check validate applies to it"
+    )
+    assert "does not describe the accepted dispatch it names" in refused.stderr
+    assert journal_of(run_dir) == []
+
+
+def test_a_stale_classification_refusal_names_its_recovery(
+    repository: Path, tmp_path: Path
+) -> None:
+    """Append-only means there is no withdrawal verb, so say what to do instead."""
+    install_drift_policy(repository)
+    run_dir = tmp_path / "run"
+    initialize(repository, run_dir)
+    dispatch, returned, span_id = drifting_attempt(repository, run_dir, add_lesson)
+    assert accept_drift(run_dir).returncode == 0
+    assert (
+        ingest_artifact(run_dir, returned, stale_batch(tmp_path, dispatch), span_id).returncode == 0
+    )
+    named = dict(finding("CODE-F009", returned))
+    named["affected_paths"] = ["lessons/silent-guard-drift.md"]
+    assert ingest(run_dir, tmp_path, [named], candidate=returned).returncode == 0
+
+    validated = run("validate", "--run-dir", str(run_dir))
+
+    assert validated.returncode == 2
+    assert "cannot be withdrawn" in validated.stderr
+    assert "fresh evidence run" in validated.stderr

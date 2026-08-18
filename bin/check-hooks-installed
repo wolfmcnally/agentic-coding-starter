@@ -1,0 +1,127 @@
+#!/usr/bin/env python3
+"""check-hooks-installed — Prove the opt-in Git hooks are live when opted in.
+
+``core.hooksPath`` is *local* config that does not survive a clone, and it can
+be silently repointed at the default ``.git/hooks`` (which holds only samples),
+disabling ``.githooks/pre-commit`` with no error and nothing in any log. A
+component whose failure mode is silence needs an external witness; this is it.
+
+This repository's hooks are **opt-in** (`policies/build-gates.md § Lifecycle
+hooks`: cloning or stamping never changes Git configuration silently), so the
+witness is opt-in-aware rather than a mandate:
+
+1. **Unset ``core.hooksPath``** is the not-opted-in state and passes, with a
+   note naming ``./bin/install-hooks`` — a fresh clone is healthy, not broken.
+2. **Set but wrong** fails: a checkout that opted in and was silently
+   repointed is exactly the silent disablement this guard exists to catch.
+3. **The tracked hooks themselves** (``.githooks/pre-commit``,
+   ``.githooks/pre-push``) must exist and be executable regardless of opt-in,
+   because a broken tracked hook fails every checkout that later opts in.
+
+Exit codes:
+    0   clean (opted in and live, or cleanly not opted in)
+    1   one or more violations
+    2   argv / IO error (not a Git worktree, git unavailable)
+
+Usage:
+    bin/check-hooks-installed
+    bin/check-hooks-installed --root <dir>   # used by the tests against fixtures
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+TRACKED_HOOKS = ("pre-commit", "pre-push")
+
+
+class GitError(RuntimeError):
+    """The root is not a usable Git worktree, or git is unavailable."""
+
+
+def configured_hooks_path(root: Path) -> str:
+    """Return ``core.hooksPath`` for ``root``'s local config, or "" if unset."""
+    try:
+        inside = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--is-inside-work-tree"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as exc:
+        raise GitError(f"git is unavailable: {exc}") from exc
+    if inside.returncode != 0 or inside.stdout.strip() != "true":
+        raise GitError(f"not a Git worktree: {root}")
+    result = subprocess.run(
+        ["git", "-C", str(root), "config", "--get", "core.hooksPath"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    # `git config --get` exits 1 for a missing key; that is "unset", not an error.
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def violations(root: Path) -> tuple[list[str], bool]:
+    """Return (violations, opted_in)."""
+    found: list[str] = []
+    configured = configured_hooks_path(root)
+    opted_in = bool(configured)
+    if configured and configured != ".githooks":
+        found.append(
+            f"core.hooksPath is '{configured}', not '.githooks', so the "
+            "tracked hooks are bypassed. Run ./bin/install-hooks --force to "
+            "restore them."
+        )
+    for name in TRACKED_HOOKS:
+        hook = root / ".githooks" / name
+        if not hook.is_file():
+            found.append(f".githooks/{name} is missing")
+        elif not os.access(hook, os.X_OK):
+            found.append(f".githooks/{name} is not executable")
+    return found, opted_in
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="check-hooks-installed", description=__doc__.splitlines()[0]
+    )
+    parser.add_argument(
+        "--root",
+        type=Path,
+        default=REPO_ROOT,
+        help="Git worktree to check (default: this repo)",
+    )
+    args = parser.parse_args(argv)
+    root = args.root.resolve()
+
+    try:
+        found, opted_in = violations(root)
+    except GitError as exc:
+        print(f"CHECK-HOOKS-INSTALLED ERROR {exc}", file=sys.stderr)
+        return 2
+
+    for violation in found:
+        print(f"CHECK-HOOKS-INSTALLED ERROR {violation}", file=sys.stderr)
+    if found:
+        count = len(found)
+        plural = "" if count == 1 else "s"
+        print(f"CHECK-HOOKS-INSTALLED FAIL {count} violation{plural}", file=sys.stderr)
+        return 1
+    if opted_in:
+        print("CHECK-HOOKS-INSTALLED OK tracked hooks are installed and executable")
+    else:
+        print(
+            "CHECK-HOOKS-INSTALLED OK not opted in (core.hooksPath unset; "
+            "./bin/install-hooks opts this checkout in)"
+        )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

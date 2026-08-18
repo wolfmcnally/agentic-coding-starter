@@ -13,7 +13,7 @@ The human-editable `role_timeouts` section of [`kickoff.yaml`](../kickoff.yaml) 
 | Coder | 7,200 s | 1,200 s | 200 |
 | Code critic | 2,700 s | 600 s | 50 |
 
-Every role must produce its first structured event within **120 seconds**. The turn column is deliberately named `claude_max_turns` in configuration: Claude exposes that CLI circuit breaker, while Codex and native subagents do not expose an equivalent per-invocation flag. Their enforceable guards are the three clocks. Authentication preflight has its own 120-second deadline in [`role-models.md`](role-models.md). The 5-cycle convergence backstop remains separate: it limits revision rounds, while this policy limits one round.
+Every role must produce its first structured event within **120 seconds**. The turn column is deliberately named `claude_max_turns` in configuration: Claude exposes that CLI circuit breaker, while Codex and native subagents do not expose an equivalent per-invocation flag. Their enforceable guards are the three clocks. Authentication preflight has its own 120-second deadline in [`role-models.md`](role-models.md). The 10-cycle convergence backstop remains separate: it limits revision rounds, while this policy limits one round.
 
 These are hang guards, not performance targets or promises. Planning and review get enough room for repository inspection and reasoning; implementation gets a materially larger envelope; critique sits between them. There is deliberately no whole-phase timeout because phase scope and build gates vary too widely.
 
@@ -89,6 +89,6 @@ The two policy sections, unified config schema and shipped defaults, manager, te
 
 - [`role-models.md`](role-models.md) resolves venue/model/effort, performs fail-closed preflight, gates artifacts, and owns runtime fallback.
 - [`execution-telemetry.md`](execution-telemetry.md) owns exact shared spans, aggregation, recovery, and the phase report.
-- [`four-canonical-agents.md`](four-canonical-agents.md) owns role semantics and the five-cycle convergence limit.
+- [`four-canonical-agents.md`](four-canonical-agents.md) owns role semantics and the ten-cycle convergence limit.
 - [`mechanistic-vs-intelligence.md`](mechanistic-vs-intelligence.md) places validation, enforcement, measurement, and percentile calculation in `bin/kickoff-config`; deciding whether evidence warrants a policy change remains human judgment.
 - [`human-in-the-loop.md`](human-in-the-loop.md) still governs completion: timing out or finishing within budget says nothing about subjective acceptance.

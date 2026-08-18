@@ -88,6 +88,7 @@ printf 'lessons cwd=%s args=%s\\n' "$PWD" "$*" >> "$CHECK_TEST_LOG"
         ("check-toolchain-callers", "callers"),
         ("check-execution-dashboards", "dashboards"),
         ("check-catalogs", "catalogs"),
+        ("check-hooks-installed", "hooksinstalled"),
         ("check-shell-syntax", "shellsyntax"),
         ("new-name", "newname"),
     ):
@@ -137,7 +138,8 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
             "../bin/kickoff-tree-id ../bin/execution-telemetry "
             "../bin/check-execution-dashboards ../bin/check-harness-parity "
             "../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs "
-            "../bin/check-shell-syntax ../bin/new-name ../tests"
+            "../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name "
+            "../tests"
         ),
         (
             f"uv cwd={root / 'project'} args=run --locked --managed-python ruff format --check "
@@ -145,7 +147,8 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
             "../bin/kickoff-tree-id ../bin/execution-telemetry "
             "../bin/check-execution-dashboards ../bin/check-harness-parity "
             "../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs "
-            "../bin/check-shell-syntax ../bin/new-name ../tests"
+            "../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name "
+            "../tests"
         ),
         (
             f"uv cwd={root} args=run --project {root / 'project'} --locked "
@@ -161,6 +164,7 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
         f"config cwd={root} args=show",
         f"catalogs cwd={root}",
         f"lessons cwd={root} args=validate",
+        f"hooksinstalled cwd={root}",
         f"shellsyntax cwd={root}",
         f"policy cwd={root}",
     ]
@@ -196,6 +200,7 @@ def test_named_mode_runs_only_selected_gate(
             f"config cwd={root} args=show",
             f"catalogs cwd={root}",
             f"lessons cwd={root} args=validate",
+            f"hooksinstalled cwd={root}",
             f"shellsyntax cwd={root}",
             f"policy cwd={root}",
         ]
@@ -270,6 +275,7 @@ def test_missing_project_contract_fails_clearly(
         "check-toolchain-callers",
         "lessons",
         "check-catalogs",
+        "check-hooks-installed",
         "check-shell-syntax",
         "new-name",
     ],

@@ -9,6 +9,8 @@ source: learn
 occurrences:
   - date: 2026-08-11
     ref: "LEARN from Donor A — adding a required --evidence-lane flag to the evidence tool"
+  - date: 2026-08-17
+    ref: "LEARN from Donor A — adding check-hooks-installed to bin/check's required-executable preflight and policy lane broke ten test_check.py cases across three independent inventories in that one file (the fixture stub loop, the exact expected-call lists for two modes, and the missing-executable parametrize); caught by the authoritative gate, exactly the costly backstop path this lesson names"
 ---
 
 Adding a required member to a shared repository contract — a mandatory CLI

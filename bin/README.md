@@ -111,6 +111,22 @@ configuration.
 Universal contract: [`policies/build-gates.md`](../policies/build-gates.md).
 Behavioral coverage lives in `tests/test_install_hooks.py`.
 
+### `check-hooks-installed` — opt-in-aware hook-liveness witness
+
+`core.hooksPath` is local Git configuration that does not survive a clone and
+can be silently repointed, disabling the tracked hooks with no error anywhere.
+This witness makes that state visible: an unset path passes as the healthy
+not-opted-in state (with a pointer to `./bin/install-hooks`), a set-but-wrong
+path fails as silent disablement, and `.githooks/pre-commit` / `pre-push`
+must exist and stay executable regardless of opt-in. Runs inside the `check`
+policy lane.
+
+```bash
+./bin/check-hooks-installed
+```
+
+Behavioral coverage lives in `tests/test_check_hooks_installed.py`.
+
 ### `kickoff-config` — human-editable `kickoff` configuration and enforcement
 
 Validates and safely edits repo-root `kickoff.yaml`, whose `role_models`,

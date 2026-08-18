@@ -394,3 +394,81 @@ attempt sections (already present here), and its review-handoff measurements
 (already carried by the invocation brief, which cites the published source).
 The donor's monolithic owner queue, unrotated logs, and inline dated owner
 directives were recorded as confirmations of existing rules, not learnings.
+
+## 2026-08-17 21:11 MDT — LEARN
+Donor: Donor A @ <sha withheld>
+Items absorbed: 9, by tier T1=7/T2=2/T3=0/T4=0
+Donor lessons harvested: 19 (9 absorbed as rule proposals; 10 filed to lessons/)
+Application-found return candidates: 2 filed to lessons/
+Stale-in-light-of-learning migrations: 15 AUTO; 0 DECIDE; 0 DEFER
+Files touched: 41
+
+Scoped to the donor's evolution since the 2026-08-11 harvest. The evidence
+plane gained three fail-closed recoveries as one atomic bundle
+(policy + `bin/kickoff-evidence` + `bin/kickoff-config` + kickoff skill +
+behavioral tests): an unconditional unmeasured-review-pass latch in `validate`
+that surfaces a missing convergence measurement while a one-command re-ingest
+can still repair it; an append-only ingest journal plus a derived-metrics
+overlay for a review pass whose batch was structurally refused — both integers
+recomputed from artifacts on every validation, never operator-supplied, with
+supersession for the honest re-ingest; and candidate-drift handling for a tree
+that moves under an in-flight dispatch — an append-then-amend dispatch
+lifecycle whose open/return candidate pair brackets the child (the watcher
+captures the open side immediately before spawn; teardown failures degrade to
+diagnostics and cannot skip the terminal amendment), a write-once
+content-addressed candidate manifest store, and `accept-candidate-drift` with
+three independent fail-closed checks against a partition vocabulary the policy
+file itself owns. The drift partition was adapted to this repository's six
+bookkeeping candidate-movers (logs, plan index, both lessons directories, both
+user-action directories). Gate rows gained exact-argv canonicalization in
+`record-gate` with a precise legacy-row refusal.
+
+Doctrine gained its sixteenth rule — loop-extension grants are scoped by
+convergence invariants, not cycle counts — with the runaway backstop raised
+5 → 10 per the operator's directive in the donor (a circuit breaker, not a
+work quota) and the convergence-lease contract mechanized in the four-agents
+policy; every cycle-count reference swept. Four donor-graduated rule sets
+landed as policy text: instrument-trust hardening (vacuous green, vacuous
+uniformity, the one-reachable-answer unifying rule, and "one truth, one fold")
+plus the cross-tree leads-not-findings rule in acceptance-empirical; the
+five-entry containment-claim review checklist in review-lanes; the
+one-row-per-instance counting rule and named families in the lessons policy
+(with the sweep skill's ref-vs-body audit as its only working enforcement, the
+donor's three cut lexical detectors recorded as the negative result); and two
+session operating rules in CLAUDE.md (a turn ends by dispatching or stating a
+hold, with the own-block rule for refusable commands; route on the
+authoritative property, not a stand-in).
+
+Tier 2: `bin/check-hooks-installed` landed as an opt-in-aware liveness witness
+(adapted from the donor's mandatory form: unset hooks path passes as healthy
+not-opted-in state; set-but-wrong fails as silent disablement; tracked hooks
+must stay executable regardless), wired into the `check` policy lane. Ten
+donor ledger candidates were filed with `source: learn` (gate wrappers own
+preconditions; clock-then-write for measured record fields; silent timeout
+clamping; the harness command ceiling's silent-death signature; the
+last-message sink clobbering a role's own artifact; fail-fast batteries
+reporting partial results in a complete grammar; execution-as-verification as
+a side-effect engine; grep-the-suite before untestability claims; positive
+window-entry assertions for timing tests; `git -C` for verification commands).
+
+Direction-verification notes: the destination was ahead on gate-argv
+canonicalization for `run-gate` (already shipped `shlex.join`; only
+`record-gate` needed the donor hunk), and the donor's entry-point self-defence
+remedy was declined because its defect does not reproduce here — this repo's
+`bin/` entrypoints are self-provisioning script wrappers already swept by the
+toolchain entrypoint tests. Two destination defects surfaced by the
+hunk-by-hunk check were fixed as part of the bundle: both enforcement call
+sites of the review-metrics check lacked the light-lane demotion guard the
+review-lanes policy promises, and the orchestration-evidence policy carried
+donor-domain vocabulary from an earlier wholesale port. Both were filed as the
+run's two application-found return candidates. The fixture-inventory lesson
+already in this ledger recurred live during the apply — wiring the new witness
+into the gate's required-executable preflight broke ten cases across three
+independent inventories inside the gate's own test file, caught by the
+authoritative gate — and the occurrence was appended to the standing entry,
+which now sits at two. Declined as donor-scale or
+domain-specific: the isolated resolution sweep and working-tree tripwire
+partition, the donor's mutation-battery row-strength prose, the serial check
+lane (this repo's gate runner has no parallel lanes), and the donor's
+calibrated timeout values (never ingested, per the kickoff-config privacy
+rule).

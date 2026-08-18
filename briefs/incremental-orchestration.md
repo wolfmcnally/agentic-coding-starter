@@ -111,7 +111,7 @@ A closed, verified, or rejected finding may reopen only explicitly, and every
 reopening is counted. The loop continues while blocking findings materially
 advance and no equal-or-greater regression replaces them. Recurrence,
 oscillation, an unresolved authority question, or two rounds without reduced
-severity or uncertainty escalates. The five-cycle cap remains a deterministic
+severity or uncertainty escalates. The ten-cycle cap remains a deterministic
 runaway backstop.
 
 ## 5. Fail-closed review rebasing

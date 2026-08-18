@@ -251,6 +251,21 @@ then close both truthfully and record their ids with
 and create no wait. Every retry, resume, rescue, reexecution, or fallback gets
 a new immutable registration and attempt number.
 
+Every dispatch also records the candidate it opened against and the candidate
+it returned at, and the pair **brackets the child's run**, so a tree that moved
+under an in-flight role is visible at the seam instead of surfacing later as a
+wholesale refused batch, and `accept-candidate-drift` — the only sanctioned
+recovery for that movement (`policies/orchestration-evidence.md § Candidate
+drift under an in-flight dispatch`) — has both sides to classify. **For an
+external role you do nothing:** `$WATCHER_TOOL` captures the open candidate
+immediately before it spawns the child and records the row only after the
+child terminates. **For a native role**, and only then, run
+`record-role-dispatch --state opened` (with `--dispatch-candidate` set to the
+id `current-candidate` printed immediately before you dispatched) before
+launching the role, and append the accepted or rejected terminal amendment
+after the role has returned — not while it is running, or both candidates
+describe the same instant and a mid-role write becomes invisible.
+
 **Native venue** (planner unpinned, per Step 0a): delegate the planning stage to the `phase-planner` subagent (Claude Code) / the `phase-planner` agent (Codex), enforcing the planner budget from Step 0c. Pass it:
 
 - The phase identifier (e.g., `Phase 1.3`) and heading.
@@ -300,8 +315,17 @@ send unbound plan text to review.
    --candidate <current-candidate-id> --review-span-id <reviewer-intelligence-span-id>
    --artifact <review-artifact>`. **`--review-span-id` is required** — the
    convergence metrics attach to that span, and a finalized trace cannot be
-   repaired retroactively, so omitting it makes `timing-summary` refuse for the
-   whole run. Failure
+   repaired retroactively, so `timing-summary` refuses for the whole run until
+   the pass is measured. An omission is recoverable rather than terminal:
+   `validate` refuses an accepted, successful review dispatch whose span lacks
+   metrics **unconditionally** — not only under `--require-final` — so the gap
+   surfaces while a re-ingest still costs one command; and where the batch was
+   structurally uningestable, `kickoff-evidence attach-derived-metrics` records
+   an overlay that `validate` recomputes from the run's artifacts and honors
+   either side of finalization. Neither is a reason to omit the flag:
+   re-ingesting an earlier artifact to satisfy a validator drives
+   `verified → open` and reopens resolved findings, which is why the flag is
+   still required here. Failure
    of role shape, finding schema/transition, or candidate identity triggers
    native fallback. Exception before falling back:
    a Claude `error_max_turns` result may resume once with the concise
@@ -320,7 +344,7 @@ recipe, not its initial-call flags. Continue only while at least one blocking
 finding advances and no equal-or-worse finding reopens. Rebase to a complete
 review when the packet requires it. Escalate on recurrence, oscillation,
 authority disagreement, or two rounds without lower severity or uncertainty.
-The 5-cycle runaway backstop still applies.
+The 10-cycle runaway backstop still applies.
 
 ### Step 5: Implement
 
@@ -415,7 +439,7 @@ of the failure. Continue only while a blocking finding advances and no
 equal-or-worse finding reopens. When the change manifest requires rebasing,
 run a complete critique rather than a delta-only pass. Escalate on recurrence,
 oscillation, authority disagreement, or two rounds without reduced severity or
-uncertainty. The 5-cycle runaway backstop still applies.
+uncertainty. The 10-cycle runaway backstop still applies.
 
 **If `REVISE` opens with `Escalate: full lane — <reason>`** (light lane only): the work exceeded mechanical scope. Run the skipped Step 4 plan review now, against the plan as-built (same venue rules), route its outcome through the normal revision loops, and finish the phase in the full lane. Record `light → full (escalated: <reason>)` for the END block. The lane escalation itself is not a stall signal and does not count toward the runaway backstop; the critic's other Required Changes do feed the convergence judgment.
 
@@ -487,7 +511,7 @@ If any acceptance-close gate fails:
    invalid. Route any required critique, then run the complete
    acceptance-close sequence again against the new approved candidate.
 4. Do not invoke `code-critic` after a successful direct or coder-only correction merely as ceremony. Do invoke it if the correction grows beyond its classification, exposes a design question, lacks convincing validation, or otherwise crosses the full-cycle threshold.
-5. A direct or coder-only attempt gets one pass. If it fails validation or trades one break for another, upgrade to the full cycle. Once in the full cycle, keep iterating only while the gate and review findings are **converging**. Escalate on recurrence or oscillation; the 5-cycle runaway backstop in [`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md) applies to that full loop.
+5. A direct or coder-only attempt gets one pass. If it fails validation or trades one break for another, upgrade to the full cycle. Once in the full cycle, keep iterating only while the gate and review findings are **converging**. Escalate on recurrence or oscillation; the 10-cycle runaway backstop in [`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md) applies to that full loop.
 
 ### Step 8: Reconcile phase-specific acceptance
 
