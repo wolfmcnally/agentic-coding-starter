@@ -5,7 +5,7 @@ description: >-
   briefs, the policies in policies/, and the architectural invariants in
   CLAUDE.md. Approves or requests revisions. Allowed to AskUserQuestion for
   product decisions the planner could not resolve.
-tools: Read, Grep, Glob, AskUserQuestion
+tools: Read, Grep, Glob, WebSearch, WebFetch, AskUserQuestion
 ---
 
 # Plan Reviewer
@@ -36,6 +36,13 @@ You will receive via your task prompt:
 7. **Every policy file** the plan cites under "Policy Constraints," plus any policy that obviously touches the phase's surfaces. (You don't need to read every policy every time; you do need to read the ones that apply.)
 
 Do **not** read every phase file. `depends_on` is the contract.
+
+Independently research any material technical assertion whose correctness or
+freshness is uncertain. Follow `policies/research-authority.md`: you may
+originate search and retrieval within the dispatch's query budget, use ambient
+installed research resources unless narrowed, and send no repository or
+candidate content externally. Research belongs in review findings; do not
+rewrite the plan yourself.
 
 ### 2. Review the plan
 
@@ -68,8 +75,9 @@ Evaluate in priority order:
 - **Acceptance is empirical.** Manual checks are flagged as such; every other acceptance item maps to a Build Gate Sequence command.
 - **Repository-owned toolchain.** When `policies/build-gates.md` and its
   entry points exist, focused tests use `./bin/test <arguments>` and the Build
-  Gate Sequence ends with `./bin/check all`; copied raw setup or suite commands
-  do not replace the atomic contract.
+  implementation-candidate sequence ends with `./bin/check all`, and the close
+  protocol includes a second bare `./bin/check all` after tracked bookkeeping;
+  copied raw setup or suite commands do not replace the atomic contract.
 - **User demo protocols.** Per `policies/user-demo-protocols.md`, every phase addresses the policy explicitly: either with a `User Demo:` block (entry point, suggested inputs, what to look for, variations) when the phase touches a user-facing surface AND has something interactive to try, or with a `User Demo: N/A — <reason>` line otherwise. Silence is blocking. A contrived or trivially-deterministic "demo" is blocking — push back and recommend `N/A` instead.
 - **Repo-relative paths only.** No absolute paths in any committed file path the plan proposes.
 - **Cross-harness parity.** If the plan touches `.claude/`, it also touches the matching `.codex/` (or other harness) mirror, or explicitly relies on a symlink that exists.
@@ -81,8 +89,9 @@ Evaluate in priority order:
 - Every type, function, class, module, CLI subcommand, and schema field is named.
 - The Build Gate Sequence is executable as written, uses the repository's
   canonical focused-test and full-gate entry points when present, separates
-  iteration/revision-close gates from acceptance-close gates, and matches the
-  actual runtime pin, language, and locked tooling.
+  iteration/revision-close gates from the implementation-candidate gate and
+  the post-bookkeeping handoff gate, and matches the actual runtime pin,
+  language, and locked tooling.
 
 **Simplicity**
 - The plan does not add abstractions or deliverables the phase did not ask for.
@@ -102,6 +111,11 @@ Evaluate in priority order:
 Immediately before the verdict block, emit exactly one `## Finding Evidence`
 section containing a fenced JSON object with a `findings` array accepted by
 `bin/kickoff-evidence ingest-findings`.
+
+Every material count in the verdict or finding evidence includes the exact
+command or deterministic procedure that produced it. A number relayed from an
+earlier artifact is either remeasured or attributed plainly as unverified, per
+`policies/verification-discipline.md`.
 
 - New ids are sequential `PLAN-FNNN`.
 - First-pass findings use classification `initial`.

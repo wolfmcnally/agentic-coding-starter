@@ -1365,7 +1365,8 @@ class TestGeneratedInvocationRecipes:
         assert "--permission-mode" in command
         assert command[command.index("--permission-mode") + 1] == "dontAsk"
         assert "--dangerously-skip-permissions" not in command
-        assert command[command.index("--allowedTools") + 1] == "Read,Grep,Glob"
+        assert command[command.index("--allowedTools") + 1] == ("Read,Grep,Glob,WebFetch,WebSearch")
+        assert "Your originating-search budget is 6 queries" in command[2]
         # Progress-aware supervision: the first-event and idle clocks measure
         # real activity only if the child emits structured events.
         assert command[command.index("--output-format") + 1] == "stream-json"
@@ -1374,12 +1375,19 @@ class TestGeneratedInvocationRecipes:
 
     def test_claude_coder_is_the_only_write_enabled_role(self, tmp_path: Path) -> None:
         coder, _ = rendered(tmp_path, venue="claude", model="opus", role="coder")
-        assert coder[coder.index("--allowedTools") + 1] == "Read,Grep,Glob,Write,Edit,Bash"
+        assert coder[coder.index("--allowedTools") + 1] == (
+            "Read,Grep,Glob,Write,Edit,Bash,WebFetch"
+        )
         assert coder[coder.index("--max-turns") + 1] == "200"
 
-        for role in ("planner", "reviewer", "critic"):
+        expected = {
+            "planner": "Read,Grep,Glob,WebFetch,WebSearch",
+            "reviewer": "Read,Grep,Glob,WebFetch,WebSearch",
+            "critic": "Read,Grep,Glob,WebFetch",
+        }
+        for role, tools in expected.items():
             command, _ = rendered(tmp_path, venue="claude", model="opus", role=role)
-            assert command[command.index("--allowedTools") + 1] == "Read,Grep,Glob"
+            assert command[command.index("--allowedTools") + 1] == tools
 
     def test_claude_resume_repeats_model_and_effort(self, tmp_path: Path) -> None:
         command, _ = rendered(
@@ -1408,6 +1416,7 @@ class TestGeneratedInvocationRecipes:
         assert command[command.index("--output-last-message") + 1].endswith(".txt")
         assert command[command.index("--model") + 1] == "gpt-5.6-sol"
         assert 'model_reasoning_effort="medium"' in command
+        assert 'web_search="live"' in command
         assert command[-1].startswith("Adopt your canonical persona")
         # The production checkout call must never carry the preflight's probe flag.
         assert "--skip-git-repo-check" not in command
@@ -2176,18 +2185,21 @@ while :; do sleep 1; done""",
             ),
         )
     )
-    section = {
-        "first_event_timeout_seconds": 1,
-        "roles": {
-            "reviewer": {
-                "idle_timeout_seconds": 1,
-                "hard_timeout_seconds": 2,
-                "claude_max_turns": 50,
-            }
+    document = {
+        "research_budgets": {"planner": 12, "reviewer": 6, "coder": 0, "critic": 0},
+        "role_timeouts": {
+            "first_event_timeout_seconds": 1,
+            "roles": {
+                "reviewer": {
+                    "idle_timeout_seconds": 1,
+                    "hard_timeout_seconds": 2,
+                    "claude_max_turns": 50,
+                }
+            },
         },
     }
 
-    exit_code = namespace["watch"](arguments, section)
+    exit_code = namespace["watch"](arguments, document)
 
     assert exit_code == 124
     events = dispatch_events(run_dir)

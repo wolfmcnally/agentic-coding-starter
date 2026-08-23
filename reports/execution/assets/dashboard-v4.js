@@ -40,6 +40,7 @@
     return node;
   };
   const ns = (value) => {
+    if (value === null || value === undefined) return "Unknown";
     if (exact) return `${Number(value).toLocaleString("en-US")} ns`;
     const seconds = Number(value) / 1e9;
     if (seconds < 1) return `${(seconds * 1000).toFixed(1)} ms`;
@@ -74,7 +75,7 @@
     )));
     const body = el("tbody");
     rows.forEach((row) => body.append(el("tr", {}, row.map((value, index) =>
-      el("td", {class: index ? "number" : "", text: String(value)})
+      el("td", {class: index ? "number" : "", "data-label": headers[index], text: String(value)})
     ))));
     node.append(head, body);
     return node;
@@ -644,6 +645,29 @@
     return section;
   }
 
+  function renderOperatorParks(parks, target) {
+    if (!parks.intervals.length) {
+      target.append(el("p", {class: "empty", text: "No operator-input parks were recorded."}));
+      return;
+    }
+    const basis = (item) => {
+      if (item.method === "monotonic") return "Exact monotonic";
+      if (item.method === "calendar-cross-boot") return "Calendar · cross-boot · non-exact";
+      if (item.method === "open") return "Open · duration unavailable";
+      return "Unavailable · clock order invalid";
+    };
+    target.append(table(
+      ["Reason", "Opened (UTC)", "Closed (UTC)", "Duration", "Basis"],
+      parks.intervals.map((item) => [
+        titleCase(item.reason),
+        item.opened_at,
+        item.closed_at || "Still open",
+        ns(item.duration_ns),
+        basis(item)
+      ])
+    ));
+  }
+
   function renderPhase() {
     if (!phaseData || phaseData.schema !== "agentic_starter.execution_dashboard.v1") throw new Error("Missing or invalid phase data");
     const phaseView = phaseData.phase_view;
@@ -693,13 +717,23 @@
       const automatedChecks = activities.find((row) => row.key === "automated_checks")?.value || 0;
       const unmeasured = activities.find((row) => row.key === "orchestration_unmeasured")?.value || 0;
       const failedActivities = meaningfulSpans(active).filter((span) => span.outcome !== "success").length;
-      content.append(el("section", {class: "cards", "aria-label": "Outcome summary"}, [
+      const summaryCards = [
         card(isPhase ? "Outcome" : "Run Outcome", active.unsuccessful ? "Issues found" : "Accepted", isPhase ? `${phaseData.trace_count} recorded run${phaseData.trace_count === 1 ? "" : "s"}` : "Final recorded outcome", active.unsuccessful ? "bad" : "good"),
         card("Elapsed Time", ns(active.calendar_elapsed_ns), isPhase ? "First start to accepted finish" : "Start to finish", "neutral"),
         card("Automated Checks", ns(automatedChecks), `${active.gate_run_count} run${active.gate_run_count === 1 ? "" : "s"} · ${active.failed_gate_count} unsuccessful`, "neutral"),
         card("Follow-Up Passes", String(active.role_followup_count), `${failedActivities} unsuccessful measured activit${failedActivities === 1 ? "y" : "ies"}`, "neutral"),
         card("Orchestration / Unmeasured", ns(unmeasured), `${pct(unmeasured / (active.makespan_ns || 1))} of recorded execution`, unmeasured ? "bad" : "good")
-      ]), renderHandoff());
+      ];
+      if (isPhase) {
+        const parks = active.operator_parks;
+        const detail = parks.open
+          ? `${parks.intervals.length} interval${parks.intervals.length === 1 ? "" : "s"} · an interval is still open`
+          : parks.total_exact
+            ? `${parks.intervals.length} interval${parks.intervals.length === 1 ? "" : "s"} · exact monotonic union`
+            : `${parks.intervals.length} interval${parks.intervals.length === 1 ? "" : "s"} · calendar union · non-exact`;
+        summaryCards.push(card("Awaiting User Input", parks.open ? "Open" : ns(parks.total_duration_ns), detail, parks.open ? "bad" : "neutral"));
+      }
+      content.append(el("section", {class: "cards", "aria-label": "Outcome summary"}, summaryCards), renderHandoff());
       const grid = el("div", {class: "grid"});
       const activity = panel("Where the Build Time Went", "Mutually exclusive elapsed time for the four agent activities, automated checks, integration, and genuine measurement gaps. Wait mirrors are deliberately excluded.", true);
       renderActivityBreakdown(active, activity);
@@ -716,6 +750,11 @@
       if (hasConvergence) renderConvergence(active, attempts);
       else renderRework(active, attempts);
       grid.append(activity, slow, gates, waterfall, attempts);
+      if (isPhase) {
+        const parks = panel("Awaiting User Input", "Each phase-level park is separate from agent work, automated checks, and orchestration gaps. Cross-boot durations are visibly non-exact.", true);
+        renderOperatorParks(active.operator_parks, parks);
+        grid.append(parks);
+      }
       if (Object.keys(active.concurrency_groups).length) {
         const concurrency = panel("Parallel Work", "Observed overlap appears only when the telemetry contains a valid concurrency denominator.", true);
         renderConcurrency(active, concurrency);
@@ -756,8 +795,8 @@
         label: {show: true, position: "top", formatter: (item) => ns(phases[item.dataIndex].calendar_elapsed_ns)}
       }]
     });
-    target.append(detailsTable("Cross-phase values", ["Phase", "Elapsed Time", "Follow-Up Passes", "Automated Check Runs", "Unsuccessful Checks"], phases.map((item) => [
-      item.phase_id, ns(item.calendar_elapsed_ns), item.role_followup_count, item.gate_run_count, item.failed_gate_count
+    target.append(detailsTable("Cross-phase values", ["Phase", "Elapsed Time", "Awaiting User Input", "Follow-Up Passes", "Automated Check Runs", "Unsuccessful Checks"], phases.map((item) => [
+      item.phase_id, ns(item.calendar_elapsed_ns), ns(item.awaiting_user_input_ns), item.role_followup_count, item.gate_run_count, item.failed_gate_count
     ])));
   }
 

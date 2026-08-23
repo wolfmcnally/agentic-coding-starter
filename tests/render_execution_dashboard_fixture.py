@@ -15,6 +15,7 @@ from agentic_starter import execution_dashboard as dashboard  # noqa: E402
 from agentic_starter import execution_telemetry as telemetry  # noqa: E402
 
 FIXTURE = ROOT / "tests" / "fixtures" / "execution_telemetry" / "kickoff-trace.jsonl"
+PARK_FIXTURE = ROOT / "tests" / "fixtures" / "execution_telemetry" / "phase-parks.jsonl"
 
 
 def main() -> int:
@@ -67,12 +68,16 @@ def main() -> int:
             }
         ],
     }
+    parks = telemetry.phase_park_summary(engine_root=engine, phase_id="7", ledger=PARK_FIXTURE)
+    parks["phase_id"] = "31.2"
+    parks["intervals"] = [item | {"phase_id": "31.2"} for item in parks["intervals"]]
     dashboard.render_phase_dashboard(
         engine_root=engine,
         output_root=output,
         phase_id="31.2",
         accepted_trace_id=bundle["trace_id"],
         handoff=handoff,
+        operator_parks=parks,
     )
     print(output / "2026-07-28" / "phase-31.2" / "index.html")
     return 0

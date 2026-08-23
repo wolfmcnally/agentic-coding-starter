@@ -7,9 +7,9 @@ The methodology's orchestrator (`kickoff`) delegates one phase of work to four s
 | Role            | Canonical file                                        | Tools allowed                                     | Writes code |
 | --------------- | ----------------------------------------------------- | ------------------------------------------------- | ----------- |
 | `phase-planner` | `.claude/agents/phase-planner.md`                     | Read, Grep, Glob, WebSearch, WebFetch             | No          |
-| `plan-reviewer` | `.claude/agents/plan-reviewer.md`                     | Read, Grep, Glob, AskUserQuestion                 | No          |
-| `phase-coder`   | `.claude/agents/phase-coder.md`                       | Read, Write, Edit, Grep, Glob, Bash               | Yes         |
-| `code-critic`   | `.claude/agents/code-critic.md`                       | Read, Grep, Glob                                  | No          |
+| `plan-reviewer` | `.claude/agents/plan-reviewer.md`                     | Read, Grep, Glob, WebSearch, WebFetch, AskUserQuestion | No      |
+| `phase-coder`   | `.claude/agents/phase-coder.md`                       | Read, Write, Edit, Grep, Glob, Bash, WebFetch     | Yes         |
+| `code-critic`   | `.claude/agents/code-critic.md`                       | Read, Grep, Glob, WebFetch                        | No          |
 
 The Codex mirrors live at `.codex/agents/<role>.toml`. See [`cross-harness-parity.md`](cross-harness-parity.md) for the parity contract.
 
@@ -18,6 +18,12 @@ The Codex mirrors live at `.codex/agents/<role>.toml`. See [`cross-harness-parit
 The roles, names, tool stances, and verdict headers above are fixed. The **execution venue** — which model and implied harness runs a role — is not, and is governed by [`role-models.md`](role-models.md): `kickoff.yaml`'s harness-aware `role_models` section (edited directly or via `roles`) resolves any role to separate model and optional effort fields, scoped by which harness orchestrates. A role resolving to a CLI runs there while reading the same canonical role file and honoring the same contract; only where it executes changes. The shipped default runs `plan-reviewer` + `code-critic` in the other harness; planner and coder can be routed too.
 
 Each invocation or revision round is also bounded by the role-specific first-event, idle-progress, and hard-deadline values in [`role-timeouts.md`](role-timeouts.md). Claude CLI roles additionally use its configured turn circuit breaker; Codex and native roles expose no equivalent flag. Those guards limit one run; the convergence rules below limit the number of runs.
+
+Research is a second role-bound axis governed by
+[`research-authority.md`](research-authority.md). Planner and reviewer may
+originate search and retrieval; coder and critic may retrieve approved
+authorities but may not originate discovery. Installed MCP servers and plugins
+are available by default unless a project or phase explicitly narrows them.
 
 So do **not** assume any role runs as an in-harness subagent on the session model when reasoning about orchestration — check the resolved venue. The one invariant: **orchestration and build gates always run on the invoking session's model** and are never pinnable.
 
@@ -29,11 +35,11 @@ Whether *both* reviewer roles run on a phase's initial implementation is governe
 
 - **`phase-planner`** — Reads the phase file, the briefs it references, the policies, and the existing repo, and produces a concrete file-level implementation plan. Does not write code. Output: a markdown plan with named files, named types/functions, an Implementation Order, a Build Gate Sequence, Open Questions, and Process Observations.
 
-- **`plan-reviewer`** — Reads the same authorities plus the planner's output. Issues a single verdict (`APPROVED` or `REVISE`) at the top of its response and records Process Observations separately from phase findings. May call `AskUserQuestion` to escalate decisions only the human can make.
+- **`plan-reviewer`** — Reads the same authorities plus the planner's output and may independently research uncertain or volatile claims. Issues a single verdict (`APPROVED` or `REVISE`) at the top of its response and records Process Observations separately from phase findings. May call `AskUserQuestion` to escalate decisions only the human can make.
 
-- **`phase-coder`** — Reads the approved plan and implements it. Runs the build gates. Reports files created/modified, the build-status block, Process Observations, and — on revision rounds — root-cause Failure Analysis in both its human report and Change Evidence.
+- **`phase-coder`** — Reads the approved plan and implements it. May retrieve resources the plan or briefs identify, but does not originate research. Runs the build gates. Reports files created/modified, the build-status block, Process Observations, and — on revision rounds — root-cause Failure Analysis in both its human report and Change Evidence.
 
-- **`code-critic`** — Reads the approved plan, the briefs and policies it cites, and the code diff. Issues a single verdict (`APPROVED` or `REVISE`) and records Process Observations separately from code findings. Does not rewrite the implementation; only reviews it.
+- **`code-critic`** — Reads the approved plan, the briefs and policies it cites, and the code diff. May retrieve those authorities and their same-host structural neighbors, but does not originate research. Issues a single verdict (`APPROVED` or `REVISE`) and records Process Observations separately from code findings. Does not rewrite the implementation; only reviews it.
 
 ## Verdict headers
 

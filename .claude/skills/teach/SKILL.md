@@ -10,7 +10,7 @@ description: >-
   /teach <target-dir> [<desc>] in Claude Code or $teach <target-dir> [<desc>]
   in Codex.
 argument-hint: "<target-dir> [<desc>]"
-last-reviewed: 2026-08-10
+last-reviewed: 2026-08-23
 ---
 
 # Teach — Apply patterns from this repo to another repo
@@ -46,7 +46,8 @@ If `<target-dir>` is missing or is an empty/non-existent directory, refuse with 
    - `.claude/agents/` contains the four canonical roles (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`).
    - `.claude/skills/kickoff/SKILL.md` exists.
    - `.claude/skills/methodology/SKILL.md` exists.
-   - `bin/kickoff-config` and `kickoff.yaml` exist; `show` validates both config sections.
+   - `bin/kickoff-config` and `kickoff.yaml` exist; `show` validates role models, role timeouts, and research budgets.
+   - `.claude/settings.json` exists and sets `worktree.bgIsolation` to `none`.
    - `bin/kickoff-tree-id` and `bin/kickoff-evidence` exist, are executable,
      and have behavioral tests.
    - `briefs/`, `policies/`, `plan/` directories are present and non-empty.
@@ -93,7 +94,7 @@ Build a structural map of the target. Mirror Stage 1 of `learn`, but from the op
    loops, mutation gates, and detached processes that must resolve the selected
    interpreter once.
 7. **Active work signals.** Read the target's `LOG.md` if present. A phase in `🚧` is a clear "do not stomp" signal — the teaching apply step waits for that phase or limits itself to additive, non-conflicting changes.
-8. **Kickoff configuration contract.** Inspect `kickoff.yaml`, `bin/kickoff-config`, `tests/test_kickoff_config.py`, both role policies, `roles`, `kickoff` Steps 0a–0c and invocation call sites, `.gitignore`, and the invocation brief as one bundle. Note target values, comments, `extensions` data, and local `.kickoff/` telemetry as preservation-only state; never read or transfer raw telemetry.
+8. **Kickoff configuration contract.** Inspect `kickoff.yaml`, `bin/kickoff-config`, `tests/test_kickoff_config.py`, the role, timeout, and research-authority policies, `roles`, `kickoff` Steps 0a–0c and invocation call sites, `.gitignore`, and the invocation brief as one bundle. Note target model, timeout, and research-budget values; comments; `extensions` data; and local `.kickoff/` telemetry as preservation-only state. Never read or transfer raw telemetry. Research resources are allow-by-default; do not invent a global MCP-server or plugin denylist, and do not assume any named server exists.
 9. **Candidate-bound orchestration evidence.** Inspect the target's candidate
    identity, evidence schemas, role JSON blocks, revision packets,
    focused/final verification split, watcher protocol outcomes, docs, and
@@ -105,6 +106,7 @@ Build a structural map of the target. Mirror Stage 1 of `learn`, but from the op
    - **`AGENTS.md` not a symlink.** If `<target>/CLAUDE.md` exists and `<target>/AGENTS.md` is either absent or is a regular file (not a symlink to `CLAUDE.md`). Heal: `rm -f <target>/AGENTS.md && ln -s CLAUDE.md <target>/AGENTS.md`. Exception: if the regular `AGENTS.md` content differs meaningfully from `CLAUDE.md`, downgrade to DECIDE — the target may be intentionally splitting them.
    - **`.agents/skills/<name>` in the broken file-symlink shape, or a non-symlink directory.** Codex's native skill loader does not follow file-level symlinks inside a skill dir ([openai/codex#11314](https://github.com/openai/codex/issues/11314)), so the file-level shape (`<target>/.agents/skills/<name>/SKILL.md` as a file symlink) is silently invisible to Codex. A non-symlink directory at `<target>/.agents/skills/<name>` is the buggy output of the Codex desktop "import settings" prompt — those mechanical search/replace bugs always need cleanup. The starter-only `stamp` skill must never appear here. Heal: for each universal skill that exists at `<target>/.claude/skills/<name>/`, `rm -rf <target>/.agents/skills/<name> && mkdir -p <target>/.agents/skills && ln -s ../../.claude/skills/<name> <target>/.agents/skills/<name>`. Also `rm -rf <target>/.agents/skills/stamp` if present.
    - **`.codex/agents/<role>.toml` missing.** For every `<target>/.claude/agents/<role>.md`, the `.toml` peer must exist as a thin wrapper (description + developer_instructions pointing back to the .md). Heal: generate the thin wrapper TOML when missing. Do **not** auto-overwrite an existing inline-full-body TOML — that's a parity violation but might encode target-specific overrides; surface as DECIDE.
+   - **Missing or divergent background-isolation default.** If the source carries `.claude/settings.json` with `worktree.bgIsolation: none` and the target lacks that setting, add or merge it while preserving every target-owned key. If the target explicitly selects another value, classify it DECIDE rather than overwriting intent. This default prevents implicit background-agent worktrees; it never removes the operator's ability to request an explicit worktree.
 
    For each detected violation, classify as **AUTO** (mechanical, one correct shape, heal it) or **DECIDE** (intent is ambiguous, surface to user). Capture both classifications for Stage 3.
 
@@ -113,6 +115,10 @@ Build a structural map of the target. Mirror Stage 1 of `learn`, but from the op
 Output of Stage 1 is internal. The user sees Stage 3's plan.
 
 ## Stage 2 — Assess (categorize and tier)
+
+When a transferable skill is a thin wrapper around a policy or brief, read the
+owning authority in full before classifying or adapting it. The wrapper alone
+is not the behavior being taught.
 
 For each file or pattern in *this* starter, evaluate against the target. Use the same two-axis classification as `learn`:
 
@@ -135,7 +141,7 @@ Same tiers as `learn`:
 - **Tier 1 — Methodology-level.** The four canonical agents, the orchestrator skill, the briefs/policies/plan triplet, the LOG.md contract.
 - **Tier 2 — Universal template content.** Every file under `policies/`
   (including both role policies and orchestration evidence), the universal
-  briefs, `bin/kickoff-config`, `bin/kickoff-tree-id`,
+  briefs, `.claude/settings.json`, `bin/kickoff-config`, `bin/kickoff-tree-id`,
   `bin/kickoff-evidence`, `bin/check-receipt`, human-editable `kickoff.yaml` schema and seed
   defaults, and cross-harness symlink conventions. The mechanics are
   universal; target values, comments, extensions, telemetry, and run evidence
@@ -163,7 +169,8 @@ For each proposed addition or update, ask:
 - **Naming drift.** Does the target use a name or path the new content replaces? Update every call site.
 - **Phase-roadmap drift.** Does the target's `plan/INDEX.md` show every major phase the target's brief surfaces, each with a corresponding `plan/phase-N.md` sketch (per [`policies/phase-ripple.md`](../../../policies/phase-ripple.md) and [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md) §8)? If the target has only Phase 1 drafted while the brief surfaces more major phases, the gap is real but drafting them is a Wolf-level decision — surface as DECIDE with the list of missing sketches.
 - **Ripple-contract adoption.** Does the target's `kickoff` SKILL.md have a Step 9a *and* Step 9b with the AUTO/DECIDE ripple sub-step? If only Step 9a exists (today's earlier teach), the target needs Step 9b added and Step 9a's ripple sub-step appended. Mechanical — surface as AUTO.
-- **Unified kickoff-config adoption.** Treat `kickoff.yaml`, `bin/kickoff-config`, `tests/test_kickoff_config.py`, both role policies, `roles`, `kickoff` Steps 0a–0c plus every initial/resume/rescue call site, `.gitignore`, `bin/README.md`, the invocation brief, and CLAUDE catalog/glossary as one atomic contract. If absent, port the bundle and seed it with `reset all`. If present, round-trip-upgrade schema/mechanics and tests while preserving the target's model choices, separate effort fields, timeout values, comments, `extensions` data, overrides, and telemetry. Never copy or open raw telemetry. Partial adoption is stale and blocking.
+- **Unified kickoff-config adoption.** Treat `kickoff.yaml`, `bin/kickoff-config`, `tests/test_kickoff_config.py`, the role, timeout, and research-authority policies, `roles`, `kickoff` Steps 0a–0c plus every initial/resume/rescue call site, `.gitignore`, `bin/README.md`, the invocation brief, and CLAUDE catalog/glossary as one atomic contract. If absent, port the bundle and seed it with `reset all`. If present, round-trip-upgrade schema/mechanics and tests while preserving the target's model choices, separate effort fields, timeout values, research budgets, comments, `extensions` data, overrides, and telemetry. Never copy or open raw telemetry. Preserve allow-by-default resource discovery: no global MCP/plugin denylist and no assumption that a particular server exists. Partial adoption is stale and blocking.
+- **Background-isolation default.** Transfer `.claude/settings.json`'s `worktree.bgIsolation: none` as a portable default, merging around target-owned settings. It disables automatic worktree creation for background agents while retaining explicit, user-selected worktrees. A conflicting explicit target value is DECIDE, not an automatic overwrite.
 - **Repository-owned toolchain adoption.** Treat `bin/setup`, `bin/test`,
   `bin/check`, `bin/check-receipt`, runtime wrappers, the runtime pin, manifest,
   lockfile, `tests/test_check_receipt.py`, the other behavioral tests,
@@ -206,17 +213,42 @@ Each stale item gets one of three classifications:
 - **Surface for user decision**: touches live content (e.g., real entries in a queue file) or requires a project-specific value the skill cannot guess. List in the plan's "Stale-in-light-of-teaching" section; carry to the LOG entry as a manual follow-up.
 - **Defer with reason**: the migration depends on later phases (e.g., naming a thing Phase 0 hasn't decided yet). List with the deferral reason.
 
+### Decision dialogue before the final plan
+
+Identify every proposal, conflict, stale migration, or user-added request that
+requires judgment. Work through them **one at a time**:
+
+1. Explain one decision plainly: what changes, why it matters, the realistic
+   options, and your recommendation.
+2. Stop for the user's decision. Answer questions about that decision without
+   advancing to the next one.
+3. Advance only after the user gives an explicit decision.
+4. If a rendered question appears to have been swallowed, interrupted, or
+   answered ambiguously, re-present the entire decision—including its context,
+   options, and recommendation—rather than referring to a missing question.
+
+User-added requests during the dialogue join the same queue and are decided
+before the plan. If no judgment calls exist, skip directly to the final plan.
+The dialogue remains read-only; an individual "yes" adopts that decision, not
+the write set.
+
 ### Critical "do not stomp" rules during assessment
 
 - **Improvements only.** Never propose replacing target content with source content that is less elaborated, less specialized, or less capable. If a target file has extra sections, extra steps, custom examples, or richer structure compared to its starter counterpart, that file is a target specialization — leave it alone and surface it as a `learn` candidate instead. The bar for any proposed file change is *strict improvement to the target*.
 - **Provenance can flip the classification.** A target file that looks like a specialization (extra sections, project-specific examples) may instead be a naive earlier copy from a *different* donor repo that the target's owner never refined — in which case the source's version *is* a strict improvement and update-in-place is correct. Content alone cannot distinguish the two cases. When a candidate update-in-place is blocked because the target's version *looks* more elaborated, surface it in the plan with both readings explicitly — *"target specialization, preserve"* AND *"earlier copy from another donor, update"* — and let the user disambiguate at approval time. Default to preserve when no provenance signal is available; only update when the user (or a clear repo signal — e.g., a `# Imported verbatim from <other-donor>` header) confirms naive-copy provenance.
 - **Never propose removing a target's custom skill, agent, brief, or policy.** Those are the target's specializations.
 - **Never propose modifying a file the target marks as `⬅️` or `🚧` in its plan.** Active phase work belongs to the target's `kickoff`, not to a teaching pass.
-- **Skill-exclusion list during transfer.** `stamp` and the starter template's `example/` Python project are starter-only — they are never taught from anywhere. `learn` and `teach` themselves are universal — if the teaching repo has them and the target lacks them, they may be transferred like any other skill.
-- **Kickoff configuration is target-owned.** Teach the contract atomically, but never replace existing model choices, effort fields, timeout values, comments, extensions, local telemetry/percentiles, or project overrides. Seed defaults only when `kickoff.yaml` is absent.
+- **Skill-exclusion list during transfer.** `stamp` and the starter template's `example/` Python project are starter-only — they are never taught from anywhere. The universal set is `kickoff`, `methodology`, `learn`, `teach`, `roles`, `sweep`, `demo`, and `treatise`; if the teaching repo has one and the target lacks it, it may be transferred like any other skill.
+- **Kickoff configuration is target-owned.** Teach the contract atomically, but never replace existing model choices, effort fields, timeout values, research budgets, comments, extensions, local telemetry/percentiles, or project overrides. Seed defaults only when `kickoff.yaml` is absent.
 - **Honor the target's primary language.** If the target is a Node project, do not propose adding `pyproject.toml` from this template. Adapt commands and references accordingly.
 
 ## Stage 3 — Plan (present to user)
+
+Immediately before composing the final plan, re-read the target's git HEAD (or
+mtime fingerprint). If it changed since preflight, inspect the delta and reopen
+every affected decision; do not silently bind the plan to a moving target.
+Then regenerate the **complete** plan from the resolved decisions. Do not offer
+an incremental patch or assume the user can reconstruct it from the dialogue.
 
 Produce a structured plan inline in the conversation. Use this exact format:
 
@@ -335,7 +367,7 @@ Once approved, apply the approved items to the target. Order:
 3. MODIFY existing target files (smallest diffs first; one logical change per Edit call).
 4. Maintain cross-harness parity for any *newly added or modified* skills and agents — apply the same four-surface contract the parity heals enforce, but to whatever the teach pass just added:
    - **Top-level instructions** — `CLAUDE.md` ↔ `AGENTS.md` symlink. If a fresh `CLAUDE.md` was created in step 2, also create the `AGENTS.md → CLAUDE.md` symlink (the parity-heal pass in step 1 only repairs existing-`CLAUDE.md` mismatches).
-   - **Skills — Codex native skill-discovery surface** — `.claude/skills/<name>/` ↔ `.agents/skills/<name>` (directory symlink). For every universal skill added or modified (kickoff, methodology, learn, teach, roles, sweep — *not* `stamp`): `mkdir -p <target>/.agents/skills && ln -s ../../.claude/skills/<name> <target>/.agents/skills/<name>`. Directory-level, not file-level — per [openai/codex#11314](https://github.com/openai/codex/issues/11314).
+   - **Skills — Codex native skill-discovery surface** — `.claude/skills/<name>/` ↔ `.agents/skills/<name>` (directory symlink). For every universal skill added or modified (kickoff, methodology, learn, teach, roles, sweep, demo, treatise — *not* `stamp`): `mkdir -p <target>/.agents/skills && ln -s ../../.claude/skills/<name> <target>/.agents/skills/<name>`. Directory-level, not file-level — per [openai/codex#11314](https://github.com/openai/codex/issues/11314).
    - **Agent roles** — `.claude/agents/<role>.md` ↔ `.codex/agents/<role>.toml` (thin wrapper TOML). For every agent .md added or modified, generate or refresh the .toml as a thin pointer: a `description` field plus a `developer_instructions` body that just says "Read .claude/agents/<role>.md and follow it."
 5. Update the target's `CLAUDE.md` catalogs (briefs catalog, policies catalog, critical-files map) so every new file is indexed. Add the catalog as a new section when the target lacks it.
 6. Substitute names in transferred files: `Agentic Coding Starter Template` → target's project name; `agentic-coding-starter-template` → target's slug; references to this template's `example/` package → target's primary surface.
@@ -393,7 +425,7 @@ Once approved, apply the approved items to the target. Order:
   role/orchestrator contracts, gate integration, docs/catalogs, and behavioral
   tests together. Preserve target risk extensions and stricter assurance
   rules; never read or copy target run evidence. Candidate mismatch,
-  indeterminate impact, and incomplete final-gate evidence fail closed.
+  indeterminate impact, and incomplete candidate-gate or handoff-gate evidence fail closed.
 - **Toolchain transfer is atomic and target-preserving.** Never teach only a
   gate wrapper or raw setup/test command. Transfer or update the setup, test,
   full-gate, runtime-selection, metadata/lock, behavioral-test, policy, hook,
@@ -420,4 +452,4 @@ Once approved, apply the approved items to the target. Order:
   repo's `LOG.md` is not touched, so Starter's starter-only anonymization
   policy does not rewrite target provenance.
 - **Refuse on active-phase conflicts.** If a proposed change touches a file the target's plan marks `🚧`, drop it from the apply set and report it as a manual follow-up the target's owner should resolve via `kickoff` first.
-- **`stamp` and the starter template's `example/` are never taught.** They live only in the starter template. The corresponding `.agents/skills/stamp` mirror is also starter-only — if a target somehow acquired it (e.g., from a buggy Codex import), remove it as part of the apply. `learn` and `teach` are universal and may be transferred to a target that lacks them, with the user's approval.
+- **`stamp` and the starter template's `example/` are never taught.** They live only in the starter template. The corresponding `.agents/skills/stamp` mirror is also starter-only — if a target somehow acquired it (e.g., from a buggy Codex import), remove it as part of the apply. The eight universal skills — including `learn`, `teach`, `demo`, and `treatise` — may be transferred to a target that lacks them, with the user's approval.

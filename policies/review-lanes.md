@@ -57,14 +57,14 @@ When a phase is borderline, it is not eligible. `light` is an optimization, neve
 
 ## The one-shot lane
 
-The one-shot lane runs a well-specified, isolated phase directly from its phase file: coder → orchestrator vet → code-critic → the normal acceptance close. It exists for work whose decisions are already made — by the phase file, or by a human-approved plan the phase file embodies — where the four-role loop's remaining value is the independent code review, which the lane keeps. It is the in-`kickoff` sibling of the doctrine's goal-armed one-shot ([`../briefs/methodology.md`](../briefs/methodology.md) § Orchestration runtime doctrine): the doctrine form runs a standalone task outside the phase loop; this lane runs a phase inside it.
+The one-shot lane runs a well-specified, isolated phase directly from its phase file: coder → orchestrator vet → code-critic → the normal two-gate close. It exists for work whose decisions are already made — by the phase file, or by a human-approved plan the phase file embodies — where the four-role loop's remaining value is the independent code review, which the lane keeps. It is the in-`kickoff` sibling of the doctrine's goal-armed one-shot ([`../briefs/methodology.md`](../briefs/methodology.md) § Orchestration runtime doctrine): the doctrine form runs a standalone task outside the phase loop; this lane runs a phase inside it.
 
 **Eligibility** — checked by the orchestrator at kickoff Step 0; a failed check refuses the lane (with a stated reason) and runs the phase file's declared lane instead. This bar is deliberately *not* the `light` mechanical list — a one-shot may create new surface; its bar is specification quality and isolation:
 
 - **Binding-spec bar.** The phase file names its deliverables concretely, carries empirical acceptance criteria, and states its verification steps. A phase file that would leave the coder inventing scope is not a spec.
 - **Isolation.** The write surface is bounded and does not rewire existing authority surfaces mid-flight. New, self-contained machinery qualifies; cross-cutting edits to live contracts do not.
 
-**Evidence.** The lane's mechanically derived initial role set is `role.implement` + `role.code-review` (no planner attempt, no `orchestration.planning` stage — `bin/kickoff-evidence` derives both from the lane). Everything else is unchanged: candidate binding, finding ledger, gate records, the complete final gate against the unchanged candidate.
+**Evidence.** The lane's mechanically derived initial role set is `role.implement` + `role.code-review` (no planner attempt, no `orchestration.planning` stage — `bin/kickoff-evidence` derives both from the lane). Everything else is unchanged: candidate binding, finding ledger, implementation-gate records, and the post-bookkeeping handoff gate.
 
 ### One-shot escalation
 
@@ -81,8 +81,8 @@ evidence_lane: light   # how much ceremony binds them; absent or `full` = full
 
 | Lane | Apparatus | When |
 |---|---|---|
-| `full` (default) | The complete candidate-bound apparatus: role registration, span joins, stage envelopes, per-record candidate binding, review convergence metrics, the final gate ([`orchestration-evidence.md`](orchestration-evidence.md)). | Any phase touching an authority surface, irreversible or external state, or a deploy seam. When in doubt, this. |
-| `light` | Structural tests, the human gate, and the seal at close. The run directory, authority manifest, finding ledger, and gate ledger remain the durable record; role registration, span joins, and stage envelopes become *validated-if-present, never required* — the lane is recorded in the immutable run metadata and the END block, never silently. **The seal at close is unchanged and mandatory:** `validate --require-final` still demands terminal findings and the final candidate-bound `./bin/check all` gate row with equal before/after/current candidates. | Presentation-scale phases and self-contained new machinery. |
+| `full` (default) | The complete candidate-bound apparatus: role registration, span joins, stage envelopes, per-record candidate binding, review convergence metrics, and the implementation gate ([`orchestration-evidence.md`](orchestration-evidence.md)); the handoff gate follows tracked close writes. | Any phase touching an authority surface, irreversible or external state, or a deploy seam. When in doubt, this. |
+| `light` | Structural tests, the human gate, and the seal at close. The run directory, authority manifest, finding ledger, and gate ledger remain the durable record; role registration, span joins, and stage envelopes become *validated-if-present, never required* — the lane is recorded in the immutable run metadata and the END block, never silently. **The implementation seal is unchanged and mandatory:** `validate --require-final` still demands terminal findings and the final candidate-bound `./bin/check all` gate row with equal before/after/current candidates. The bare handoff gate is also unchanged. | Presentation-scale phases and self-contained new machinery. |
 
 **Eligibility for `light` — fail-closed triggers.** A phase is ineligible when any deliverable touches:
 
@@ -131,8 +131,9 @@ When neither condition holds, use the least ceremony that safely completes the c
 
 Validation is never proportionalized away. Every route reruns the failing
 check first, then the focused tests and affected revision-close gates. After
-code-critic approval, the orchestrator runs the complete acceptance-close
-sequence and `./bin/check all` once against the unchanged candidate. If a
+code-critic approval, the orchestrator runs the complete
+implementation-candidate sequence against the unchanged candidate, then the
+bare handoff gate after tracked close writes. If a
 direct or coder-only correction grows beyond its classification, exposes an
 architectural question, or lacks convincing validation, upgrade it immediately
 to the full cycle.

@@ -142,12 +142,15 @@ or trustworthy continuity is lost. When impact is indeterminate, rebase.
 
 ## Candidate-bound verification
 
-Use three levels:
+Use four levels:
 
 1. focused, smallest falsifying behavioral test or proof during editing;
 2. affected suites and static/structural checks at revision close;
-3. the complete phase-prescribed sequence and `./bin/check all` once after
-   code-critic approval, against the unchanged approved candidate.
+3. the complete phase-prescribed sequence and `./bin/check all` after
+   code-critic approval, against the unchanged approved implementation
+   candidate;
+4. a bare `./bin/check all` after every tracked close write, against the actual
+   handoff tree.
 
 **Rehearse before an expensive or irreversible acceptance step.** When a phase's
 acceptance includes a long or externally-irreversible run — a live data
@@ -163,22 +166,27 @@ that run begins:
    and neither a coder forbidden from the live run nor a read-only critic can
    see that.
 
-The final-gate contract is unchanged: `./bin/check all` still runs once and
-last against the unchanged approved candidate, and the rehearsal rows are
-explicitly non-final. Only the discovery of cheap failures moves earlier. Both
-halves were paid for the hard way in a derived project's production phase.
+The implementation-candidate contract is unchanged: its `./bin/check all`
+runs last against the unchanged approved candidate, and rehearsal rows are
+explicitly non-final. After close bookkeeping changes the tree, the separate
+handoff gate proves that actual tree. Only the discovery of cheap failures
+moves earlier.
 
-Record every executed gate and its selection reason. Focused selection may be
+Record every candidate-bound implementation gate and its selection reason. Focused selection may be
 agent-judged or supplied by a project-specific dependency tool, but uncertain
 impact fails closed to broader verification. A relevant candidate change
 invalidates prior gate evidence. Verify candidate identity before and after
-the final sequence; mutation by a read-only gate fails the phase.
+the implementation sequence; mutation by a read-only gate fails the phase.
 `./bin/python bin/kickoff-evidence validate --require-final --required-final-command
-"./bin/check all"` is the mechanical acceptance proof and must run immediately
-after the final gate, before status and append-only log bookkeeping change the
-working tree. It also refuses phase close while a finding remains `open`,
+"./bin/check all"` is the mechanical implementation acceptance proof and must
+run immediately after the implementation gate, before status and append-only
+log bookkeeping change the working tree. It also refuses close bookkeeping
+while a finding remains `open`,
 `addressed`, or `blocked-owner`. Close-out bookkeeping may follow; it does not
-retroactively change the accepted implementation candidate.
+retroactively change the accepted implementation candidate, but the bare
+handoff gate must pass before completion is reported. Its ignored full-gate
+receipt binds the post-bookkeeping tree. No tracked write may follow a
+successful handoff gate.
 
 ## The registration file is not the ledger
 
@@ -573,7 +581,7 @@ reproduce the whole-ledger expression, base term included.
 Evidence contains repository-relative paths, hashes, findings, and nondisclosing gate results—not
 secrets, environment dumps, credentials, ignored private data, or arbitrary
 source copies. Project-specific high-assurance profiles may restrict evidence
-further; they may not weaken candidate binding or the final full gate.
+further; they may not weaken candidate binding or either close gate.
 
 ## Trace-bound execution
 

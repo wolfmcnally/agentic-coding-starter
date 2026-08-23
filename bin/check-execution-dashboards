@@ -97,8 +97,8 @@ def validate_static_assets() -> None:
         fail("vendored ECharts asset must be the pinned 6.1.0 release")
     if not license_path.is_file() or "Apache License" not in license_path.read_text():
         fail("vendored ECharts license is missing or invalid")
-    renderer = (ASSETS / "dashboard-v3.js").read_text(encoding="utf-8")
-    stylesheet = (ASSETS / "dashboard-v3.css").read_text(encoding="utf-8")
+    renderer = (ASSETS / "dashboard-v4.js").read_text(encoding="utf-8")
+    stylesheet = (ASSETS / "dashboard-v4.css").read_text(encoding="utf-8")
     for pattern in FORBIDDEN_RENDERER:
         if pattern.search(renderer) or pattern.search(stylesheet):
             fail(f"unsafe or online renderer construct: {pattern.pattern}")
@@ -117,6 +117,7 @@ def validate_static_assets() -> None:
         "Review Convergence",
         "Setup & Coordination",
         "Acceptance Coordination",
+        "Awaiting User Input",
         "prefers-reduced-motion: reduce",
         "@media print",
     )
@@ -180,6 +181,7 @@ def main() -> int:
                 phase_id=payload["phase_id"],
                 accepted_trace_id=payload["accepted_trace_id"],
                 handoff=json.loads(handoff_path.read_text(encoding="utf-8")),
+                operator_parks=payload["operator_parks"],
             )
         compare_files(ARCHIVE / "index.html", regenerated / "index.html")
         compare_files(ARCHIVE / "index-data.js", regenerated / "index-data.js")

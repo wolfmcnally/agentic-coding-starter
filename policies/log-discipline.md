@@ -37,7 +37,13 @@ The planned-work list is the phase file's Deliverables list, copied verbatim (tr
 
 `Execution trace:` records the trace id opened for the phase ([`execution-telemetry.md`](execution-telemetry.md)), so START and END are mechanically joinable. The `Baseline:` line appears only when the phase carries a baseline-dependent acceptance criterion ("unchanged before and after", "byte-identical across the edit"): it records the commit id the comparison is against, per [`acceptance-empirical.md`](acceptance-empirical.md) § Baseline-dependent criteria. Omit the line when no criterion depends on a baseline.
 
-**Only a finalized trace may claim exact timing.** An END block's `Execution timing` section is the machine-generated projection from the finalized trace; an incomplete or unfinalized trace may not claim exact figures. Narrative wall-clock observations remain a separate field and are never presented as exact.
+**Only finalized evidence may claim exact timing.** An END block's trace timing
+is the machine-generated projection from a finalized trace. Awaiting-user-input
+timing comes from the separate closed operator-park ledger: same-boot intervals
+may claim exact monotonic duration; cross-boot intervals must say non-exact
+calendar duration. Open, malformed, or unknowable intervals may not claim zero
+or an exact total. Narrative wall-clock observations remain separate and are
+never presented as exact.
 
 **Multi-session phases use suffixed blocks.** A phase that pauses and resumes across sessions appends `## <ts> — START (resumed)` when work re-enters, paired with its own END; a continuation that re-derives evidence rather than re-doing work may annotate the suffix (`START (evidence continuation)`). Suffixed blocks keep every session's record distinct instead of overwriting or re-editing the original START — the same append-only discipline, extended to the phase's whole lifetime. The most recent unmatched START of any suffix is the resume anchor.
 
@@ -55,7 +61,13 @@ Files changed:
 
 Build status:
 - <gate name>: OK | N/A | failed (<short reason>)
+- Handoff gate: runs after this tracked END block; completion is contingent on
+  the ignored receipt from the final bare `./bin/check all`
 - ...
+
+Awaiting user input:
+- <opened UTC> → <closed UTC|open>: <duration|unavailable> (<stable reason>; <basis>)
+- Total: <union duration|unavailable> (<basis>)
 
 Manual checks for user:
 - <named check that needs human eyes> | None
@@ -107,6 +119,11 @@ This block records a correction to an already authorized goal; it does not reope
 2. **`kickoff` writes; humans read.** Humans don't write to `LOG.md` directly. The exceptions are bootstrapping (creating the initial `# Activity Log` header) and recovery (when `kickoff` failed and left an inconsistent state).
 3. **Timestamps are real.** Use the orchestrator's actual wall-clock time when the block was written. Do not back-date.
 4. **The END block is a contract.** When the orchestrator writes an END block claiming the phase is done, the human is entitled to expect that every claim in the block is true. Fabricated evidence is the most dangerous failure mode this policy guards against; the orchestrator must never claim a build gate passed when it didn't, never claim a manual check was performed by the orchestrator, never embellish the file list.
+5. **The handoff gate closes the current block.** The active uncommitted END and
+   other close writes remain contingent until a bare `./bin/check all` passes
+   against the actual handoff tree. No tracked write follows that pass. A
+   failure reopens and corrects the current uncommitted close; committed
+   historical blocks remain append-only.
 
 ## Why append-only
 

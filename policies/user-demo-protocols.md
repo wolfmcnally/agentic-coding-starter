@@ -49,6 +49,12 @@ A demo protocol is **not**:
 - **Code critic.** Verify the demo as written would actually work against the merged code: the entry point exists, the suggested inputs are valid, the observable outcomes are reachable. Block if the demo is stale relative to the implementation.
 - **Orchestrator (`kickoff`).** Surface every `User Demo:` block verbatim in the phase's END block under "Manual checks for user:", with the entry-point command on its own line so the user can copy-paste it. Do not claim to have run the demo — the orchestrator cannot demo a user-facing feature. If the phase declared `User Demo: N/A`, restate the line in the END block so the human sees the planner's reasoning.
 
+After close, the universal `demo` skill is the interactive runner for that
+approved protocol. It performs invisible prerequisites itself, explains one
+visible action plainly, pauses for the user's observation, answers questions
+without advancing, and keeps a durable resume point. It does not invent a
+missing protocol or repair the product during evaluation.
+
 ## What a `User Demo:` block looks like
 
 A minimal, well-formed protocol for a hypothetical CLI subcommand:

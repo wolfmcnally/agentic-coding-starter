@@ -525,3 +525,49 @@ pre-push hook on probe or descriptor errors. Learn, Teach, Stamp, bootstrap,
 policy, catalog, and operator documentation propagate the correction while
 preserving the template's Python example, anonymization lane, policy-failure
 propagation, configuration, and target-owned state.
+
+## 2026-08-23 12:42 MDT — LEARN
+Donor: Donor A @ <sha withheld>
+Items absorbed: 9, by tier T1=9/T2=0/T3=0/T4=0
+Donor lessons harvested: 6 (6 absorbed as rule proposals; 0 filed to lessons/)
+Application-found return candidates: 0 filed to lessons/
+Stale-in-light-of-learning migrations: 7 AUTO; 0 DECIDE; 0 DEFER
+Files touched: 58
+
+Scoped to methodology changes made since the prior harvest. The four canonical
+roles now carry explicit, configurable research authority: planner and reviewer
+may search and retrieve within budgets; coder and critic may retrieve resources
+already identified by the approved plan or briefs, including a same-host
+structural neighbor, without originating new searches. MCP servers and plugins
+are allowed by default when available and within role authority, with no
+assumption that any particular research server exists. The manager validates
+the matrix, preserves project and phase overrides, and live-preflights the
+resolved venue capability before phase mutation.
+
+Two universal operator-facing skills landed. `demo` presents one visible
+instruction at a time and waits for the human's observation before advancing.
+`treatise` turns completed work into a source-grounded publication only after
+the governing policy's readiness, evidence, adaptation, privacy, and review
+gates pass. Learn and Teach now use the same one-decision-at-a-time dialogue:
+plain explanation, questions until resolved, explicit adoption, then the next
+decision; swallowed questions are re-presented in full, and a complete revised
+plan is offered for approval only after every decision is closed. Both transfer
+paths recheck source and destination identity immediately before applying.
+
+Verification gained an independent discipline policy, material-count
+reproduction and attribution requirements, and a two-gate phase close. The
+reviewed implementation candidate must pass its complete gate before close
+writes; after evidence finalization and tracked close bookkeeping, a second
+bare full gate runs against the actual handoff tree. No tracked write may follow
+that handoff gate, and a failure reopens the close rather than leaving a sealed
+false success.
+
+Phase telemetry now records operator-input parks in a dedicated external
+ledger, unions overlapping spans, reports every interval and the total, uses
+same-boot monotonic timing when exact, labels cross-boot recovery visibly as
+non-exact, protects question content, and fails closed on open or malformed
+intervals. Dashboard schema v4 adds the phase-level total and interval table;
+responsive rendering keeps those tables readable on narrow screens. Finally,
+the template sets background worktree isolation to `none` while preserving
+explicit worktrees, and Stamp and Teach propagate or deliberately reconcile
+that setting alongside the expanded universal skill and research contracts.

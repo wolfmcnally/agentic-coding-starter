@@ -35,6 +35,16 @@ role_models:
       model: opus
       effort: high
 
+# Per-role originating-search budgets. Retrieval of resources already named in
+# an approved plan or brief is not charged here. Planner and reviewer may
+# originate research; coder and critic are retrieval-only. Installed MCP
+# servers and plugins remain available unless a project or phase narrows them.
+research_budgets:
+  planner: 12
+  reviewer: 6
+  coder: 0
+  critic: 0
+
 # Per-invocation execution budgets. These are hang guards, not performance
 # targets. `claude_max_turns` is a Claude CLI circuit breaker; Codex and native
 # roles use the three clocks because those venues expose no equivalent flag.

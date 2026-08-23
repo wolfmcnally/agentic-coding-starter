@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +27,12 @@ CODE_CRITIC = _normalized(REPO_ROOT / ".claude" / "agents" / "code-critic.md")
 LEARN = _normalized(REPO_ROOT / ".claude" / "skills" / "learn" / "SKILL.md")
 TEACH = _normalized(REPO_ROOT / ".claude" / "skills" / "teach" / "SKILL.md")
 STAMP = _normalized(REPO_ROOT / ".claude" / "skills" / "stamp" / "SKILL.md")
+DEMO = _normalized(REPO_ROOT / ".claude" / "skills" / "demo" / "SKILL.md")
+TREATISE = _normalized(REPO_ROOT / ".claude" / "skills" / "treatise" / "SKILL.md")
+RESEARCH_POLICY = _normalized(REPO_ROOT / "policies" / "research-authority.md")
+VERIFICATION_POLICY = _normalized(REPO_ROOT / "policies" / "verification-discipline.md")
+TREATISE_POLICY = _normalized(REPO_ROOT / "policies" / "treatise.md")
+USER_DEMO_POLICY = _normalized(REPO_ROOT / "policies" / "user-demo-protocols.md")
 
 
 def test_atomic_contract_pins_behavioral_coverage_floor() -> None:
@@ -96,11 +103,13 @@ def test_orchestration_contract_is_candidate_bound_and_incremental() -> None:
         assert "unchanged approved candidate" in document
 
 
-def test_orchestration_contract_keeps_one_complete_final_gate() -> None:
+def test_orchestration_contract_keeps_both_close_gates() -> None:
     assert "the complete phase-prescribed sequence" in ORCHESTRATION_POLICY
-    assert "once after code-critic approval" in ORCHESTRATION_POLICY
     assert "--require-final" in ORCHESTRATION_POLICY
     assert "authoritative full gate last" in KICKOFF
+    for document in (ORCHESTRATION_POLICY, KICKOFF):
+        assert "implementation" in document and "handoff gate" in document
+        assert "No tracked write" in document or "no tracked write" in document
 
 
 def test_protocol_recovery_never_becomes_ordinary_success() -> None:
@@ -142,6 +151,47 @@ def test_self_improvement_bundle_propagates_atomically() -> None:
         assert phrase in BOOTSTRAP_BRIEF
 
 
+def test_universal_demo_and_treatise_bundle_propagates_atomically() -> None:
+    for skill in ("demo", "treatise"):
+        canonical = f".claude/skills/{skill}/SKILL.md"
+        mirror = f".agents/skills/{skill}"
+        for document in (STAMP, BOOTSTRAP_BRIEF):
+            assert canonical in document
+            assert mirror in document
+        assert skill in TEACH
+    assert "policies/user-demo-protocols.md" in DEMO
+    assert "policies/treatise.md" in TREATISE
+    assert "canonical" in TREATISE_POLICY and "publication" in TREATISE_POLICY
+    assert "universal `demo` skill" in USER_DEMO_POLICY
+
+
+def test_portable_background_isolation_disables_only_implicit_worktrees() -> None:
+    settings = json.loads((REPO_ROOT / ".claude" / "settings.json").read_text())
+    assert settings == {"worktree": {"bgIsolation": "none"}}
+    for document in (STAMP, TEACH, BOOTSTRAP_BRIEF):
+        assert ".claude/settings.json" in document
+        assert "explicit" in document and "worktree" in document
+
+
+def test_research_authority_contract_propagates_and_stays_allow_by_default() -> None:
+    assert "allow-by-default" in RESEARCH_POLICY
+    assert "same-host structural neighbors" in RESEARCH_POLICY
+    assert "GET" in RESEARCH_POLICY
+    for document in (STAMP, TEACH, BOOTSTRAP_BRIEF, KICKOFF):
+        assert "research" in document
+    for role in (PLANNER, PLAN_REVIEWER):
+        assert "originate" in role and "retriev" in role
+    for role in (CODER, CODE_CRITIC):
+        assert "Do not originate" in role
+
+
+def test_material_review_counts_are_reproducible() -> None:
+    assert "Material counts are reproducible" in VERIFICATION_POLICY
+    for document in (PLAN_REVIEWER, CODE_CRITIC, KICKOFF):
+        assert "material count" in document
+        assert "exact command or deterministic procedure" in document
+
+
 def test_methodology_narrative_carries_lessons_and_failure_analysis() -> None:
     for document in (METHODOLOGY, METHODOLOGY_BRIEF):
         assert "lessons harvest" in document
@@ -176,7 +226,7 @@ def test_human_wall_clock_efficiency_is_ambient_and_effectiveness_preserving() -
         assert "marginal" in document
 
     for document in (CLAUDE, KICKOFF, PLANNER, CODER, CODE_CRITIC):
-        assert "complete final gate" in document
+        assert "handoff" in document
 
 
 def test_canonical_roles_apply_wall_clock_judgment_proportionally() -> None:

@@ -9,7 +9,7 @@ description: >-
   the new project's name and primary language. Invoke as /stamp <directory>
   [<description>] in Claude Code or $stamp <directory> [<description>] in Codex.
 argument-hint: "<directory> [<description>]"
-last-reviewed: 2026-08-10
+last-reviewed: 2026-08-23
 ---
 
 # Stamp — Bootstrap a new agentic-coding project
@@ -36,13 +36,14 @@ Before changing anything, verify:
 1. **Source repo invariants.** This repo (the template) is itself in a healthy state. Specifically:
    - `readlink AGENTS.md` returns `CLAUDE.md`.
    - `.claude/agents/` contains exactly `phase-planner.md`, `plan-reviewer.md`, `phase-coder.md`, `code-critic.md`.
-   - `.claude/skills/kickoff/SKILL.md`, `.claude/skills/methodology/SKILL.md`, and `.claude/skills/roles/SKILL.md` exist.
+   - Each universal skill in `{kickoff, methodology, learn, teach, roles, sweep, demo, treatise}` has a `.claude/skills/<name>/SKILL.md`.
+   - `.claude/settings.json` exists and sets `worktree.bgIsolation` to `none`.
    - `bin/kickoff-config` exists and is executable.
    - `bin/kickoff-tree-id` and `bin/kickoff-evidence` exist and are executable.
    - `bin/setup`, `bin/test`, `bin/check`, and `bin/check-receipt` exist and are
      executable; `tests/test_check_receipt.py` exists; the Python profile also
      has executable `bin/python`.
-   - `kickoff.yaml` exists and `./bin/kickoff-config show` validates both sections.
+   - `kickoff.yaml` exists and `./bin/kickoff-config show` validates role models, role timeouts, and research budgets.
    - `.codex/agents/*.toml` has one TOML file per canonical agent.
    - `briefs/BRIEF.md`, `briefs/methodology.md`,
      `briefs/agentic-bootstrap.md`, and
@@ -111,9 +112,12 @@ Follow [`briefs/agentic-bootstrap.md` §3](../../../briefs/agentic-bootstrap.md)
   .claude/skills/teach/
   .claude/skills/roles/
   .claude/skills/sweep/
+  .claude/skills/demo/
+  .claude/skills/treatise/
   .claude/agents/
   .codex/agents/
-  .agents/skills/         # (kickoff, methodology, learn, teach, roles, sweep
+  .agents/skills/         # (kickoff, methodology, learn, teach, roles, sweep,
+                          #  demo, treatise
                           #  added as directory symlinks in Step 2)
   lessons/                # (empty ledger — .gitkeep only; policies/lessons.md)
   lessons-archived/       # (empty — .gitkeep only)
@@ -143,6 +147,9 @@ Copy these files **from this template** into the new project, then run a name su
 - `.claude/skills/teach/SKILL.md`
 - `.claude/skills/roles/SKILL.md`
 - `.claude/skills/sweep/SKILL.md`
+- `.claude/skills/demo/SKILL.md`
+- `.claude/skills/treatise/SKILL.md`
+- `.claude/settings.json`
 - `.claude/agents/phase-planner.md`
 - `.claude/agents/plan-reviewer.md`
 - `.claude/agents/phase-coder.md`
@@ -200,11 +207,13 @@ ln -s ../../.claude/skills/learn       .agents/skills/learn
 ln -s ../../.claude/skills/teach       .agents/skills/teach
 ln -s ../../.claude/skills/roles       .agents/skills/roles
 ln -s ../../.claude/skills/sweep       .agents/skills/sweep
+ln -s ../../.claude/skills/demo        .agents/skills/demo
+ln -s ../../.claude/skills/treatise    .agents/skills/treatise
 ```
 
 Verify each `readlink <dest>/.agents/skills/<name>` returns the expected target and `test -L <dest>/.agents/skills/<name> && test -d <dest>/.agents/skills/<name>` passes before moving on.
 
-**Do not** copy `.claude/skills/stamp/` (this skill itself), create `.agents/skills/stamp` in the destination, or copy `policies/anonymize-log-references.md`, `bin/check-anonymization.sh`, or `bin/anonymization-denylist.local.example` (and drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`). The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too, and the anonymization rule (and its enforcement script) doesn't apply to private downstream projects. The `learn` and `teach` skills *are* carried over — they are universal cross-repo skills that benefit every methodology-following project.
+**Do not** copy `.claude/skills/stamp/` (this skill itself), create `.agents/skills/stamp` in the destination, or copy `policies/anonymize-log-references.md`, `bin/check-anonymization.sh`, or `bin/anonymization-denylist.local.example` (and drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`). The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too, and the anonymization rule (and its enforcement script) doesn't apply to private downstream projects. The eight universal skills *are* carried over, including cross-repo `learn`/`teach`, interactive `demo`, and publication-gated `treatise`.
 
 The `bin/` directory, its `bin/README.md` convention preamble, and
 `policies/mechanistic-vs-intelligence.md` **are** carried over. The universal
@@ -238,7 +247,7 @@ Author these afresh, using the gathered configuration:
     - `## Project surfaces` — describe the deliverable (path, what language, what the example or seed code is). When `project_isolation` is on, the surface is `project/`; when off, name the sibling deliverable directories.
     - `## Project conventions` — language, tooling, build-gate command shape for this project.
     - `## Model & review venue` — describe `kickoff.yaml` as the human-editable source for separate model/effort fields and execution budgets; `roles` is an optional validated editor; the shipped default gives cross-vendor review. Governed by the two role policies.
-    - `## Project-specific skills` — if the new project carries any skills beyond the universal six (kickoff, methodology, learn, teach, roles, sweep), list them here. For most fresh projects, this section is empty (or omitted).
+    - `## Project-specific skills` — if the new project carries any skills beyond the universal eight (kickoff, methodology, learn, teach, roles, sweep, demo, treatise), list them here. For most fresh projects, this section is empty (or omitted).
   - Preserve the introductory paragraph that explains the two-zone contract; it is informational and lives outside both markers.
 
 - **`<dest>/AGENTS.md`** — symlink to `CLAUDE.md`. Create with `ln -s CLAUDE.md AGENTS.md` in the destination.
@@ -413,7 +422,8 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - `ls <dest>/.claude/skills/kickoff/` contains `SKILL.md`.
 - `ls <dest>/.claude/skills/methodology/` contains `SKILL.md`.
 - `ls <dest>/.claude/skills/stamp/` does **not** exist (we did not transfer it).
-- For each name in {kickoff, methodology, learn, teach, roles, sweep}: `readlink <dest>/.agents/skills/<name>` returns `../../.claude/skills/<name>`, `test -L <dest>/.agents/skills/<name>` and `test -d <dest>/.agents/skills/<name>` both pass, and `<dest>/.agents/skills/<name>/SKILL.md` is reachable through the directory symlink.
+- For each name in {kickoff, methodology, learn, teach, roles, sweep, demo, treatise}: `readlink <dest>/.agents/skills/<name>` returns `../../.claude/skills/<name>`, `test -L <dest>/.agents/skills/<name>` and `test -d <dest>/.agents/skills/<name>` both pass, and `<dest>/.agents/skills/<name>/SKILL.md` is reachable through the directory symlink.
+- `<dest>/.claude/settings.json` sets `worktree.bgIsolation` to `none`; an explicitly requested worktree remains available.
 - `<dest>/bin/kickoff-config show` runs; `<dest>/bin/README.md` retains its universal entry but **not** the `### check-anonymization.sh` entry.
 - `<dest>/bin/kickoff-tree-id` and `<dest>/bin/kickoff-evidence` are
   executable; their behavioral tests pass.
@@ -430,7 +440,7 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
   exist and no Starter lesson files were copied.
 - `<dest>/.agents/skills/stamp` does **not** exist (starter-only, must not propagate).
 - The new `CLAUDE.md`'s catalogs reference every file in `briefs/` and `policies/`.
-- `<dest>kickoff.yaml` exists; `show` prints the seeded cross-vendor model routing and portable timeout values; a scoped model edit preserves timeout comments/values; `<dest>/.gitignore` includes `.kickoff/`; the two role policies and invocation brief exist.
+- `<dest>/kickoff.yaml` exists; `show` prints the seeded cross-vendor model routing, portable timeout values, and per-role research budgets; a scoped model edit preserves timeout/research comments and values; `<dest>/.gitignore` includes `.kickoff/`; the role, timeout, and research-authority policies plus invocation brief exist.
 - `<dest>/bin/setup` succeeds from outside `<dest>` and provisions only the
   committed runtime/dependencies, then passes the target-adapted dependency
   probe.

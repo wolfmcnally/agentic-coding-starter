@@ -25,15 +25,25 @@ The template ships with:
 - A **`kickoff` skill** that orchestrates one phase of work end-to-end: plan → plan-review → code → code-review → build → log.
 - Four **canonical agent roles** (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`) defined once and mirrored to every supported harness.
 - A **`stamp` skill** (starter-template-only) for stamping out new repos from this one.
-- **`learn` and `teach` skills** (universal — carried into every derived project) for moving patterns *between* methodology-following repos. `learn` absorbs patterns from another repo into the current one; `teach` sends patterns from the current repo out to a target. Both are plan-first: the user approves before any file changes.
-- **Human-editable kickoff configuration.** One `kickoff.yaml` contains harness-aware role routing and execution budgets. Model and effort are separate fields. Edit it directly or use the `roles` skill; the round-trip-safe manager rejects schema typos while preserving comments and project-specific data under `extensions`.
+- **`learn` and `teach` skills** (universal — carried into every derived project) for moving patterns *between* methodology-following repos. `learn` absorbs patterns from another repo into the current one; `teach` sends patterns from the current repo out to a target. Both work one decision at a time, then present one complete plan for approval before any file changes.
+- Universal **`demo` and `treatise` skills** for walking a human through an approved demo one visible action at a time and producing an audience-specific outward explanation from canonical repository authority.
+- **Human-editable kickoff configuration.** One `kickoff.yaml` contains harness-aware role routing, execution budgets, and per-role originating-search budgets. Model and effort are separate fields. Edit it directly or use the `roles` skill; the round-trip-safe manager rejects schema typos while preserving comments and project-specific data under `extensions`.
+- **Role-based research authority.** Planner and plan reviewer may search and retrieve; coder and code critic may retrieve plan- or brief-identified resources plus same-host structural neighbors but may not originate searches. Installed MCP servers and plugins are allow-by-default, never assumed present, and external research is GET-only without repository-content egress.
 - **Fail-fast readiness and progress-aware timeouts.** `kickoff` live-validates every required non-orchestrator CLI/model/auth path before it mutates phase state. Production role calls then use per-role first-event, idle, and hard deadlines from the same config; local gitignored telemetry supports evidence-based recalibration. See [`policies/role-models.md`](policies/role-models.md) and [`policies/role-timeouts.md`](policies/role-timeouts.md).
 - **Candidate-bound incremental assurance.** Complete first reviews produce
   stable findings; later rounds receive causal revision packets and widen when
   authority, scope, risk, or continuity changes. Focused checks accelerate
-  convergence, then one complete final gate proves the unchanged approved
-  candidate. See
+  convergence. A complete implementation-candidate gate proves the unchanged
+  approved candidate; after evidence and tracked close bookkeeping, a second
+  bare handoff gate proves the actual tree delivered to the user. See
   [`briefs/incremental-orchestration.md`](briefs/incremental-orchestration.md).
+- **Exact operator-wait telemetry.** Execution traces measure active work;
+  a separate phase ledger records every interval parked for user input and an
+  overlap-safe total. Same-boot spans are exact; cross-boot calendar spans are
+  clearly marked non-exact in the offline dashboard.
+- **No implicit background worktrees.** The shipped `.claude/settings.json`
+  sets `worktree.bgIsolation` to `none`; explicit worktrees remain available
+  when the user chooses one.
 - A **`plan/` ledger** (status table, dependency graph, cross-cutting concerns) where work is tracked phase by phase.
 - A **`briefs/` library** for durable design decisions and methodology notes.
 - A **`policies/` library** for the rules every phase must respect.
@@ -284,13 +294,13 @@ Every initial implementation uses the four canonical roles, subject to the decla
 | Role | Tools | Writes code | Job |
 |---|---|---|---|
 | `phase-planner` | Read, Grep, Glob, WebSearch, WebFetch | No | Turn one phase into a concrete, file-level plan |
-| `plan-reviewer` | Read, Grep, Glob, AskUserQuestion | No | Approve the plan or send it back for revision |
-| `phase-coder` | Read, Write, Edit, Grep, Glob, Bash | Yes | Implement the approved plan |
-| `code-critic` | Read, Grep, Glob | No | Approve the code or send it back for revision |
+| `plan-reviewer` | Read, Grep, Glob, WebSearch, WebFetch | No | Approve the plan or send it back for revision |
+| `phase-coder` | Read, Write, Edit, Grep, Glob, Bash, WebFetch | Yes | Implement the approved plan and retrieve its named references |
+| `code-critic` | Read, Grep, Glob, WebFetch | No | Approve the code or send it back for revision, retrieving named references as needed |
 
 `kickoff` normally delegates implementation; it may directly apply only an
 eligible small, low-risk follow-up correction. It owns candidate identity,
-evidence validation, the final gate, status, and `LOG.md`.
+evidence validation, both close gates, status, and `LOG.md`.
 
 ---
 

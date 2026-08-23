@@ -161,39 +161,52 @@ Recurring tools belong in committed development dependencies. Do not use
 ephemeral dependency injection such as an unpinned `uv run --with ...` for a
 repository-owned gate.
 
-## Candidate-bound focused and final gates
+## Focused iteration and the two-gate close
 
-The planner's Build Gate Sequence has two explicit parts:
+The planner's Build Gate Sequence has three explicit parts:
 
 1. **Iteration and revision-close gates** — focused invocations through
    `./bin/test` or another repository-owned focused mode, plus affected
    static/structural checks. The plan states why the selection exercises the
    changed surface.
-2. **Acceptance-close gates** — the phase's complete prescribed checks,
-   ending with `./bin/check all`.
+2. **Implementation-candidate gate** — after code-critic approval, the phase's
+   complete prescribed checks ending with `./bin/check all`, recorded against
+   the unchanged approved implementation candidate.
+3. **Handoff gate** — after status, ripple, lessons, END, dashboard, and every
+   other tracked close write, a bare `./bin/check all` against the actual tree
+   handed to the user. No tracked write follows a successful handoff gate.
 
 A raw ecosystem command is acceptable only for a narrow operation the
 repository interface does not represent; it must still use committed metadata
 and lock-preserving mode.
 
 The coder runs the iteration/revision-close part as often as needed and reports
-that focused evidence. The orchestrator runs the acceptance-close part once
-after code-critic approval against the unchanged candidate. Evidence from a
-delegated or sandboxed environment proves only that environment;
-host-dependent acceptance is verified on the host.
+that focused evidence. The orchestrator runs the implementation-candidate gate
+after code-critic approval, finalizes its candidate-bound evidence, applies the
+tracked close writes, then runs the handoff gate. Evidence from a delegated or
+sandboxed environment proves only that environment; both close gates run in
+the orchestrator's host context.
 
 Every gate record names the candidate identifier from
 `bin/kickoff-tree-id`, its exact command, selection reason, exit status,
 warning count, and optional artifact digest, per
 [`orchestration-evidence.md`](orchestration-evidence.md). Verify the candidate
-before and after the final sequence. A relevant candidate change invalidates
-prior evidence; a gate that mutates the candidate fails. When the affected
+before and after the implementation sequence. A relevant implementation
+candidate change invalidates prior evidence; a gate that mutates the candidate
+fails. The handoff gate writes only ignored receipt state. When the affected
 surface is indeterminate, select a broader suite rather than defaulting to a
 reassuring narrow one.
 
+If the handoff gate fails, the phase is not complete. Reopen the current
+uncommitted close, correct or regenerate the close artifact, and rerun the bare
+gate. A failure that exposes an implementation defect routes back through
+review and invalidates the prior implementation-candidate gate. Never write a
+tracked "gate passed" claim after the handoff gate; its ignored candidate- and
+environment-bound receipt is the durable proof.
+
 ## Human wall-clock efficiency
 
-Correctness and complete final assurance are fixed; avoidable waiting is not.
+Correctness and both close gates are fixed; avoidable waiting is not.
 Agents remain alert when a gate or related deterministic operation materially
 dominates the development critical path, especially when independent work runs
 serially, invariant setup repeats, or a full suite is being used repeatedly
@@ -212,14 +225,15 @@ This rule has no fixed time threshold and does not mandate optimization. Do
 not spend heroic effort on marginal savings from an acceptable operation,
 collect telemetry without a concrete decision it can inform, or weaken
 coverage, determinism, diagnostics, failure propagation, candidate binding,
-or the complete final gate. An expensive operation with no obvious safe
+or either close gate. An expensive operation with no obvious safe
 leverage may simply be reported and run.
 
 ## Full-gate receipt reuse
 
-The acceptance-close gate still runs once against the approved candidate. A
-receipt is a durable record of that completed gate, not permission to omit the
-initial full gate or to reuse a result across candidates or environments.
+Both close gates run: one against the approved implementation candidate and one
+against the post-bookkeeping handoff tree. A receipt is a durable record of a
+completed full gate, not permission to omit either gate or to reuse a result
+across candidates or environments.
 
 The opt-in pre-push hook may reuse a receipt only when every non-deleted pushed
 ref is the current `HEAD`, the working tree is clean, the current candidate and

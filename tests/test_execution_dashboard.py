@@ -21,6 +21,7 @@ from agentic_starter import execution_dashboard as dashboard  # noqa: E402
 from agentic_starter import execution_telemetry as telemetry  # noqa: E402
 
 FIXTURE = ROOT / "tests" / "fixtures" / "execution_telemetry" / "kickoff-trace.jsonl"
+PARK_FIXTURE = ROOT / "tests" / "fixtures" / "execution_telemetry" / "phase-parks.jsonl"
 SERVER = ROOT / "bin" / "serve-execution-dashboard"
 CLI = ROOT / "bin" / "execution-telemetry"
 ECHARTS_SHA256 = "b66b25aeb4df84e33199dc21694014d336d222cbd9deb0e5a7c14bd6aa0d0fd0"
@@ -143,6 +144,14 @@ def test_payload_includes_failed_primary_and_exact_exclusive_accounting() -> Non
     assert payload["schema"] == dashboard.DASHBOARD_SCHEMA
     assert payload["trace_count"] == 2
     assert payload["failed_trace_count"] == 1
+    assert payload["operator_parks"] == {
+        "phase_id": "31.2",
+        "intervals": [],
+        "total_duration_ns": 0,
+        "total_exact": True,
+        "total_method": "none",
+        "open": False,
+    }
     assert [item["trace_status"] for item in payload["traces"]] == [
         "unsuccessful",
         "accepted",
@@ -191,8 +200,30 @@ def test_payload_includes_failed_primary_and_exact_exclusive_accounting() -> Non
     )
 
 
+def test_payload_reports_each_operator_park_and_nonexact_total() -> None:
+    accepted = kickoff_bundle()
+    parks = telemetry.phase_park_summary(engine_root=ROOT, phase_id="7", ledger=PARK_FIXTURE)
+    parks = parks | {
+        "phase_id": "31.2",
+        "intervals": [item | {"phase_id": "31.2"} for item in parks["intervals"]],
+    }
+    payload = dashboard.build_phase_payload(
+        [accepted],
+        phase_id="31.2",
+        accepted_trace_id=accepted["trace_id"],
+        handoff=sample_handoff(),
+        operator_parks=parks,
+    )
+
+    assert payload["operator_parks"] == parks
+    assert payload["phase_view"]["operator_parks"] == parks
+    assert payload["operator_parks"]["total_duration_ns"] == 75_000_000_000
+    assert payload["operator_parks"]["total_exact"] is False
+    assert "boot_id" not in json.dumps(payload["operator_parks"])
+
+
 def test_renderer_disables_decorative_graph_styling_and_uses_semantic_rework() -> None:
-    renderer = (ROOT / "reports" / "execution" / "assets" / "dashboard-v3.js").read_text(
+    renderer = (ROOT / "reports" / "execution" / "assets" / "dashboard-v4.js").read_text(
         encoding="utf-8"
     )
 
@@ -211,11 +242,13 @@ def test_renderer_disables_decorative_graph_styling_and_uses_semantic_rework() -
     assert "Review Convergence" in renderer
     assert "Setup & Coordination" in renderer
     assert "Acceptance Coordination" in renderer
+    assert "Awaiting User Input" in renderer
+    assert "calendar union · non-exact" in renderer
     assert "specificKeys.size ? specificKeys : stageKeys" in renderer
 
 
 def test_renderer_uses_minutes_for_every_elapsed_time_axis() -> None:
-    renderer = (ROOT / "reports" / "execution" / "assets" / "dashboard-v3.js").read_text(
+    renderer = (ROOT / "reports" / "execution" / "assets" / "dashboard-v4.js").read_text(
         encoding="utf-8"
     )
 
@@ -229,7 +262,7 @@ def test_renderer_uses_minutes_for_every_elapsed_time_axis() -> None:
 
 
 def test_renderer_accepts_the_generator_schema_names() -> None:
-    renderer = (ROOT / "reports" / "execution" / "assets" / "dashboard-v3.js").read_text(
+    renderer = (ROOT / "reports" / "execution" / "assets" / "dashboard-v4.js").read_text(
         encoding="utf-8"
     )
 

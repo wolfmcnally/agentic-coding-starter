@@ -1,6 +1,6 @@
 ---
 title: "EACP Pattern Map — Which Patterns This Repo Showcases"
-date: 2026-08-10
+date: 2026-08-23
 status: implemented
 scope: Maps this repository's structures onto named patterns from the Encyclopedia of Agentic Coding Patterns, with file-level evidence, the patterns it deliberately declines, the antipatterns it structurally guards against, and the gaps.
 ---
@@ -39,7 +39,7 @@ Everything else in the map hangs off that sentence. The orchestration is a fixed
 | Pattern | Where it lives | Notes |
 |---|---|---|
 | [Prompt Chaining](https://aipatternbook.com/prompt-chaining) | `.claude/skills/kickoff/SKILL.md` Steps 0a–10 | **This, not Orchestrator-Workers, is the correct name for `kickoff`.** The corpus's test is whether the steps are fixed in advance or invented per request. `kickoff`'s are fixed: resolve → preflight → identify → plan → plan-review → code → code-review → build → accept → log. The corpus's own worked example ("criteria before code, code before tests, tests before merge") is the same shape. |
-| — its *gates* | Verdict string-match; three-signal gate; candidate identity; evidence validation; acceptance close | The corpus specifies a gate as "plain code that asks a yes-or-no question … and stops or reroutes the chain." The repo now separates transport completion, role shape/evidence, exact candidate identity, and the complete final suite. |
+| — its *gates* | Verdict string-match; three-signal gate; candidate identity; evidence validation; implementation-candidate close; handoff close | The corpus specifies a gate as "plain code that asks a yes-or-no question … and stops or reroutes the chain." The repo separates transport completion, role shape/evidence, exact candidate identity, the complete candidate suite, and the post-bookkeeping suite on the delivered tree. |
 | [Generator-Evaluator](https://aipatternbook.com/generator-evaluator) | `policies/four-canonical-agents.md`; `.claude/agents/*.md` | **Two nested instances**, not one: `phase-planner` ↔ `plan-reviewer` on the plan artifact, and `phase-coder` ↔ `code-critic` on the code artifact. The corpus names a planner sitting upstream "often"; here it is mandatory and itself evaluated. |
 | — independent context, intensified | `briefs/cross-agent-invocation.md` §§1, 4 | The corpus asks for independent context windows. This repo goes two steps further: the evaluator runs on a **different vendor's model** by default (`kickoff.yaml` `role_models`), and the handoff **redacts the implementer's self-assessment** — no Build Status block, no "tests pass" narrative — on the cited finding that cold artifacts yield ~9.4 mean review findings vs 2.4–4.0 with the implementer's framing attached. |
 | [Subagent](https://aipatternbook.com/subagent) | `.claude/agents/` (canonical), `.codex/agents/` (mirror) | Four named, scoped roles with distinct tool stances. Names are load-bearing by policy. |
@@ -176,7 +176,7 @@ Six structures here have no corresponding EACP entry. Each is a candidate contri
 3. **Phase Ripple** (`policies/phase-ripple.md`). Propagating a closing phase's pinned decisions into downstream *drafted but unexecuted* plan files, classified AUTO (apply now) vs DECIDE (surface as a named follow-up). Adjacent to Garbage Collection but aimed forward at plans rather than backward at accumulated rules.
 4. **Cross-Harness Parity** (`policies/cross-harness-parity.md`). A canonical-plus-mirror contract with a documented onboarding procedure for a third harness. `A2A` addresses agent interop at runtime; this addresses *configuration-surface* portability, which is a different problem.
 5. **Fail-closed venue preflight** (`kickoff` Step 0b). One live sentinel call per unique `(CLI, model, effort, access mode)` target, in an empty temp directory, using production credential scrubs and flags — because "CLI presence, auth-status output, and credential files do not prove that precedence, entitlement, network, and the headless invocation all work together." A named pattern for *proving a delegation target is live before mutating any state* is missing from the corpus.
-6. **Candidate-bound incremental assurance** (`briefs/incremental-orchestration.md`; `policies/orchestration-evidence.md`). A complete first review establishes stable findings; revision reviews consume causal packets and fail-closed rebase triggers; focused verification accelerates convergence; one complete final gate proves the unchanged approved candidate. The corpus contains the component patterns but not this assurance-preserving composition.
+6. **Candidate-bound incremental assurance** (`briefs/incremental-orchestration.md`; `policies/orchestration-evidence.md`). A complete first review establishes stable findings; revision reviews consume causal packets and fail-closed rebase triggers; focused verification accelerates convergence; an implementation-candidate gate proves the unchanged approved candidate, and a second handoff gate proves the post-bookkeeping tree. The corpus contains the component patterns but not this assurance-preserving composition.
 
 ---
 

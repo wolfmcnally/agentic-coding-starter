@@ -1,6 +1,6 @@
 ---
 title: "Cross-Agent CLI Invocation — Best Current Practices"
-date: 2026-07-27
+date: 2026-08-23
 status: methodology
 scope: BCPs for invoking one coding-agent CLI from inside another (Claude Code ↔ Codex CLI), and the design rationale for the per-role model/venue feature (harness-aware cross-vendor review and pinning).
 ---
@@ -11,10 +11,20 @@ This brief pins the researched best current practices (as of mid-2026) for invok
 
 Both vendors sanction this interop: OpenAI ships an official Claude Code plugin that delegates to the local Codex CLI, and both CLIs document headless scripting modes. Every mature published pattern is **subprocess-first** — shelling out to the other CLI — rather than MCP-bridged. MCP wrappers exist but add a moving part without changing the fundamentals; for bounded, one-shot delegations the subprocess is the de-facto standard.
 
+Research authority remains role-based across either transport. Planner and
+reviewer may originate search and retrieve. Coder and critic may retrieve only
+plan- or brief-identified resources plus same-host structural neighbors; they
+may not originate discovery. `bin/kickoff-config` renders that authority and
+the resolved `kickoff.yaml` query budget into every prompt. Installed MCP
+servers and plugins remain available by default, but no named server is
+assumed to exist. External research is GET-only and carries no repository or
+candidate content outbound. See
+[`policies/research-authority.md`](../policies/research-authority.md).
+
 ## 1. Why cross-harness review
 
 - **Cross-vendor review catches more.** A model reviewing its own output misses the failure classes it generates. The strongest published experience report (Orr, May 2026) found the bigger lever is *framing*: handing the reviewer a cold artifact (raw diff + requirements, no implementer narrative) produced ~9.4 mean findings vs 2.4–4.0 when the implementer's self-assessment was included — a 3–4× difference — and critical-severity tagging roughly halved with even mild framing.
-- **Review roles are read-only by construction.** Our `plan-reviewer` and `code-critic` tool stances (Read, Grep, Glob) map directly onto the external CLIs' sandboxed read-only modes. The external reviewer physically cannot contend for the working tree.
+- **Review roles are read-only by construction.** Our `plan-reviewer` stance adds WebSearch/WebFetch and `code-critic` adds WebFetch to Read/Grep/Glob, but neither receives a repository write tool. That maps directly onto the external CLIs' sandboxed read-only modes: the external reviewer physically cannot contend for the working tree.
 - **The verdict contract already fits.** The methodology's `## Verdict: APPROVED` / `## Verdict: REVISE` string-match contract is exactly the sentinel-string loop-control pattern the ecosystem converged on independently.
 - **Instruction parity is automatic.** Codex auto-ingests `AGENTS.md` (→ `CLAUDE.md` via symlink); `claude` auto-loads `CLAUDE.md`. An external reviewer invoked from the repo root is bound by the same policies, invariants, and verdict contract as a native subagent, with no extra plumbing.
 
@@ -49,6 +59,11 @@ Flag-by-flag rationale:
 - **The watchdog makes artifacts fresh.** `--required-output-file "$MSGFILE"` truncates the path before launch and requires the child to repopulate it. A zero exit with no fresh artifact is a protocol error, so a revision round can never reuse an earlier verdict.
 - **`--json` is mandatory, not optional, when revision rounds may follow** (the cross-harness review case). It is the *only* way to capture the session id programmatically: the first stdout event is `{"type":"thread.started","thread_id":"<uuid>"}`. The human-readable mode prints `session id: <uuid>` to **stderr** alone — and the recipe pipes stderr to `/dev/null`, so without `--json` the id is structurally unrecoverable and every revision round is forced to spawn a fresh cold context. This was a real defect in the first cut of this recipe, reproduced deterministically. (NDJSON also carries `turn.completed` / `turn.failed` and token usage when telemetry matters; `--output-schema <schema.json>` constrains the final message to a JSON Schema when a parseable struct beats prose.)
 - **`-C "$(pwd)"`** pins the working directory explicitly.
+- **`-c 'web_search="live"'` exposes retrieval/search capability; the prompt
+  supplies authority.** Codex's transport switch cannot distinguish originating
+  discovery from retrieval, so every role gets the capability and the rendered
+  role directive enforces the matrix. Do not disable all MCP servers or
+  plugins as a substitute for role authority.
 - **Pass large context via files, not inline.** Write the plan text or `git diff` output to a temp file and reference its path in the prompt. Every published skill does this.
 - **Do not hardcode `-m <model>` except through the deliberate pin resolver.**
   Model names churn rapidly and overloaded models silently reroute; a bare
@@ -101,7 +116,12 @@ Flag-by-flag rationale:
 - **`claude -p` (`--print`)** is headless mode: run the agent loop, print, exit.
 - **Close stdin.** Like `codex exec`, `claude -p` can treat piped stdin as additional prompt input. The watchdog supplies `DEVNULL`; direct diagnostic invocations use `</dev/null`.
 - **`--permission-mode dontAsk` is the correct headless mode — never `--dangerously-skip-permissions`.** The "dangerous" bypass still parks on a one-time *interactive* consent dialog with no pre-accept flag; with no TTY it hangs forever (anthropics/claude-code#52506). `dontAsk` is fully non-interactive: pre-approved tools run, everything else is *denied* rather than prompted, and protected paths (`.git`, `.claude`, shell rc files) are never auto-approved — exactly the posture a delegated reviewer should have.
-- **`--allowedTools "Read,Grep,Glob"`** mirrors the canonical reviewer tool stance. (`AskUserQuestion` is omitted: escalation cannot reach the human through a nested CLI — an unresolved product question becomes a `REVISE` verdict stating the question, which the orchestrator surfaces.)
+- **`--allowedTools` mirrors the canonical role stance.** Planner/reviewer get
+  `Read,Grep,Glob,WebFetch,WebSearch`; coder gets
+  `Read,Grep,Glob,Write,Edit,Bash,WebFetch`; critic gets
+  `Read,Grep,Glob,WebFetch`. (`AskUserQuestion` is omitted: escalation cannot
+  reach the human through a nested CLI — an unresolved product question
+  becomes a verdict/advisory the orchestrator surfaces.)
 - **Scrub `CLAUDECODE` and `CLAUDE_CODE_ENTRYPOINT` from the child environment.** Claude Code sets `CLAUDECODE=1` in every child process and a `claude` launch that sees it refuses to start — even in `-p` mode. Codex itself doesn't set it, but a claude → codex → claude chain inherits it through codex, so the bridge always scrubs.
 - **`--output-format stream-json --verbose` is required for progress-aware
   supervision.** It exposes startup and ongoing events so first-event and idle
@@ -143,7 +163,7 @@ Flag-by-flag rationale:
 - **Bound revision rounds by convergence.** Unbounded agent-to-agent loops burn quota and don't converge; iterate only while the reviewer's objections are narrowing, and surface to the human the moment the loop stalls or diverges. A generous numeric backstop catches pathological loops regardless. (Ours: convergence judgment under a 10-cycle runaway backstop, per [`policies/four-canonical-agents.md`](../policies/four-canonical-agents.md).)
 - **Recursion depth guard.** Claude's `CLAUDECODE` guard only stops claude→claude nesting. Cross-vendor chains need an explicit guard: set a depth-marker env var (ours: `KICKOFF_DELEGATION_DEPTH=1`) in the child environment and refuse external delegation when it is already set.
 - **Scrub API-key env vars at every cross-CLI call site (subscription auth model).** Both CLIs rank an environment API key above their subscription OAuth, so an inherited stray key silently flips auth (and billing) or fails 401 — and the CLIs' own status displays don't reliably reveal which credential is live. `env -u <KEY>` at the call site costs nothing when no key is present and never breaks login-based auth. Do not rely on the parent's hygiene: Codex's default `shell_environment_policy` strips `*KEY*`/`*SECRET*`/`*TOKEN*` from the environment it hands its children, but Claude Code forwards the full environment *and adds* its own session `ANTHROPIC_API_KEY` — scrub at your own spawn point regardless of who launched you.
-- **Reviewer is read-only; never two writers on one tree.** If an external agent must write, serialize or isolate; for review there is no reason to allow writes at all. The one write-enabled cross-harness role is a *pinned coder* ([`policies/role-models.md`](../policies/role-models.md)): it uses `-s workspace-write` (codex) / `--allowedTools "…,Write,Edit,Bash"` (claude), and the single-writer rule is satisfied by serialization — `kickoff` runs the coder stage with no concurrent native writer, so the pinned coder owns the tree exclusively. The macOS Seatbelt `network_access` trap (§3) applies to a workspace-write child that must reach its vendor API; treat that network failure as a fallback trigger.
+- **Reviewer is read-only; never two writers on one tree.** If an external agent must write, serialize or isolate; for review there is no reason to allow writes at all. The one write-enabled cross-harness role is a *pinned coder* ([`policies/role-models.md`](../policies/role-models.md)): it uses `-s workspace-write` (codex) / `--allowedTools "…,Write,Edit,Bash,WebFetch"` (claude), and the single-writer rule is satisfied by serialization — `kickoff` runs the coder stage with no concurrent native writer, so the pinned coder owns the tree exclusively. The macOS Seatbelt `network_access` trap (§3) applies to a workspace-write child that must reach its vendor API; treat that network failure as a fallback trigger.
 - **Three clocks on every role call.** Require a first structured event, reset an idle watchdog only on real subprocess progress, and enforce an absolute hard deadline regardless of activity. Kill the process group, preserve artifacts/session ids, and record which clock fired. `bin/kickoff-config watch` implements this for external CLIs; native subagents use the same role budgets through their harness. See [`policies/role-timeouts.md`](../policies/role-timeouts.md).
 - **Calibrate from tails, not anecdotes.** Vendors publish qualitative latency guidance, not stable planner/reviewer/coder/critic wall-time distributions; task scope, repository size, tools, model, and effort dominate. Keep portable seed floors, collect local successful durations and longest progress gaps, and after at least 30 successes per `(role, venue, model, effort)` recommend `max(floor, 2 × p95)`. Treat timed-out calls as censored cases and never auto-tighten from them.
 - **Cost awareness.** Each external call is a full agent loop on the user's other-vendor quota. Bounded calls (capped turns, capped rounds) only; never unbounded polling loops.

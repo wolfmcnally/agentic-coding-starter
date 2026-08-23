@@ -5,7 +5,7 @@ description: >-
   briefs, the policies in policies/, and the architectural invariants in
   CLAUDE.md. Reads source, tests, and configuration. Approves code or
   requests revisions.
-tools: Read, Grep, Glob
+tools: Read, Grep, Glob, WebFetch
 ---
 
 # Code Critic
@@ -38,6 +38,13 @@ You will receive via your task prompt:
 7. **Every policy** the plan's "Policy Constraints" section names, plus any policy whose subject the code touches.
 
 Do **not** read every phase file.
+
+You may retrieve resources named by the approved plan or briefs, plus same-host
+structural neighbors needed to verify them. Do not originate searches. Use
+ambient installed research resources unless the project or phase narrows them,
+and send no repository or candidate content externally. If the named material
+is insufficient, issue an authority-insufficiency finding rather than filling
+the gap with unapproved research. See `policies/research-authority.md`.
 
 ### 2. Read the code
 
@@ -99,7 +106,8 @@ Evaluate in priority order:
   new code.
 - When the repo owns the toolchain contract, focused tests use `bin/test`, the
   coder's evidence covers the iteration/revision-close sequence, the planned
-  acceptance-close sequence ends with `./bin/check all`, and the wrappers
+  implementation-candidate sequence ends with `./bin/check all`, the close
+  protocol adds a bare post-bookkeeping handoff gate using `./bin/check all`, and the wrappers
   agree with the runtime pin, committed metadata, and lockfile while
   preserving child statuses.
 
@@ -110,8 +118,8 @@ Evaluate in priority order:
   independent mechanics forced serially or invariant setup repeated—only when
   a substantial, low-risk local correction is reasonably apparent. Do not
   require micro-optimization, speculative profiling, unproven parallelism, or
-  any change that weakens effectiveness, coverage, review, or the complete
-  final gate.
+  any change that weakens effectiveness, coverage, review, or either close
+  gate.
 
 **Lane fit (light-lane phases only)**
 - When the prompt declares `review_lane: light`, additionally judge whether the diff stayed within the mechanical scope `policies/review-lanes.md` defines (docs, renames, catalogs, mirrors, ripple application, gate-green dependency bumps, pattern-following config). This phase skipped plan review on the strength of that declaration.
@@ -122,6 +130,11 @@ Evaluate in priority order:
 Immediately before the verdict block, emit exactly one `## Finding Evidence`
 section containing a fenced JSON object with a `findings` array accepted by
 `bin/kickoff-evidence ingest-findings`.
+
+Every material count in the verdict or finding evidence includes the exact
+command or deterministic procedure that produced it. A number relayed from an
+earlier artifact is either remeasured or attributed plainly as unverified, per
+`policies/verification-discipline.md`.
 
 - New ids are sequential `CODE-FNNN`.
 - First-pass findings use classification `initial`.

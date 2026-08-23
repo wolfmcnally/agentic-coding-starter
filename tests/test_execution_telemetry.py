@@ -29,6 +29,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 CLI = REPO_ROOT / "bin" / "execution-telemetry"
 PARALLEL_FIXTURE = REPO_ROOT / "tests" / "fixtures" / "execution_telemetry" / "parallel.jsonl"
 KICKOFF_FIXTURE = REPO_ROOT / "tests" / "fixtures" / "execution_telemetry" / "kickoff-trace.jsonl"
+PARK_FIXTURE = REPO_ROOT / "tests" / "fixtures" / "execution_telemetry" / "phase-parks.jsonl"
 
 
 class FakeClock:
@@ -161,6 +162,151 @@ def test_committed_fixture_is_exact_private_and_canonical(fixture_path: Path) ->
     assert forbidden.isdisjoint(raw.lower())
     assert "/Users/" not in raw
     assert "C:\\" not in raw
+
+
+def test_operator_park_fixture_is_canonical_private_and_union_based(engine: Path) -> None:
+    raw = PARK_FIXTURE.read_text(encoding="utf-8")
+    events = telemetry.validate_park_ledger(PARK_FIXTURE)
+    assert raw == "".join(
+        json.dumps(event, sort_keys=True, separators=(",", ":")) + "\n" for event in events
+    )
+    assert len(events) == 6
+    assert all(set(event) == telemetry._PARK_EVENT_KEYS for event in events)
+    forbidden = {"prompt", "question", "response", "secret", "repo_root", "source_text"}
+    assert forbidden.isdisjoint(raw.lower())
+
+    summary = telemetry.phase_park_summary(engine_root=engine, phase_id="7", ledger=PARK_FIXTURE)
+    assert summary["total_duration_ns"] == 75_000_000_000
+    assert summary["total_exact"] is False
+    assert summary["total_method"] == "calendar-union-cross-boot"
+    assert [item["reason"] for item in summary["intervals"]] == [
+        "decision",
+        "manual-check",
+        "approval",
+    ]
+
+
+def test_operator_park_open_close_is_idempotent_exact_and_fail_closed(engine: Path) -> None:
+    clock = FakeClock()
+    opened = telemetry.open_operator_park(
+        engine_root=engine, phase_id="3.2", reason="decision", clock=clock
+    )
+    repeated = telemetry.open_operator_park(
+        engine_root=engine, phase_id="3.2", reason="decision", clock=clock
+    )
+    assert repeated == opened
+    with pytest.raises(telemetry.ValidationError, match="different reason"):
+        telemetry.open_operator_park(
+            engine_root=engine, phase_id="3.2", reason="approval", clock=clock
+        )
+    open_summary = telemetry.phase_park_summary(engine_root=engine, phase_id="3.2")
+    assert open_summary["open"] is True
+    assert open_summary["total_duration_ns"] is None
+
+    clock.advance(7_000_000_000)
+    closed = telemetry.close_operator_park(
+        engine_root=engine, phase_id="3.2", park_id=opened.park_id, clock=clock
+    )
+    assert closed["duration_ns"] == 7_000_000_000
+    assert closed["exact"] is True
+    assert closed["method"] == "monotonic"
+    assert (
+        telemetry.close_operator_park(
+            engine_root=engine, phase_id="3.2", park_id=opened.park_id, clock=clock
+        )
+        == closed
+    )
+    with pytest.raises(telemetry.ValidationError, match="no open"):
+        telemetry.close_operator_park(engine_root=engine, phase_id="3.2", clock=clock)
+
+
+def test_operator_park_recovers_missing_runtime_state_and_marks_cross_boot(engine: Path) -> None:
+    clock = FakeClock()
+    opened = telemetry.open_operator_park(
+        engine_root=engine, phase_id="4", reason="required-input", clock=clock
+    )
+    telemetry._park_state_path(engine, "4").unlink()
+    assert (
+        telemetry.open_operator_park(
+            engine_root=engine, phase_id="4", reason="required-input", clock=clock
+        )
+        == opened
+    )
+
+    clock.boot = "next-boot"
+    clock.utc += dt.timedelta(seconds=9)
+    clock.monotonic = 100
+    closed = telemetry.close_operator_park(
+        engine_root=engine, phase_id="4", park_id=opened.park_id, clock=clock
+    )
+    assert closed["duration_ns"] == 9_000_000_000
+    assert closed["exact"] is False
+    assert closed["method"] == "calendar-cross-boot"
+
+
+def test_operator_park_exact_intervals_union_overlaps(engine: Path, tmp_path: Path) -> None:
+    ledger = tmp_path / "parks.jsonl"
+    events = telemetry.validate_park_ledger(PARK_FIXTURE)[:4]
+    payload = "".join(
+        json.dumps(event, sort_keys=True, separators=(",", ":")) + "\n" for event in events
+    )
+    ledger.write_text(
+        payload,
+        encoding="utf-8",
+    )
+    summary = telemetry.phase_park_summary(engine_root=engine, phase_id="7", ledger=ledger)
+    assert summary["total_duration_ns"] == 15_000_000_000
+    assert summary["total_exact"] is True
+    assert summary["total_method"] == "monotonic-union"
+
+
+def test_operator_park_cli_records_reports_and_closes(engine: Path) -> None:
+    def invoke(*arguments: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [str(CLI), *arguments, "--repo-root", str(engine), "--phase", "8.1"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+
+    opened_result = invoke("park-open", "--reason", "decision")
+    assert opened_result.returncode == 0, opened_result.stderr
+    opened = json.loads(opened_result.stdout)
+
+    open_summary_result = invoke("park-status")
+    assert open_summary_result.returncode == 0, open_summary_result.stderr
+    open_summary = json.loads(open_summary_result.stdout)
+    assert open_summary["open"] is True
+    assert open_summary["total_duration_ns"] is None
+
+    closed_result = subprocess.run(
+        [
+            str(CLI),
+            "park-close",
+            "--repo-root",
+            str(engine),
+            "--phase",
+            "8.1",
+            "--park-id",
+            opened["park_id"],
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=60,
+    )
+    assert closed_result.returncode == 0, closed_result.stderr
+
+    summary_result = invoke("phase-summary")
+    assert summary_result.returncode == 0, summary_result.stderr
+    summary = json.loads(summary_result.stdout)
+    assert summary["open"] is False
+    assert summary["total_exact"] is True
+    assert summary["total_duration_ns"] is not None
+    assert len(summary["intervals"]) == 1
 
 
 @pytest.mark.parametrize(

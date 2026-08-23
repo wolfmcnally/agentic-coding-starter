@@ -215,6 +215,39 @@ summary { width: fit-content; cursor: pointer; font-weight: 700; }
   .chart { height: 290px; }
   .chart.tall { height: 500px; }
   .chart.compact { height: 240px; min-height: 240px; }
+  .semantic-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .semantic-table, .semantic-table tbody, .semantic-table tr, .semantic-table td {
+    display: block;
+    width: 100%;
+  }
+  .semantic-table tr {
+    padding: .45rem 0;
+    border-bottom: 1px solid #dde1e8;
+  }
+  .semantic-table td, .semantic-table td.number {
+    display: grid;
+    grid-template-columns: minmax(7rem, 42%) minmax(0, 1fr);
+    gap: .75rem;
+    padding: .3rem .15rem;
+    border: 0;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+  .semantic-table td::before {
+    content: attr(data-label);
+    color: #3e4859;
+    font-weight: 700;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -235,4 +268,3 @@ summary { width: fit-content; cursor: pointer; font-weight: 700; }
   details > * { display: block !important; }
   a { color: inherit; text-decoration: none; }
 }
-

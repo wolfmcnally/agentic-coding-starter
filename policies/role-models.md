@@ -47,13 +47,18 @@ role_models:
 
 `default` means native. `claude` uses the Claude CLI's configured model; `opus` and `fable` add their Claude model flag. `codex` uses the Codex CLI's configured model; `sol`, `terra`, and `luna` map to `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna`. A non-default model always uses its implied CLI even when it matches the orchestrator's vendor.
 
-The routing and timeout schemas are strict: unknown harnesses, roles, or fields fail validation so direct-edit typos cannot disappear silently. Project-specific data belongs under top-level `extensions`, where arbitrary keys are preserved and ignored by the current resolver. Invalid configuration fails before any command runs or write occurs.
+The routing, timeout, run-budget, and research-budget schemas are strict:
+unknown harnesses, roles, or fields fail validation so direct-edit typos cannot
+disappear silently. Project-specific data belongs under top-level `extensions`,
+where arbitrary keys are preserved and ignored by the current resolver. Invalid
+configuration fails before any command runs or write occurs.
 
 ## Manager and direct edits
 
 `bin/kickoff-config` validates the complete document and owns mechanistic operations:
 
 - `show models` resolves the current harness;
+- `show research` reports role capability and originating-query budgets;
 - `set-models` updates only `role_models`;
 - `reset models` resets only model routing;
 - `preflight` validates live external venues.
@@ -71,6 +76,13 @@ Resolve once per session. `CLAUDECODE=1` means Claude orchestrates; otherwise Co
 
 Planner, reviewer, and critic remain read-only; the coder remains write-enabled.
 
+Read/write posture and research authority are independent. Per
+[`research-authority.md`](research-authority.md), planner and reviewer may
+originate search and retrieval; coder and critic may retrieve plan/brief-named
+resources but may not originate search. Ambient MCP servers and plugins are
+allow-by-default and are not disabled by model routing. A project or phase may
+explicitly narrow them.
+
 **A tool stance is only as guaranteed as its venue's enforcement.** Measured in a donor project: a delegated Claude-venue role launched with a restricted `--allowedTools` list still executed tools outside it — a planner launched without `Bash` made twenty-four Bash calls of which one was denied, despite an explicit taboo in its role definition. Treat that flag as a strong hint and the role's tool stance as self-policed discipline, not a sandbox; the Codex venue's `-s read-only` enforces the read-only stance structurally. Where a stance must be guaranteed rather than requested, route the role to a venue that enforces it.
 
 **Native fallback carries the resolved tier.** Any `model:` pin in an agent wrapper's frontmatter is a default for ordinary native dispatch, not a routing decision, and it goes stale as model generations advance. When a delegated venue fails and a stage falls back to native, the orchestrator passes the `role_models`-resolved tier explicitly rather than inheriting a wrapper pin — observed otherwise in a donor project: a wrapper pinned a superseded model generation, so the fallback silently downgraded the role at exactly the moment its delegated venue had already failed.
@@ -83,7 +95,11 @@ Before phase identification, decomposition, status mutation, log writes, or agen
 ./bin/kickoff-config preflight
 ```
 
-The manager groups unique non-native `(CLI, model, effort, access mode)` targets and makes one live sentinel call per group. It uses production credential scrubs, model/effort flags, stdin closure, approval posture, and read-only/write-enabled access in an empty temporary directory. Success requires the exact `KICKOFF_PREFLIGHT_OK` result within 120 seconds.
+The manager probes every non-native role target with its resolved `(CLI, model,
+effort, access mode, research capability)`. It uses production credential
+scrubs, model/effort and research flags, stdin closure, approval posture, and
+read-only/write-enabled access in an empty temporary directory. Success
+requires the exact `KICKOFF_PREFLIGHT_OK` result within 120 seconds.
 
 Preflight is fail-closed. A missing CLI, unusable authentication, unavailable model, network or sandbox error, flag incompatibility, timeout, malformed response, or wrong sentinel aborts `kickoff` before phase state exists. There is no native fallback for an upstream prerequisite failure.
 
@@ -93,7 +109,8 @@ Preflight is fail-closed. A missing CLI, unusable authentication, unavailable mo
 exact inspectable argv; `watch` generates and launches it from role, venue,
 model, effort, prompt, artifact, resume, and timeout metadata. Callers never
 hand-build a Claude or Codex command. The manager alone owns auth scrubs,
-recursion depth, access posture, artifact wiring, and model/effort flags. Roles
+recursion depth, access posture, research capability flags/directives,
+artifact wiring, and model/effort flags. Roles
 resume the same external session across revision rounds.
 
 Before dispatch, `kickoff-evidence register-role-attempt` creates an immutable
@@ -200,12 +217,14 @@ user-facing summary.
 the exact telemetry substrate, `roles`, this policy, and the timeout policy are
 one universal configuration/execution bundle. `stamp` carries it. `teach`
 upgrades its schema and mechanics while preserving target values, comments,
-`extensions` data, and local operational state. `learn` may absorb general
+`extensions` data, ambient MCP/plugin availability, and local operational
+state. `learn` may absorb general
 mechanics but never donor operational state.
 
 ## Relationship to other policies
 
 - [`four-canonical-agents.md`](four-canonical-agents.md) owns role names, semantics, tool stances, verdicts, and convergence limits.
+- [`research-authority.md`](research-authority.md) owns search/retrieval authority, allow-by-default venue resources, egress boundaries, and query budgets.
 - [`role-timeouts.md`](role-timeouts.md) owns execution budgets, process-group termination, telemetry, and recalibration.
 - [`mechanistic-vs-intelligence.md`](mechanistic-vs-intelligence.md) puts validation and editing in `bin/kickoff-config`; model-choice judgment stays with the human or `roles` interpretation.
 - [`human-in-the-loop.md`](human-in-the-loop.md) still governs completion and commits.

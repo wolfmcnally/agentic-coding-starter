@@ -1,6 +1,6 @@
 ---
 title: "Standing Up a New Project From This Template"
-date: 2026-05-17
+date: 2026-08-23
 status: methodology
 scope: Procedure for using this repository as a master template to stand up a new project under the agentic coding methodology. Authoritative reference for the `stamp` skill.
 ---
@@ -28,7 +28,7 @@ A project derived from this template contains the following **portable structure
   lessons/                # Open candidate process lessons (.gitkeep initially)
   lessons-archived/       # Codified/rejected lesson audit trail (.gitkeep initially)
   .gitignore               # Editor/harness state; includes local .kickoff/
-  kickoff.yaml             # Human-editable model/effort/timeout configuration
+  kickoff.yaml             # Human-editable model/effort/timeout/research configuration
 
   bin/
     README.md              # Deterministic script operator index
@@ -123,6 +123,8 @@ A project derived from this template contains the following **portable structure
       teach                #  a symlinked skill directory.)
       roles
       sweep
+      demo
+      treatise
       # stamp is NOT mirrored here either — starter-only
 
   project/                 # When project-isolation is enabled (default for
@@ -154,9 +156,9 @@ is always invalid.
 | Role            | Tools allowed                                          | Writes code |
 | --------------- | ------------------------------------------------------ | ----------- |
 | `phase-planner` | Read, Grep, Glob, WebSearch, WebFetch                  | No          |
-| `plan-reviewer` | Read, Grep, Glob, AskUserQuestion                      | No          |
-| `phase-coder`   | Read, Write, Edit, Grep, Glob, Bash                    | Yes         |
-| `code-critic`   | Read, Grep, Glob                                       | No          |
+| `plan-reviewer` | Read, Grep, Glob, WebSearch, WebFetch                  | No          |
+| `phase-coder`   | Read, Write, Edit, Grep, Glob, Bash, WebFetch          | Yes         |
+| `code-critic`   | Read, Grep, Glob, WebFetch                             | No          |
 
 The `kickoff` skill is itself **also** an agent in spirit, but it behaves as a user-invoked workflow, not a subagent. It delegates initial implementation to the four roles above and edits `plan/INDEX.md` + `LOG.md`; for a small low-risk follow-up correction, it may edit code directly under the proportional routing rule in `policies/review-lanes.md`.
 
@@ -176,6 +178,9 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.claude/skills/teach/SKILL.md` (universal cross-repo skill)
 - `.claude/skills/roles/SKILL.md` (universal — per-role model/effort editing; wraps `bin/kickoff-config`)
 - `.claude/skills/sweep/SKILL.md` (universal rule-surface maintenance and lessons graduation)
+- `.claude/skills/demo/SKILL.md` (universal one-step-at-a-time user demonstration workflow)
+- `.claude/skills/treatise/SKILL.md` (universal publication-gated long-form synthesis; governed by `policies/treatise.md`)
+- `.claude/settings.json` (portable harness defaults; `worktree.bgIsolation: none` disables implicit background worktrees without disabling explicit ones)
 - `.claude/agents/phase-planner.md`
 - `.claude/agents/plan-reviewer.md`
 - `.claude/agents/phase-coder.md`
@@ -187,9 +192,11 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.agents/skills/teach` (directory symlink → `../../.claude/skills/teach`)
 - `.agents/skills/roles` (directory symlink → `../../.claude/skills/roles`)
 - `.agents/skills/sweep` (directory symlink → `../../.claude/skills/sweep`)
+- `.agents/skills/demo` (directory symlink → `../../.claude/skills/demo`)
+- `.agents/skills/treatise` (directory symlink → `../../.claude/skills/treatise`)
 - `AGENTS.md` symlink → `CLAUDE.md`
 - Every file under `policies/` (these are universal by design)
-- `bin/kickoff-config` (universal Python/uv round-trip config manager, fail-closed venue preflight, execution watchdog, and telemetry calibrator), plus human-editable `kickoff.yaml` seeded via `bin/kickoff-config reset all`
+- `bin/kickoff-config` (universal Python/uv round-trip config manager, fail-closed venue preflight, execution watchdog, research-budget authority, and telemetry calibrator), plus human-editable `kickoff.yaml` seeded via `bin/kickoff-config reset all`
 - `tests/test_kickoff_config.py` (universal manager/watchdog behavioral coverage; run independently of the deliverable's language)
 - `bin/kickoff-tree-id` and `bin/kickoff-evidence` (universal candidate
   identity and run-evidence managers)
@@ -296,9 +303,11 @@ Then create the empty directory shape:
 .claude/skills/teach/
 .claude/skills/roles/
 .claude/skills/sweep/
+.claude/skills/demo/
+.claude/skills/treatise/
 .claude/agents/
 .codex/agents/
-.agents/skills/        # (the six skill entries here are directory symlinks
+.agents/skills/        # (the eight skill entries here are directory symlinks
                        #  to ../../.claude/skills/<name>, created in Step 5)
 briefs/
 lessons/
@@ -324,7 +333,7 @@ In this exact order (each feeds the next):
      - `## Project briefs` — `briefs/` entries specific to this project (initially `BRIEF.md` only).
      - `## Project surfaces` — the deliverable (location, language, seed code description).
      - `## Project conventions` — language, tooling, build-gate command shape.
-     - `## Project-specific skills` — any beyond the universal six. Omit if none.
+     - `## Project-specific skills` — any beyond the universal eight. Omit if none.
 
 3. **`AGENTS.md`** — symlink to `CLAUDE.md`:
    ```bash
@@ -350,12 +359,15 @@ Copy verbatim, then adapt project names and surface-specific build-gate commands
 - `.claude/skills/teach/SKILL.md`
 - `.claude/skills/roles/SKILL.md`
 - `.claude/skills/sweep/SKILL.md`
+- `.claude/skills/demo/SKILL.md`
+- `.claude/skills/treatise/SKILL.md`
+- `.claude/settings.json`
 - `.claude/agents/phase-planner.md`
 - `.claude/agents/plan-reviewer.md`
 - `.claude/agents/phase-coder.md`
 - `.claude/agents/code-critic.md`
 - `.codex/agents/*.toml`
-- `.agents/skills/{kickoff,methodology,learn,teach,roles,sweep}` (directory symlinks → `../../.claude/skills/<name>`)
+- `.agents/skills/{kickoff,methodology,learn,teach,roles,sweep,demo,treatise}` (directory symlinks → `../../.claude/skills/<name>`)
 
 Port the self-improvement machinery as the same atomic bundle:
 
@@ -503,12 +515,13 @@ Before declaring the bootstrap complete, verify:
   and resolves every tracked internal Markdown link.
 - `head -1 LOG.md` is `# Activity Log`.
 - `ls .claude/agents/` lists exactly the four canonical role files.
-- Each of `.claude/skills/{kickoff,methodology,learn,teach,roles,sweep}/`
+- Each of `.claude/skills/{kickoff,methodology,learn,teach,roles,sweep,demo,treatise}/`
   contains `SKILL.md`, and each corresponding `.agents/skills/<name>` entry
   is a directory symlink to `../../.claude/skills/<name>`.
 - `bin/lessons validate`, `bin/check-catalogs`, and their behavioral tests
   pass against the empty initial ledger and Phase 1 status table.
-- `bin/kickoff-config show` succeeds and `kickoff.yaml` contains valid `role_models` and `role_timeouts` sections.
+- `bin/kickoff-config show` succeeds and `kickoff.yaml` contains valid `role_models`, `role_timeouts`, and `research_budgets` sections.
+- `.claude/settings.json` sets `worktree.bgIsolation` to `none`; explicitly requested worktrees remain available.
 - `bin/setup` works from outside the repository and provisions only the
   committed runtime and dependencies, then passes a real deliverable-and-tool
   dependency-chain probe.
@@ -542,7 +555,7 @@ The bootstrap is the same shape every time. The variation is in:
 | **Deployment story**          | AWS / Cloudflare / Vercel / app stores / static / none        |
 | **Per-project invariants**    | Cost ceilings; license policy; privacy boundaries; FOSS-only  |
 | **Per-project skills**        | Domain-specific workflows on top of `kickoff`                |
-| **Kickoff execution config** | Human-editable `kickoff.yaml`: separate model/effort fields plus target-local timeout calibration, per the two role policies |
+| **Kickoff execution config** | Human-editable `kickoff.yaml`: separate model/effort fields, target-local timeout calibration, and per-role research budgets, per the role, timeout, and research-authority policies |
 
 When adapting, edit these files (and only these) to reflect those choices:
 
@@ -555,7 +568,8 @@ When adapting, edit these files (and only these) to reflect those choices:
   canonical focused/full mappings.
 - `bin/kickoff-tree-id`, `bin/kickoff-evidence`, and
   `policies/orchestration-evidence.md` — preserve candidate-bound review,
-  revision packets, and final-gate evidence.
+  revision packets, implementation-final-gate evidence, and the separate
+  post-bookkeeping handoff gate.
 
 Anything else that needs to change probably indicates a bootstrap deviation that should be questioned, not normalized.
 
@@ -613,14 +627,18 @@ Bootstrap is complete when **all** of the following hold:
 [ ] .claude/skills/teach/SKILL.md exists (verbatim from template)
 [ ] .claude/skills/roles/SKILL.md exists (verbatim from template)
 [ ] .claude/skills/sweep/SKILL.md exists (verbatim from template)
+[ ] .claude/skills/demo/SKILL.md exists (verbatim from template)
+[ ] .claude/skills/treatise/SKILL.md exists (verbatim from template)
 [ ] .claude/skills/stamp/ does NOT exist (starter-only meta-skill)
 [ ] .claude/agents/{phase-planner,plan-reviewer,phase-coder,code-critic}.md
     exist, adapted for this project
 [ ] .codex/agents/*.toml mirrors exist
-[ ] .agents/skills/{kickoff,methodology,learn,teach,roles,sweep} exist as directory
+[ ] .agents/skills/{kickoff,methodology,learn,teach,roles,sweep,demo,treatise} exist as directory
     symlinks to ../../.claude/skills/<name> (the canonical skill directory)
 [ ] .agents/skills/stamp does NOT exist (starter-only, must not propagate)
-[ ] bin/kickoff-config is executable; kickoff.yaml validates; scoped updates
+[ ] .claude/settings.json sets worktree.bgIsolation to none while explicit
+    worktrees remain available
+[ ] bin/kickoff-config is executable; kickoff.yaml validates all three sections; scoped updates
     preserve human comments and `extensions` data; `.kickoff/` is gitignored
 [ ] bin/kickoff-tree-id and bin/kickoff-evidence are executable; candidate
     identity and run-scoped evidence behavioral tests pass

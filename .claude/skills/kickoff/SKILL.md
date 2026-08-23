@@ -8,7 +8,7 @@ description: >-
   CLAUDE.md and phase file declare which build gates to run.
   Invoke as /kickoff in Claude Code or $kickoff in Codex (picks up the ⬅️
   phase); append "phase N" to target a specific phase.
-last-reviewed: 2026-08-10
+last-reviewed: 2026-08-23
 ---
 
 # Kickoff: Single-Phase Session
@@ -56,6 +56,32 @@ does not bypass candidate identity, risk tags, selection rationale, or final
 gate records.
 
 ## Workflow
+
+### Operator-input parks (applies throughout)
+
+Phase-level time awaiting required user input is not a role `wait` span and may
+cross trace finalization or a machine reboot. Immediately before stopping for
+an approval, decision, manual check, environment action, acceptance judgment,
+or other required input, run:
+
+```
+$TELEMETRY_TOOL park-open --phase "$PHASE_ID" --reason <stable-reason-code>
+```
+
+Use only the enumerated reason codes shown by the CLI; never record the
+question, response, prompt, repository content, or private data. Preserve the
+returned park id. On the continuation that receives an answer satisfying the
+wait, close it **before resuming phase work**:
+
+```
+$TELEMETRY_TOOL park-close --phase "$PHASE_ID" --park-id <park-id>
+```
+
+Repeated open/close calls are idempotent for the same identity; a conflicting,
+missing, or multiply-open park fails closed. `phase-summary` reports each
+interval and its union total. Same-boot intervals use exact monotonic time;
+cross-boot intervals use visibly non-exact UTC calendar duration. Never turn an
+open, malformed, or unknowable interval into zero.
 
 ### Step 0a: Resolve per-role model/venue
 
@@ -123,6 +149,15 @@ emits JSONL with `--output-format stream-json --verbose`. Preserve each role's
 timing record for Step 10.
 
 For native subagents, use the same role-specific hard and idle budgets through the harness's wait/status mechanism. Progress means a real agent event, status transition, or tool result; the orchestrator's own polling is not progress. If the harness cannot expose idle timing, enforce the hard deadline and record first-event/idle as `unavailable`. Keep the user informed at least every 60 seconds while waiting.
+
+Run `./bin/kickoff-config show research` and retain the role authority and
+originating-query budgets from `kickoff.yaml`. Planner and reviewer may search
+and retrieve; coder and critic may retrieve plan/brief-identified resources and
+same-host structural neighbors but may not originate searches. Installed MCP
+servers and plugins remain available by default unless the project or phase
+explicitly narrows them. Every dispatch receives the resolved directive from
+`bin/kickoff-config`; do not hand-author a weaker prompt. See
+[`policies/research-authority.md`](../../../policies/research-authority.md).
 
 ### Step 1: Identify the phase
 
@@ -443,20 +478,21 @@ uncertainty. The 10-cycle runaway backstop still applies.
 
 **If `REVISE` opens with `Escalate: full lane — <reason>`** (light lane only): the work exceeded mechanical scope. Run the skipped Step 4 plan review now, against the plan as-built (same venue rules), route its outcome through the normal revision loops, and finish the phase in the full lane. Record `light → full (escalated: <reason>)` for the END block. The lane escalation itself is not a stall signal and does not count toward the runaway backstop; the critic's other Required Changes do feed the convergence judgment.
 
-### Step 7: Candidate-bound acceptance close
+### Step 7: Candidate-bound implementation gate
 
 After code-critic approval (or after an eligible direct/coder-only follow-up),
 close `orchestration.implementation` and open `orchestration.acceptance`.
 capture the approved candidate id with `./bin/kickoff-tree-id`. Run the plan's
 complete **Acceptance Close** sequence in the orchestrator context: first
 every mechanically executable phase-specific check identified in Step 8, then
-the repository's authoritative full gate last. This is the one complete
-candidate-bound sequence; the coder's focused checks are not repeated merely
-as ceremony unless the plan includes them in acceptance.
+the repository's authoritative full gate last. This is the complete
+candidate-bound implementation sequence; it proves the unchanged implementation
+candidate before close bookkeeping changes the tree. The coder's focused checks
+are not repeated merely as ceremony unless the plan includes them in acceptance.
 
 For every command, invoke `$EVIDENCE_TOOL run-gate` with the approved candidate
 id, exact argv, selection reason, attempt, optional diagnostic artifact, and
-`--final` for acceptance-close commands. This boundary records before/after
+`--final` for implementation-gate commands. This boundary records before/after
 candidate identity, preserves complete diagnostics and child exit status,
 counts warnings, and opens the exact observed gate span. It rejects drift.
 After the sequence, run the pinned `kickoff-tree-id` again and require the same
@@ -474,7 +510,7 @@ when available. If a permanent improvement expands the phase, surface it once
 and continue; do not pursue the tangent. Do not chase marginal savings, invent
 numeric thresholds, collect purposeless timing data, or weaken correctness,
 coverage, determinism, review independence, diagnostics, failure propagation,
-candidate binding, or the complete final gate.
+candidate binding, or either close gate.
 
 Every methodology-following repository owns the cwd-independent atomic
 interface defined by
@@ -495,7 +531,7 @@ planner may add project-specific focused checks or smokes before the full gate;
 it must not bypass an existing repository test entry point or replace the full
 gate with a copied raw command list.
 
-If any acceptance-close gate fails:
+If any implementation gate fails:
 
 1. Classify the failure source:
    - **Code error** — syntax, type mismatch, missing import, wrong signature, or failing test assertion.
@@ -509,7 +545,7 @@ If any acceptance-close gate fails:
 3. Re-run the failing check first through the iteration/revision-close ladder.
    If a correction changes the candidate, prior final-gate evidence is
    invalid. Route any required critique, then run the complete
-   acceptance-close sequence again against the new approved candidate.
+   candidate-bound implementation sequence again against the new approved candidate.
 4. Do not invoke `code-critic` after a successful direct or coder-only correction merely as ceremony. Do invoke it if the correction grows beyond its classification, exposes a design question, lacks convincing validation, or otherwise crosses the full-cycle threshold.
 5. A direct or coder-only attempt gets one pass. If it fails validation or trades one break for another, upgrade to the full cycle. Once in the full cycle, keep iterating only while the gate and review findings are **converging**. Escalate on recurrence or oscillation; the 10-cycle runaway backstop in [`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md) applies to that full loop.
 
@@ -517,10 +553,10 @@ If any acceptance-close gate fails:
 
 Each phase declares its own empirical acceptance checks under `Acceptance` in `plan/phase-<id>.md`. The orchestrator runs whichever of those checks are mechanically executable (shell commands, smoke scripts, curl probes, deterministic comparisons) and reports the rest as **manual checks** for the user.
 
-Step 7 must already have included every mechanical check before its final full
+Step 7 must already have included every mechanical check before its full
 gate. Here, reconcile each criterion against the gate ledger and classify the
 rest as manual. Do not rerun a recorded check. If this reconciliation discovers
-an omitted mechanical check, the acceptance close was incomplete: run the
+an omitted mechanical check, the implementation gate was incomplete: run the
 missing check, then rerun the authoritative full gate against the same
 candidate and record both. Reconfirm candidate identity afterward. A failed
 acceptance gate or candidate mutation routes through Step 7's proportional
@@ -542,7 +578,9 @@ Run `$TELEMETRY_TOOL finalize`, followed by
 rejects missing, overlapping, unknown, out-of-order, or unregistered
 stage/role/gate joins, and any accepted review pass without exact finding
 convergence counts. Only finalized evidence and successful summaries authorize
-Step 9. An interrupted or failed run closes what can be closed truthfully;
+the tracked close writes in Steps 9–11. They do not authorize reporting
+completion until the post-bookkeeping handoff gate in Step 12 passes. An
+interrupted or failed run closes what can be closed truthfully;
 unexpected abandonment may use same-boot `recover`, but recovery never
 fabricates cross-boot duration or success.
 
@@ -613,7 +651,12 @@ Runs on **every** phase close — sub-phase or major — after the ripple pass a
 
 Read the validated evidence and finalized timing summaries directly to compute
 the block below; never substitute remembered counts or reassuring defaults
-when a record is absent.
+when a record is absent. Run `$TELEMETRY_TOOL phase-summary --phase
+"$PHASE_ID"` and require every operator-input park to be closed before a
+completion END block. Every material count carries the exact command or
+deterministic procedure that produced it; a relayed number is remeasured or
+attributed plainly as unverified, per
+[`policies/verification-discipline.md`](../../../policies/verification-discipline.md).
 
 Append an END entry to `LOG.md`:
 
@@ -628,6 +671,8 @@ Files changed:
 Build status:
 - <gate 1>: OK | N/A | failed (<short reason>)
 - <gate 2>: OK | N/A | failed (<short reason>)
+- Handoff gate: runs after this tracked END block; completion is contingent on
+  the ignored receipt from the final bare `./bin/check all`
 - ...
 
 Review lane (per `policies/review-lanes.md`):
@@ -660,13 +705,16 @@ Execution timing (per `policies/execution-telemetry.md`):
 - Exclusive work: Planning=<duration>; Plan Review=<duration>; Implementation=<duration>; Code Review=<duration>; Automated Checks=<duration>; Reconciliation=<duration>
 - Failed work: <duration>; retry work: <duration>
 - Orchestration / Unmeasured: <duration>; largest measured gaps: <summary|none>
+- Awaiting user input:
+  - <opened UTC> → <closed UTC|open>: <duration|unavailable> (<reason>; exact monotonic | non-exact calendar cross-boot | unavailable)
+  - Total: <union duration|unavailable> (<exact monotonic union | non-exact calendar union | incomplete>)
 - Timing validation: exact monotonic nanoseconds, overlap-safe unions, trace joins <OK|failed>
 
 Candidate-bound evidence (per `policies/orchestration-evidence.md`):
 - Candidate: initial=<id> approved=<id> final=<id>
 - Revision packets: <count>; <total bytes>; source hashes recorded
 - Findings: open=<n> addressed=<n> verified=<n> closed=<n> blocked=<n>; reopened=<n>; missed-in-full-pass=<n>
-- Gates: focused=<n> final=<n>; all recorded against final candidate=<yes|no>
+- Gates: focused=<n> implementation-final=<n>; all recorded against approved implementation candidate=<yes|no>
 - Evidence validation: `bin/kickoff-evidence validate --require-final` <OK|failed>
 
 Wall-clock observations:
@@ -736,7 +784,7 @@ Where to put it: inline at the end of the user-facing report. Long protocols (~>
 
 When to skip: mandatory unless the phase is a pure internal refactor with no user-observable surface, or introduces only invariants enforced by automated gates. In either case, state explicitly in the END block under `Remaining`: `Test protocol: skipped (reason: …)`.
 
-### Step 11: Generate and open the phase report last
+### Step 11: Generate the tracked phase report
 
 After status, ripple, lessons harvest, next-phase selection, and the END block
 are complete, write `$RUN_DIR/dashboard-handoff.json` using the exact schema in
@@ -747,28 +795,48 @@ operator prerequisites. Never discuss commit state or place arbitrary HTML,
 prompts, responses, secrets, absolute paths, or private source material in the
 handoff.
 
-Invoke the pinned command:
+Invoke the pinned command without `--open`:
 
 ```
-$TELEMETRY_TOOL dashboard --phase "$PHASE_ID" --accepted-trace-id "$TRACE_ID" --handoff "$RUN_DIR/dashboard-handoff.json" --open
+$TELEMETRY_TOOL dashboard --phase "$PHASE_ID" --accepted-trace-id "$TRACE_ID" --handoff "$RUN_DIR/dashboard-handoff.json"
 ```
 
-It validates and archives the sanitized handoff, regenerates the chronological
-offline report under `reports/execution/`, and opens the phase page. This is
-the final tool action of the kickoff. A render or browser-open failure does not
-undo the successful trace, acceptance verdict, status, ripple, or END block;
-report incomplete dashboard bookkeeping and permit an idempotent report-only
-retry. When report presentation code changed, the localhost desktop/mobile,
+It validates and archives the sanitized handoff and regenerates the
+chronological offline report under `reports/execution/`. This is the final
+tracked close write. A render failure keeps the phase unreported and routes to
+the close-repair path in Step 12. When report presentation code changed, the localhost desktop/mobile,
 interaction, chart/table agreement, and console protocol in the telemetry
 policy must already have passed.
 
-Then report to the user:
+### Step 12: Prove the actual handoff tree
+
+Run a **bare** `./bin/check all` after every tracked close write—status,
+ripple, lessons, END block, dashboard handoff, report, and index—is present.
+This is the handoff gate. It is deliberately outside the candidate-bound
+implementation ledger because the close writes changed the tree; its ignored
+full-gate receipt binds the actual tree handed to the user.
+
+No tracked write may follow a successful handoff gate. Opening the already
+generated local report is read-only and may follow. If the gate fails, do not
+report completion. Reopen the current uncommitted close: restore the phase to
+`🚧` when necessary, correct or regenerate the failing close artifact, amend
+the current run's still-uncommitted END block in place, and rerun the bare gate.
+Do not edit a historical committed END block. If the failure exposes an
+implementation defect rather than close bookkeeping, return to Step 7's
+proportional correction route; the prior implementation gate is invalidated by
+any implementation-candidate change.
+
+After the handoff gate passes, open the already generated phase page without
+modifying it. Then report to the user.
+
+Report to the user:
 
 - **🚨 Role disconnects (per [`policies/role-models.md`](../../../policies/role-models.md)):** for every role whose runtime call failed after a successful preflight (three-signal gate or timeout) so it ran native instead, add a 🚨 line stating what was configured, what actually ran, and why — e.g. `🚨 coder configured for opus but ran native (call timed out) — output was NOT produced by opus`. If every role ran on its resolved venue, omit this entirely. Preflight failures never reach Step 10 because they abort before phase state exists.
 - Which phase was completed and which is next (`⬅️`).
 - Files created/modified, grouped by surface.
 - Build and gate status.
-- Candidate identity, finding convergence, final-gate identity, and any
+- Candidate identity, finding convergence, implementation-gate identity,
+  handoff-gate receipt, and any
   verified protocol recoveries.
 - Any material wall-clock opportunity used or surfaced, and how the unchanged
   guarantees were preserved. Omit marginal timing noise and no-leverage
@@ -788,14 +856,15 @@ Then report to the user:
 - The verdict header (`## Verdict: APPROVED` or `## Verdict: REVISE`) is parsed by string match. Mis-cased or rephrased verdicts break orchestration.
 - Per-role model/venue ([`policies/role-models.md`](../../../policies/role-models.md)): `kickoff.yaml`'s human-editable `role_models` section (set directly or via `roles`) resolves each of the four roles to separate model and effort fields plus an implied venue at Step 0a, scoped by which harness is orchestrating. Step 0b live-validates every non-native CLI/model/access target and aborts before phase mutation on any upstream failure. The shipped default routes reviewer + critic to the *other* harness (cross-vendor review — there is no separate on/off token) and leaves planner + coder native; a project may resolve any role anywhere. A role resolving to a CLI is invoked there with the resolved model/effort overrides (write-enabled for the coder), resuming the same session across the role's rounds. Orchestration and build gates always run on the session model — never pinnable. A later runtime failure after successful preflight may still fall back per-stage and surfaces a 🚨 in the Step 10 report. The recursion guard env var is `KICKOFF_DELEGATION_DEPTH` (a delegated role never re-delegates). Recipes and handoff hygiene: [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md).
 - Per-role execution budgets ([`policies/role-timeouts.md`](../../../policies/role-timeouts.md)): Step 0c loads portable defaults from `kickoff.yaml`'s `role_timeouts` section. Every external initial/resume/rescue call runs through the generated-command watcher; native calls use the same budgets through the harness wait mechanism. The finalized shared trace is authoritative; `.kickoff/role-timings.jsonl` remains local protocol/recalibration diagnostics.
-- Exact execution telemetry ([`policies/execution-telemetry.md`](../../../policies/execution-telemetry.md)): monotonic nanoseconds, overlap-safe unions, exclusive attribution, candidate/role/gate joins, truthful recovery, and deterministic offline reports are one acceptance-bound contract. UTC is correlation only, wait mirrors are not extra work, and missing measurement never becomes a reassuring zero.
+- Exact execution telemetry ([`policies/execution-telemetry.md`](../../../policies/execution-telemetry.md)): monotonic nanoseconds, overlap-safe unions, exclusive attribution, candidate/role/gate joins, truthful recovery, phase-level operator-input parks, and deterministic offline reports are one acceptance-bound contract. UTC is correlation only for trace spans; a cross-boot operator park uses visibly non-exact calendar duration. Wait mirrors are not extra work, operator parks are reported separately, and missing measurement never becomes a reassuring zero.
+- Research authority ([`policies/research-authority.md`](../../../policies/research-authority.md)): planner/reviewer may originate search and retrieval within their configured budgets; coder/critic may retrieve approved authorities but not originate search. Ambient MCP servers and plugins are allow-by-default unless explicitly narrowed, and external research receives no repository or candidate content.
 - Review lanes and follow-up routing ([`policies/review-lanes.md`](../../../policies/review-lanes.md)): a phase's `review_lane: light` frontmatter skips Step 4 for mechanical initial work; the invocation-only `one-shot` token additionally skips Step 3 for well-specified isolated work. The code critic runs on every initial implementation and guards both lanes. The orthogonal `evidence_lane: light` frontmatter reduces evidence ceremony (never the close seal) for phases off the authority/irreversible/deploy triggers. Later test- or user-driven corrections use direct fix, coder-only, or full-cycle routing according to risk and size; only the full-cycle route repeats independent review.
-- Candidate-bound evidence ([`policies/orchestration-evidence.md`](../../../policies/orchestration-evidence.md)): every run uses a fresh isolated evidence directory; revisions use stable findings and deterministic packets; final gates name the unchanged approved candidate.
+- Candidate-bound evidence ([`policies/orchestration-evidence.md`](../../../policies/orchestration-evidence.md)): every run uses a fresh isolated evidence directory; revisions use stable findings and deterministic packets; the implementation gate names the unchanged approved candidate, then a bare post-bookkeeping handoff gate proves the actual tree delivered to the user.
 - Fail-closed park and diagnosed resume ([`policies/fail-closed-resume.md`](../../../policies/fail-closed-resume.md)): any first-encountered defect finishes the run truthfully — dispatches stopped, spans closed with the failure outcome, artifacts preserved, candidate restoration or lineage proved — and records a five-part failure signature in the phase's append-only `.kickoff/failure-signatures.jsonl` ledger. A **novel**, fully diagnosed signature with a recorded causal correction may open a fresh corrective trace against the phase's self-resume budget (`kickoff.yaml` `run_budgets.self_resume`, shipped default 3, restored by any operator relay; `0` pins every park to the operator). A **recurring** signature always stops for the operator. Prelaunch dispatcher rejections are corrected-and-relaunched at most once without consuming budget. Sealing is a close-time act: never re-run whole-repository sealing per fix inside a convergence loop.
 - `ingest-findings` **requires `--review-span-id`** and refuses without it. The convergence integers attach to the review pass's own intelligence span, and a span is immutable once the trace is finalized — so an omitted flag makes `timing-summary` refuse for the entire run and cannot be repaired afterward. Preserve each reviewer's and critic's intelligence span id when you dispatch it. For an ingest that is genuinely **not** a review pass — most commonly the orchestrator recording an `open → addressed` transition after a *plan* revision, since `phase-planner` emits a revised plan rather than a `## Finding Evidence` block — pass `--no-review-span '<reason>'`, which records the omission in `review-metrics-omitted.jsonl` instead of hiding it.
 - Human wall-clock efficiency is an ambient judgment, not a timer-driven
   program: act or surface only when a substantial, low-risk gain is reasonably
-  apparent, never at the expense of effectiveness or the complete final gate.
+  apparent, never at the expense of effectiveness or either close gate.
 - The ripple pass in Step 9a (sub-phase close) and Step 9b (major-phase close) is governed by [`policies/phase-ripple.md`](../../../policies/phase-ripple.md). AUTO ripples land in the same session; DECIDE ripples appear in the END block as named follow-ups.
 - The lessons harvest in Step 9c is governed by [`policies/lessons.md`](../../../policies/lessons.md). Agents file and recur ledger entries; graduation into a rule surface is a human-ratified DECIDE, never an autonomous edit. A follow-up correction that reveals a recurring learning files a lesson too, even though it skips the full Step 9 family.
 - Cross-harness: this same canonical skill drives both Claude Code and Codex. Claude Code invokes it as `kickoff`; Codex discovers it through `.agents/skills/kickoff` (a directory symlink to `.claude/skills/kickoff/`) and invokes it as `$kickoff`. Edit this canonical skill, not the mirror.

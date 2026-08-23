@@ -1,8 +1,8 @@
 ---
 title: "Incremental Orchestration With Candidate-Bound Assurance"
-date: 2026-07-27
+date: 2026-08-23
 status: implemented
-scope: Universal design for reducing repeated review and verification work while preserving independent criticism and a complete final assurance gate.
+scope: Universal design for reducing repeated review and verification work while preserving independent criticism and separate implementation-candidate and handoff assurance gates.
 ---
 
 # Incremental Orchestration With Candidate-Bound Assurance
@@ -133,22 +133,27 @@ rebases rather than silently narrowing review.
 
 ## 6. Verification ladder
 
-Verification has three candidate-bound levels:
+Verification has four levels, the first three candidate-bound and the fourth
+bound to the actual handoff tree:
 
 1. **Edit loop.** Run the smallest behavioral test or proof capable of
    falsifying the current edit.
 2. **Revision close.** Run affected suites and structural or static checks
    selected from the change surface. Record why the selection is sufficient;
    indeterminate impact fails closed to broader verification.
-3. **Acceptance close.** After code-critic approval, run the phase's complete
+3. **Implementation-candidate close.** After code-critic approval, run the phase's complete
    prescribed sequence and the repository's authoritative full gate once
    against the unchanged candidate.
+4. **Handoff close.** Finalize evidence, apply only the tracked close writes
+   declared by the protocol, then run the authoritative full gate again as a
+   bare command against the actual tree handed to the user. No tracked write
+   follows a successful handoff gate.
 
-Any relevant candidate change invalidates recorded gates. A final gate that
-mutates the candidate is itself a failure. Optional, paid, stochastic, or
-human-only diagnostics remain governed by phase acceptance; “complete final
-gate” means the repository's declared authoritative suite plus every
-phase-specific gate that applies.
+Any relevant candidate change invalidates the implementation-candidate gate.
+Either gate mutating the candidate is itself a failure. A failed handoff gate
+reopens the uncommitted close: correct the tree, re-establish candidate-bound
+review/evidence as required, and repeat both gates. Optional, paid, stochastic,
+or human-only diagnostics remain governed by phase acceptance.
 
 ## 7. Execution protocol
 
@@ -188,6 +193,12 @@ role, wait, tool, and gate spans share stable identifiers and monotonic clocks.
 Evidence records join to those identifiers rather than estimating elapsed time
 from artifacts or messages. Phase close fails closed when a required role,
 wait, or gate cannot be joined to the trace.
+
+Time parked awaiting operator input is deliberately not another trace span. A
+separate phase ledger records every open/close interval and the overlap-safe
+union total. Same-boot duration uses the monotonic clock and is exact;
+cross-boot duration uses UTC and is visibly labeled non-exact. An open or
+malformed interval fails close rather than becoming zero.
 
 The timing projection distinguishes active makespan, calendar duration, summed
 work, exclusive work, peak concurrency, failed/retry time, and uncovered gaps.

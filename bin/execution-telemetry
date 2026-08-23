@@ -30,10 +30,12 @@ from agentic_starter.execution_dashboard import render_phase_dashboard  # noqa: 
 from agentic_starter.execution_telemetry import (  # noqa: E402
     CATEGORIES,
     OUTCOMES,
+    PARK_REASONS,
     SCOPES,
     TIMEOUT_KINDS,
     TelemetryError,
     attach_token_reference,
+    close_operator_park,
     closed_span,
     discover_engine_root,
     expect_managed_run,
@@ -42,6 +44,8 @@ from agentic_starter.execution_telemetry import (  # noqa: E402
     finish_span,
     format_text_report,
     gc_managed_runs,
+    open_operator_park,
+    phase_park_summary,
     reconcile_managed_runs,
     recover_trace,
     report_across_scopes,
@@ -214,6 +218,24 @@ def build_parser() -> argparse.ArgumentParser:
     dashboard.add_argument("--open", action="store_true")
     dashboard.set_defaults(handler=cmd_dashboard)
 
+    park_open = commands.add_parser("park-open")
+    _add_repo(park_open)
+    park_open.add_argument("--phase", required=True)
+    park_open.add_argument("--reason", required=True, choices=sorted(PARK_REASONS))
+    park_open.set_defaults(handler=cmd_park_open)
+
+    park_close = commands.add_parser("park-close")
+    _add_repo(park_close)
+    park_close.add_argument("--phase", required=True)
+    park_close.add_argument("--park-id")
+    park_close.set_defaults(handler=cmd_park_close)
+
+    for name in ("park-status", "phase-summary"):
+        park_summary = commands.add_parser(name)
+        _add_repo(park_summary)
+        park_summary.add_argument("--phase", required=True)
+        park_summary.set_defaults(handler=cmd_park_summary)
+
     attach = commands.add_parser("attach-token")
     _add_repo(attach)
     attach.add_argument("--trace-id", required=True)
@@ -264,6 +286,25 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
         page = (output_root / result["archive_directory"] / "index.html").resolve()
         if not webbrowser.open(page.as_uri()):
             raise TelemetryError("default browser refused the dashboard")
+    return 0
+
+
+def cmd_park_open(args: argparse.Namespace) -> int:
+    _json(
+        dataclasses.asdict(
+            open_operator_park(engine_root=_engine(args), phase_id=args.phase, reason=args.reason)
+        )
+    )
+    return 0
+
+
+def cmd_park_close(args: argparse.Namespace) -> int:
+    _json(close_operator_park(engine_root=_engine(args), phase_id=args.phase, park_id=args.park_id))
+    return 0
+
+
+def cmd_park_summary(args: argparse.Namespace) -> int:
+    _json(phase_park_summary(engine_root=_engine(args), phase_id=args.phase))
     return 0
 
 

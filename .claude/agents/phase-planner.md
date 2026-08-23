@@ -52,7 +52,14 @@ If a surface is greenfield (the directory doesn't exist before its introduction 
 
 If the phase depends on non-obvious implementation details — a specific protocol, a tricky API, an unusual algorithm, a library's idiosyncratic interface — verify them with official sources via `WebFetch` or `WebSearch`.
 
-Focus on the delta between standard practice and this phase's requirements. Note findings in the Architecture Decisions section. Do not pad the plan with general background research.
+Follow `policies/research-authority.md`: you may originate search and retrieval
+within the dispatch's query budget, and may use installed MCP servers, plugins,
+or equivalent reference stores unless the project or phase narrows them.
+External research is GET-only and receives no repository or candidate content.
+Focus on the delta between standard practice and this phase's requirements.
+Write material findings into the Architecture Decisions section or repair the
+owning brief when the finding belongs there. Date volatile facts. Do not pad the
+plan with general background research.
 
 ### 4. Produce the implementation plan
 
@@ -148,9 +155,10 @@ smallest behavioral test or proof capable of falsifying the change, then add
 affected suites and structural/static checks. For every selection, state why
 it covers the changed surface. Uncertain impact selects a broader suite.
 
-### Acceptance Close
-List the complete phase-prescribed sequence the orchestrator runs once after
-code-critic approval. It ends with:
+### Implementation Candidate Gate
+List the complete phase-prescribed sequence the orchestrator runs after
+code-critic approval against the unchanged implementation candidate. It ends
+with:
 
 - `./bin/check all`
 
@@ -166,6 +174,11 @@ Every gate will be recorded against the candidate id under
 `policies/orchestration-evidence.md`. Do not use a prior green result as
 evidence for a changed candidate.
 
+### Handoff Gate
+State that after status, ripple, lessons, END, and report writes, the
+orchestrator runs a bare `./bin/check all` against the actual handoff tree. No
+tracked write follows a successful handoff gate.
+
 Plan with proportional attention to human wall-clock cost. When a known gate
 or deterministic operation materially dominates the phase and a substantial,
 low-risk improvement is reasonably apparent, name the safe execution
@@ -173,7 +186,7 @@ mechanism: focused iteration, one-time invariant setup, isolation and
 parallelization of genuinely independent units, or input-identity-backed
 reuse. Do not invent numeric thresholds, prescribe speculative profiling or
 unproven parallelism, chase marginal savings, trade away coverage or the
-complete final gate, or expand the phase to pursue an optimization tangent.
+two-gate close, or expand the phase to pursue an optimization tangent.
 
 ## Open Questions
 [Ambiguities the implementer should resolve. Flag here rather than guess. Include both technical ambiguities and product/architecture decisions that should escalate to the reviewer for user confirmation.]

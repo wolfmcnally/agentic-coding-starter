@@ -1,6 +1,6 @@
 ---
 title: "The Agentic Coding Methodology — Eleven Steps"
-date: 2026-08-05
+date: 2026-08-23
 status: methodology
 scope: The canonical statement of the methodology this template implements. Authoritative reference for every skill, agent, and policy in the repo.
 ---
@@ -84,7 +84,8 @@ The methodology's orchestrator delegates to four specialist roles. Their names a
 
 The orchestrator (`kickoff`) is the fifth participant. It delegates initial
 implementation; owns authority, change, finding, and gate evidence; handles
-verdicts, final gates, the lessons harvest, and `LOG.md`; and may write code only for a small,
+verdicts, the implementation-candidate and handoff gates, the lessons harvest,
+and `LOG.md`; and may write code only for a small,
 low-risk follow-up correction whose intended shape is already determined.
 
 ## Non-negotiables
@@ -94,6 +95,14 @@ low-risk follow-up correction whose intended shape is already determined.
 - **The human decides when work is "done"**; the orchestrator does not (step 4, step 10).
 - **The orchestrator writes code only for eligible small, low-risk follow-up corrections** (step 8).
 - **Closing a phase requires recorded evidence and a lessons-harvest answer**, not just a green test run (step 9).
+- **Research authority follows the role across harnesses.** Planner and
+  reviewer may originate search and retrieve; coder and critic retrieve only
+  plan- or brief-identified sources and same-host structural neighbors. The
+  ambient resource set is allow-by-default, but no named MCP server or plugin
+  is presumed available.
+- **Closing has two gates.** The complete candidate-bound sequence runs before
+  evidence finalization and tracked bookkeeping; a second bare full gate runs
+  on the resulting handoff tree, after which no tracked write is permitted.
 - **Phases and sub-phases are mutable**; refactor the plan as understanding grows (step 11).
 
 ## Orchestration runtime doctrine

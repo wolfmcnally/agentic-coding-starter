@@ -152,8 +152,9 @@ Behavioral coverage lives in `tests/test_check_hooks_installed.py`.
 ### `kickoff-config` — human-editable `kickoff` configuration and enforcement
 
 Validates and safely edits repo-root `kickoff.yaml`, whose `role_models`,
-`role_timeouts`, and `run_budgets` sections hold separate model/effort fields,
-execution budgets, and the per-phase self-resume budget. Round-trip YAML
+`role_timeouts`, `research_budgets`, and `run_budgets` sections hold separate
+model/effort fields, execution budgets, per-role originating-search budgets,
+and the per-phase self-resume budget. Round-trip YAML
 handling preserves human comments and extension data. The manager also owns
 fail-closed venue preflight, generated cross-harness commands, strict
 review-output schemas, immutable role-attempt registration, progress-aware
@@ -162,6 +163,7 @@ evidence-based timeout recommendations. A Python script run via `uv` with
 PEP 723 `ruamel.yaml`. Governed by
 [`policies/role-models.md`](../policies/role-models.md),
 [`policies/role-timeouts.md`](../policies/role-timeouts.md),
+[`policies/research-authority.md`](../policies/research-authority.md),
 [`policies/execution-telemetry.md`](../policies/execution-telemetry.md), and
 [`policies/fail-closed-resume.md`](../policies/fail-closed-resume.md).
 
@@ -264,9 +266,11 @@ behavioral coverage lives in `tests/test_kickoff_evidence.py`.
 ### `execution-telemetry` — exact shared execution trace
 
 Records append-only stage, role, wait, tool, and gate spans in one trace;
-reconciles interrupted spools; computes union-based makespan and concurrency;
-and projects a privacy-safe phase handoff. The handoff is the only input to the
-committed HTML report.
+records phase-level operator-input parks in a separate append-only ledger;
+reconciles interrupted spools; computes union-based makespan, concurrency, and
+park totals; and projects a privacy-safe phase handoff. Same-boot parks are
+monotonic and exact, cross-boot parks are visibly non-exact, and any open park
+fails close. The handoff is the only input to the committed HTML report.
 
 ```bash
 ./bin/execution-telemetry --help

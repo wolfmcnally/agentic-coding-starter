@@ -120,10 +120,11 @@ Sealing is a **close-time act, not a per-fix act**. A plan, acceptance recipe,
 or protocol step must not require a whole-repository reseal — manifest
 re-derivation, snapshot, binding-chain replay — after each correction inside a
 convergence loop. Corrections run the smallest falsifying check and the
-affected revision-close gates; the seal is the one complete candidate-bound
-final validation against the unchanged final candidate at close
+affected revision-close gates; the implementation seal is the complete
+candidate-bound validation against the unchanged final candidate at close
 ([`orchestration-evidence.md`](orchestration-evidence.md) § Candidate-bound
-verification), which already invalidates itself if any later change lands.
+verification), which already invalidates itself if any later implementation
+change lands. Tracked close writes then receive the separate bare handoff gate.
 
 Motivating incident (cited per the doctrine's growth rule): a donor project
 ran roughly twenty-seven whole-repository reseal cycles in one phase — each a

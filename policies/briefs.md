@@ -26,6 +26,9 @@ Write a brief when:
 - A non-trivial decision is made whose reasoning matters more than its outcome.
 - An audit, evaluation, or discrepancy review produces findings that will inform future work.
 - A snapshot of an external system (AWS infra state, a third-party service's behavior) is worth pinning at a specific date.
+- An outward explanation, white paper, or treatise needs a canonical internal
+  source. Repair the owning brief before rendering derivative formats; see
+  [`treatise.md`](treatise.md).
 
 Don't write a brief for ephemeral state, single-session decisions, or anything that fits inside a commit message.
 

@@ -10,7 +10,7 @@ description: >-
   /learn <donor-dir> [<desc>] in Claude Code or $learn <donor-dir> [<desc>]
   in Codex.
 argument-hint: "<donor-dir> [<desc>]"
-last-reviewed: 2026-08-10
+last-reviewed: 2026-08-23
 ---
 
 # Learn — Absorb patterns from another repo into this repo
@@ -66,7 +66,7 @@ Build a structural map of the donor. **Do not** open every file; do targeted rea
 
 1. **Top-level inventory.** `ls -la <donor-dir>`. Note root files (READMEs, AGENTS.md, CLAUDE.md, language metadata) and directory shape.
 2. **Methodology surfaces.** Check for `briefs/`, `policies/`, `plan/`, `LOG.md`, `.claude/`, `.codex/`, `.agents/`. Their presence — or absence of structure where this template has structure — is the first signal.
-3. **Skills & agents.** `ls <donor>/.claude/skills/` and `ls <donor>/.claude/agents/`. Also `ls -la <donor>/.agents/skills/` (Codex CLI's native skill-discovery path — expected to be **directory-level symlinks** back to `<donor>/.claude/skills/<name>` per the workaround for [openai/codex#11314](https://github.com/openai/codex/issues/11314); surface novelty only if the *target* of the symlink is novel, or if an entry there is *not* a directory symlink — the latter typically indicates a stray from the Codex desktop "import settings" prompt and is not a learning candidate). Read the `SKILL.md` and agent files whose names are *not* in the canonical set (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`, `kickoff`, `methodology`, `stamp`, `learn`, `teach`, `roles`, `sweep`). The novel ones are the candidates for learning.
+3. **Skills & agents.** `ls <donor>/.claude/skills/` and `ls <donor>/.claude/agents/`. Also `ls -la <donor>/.agents/skills/` (Codex CLI's native skill-discovery path — expected to be **directory-level symlinks** back to `<donor>/.claude/skills/<name>` per the workaround for [openai/codex#11314](https://github.com/openai/codex/issues/11314); surface novelty only if the *target* of the symlink is novel, or if an entry there is *not* a directory symlink — the latter typically indicates a stray from the Codex desktop "import settings" prompt and is not a learning candidate). Read the `SKILL.md` and agent files whose names are *not* in the canonical set (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`, `kickoff`, `methodology`, `demo`, `stamp`, `learn`, `teach`, `treatise`, `roles`, `sweep`). The novel ones are the candidates for learning. When a novel skill is thin and delegates its rules to a policy or brief, read that owning authority in full before classifying the skill; the wrapper alone is not the behavior being assessed.
 4. **Briefs & policies.** `ls <donor>/briefs/` and `ls <donor>/policies/`. Read each one whose name doesn't already exist here. For names that *do* exist, do a structural diff (head + section list + line count) so the assessment knows whether the donor's version supersedes ours, diverges, or just paraphrases.
 5. **Phase plan shape.** If `<donor>/plan/INDEX.md` exists, read it. Look for cross-cutting concerns or critical-files-map patterns we don't have.
 6. **Language conventions.** Read `<donor>/CLAUDE.md` (or `AGENTS.md`) section by section. Note any architectural invariants, glossary entries, or conventions the donor pins that this starter doesn't.
@@ -138,7 +138,32 @@ For each candidate surfaced in Stage 1, classify on two axes.
 - **No `<desc>` given**: select candidates from Tier 1, then Tier 2. Only offer Tier 3 if those tiers have less than three actionable items. Only offer Tier 4 if Tier 3 also has less than three actionable items. This implements the user's directive: prioritize general improvements; specialize only when the general well is dry.
 - **`<desc>` given**: use it to narrow. If the desc names a tier explicitly ("Unity specialization" → Tier 4), focus there. If the desc names a topic ("testing setup"), pull candidates across all tiers that touch that topic.
 
+### Decision dialogue before the final plan
+
+Identify every proposal, conflict, stale migration, or user-added request that
+requires judgment. Work through them **one at a time**:
+
+1. Explain one decision plainly: what changes, why it matters, the realistic
+   options, and your recommendation.
+2. Stop for the user's decision. Answer questions about that decision without
+   advancing to the next one.
+3. Advance only after the user gives an explicit decision.
+4. If a rendered question appears to have been swallowed, interrupted, or
+   answered ambiguously, re-present the entire decision—including its context,
+   options, and recommendation—rather than referring to a missing question.
+
+User-added requests during the dialogue join the same queue and are decided
+before the plan. If no judgment calls exist, skip directly to the final plan.
+The dialogue remains read-only; an individual "yes" adopts that decision, not
+the write set.
+
 ## Stage 3 — Plan (present to user)
+
+Immediately before composing the final plan, re-read the donor's git HEAD (or
+mtime fingerprint). If it changed since preflight, inspect the delta and reopen
+every affected decision; do not silently bind the plan to a moving source.
+Then regenerate the **complete** plan from the resolved decisions. Do not offer
+an incremental patch or assume the user can reconstruct it from the dialogue.
 
 Produce a structured plan inline in the conversation. Use this exact format:
 

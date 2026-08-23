@@ -15,12 +15,18 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from agentic_starter.execution_telemetry import ValidationError, aggregate_trace, validate_ledger
+from agentic_starter.execution_telemetry import (
+    PARK_REASONS,
+    ValidationError,
+    aggregate_trace,
+    phase_park_summary,
+    validate_ledger,
+)
 
 DASHBOARD_SCHEMA = "agentic_starter.execution_dashboard.v1"
 INDEX_SCHEMA = "agentic_starter.execution_dashboard_index.v1"
 HANDOFF_SCHEMA = "agentic_starter.execution_dashboard_handoff.v1"
-RENDERER_VERSION = "dashboard-v3"
+RENDERER_VERSION = "dashboard-v4"
 DATA_PREFIX = "window.AGENTIC_STARTER_EXECUTION_DASHBOARD_DATA="
 INDEX_PREFIX = "window.AGENTIC_STARTER_EXECUTION_DASHBOARD_INDEX="
 PHASE_RE = re.compile(r"^\d+(?:\.\d+)*$")
@@ -90,6 +96,21 @@ HANDOFF_FORBIDDEN = tuple(
         r"\btoken(?:s)?\b",
         r"\buncommitted\b",
     )
+)
+PARK_SUMMARY_KEYS = frozenset(
+    {"phase_id", "intervals", "total_duration_ns", "total_exact", "total_method", "open"}
+)
+PARK_INTERVAL_KEYS = frozenset(
+    {
+        "park_id",
+        "phase_id",
+        "reason",
+        "opened_at",
+        "closed_at",
+        "duration_ns",
+        "exact",
+        "method",
+    }
 )
 
 
@@ -225,6 +246,56 @@ def validate_handoff(value: Mapping[str, Any], *, phase_id: str) -> dict[str, An
         "coming_up_next": valid_next,
         "recommended_steps": valid_recommendations,
     }
+
+
+def validate_operator_parks(value: Mapping[str, Any], *, phase_id: str) -> dict[str, Any]:
+    if not isinstance(value, Mapping) or set(value) != PARK_SUMMARY_KEYS:
+        raise ValidationError("operator park summary has unknown or missing fields")
+    if value["phase_id"] != phase_id:
+        raise ValidationError("operator park summary belongs to another phase")
+    intervals = value["intervals"]
+    if not isinstance(intervals, list):
+        raise ValidationError("operator park intervals must be a list")
+    valid_intervals = []
+    for item in intervals:
+        if not isinstance(item, Mapping) or set(item) != PARK_INTERVAL_KEYS:
+            raise ValidationError("operator park interval has unknown or missing fields")
+        if item["phase_id"] != phase_id or not TRACE_ID_RE.fullmatch(str(item["park_id"])):
+            raise ValidationError("operator park interval identity is invalid")
+        if item["reason"] not in PARK_REASONS:
+            raise ValidationError("operator park interval reason is invalid")
+        _utc_ns(item["opened_at"])
+        if item["closed_at"] is not None:
+            _utc_ns(item["closed_at"])
+        duration = item["duration_ns"]
+        invalid_duration = duration is not None and (
+            isinstance(duration, bool) or not isinstance(duration, int) or duration < 0
+        )
+        if invalid_duration:
+            raise ValidationError("operator park duration must be a nonnegative integer or null")
+        if not isinstance(item["exact"], bool):
+            raise ValidationError("operator park exact must be boolean")
+        if item["method"] not in {
+            "open",
+            "monotonic",
+            "calendar-cross-boot",
+            "unavailable-clock-order",
+        }:
+            raise ValidationError("operator park interval method is invalid")
+        valid_intervals.append(dict(item))
+    total = value["total_duration_ns"]
+    if total is not None and (isinstance(total, bool) or not isinstance(total, int) or total < 0):
+        raise ValidationError("operator park total must be a nonnegative integer or null")
+    if not isinstance(value["total_exact"], bool) or not isinstance(value["open"], bool):
+        raise ValidationError("operator park summary flags must be boolean")
+    if value["total_method"] not in {
+        "none",
+        "incomplete",
+        "monotonic-union",
+        "calendar-union-cross-boot",
+    }:
+        raise ValidationError("operator park total method is invalid")
+    return dict(value) | {"intervals": valid_intervals}
 
 
 def _phase_for(bundle: Mapping[str, Any]) -> str | None:
@@ -522,6 +593,7 @@ def build_phase_payload(
     phase_id: str,
     accepted_trace_id: str,
     handoff: Mapping[str, Any],
+    operator_parks: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     semantic_phase_key(phase_id)
     if not TRACE_ID_RE.fullmatch(accepted_trace_id):
@@ -575,6 +647,19 @@ def build_phase_payload(
     )
     finalized_date = str(accepted["finalized_at"])[:10]
     valid_handoff = validate_handoff(handoff, phase_id=phase_id)
+    valid_parks = validate_operator_parks(
+        operator_parks
+        or {
+            "phase_id": phase_id,
+            "intervals": [],
+            "total_duration_ns": 0,
+            "total_exact": True,
+            "total_method": "none",
+            "open": False,
+        },
+        phase_id=phase_id,
+    )
+    phase_view["operator_parks"] = valid_parks
     return {
         "schema": DASHBOARD_SCHEMA,
         "renderer_version": RENDERER_VERSION,
@@ -583,9 +668,10 @@ def build_phase_payload(
         "accepted_trace_id": accepted_trace_id,
         "accepted_finalized_at": accepted["finalized_at"],
         "outcome": accepted_trace["outcome"],
-        "source_bundle_digest": _digest(selected),
+        "source_bundle_digest": _digest({"traces": selected, "operator_parks": valid_parks}),
         "handoff_digest": _digest(valid_handoff),
         "handoff": valid_handoff,
+        "operator_parks": valid_parks,
         "trace_count": len(traces),
         "lineage_trace_count": len(lineage),
         "failed_trace_count": sum(item["unsuccessful"] for item in traces),
@@ -602,7 +688,7 @@ PHASE_HTML = """<!doctype html>
  img-src 'self' data:; font-src 'none'; connect-src 'none'; object-src 'none';
  base-uri 'none'; form-action 'none'">
 <title>Execution dashboard</title>
-<link rel="stylesheet" href="../../assets/dashboard-v3.css"></head>
+<link rel="stylesheet" href="../../assets/dashboard-v4.css"></head>
 <body data-view="phase"><header class="sticky"><nav aria-label="Breadcrumb">
 <a href="../../index.html">Execution archive</a><span aria-hidden="true">›</span>
 <span id="crumb-date"></span><span aria-hidden="true">›</span>
@@ -612,7 +698,7 @@ PHASE_HTML = """<!doctype html>
 <main id="app"><p class="loading">Loading local telemetry…</p></main>
 <script src="../../assets/echarts-6.1.0.min.js"></script>
 <script src="data.js"></script><script src="../../index-data.js"></script>
-<script src="../../assets/dashboard-v3.js"></script></body></html>
+<script src="../../assets/dashboard-v4.js"></script></body></html>
 """
 
 INDEX_HTML = """<!doctype html>
@@ -623,13 +709,13 @@ INDEX_HTML = """<!doctype html>
  img-src 'self' data:; font-src 'none'; connect-src 'none'; object-src 'none';
  base-uri 'none'; form-action 'none'">
 <title>Execution dashboard archive</title>
-<link rel="stylesheet" href="assets/dashboard-v3.css"></head>
+<link rel="stylesheet" href="assets/dashboard-v4.css"></head>
 <body data-view="index"><header class="sticky"><nav aria-label="Breadcrumb">
 <strong>Execution archive</strong></nav></header>
 <main id="app"><p class="loading">Loading local telemetry…</p></main>
 <script src="assets/echarts-6.1.0.min.js"></script>
 <script src="index-data.js"></script>
-<script src="assets/dashboard-v3.js"></script></body></html>
+<script src="assets/dashboard-v4.js"></script></body></html>
 """
 
 
@@ -672,6 +758,8 @@ def _summary(payload: Mapping[str, Any]) -> dict[str, Any]:
         "failed_trace_count": payload["failed_trace_count"],
         "makespan_ns": phase_view["makespan_ns"],
         "calendar_elapsed_ns": phase_view["calendar_elapsed_ns"],
+        "awaiting_user_input_ns": phase_view["operator_parks"]["total_duration_ns"],
+        "awaiting_user_input_exact": phase_view["operator_parks"]["total_exact"],
         "role_followup_count": phase_view["role_followup_count"],
         "gate_run_count": phase_view["gate_run_count"],
         "failed_gate_count": phase_view["failed_gate_count"],
@@ -720,6 +808,7 @@ def render_phase_dashboard(
     phase_id: str,
     accepted_trace_id: str,
     handoff: Mapping[str, Any] | None = None,
+    operator_parks: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     bundles = validate_ledger(engine_root / "EXECUTION_LOG.jsonl")
     output_root = output_root.resolve()
@@ -741,6 +830,8 @@ def render_phase_dashboard(
         phase_id=phase_id,
         accepted_trace_id=accepted_trace_id,
         handoff=handoff,
+        operator_parks=operator_parks
+        or phase_park_summary(engine_root=engine_root, phase_id=phase_id),
     )
     with _archive_lock(engine_root):
         destination.parent.mkdir(parents=True, exist_ok=True)

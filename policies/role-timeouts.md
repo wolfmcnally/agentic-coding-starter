@@ -50,7 +50,9 @@ The finalized shared trace governed by
 [`execution-telemetry.md`](execution-telemetry.md) is authoritative for phase
 timing. It uses monotonic nanoseconds, exact role/wait joins, and truthful
 timeout/interruption outcomes. Wait spans mirror delegated work and are never
-counted as additional work.
+counted as additional work. Time awaiting required user input is recorded in
+the separate phase-level operator-park ledger and never folded into a role's
+idle or wait duration.
 
 The watcher also keeps local protocol diagnostics for timeout recalibration.
 Those rows are not a second execution ledger and cannot fill a missing shared

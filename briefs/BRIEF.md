@@ -1,6 +1,6 @@
 ---
 title: "Agentic Coding Starter Template — Product Brief"
-date: 2026-05-17
+date: 2026-08-23
 status: methodology
 scope: Entry-point brief for this repository. Describes what the starter template is, who it's for, the two operating modes, and acceptance criteria.
 ---
@@ -27,11 +27,23 @@ See [`CLAUDE.md` — Briefs catalog](../CLAUDE.md#briefs-catalog) for the index 
 - **A `kickoff` skill.** A phase orchestrator that delegates to four specialist agents and writes `LOG.md`. Invoke it as `/kickoff` in Claude Code or `$kickoff` in Codex. Authoritative source: `.claude/skills/kickoff/SKILL.md`.
 - **Candidate-bound orchestration evidence.** Complete first reviews,
   deterministic revision packets, stable finding identities, focused
-  convergence checks, and one complete final gate against the unchanged
-  approved candidate. Authoritative source:
+  convergence checks, a complete implementation-candidate gate against the
+  unchanged approved candidate, and a post-bookkeeping handoff gate against
+  the actual delivered tree. Authoritative source:
   [`incremental-orchestration.md`](incremental-orchestration.md).
 - **Four canonical agent roles.** `phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`. Names are load-bearing; `kickoff` invokes them by name. Defined under `.claude/agents/` and mirrored to `.codex/agents/`.
 - **A `stamp` skill.** Stamps out a new project from this template into a different directory, with light configuration. Invoke it as `/stamp` in Claude Code or `$stamp` in Codex.
+- **Universal `learn`, `teach`, `demo`, and `treatise` skills.** Cross-repo
+  transfer proceeds one decision at a time before one complete approval plan;
+  demos proceed one visible action at a time; outward explanations derive
+  from canonical repository authority and stop at an explicit publication gate.
+- **Role-based research authority.** Planner and reviewer may search and
+  retrieve; coder and critic retrieve approved references plus same-host
+  structural neighbors. Installed resources are allow-by-default but never
+  presumed present, and external research cannot carry repository content out.
+- **Exact execution and operator-park telemetry.** Active work and delegated
+  waits share one trace; time parked for user input uses a separate phase
+  ledger whose intervals and overlap-safe total appear in the offline report.
 - **A `plan/` ledger.** Phase table, dependency graph, cross-cutting concerns, critical-files map. Status lives only here.
 - **A `briefs/` library.** Durable design decisions and methodology notes.
 - **A `policies/` library.** The non-negotiable rules every phase respects.
@@ -120,7 +132,8 @@ The template is acceptable when:
   a clean current `HEAD` and otherwise runs the authoritative full gate.
 - `bin/kickoff-tree-id` identifies tracked, deleted, mode-changed, symlinked,
   and nonignored-untracked candidate state; `bin/kickoff-evidence` validates
-  run-scoped authority, change, finding, packet, and final-gate evidence.
+  run-scoped authority, change, finding, packet, and implementation-final-gate
+  evidence; the separate handoff gate proves the post-bookkeeping tree.
 - No file in this repo references Wolf McNally, his email, his other projects, or any third-party PII. The template is distributable.
 - Every file under `briefs/` and `policies/` is cataloged bidirectionally, and
   every tracked repository-internal Markdown link resolves. No orphans or

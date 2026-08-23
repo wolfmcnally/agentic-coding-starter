@@ -5,9 +5,9 @@
 # ///
 """Validate, edit, and enforce the human-editable kickoff configuration.
 
-  bin/kickoff-config show [all|models|timeouts]
+  bin/kickoff-config show [all|models|research|timeouts|budgets]
   bin/kickoff-config set-models [<harness>] <role>.model=<model> [<role>.effort=<effort>] ...
-  bin/kickoff-config reset models|timeouts|all
+  bin/kickoff-config reset models|research|timeouts|budgets|all
   bin/kickoff-config preflight
   bin/kickoff-config watch [routing/telemetry options] --prompt-file <path>
   bin/kickoff-config render-command [routing options] --prompt-file <path>
@@ -93,9 +93,13 @@ CLAUDE_TOOLS = {
     "read-only": "Read,Grep,Glob",
     "workspace-write": "Read,Grep,Glob,Write,Edit,Bash",
 }
+CLAUDE_RETRIEVAL_TOOLS = ("WebFetch",)
+CLAUDE_SEARCH_TOOLS = ("WebSearch",)
+CODEX_WEB_MODE_FLAG = ("-c", 'web_search="live"')
 # The one write-enabled cross-harness role. Single-writer is satisfied by
 # serialization: kickoff runs the coder stage with no concurrent native writer.
 WRITE_ENABLED_ROLES = frozenset({"coder"})
+SEARCH_CAPABLE_ROLES = frozenset({"planner", "reviewer"})
 # The roles that emit a Finding Evidence document, and the review kind each one
 # reviews. Only these dispatches carry a structured-output schema; the planner
 # and coder emit different artifacts entirely.
@@ -174,6 +178,12 @@ SHIPPED_TIMEOUTS: dict[str, Any] = {
 # "small budget" (policies/fail-closed-resume.md). 0 is a valid pin meaning
 # every park waits for the operator. An absent section means this default.
 SHIPPED_BUDGETS: dict[str, int] = {"self_resume": 3}
+SHIPPED_RESEARCH_BUDGETS: dict[str, int] = {
+    "planner": 12,
+    "reviewer": 6,
+    "coder": 0,
+    "critic": 0,
+}
 
 
 def yaml_engine() -> YAML:
@@ -338,12 +348,37 @@ def validate_budgets(section: Any) -> None:
             die("run_budgets.self_resume must be a non-negative integer (0 is a valid pin)")
 
 
+def validate_research_budgets(section: Any) -> MutableMapping[str, Any]:
+    if section is None:
+        section = commented(SHIPPED_RESEARCH_BUDGETS)
+    if not isinstance(section, MutableMapping):
+        die("research_budgets must be a mapping")
+    reject_unknown_keys(section, set(ROLES), "research_budgets")
+    for role in ROLES:
+        value = section.get(role, SHIPPED_RESEARCH_BUDGETS[role])
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            die(f"research_budgets.{role} must be a non-negative integer")
+        if role not in SEARCH_CAPABLE_ROLES and value:
+            die(
+                f"research_budgets.{role} must be 0: {role} is retrieval-only under "
+                "policies/research-authority.md"
+            )
+    return section
+
+
 def validate_document(document: Any) -> MutableMapping[str, Any]:
     if not isinstance(document, MutableMapping):
         die(f"{CONFIG} must be a YAML mapping")
     reject_unknown_keys(
         document,
-        {"version", "extensions", "role_models", "role_timeouts", "run_budgets"},
+        {
+            "version",
+            "extensions",
+            "role_models",
+            "role_timeouts",
+            "run_budgets",
+            "research_budgets",
+        },
         str(CONFIG),
     )
     if document.get("version") != 1:
@@ -354,6 +389,7 @@ def validate_document(document: Any) -> MutableMapping[str, Any]:
     validate_models(document.get("role_models"))
     validate_timeouts(document.get("role_timeouts"))
     validate_budgets(document.get("run_budgets"))
+    validate_research_budgets(document.get("research_budgets"))
     return document
 
 
@@ -366,6 +402,7 @@ def load_document(*, allow_missing: bool = False) -> MutableMapping[str, Any]:
         document["role_models"] = commented(SHIPPED_MODELS)
         document["role_timeouts"] = commented(SHIPPED_TIMEOUTS)
         document["run_budgets"] = commented(SHIPPED_BUDGETS)
+        document["research_budgets"] = commented(SHIPPED_RESEARCH_BUDGETS)
         return document
     try:
         document = yaml_engine().load(CONFIG.read_text())
@@ -489,6 +526,21 @@ def show_budgets(document: MutableMapping[str, Any]) -> None:
     )
 
 
+def show_research(section: MutableMapping[str, Any] | None) -> None:
+    values = validate_research_budgets(section)
+    origin = "configured" if section is not None else "shipped default"
+    print(f"Research authority from {CONFIG} ({origin}; allow-by-default venues):")
+    print("Role       capability       search budget")
+    for role in ROLES:
+        capability = "search+retrieve" if role in SEARCH_CAPABLE_ROLES else "retrieve-only"
+        budget = values.get(role, SHIPPED_RESEARCH_BUDGETS[role])
+        print(f"  {role:<9} {capability:<16} {budget:>13}")
+    print(
+        "Installed MCP servers and plugins remain available unless a project or "
+        "phase explicitly narrows them. See policies/research-authority.md."
+    )
+
+
 def show(document: MutableMapping[str, Any], scope: str) -> None:
     if scope in ("all", "models"):
         show_models(document["role_models"])
@@ -500,6 +552,10 @@ def show(document: MutableMapping[str, Any], scope: str) -> None:
         print()
     if scope in ("all", "budgets"):
         show_budgets(document)
+    if scope == "all":
+        print()
+    if scope in ("all", "research"):
+        show_research(document.get("research_budgets"))
 
 
 def set_models(arguments: list[str]) -> None:
@@ -582,12 +638,15 @@ def reset(scope: str) -> None:
         document["role_timeouts"] = commented(SHIPPED_TIMEOUTS)
     if scope in ("budgets", "all"):
         document["run_budgets"] = commented(SHIPPED_BUDGETS)
+    if scope in ("research", "all"):
+        document["research_budgets"] = commented(SHIPPED_RESEARCH_BUDGETS)
     atomic_dump(document)
     show(load_document(), "all" if scope == "all" else scope)
 
 
 @dataclass(frozen=True)
 class PreflightTarget:
+    role: str
     cli: str
     model: str | None
     effort: str | None
@@ -603,9 +662,9 @@ def preflight_targets(
             continue
         write_enabled = role in WRITE_ENABLED_ROLES
         if model in CLAUDE_MODELS:
-            target = PreflightTarget("claude", CLAUDE_MODELS[model], effort, write_enabled)
+            target = PreflightTarget(role, "claude", CLAUDE_MODELS[model], effort, write_enabled)
         else:
-            target = PreflightTarget("codex", CODEX_MODELS[model], effort, write_enabled)
+            target = PreflightTarget(role, "codex", CODEX_MODELS[model], effort, write_enabled)
         targets.setdefault(target, []).append(role)
     return targets
 
@@ -618,6 +677,38 @@ def role_access(role: str) -> str:
     than an argument an orchestrator supplies.
     """
     return "workspace-write" if role in WRITE_ENABLED_ROLES else "read-only"
+
+
+def claude_tools(role: str) -> str:
+    tools = [CLAUDE_TOOLS[role_access(role)], *CLAUDE_RETRIEVAL_TOOLS]
+    if role in SEARCH_CAPABLE_ROLES:
+        tools.extend(CLAUDE_SEARCH_TOOLS)
+    return ",".join(tools)
+
+
+def research_directive(role: str, section: MutableMapping[str, Any] | None) -> str:
+    values = validate_research_budgets(section)
+    budget = int(values.get(role, SHIPPED_RESEARCH_BUDGETS[role]))
+    if role in SEARCH_CAPABLE_ROLES:
+        authority = (
+            "You may originate web or installed-resource searches and retrieve known "
+            f"resources. Your originating-search budget is {budget} queries."
+        )
+    else:
+        authority = (
+            "You may retrieve resources identified by the approved plan or briefs, plus "
+            "same-host structural neighbors needed to interpret them. Do not originate "
+            "searches; your originating-search budget is 0. If the named material is "
+            "insufficient, report an authority-insufficiency advisory."
+        )
+    return (
+        "\n\n## Research authority\n\n"
+        + authority
+        + " Installed MCP servers and plugins are available by default unless an explicit "
+        "project or phase rule narrows them. External research is GET-only; never place "
+        "repository or candidate content in outbound queries, forms, bodies, uploads, or "
+        "tool arguments. Follow policies/research-authority.md.\n"
+    )
 
 
 def cli_program(cli: str) -> str:
@@ -674,7 +765,7 @@ def build_claude_command(
     prompt: str,
     model_slug: str | None,
     effort: str | None,
-    access: str,
+    role: str,
     max_turns: int,
     schema_kind: str | None,
     resume_session: str | None,
@@ -696,7 +787,7 @@ def build_claude_command(
             "--permission-mode",
             "dontAsk",
             "--allowedTools",
-            CLAUDE_TOOLS[access],
+            claude_tools(role),
             "--output-format",
             "stream-json",
             "--verbose",
@@ -758,17 +849,19 @@ def build_codex_command(
     if schema_kind:
         command.extend(("--output-schema", write_output_schema(output_file, schema_kind)))
     command.extend(codex_routing_flags(model_slug, effort))
+    command.extend(CODEX_WEB_MODE_FLAG)
     command.append(prompt)
     return command
 
 
 def build_watch_command(
-    arguments: argparse.Namespace, section: MutableMapping[str, Any]
+    arguments: argparse.Namespace, document: MutableMapping[str, Any]
 ) -> list[str]:
     """Generate the delegated invocation for one role dispatch."""
     prompt = Path(arguments.prompt_file).read_text(encoding="utf-8")
     if not prompt.strip():
         die(f"prompt file is empty: {arguments.prompt_file}")
+    prompt += research_directive(arguments.role, document.get("research_budgets"))
     effort = None if arguments.effort == "default" else arguments.effort
     model, effort = validate_model_fields(
         {"model": arguments.model, **({"effort": effort} if effort else {})},
@@ -787,8 +880,8 @@ def build_watch_command(
             prompt=prompt,
             model_slug=CLAUDE_MODELS[model],
             effort=effort,
-            access=access,
-            max_turns=section["roles"][arguments.role]["claude_max_turns"],
+            role=arguments.role,
+            max_turns=document["role_timeouts"]["roles"][arguments.role]["claude_max_turns"],
             schema_kind=schema_kind,
             resume_session=arguments.resume_session,
         )
@@ -835,7 +928,7 @@ def run_claude_preflight(target: PreflightTarget, workdir: str) -> None:
         "--permission-mode",
         "dontAsk",
         "--allowedTools",
-        CLAUDE_TOOLS["workspace-write" if target.write_enabled else "read-only"],
+        claude_tools(target.role),
         # A one-shot `json` envelope suffices for a sentinel probe; it cannot
         # support the idle watchdog production work needs.
         "--output-format",
@@ -880,6 +973,7 @@ def run_codex_preflight(target: PreflightTarget, workdir: str) -> None:
             "workspace-write" if target.write_enabled else "read-only",
             "-c",
             'approval_policy="never"',
+            *CODEX_WEB_MODE_FLAG,
             "-C",
             workdir,
             "--output-last-message",
@@ -1433,13 +1527,13 @@ def record_dispatch_topology(
     return None
 
 
-def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> int:
+def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> int:
     if os.environ.get("KICKOFF_DELEGATION_DEPTH"):
         die(
             "KICKOFF_DELEGATION_DEPTH is set: this session is itself a delegated "
             "role and may not delegate again; run the role natively"
         )
-    command = build_watch_command(arguments, section)
+    command = build_watch_command(arguments, document)
     program_index = validate_watch_routing(arguments, command)
     command, child_environment = prepare_watched_command(arguments, command, program_index)
     registration = validate_telemetry_registration(arguments)
@@ -1470,11 +1564,11 @@ def watch(arguments: argparse.Namespace, section: MutableMapping[str, Any]) -> i
         except TelemetryError as exc:
             telemetry_complete = False
             telemetry_errors.append(f"intelligence-start: {exc}")
-    role_config = section["roles"][arguments.role]
+    role_config = document["role_timeouts"]["roles"][arguments.role]
     first_limit = (
         arguments.first_event_timeout
         if arguments.first_event_timeout is not None
-        else section["first_event_timeout_seconds"]
+        else document["role_timeouts"]["first_event_timeout_seconds"]
     )
     idle_limit = (
         arguments.idle_timeout
@@ -1990,7 +2084,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     show_parser = subparsers.add_parser("show")
     show_parser.add_argument(
-        "scope", nargs="?", choices=("all", "models", "timeouts", "budgets"), default="all"
+        "scope",
+        nargs="?",
+        choices=("all", "models", "research", "timeouts", "budgets"),
+        default="all",
     )
 
     set_parser = subparsers.add_parser("set-models")
@@ -2000,7 +2097,7 @@ def build_parser() -> argparse.ArgumentParser:
     set_budgets_parser.add_argument("arguments", nargs=argparse.REMAINDER)
 
     reset_parser = subparsers.add_parser("reset")
-    reset_parser.add_argument("scope", choices=("models", "timeouts", "budgets", "all"))
+    reset_parser.add_argument("scope", choices=("models", "research", "timeouts", "budgets", "all"))
 
     subparsers.add_parser("preflight")
     subparsers.add_parser("recommend-timeouts")
@@ -2076,9 +2173,9 @@ def main() -> None:
     elif arguments.action == "preflight":
         preflight(document["role_models"])
     elif arguments.action == "watch":
-        raise SystemExit(watch(arguments, document["role_timeouts"]))
+        raise SystemExit(watch(arguments, document))
     elif arguments.action == "render-command":
-        command = build_watch_command(arguments, document["role_timeouts"])
+        command = build_watch_command(arguments, document)
         validate_watch_routing(arguments, command)
         if arguments.json:
             print(json.dumps(command))

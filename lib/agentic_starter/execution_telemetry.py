@@ -30,11 +30,22 @@ TRACE_SCHEMA = "agentic_starter.execution_trace.v1"
 RUNTIME_TRACE_SCHEMA = "agentic_starter.execution_trace.runtime.v1"
 RUNTIME_SPAN_SCHEMA = "agentic_starter.execution_span.runtime.v1"
 MANAGED_RUN_SCHEMA = "agentic_starter.managed_run.runtime.v1"
+PARK_EVENT_SCHEMA = "agentic_starter.operator_park_event.v1"
 
 CATEGORIES = frozenset({"run", "intelligence", "gate", "reconciliation", "wait"})
 OUTCOMES = frozenset({"success", "error", "timeout", "cancelled", "interrupted"})
 SCOPES = frozenset({"engine", "project", "catalog"})
 TIMEOUT_KINDS = frozenset({"command", "first-event", "idle", "hard"})
+PARK_REASONS = frozenset(
+    {
+        "approval",
+        "decision",
+        "manual-check",
+        "environment-action",
+        "acceptance",
+        "required-input",
+    }
+)
 
 _ID_RE = re.compile(r"^[0-9a-f]{32}$")
 _CYCLE_RE = re.compile(r"^[0-9a-f]{8}$")
@@ -79,6 +90,9 @@ _SPAN_OPTIONAL = frozenset(
 )
 _TRACE_KEYS = frozenset(
     {"schema", "trace_id", "finalized_at", "scope", "scope_id", "root_span_id", "spans"}
+)
+_PARK_EVENT_KEYS = frozenset(
+    {"schema", "event", "park_id", "phase_id", "reason", "at", "boot_id", "monotonic_ns"}
 )
 _METADATA_KEYS = (
     "harness",
@@ -192,6 +206,14 @@ class ObservedResult:
     error_code: str | None = None
 
 
+@dataclasses.dataclass(frozen=True)
+class ParkHandle:
+    park_id: str
+    phase_id: str
+    reason: str
+    opened_at: str
+
+
 def _utc_text(value: dt.datetime) -> str:
     if value.tzinfo is None or value.utcoffset() is None:
         raise ValidationError("UTC timestamps must be timezone-aware")
@@ -208,6 +230,12 @@ def _parse_utc(value: object, field: str) -> dt.datetime:
     if parsed.tzinfo is None or parsed.utcoffset() != dt.timedelta(0):
         raise ValidationError(f"{field} must use UTC")
     return parsed
+
+
+def _utc_nanoseconds(value: object, field: str) -> int:
+    """Convert a validated UTC timestamp without floating-point rounding."""
+    delta = _parse_utc(value, field) - dt.datetime(1970, 1, 1, tzinfo=dt.UTC)
+    return (delta.days * 86_400 + delta.seconds) * 1_000_000_000 + delta.microseconds * 1_000
 
 
 def _require_exact_keys(
@@ -409,6 +437,33 @@ def validate_bundle(bundle: Mapping[str, Any]) -> dict[str, Any]:
     return dict(bundle)
 
 
+def validate_park_event(event: Mapping[str, Any]) -> dict[str, Any]:
+    if not isinstance(event, Mapping):
+        raise ValidationError("operator park event must be an object")
+    _require_exact_keys(event, _PARK_EVENT_KEYS, frozenset(), "operator park event")
+    if event["schema"] != PARK_EVENT_SCHEMA:
+        raise ValidationError(f"operator park schema must be {PARK_EVENT_SCHEMA}")
+    if event["event"] not in {"open", "close"}:
+        raise ValidationError("operator park event must be open or close")
+    _require_id(event["park_id"], "park_id")
+    if not isinstance(event["phase_id"], str) or not _PHASE_RE.fullmatch(event["phase_id"]):
+        raise ValidationError("phase_id must be a dotted numeric phase id")
+    if event["reason"] not in PARK_REASONS:
+        raise ValidationError("unknown operator park reason")
+    _parse_utc(event["at"], "at")
+    boot_id = event["boot_id"]
+    if (
+        not isinstance(boot_id, str)
+        or not boot_id
+        or len(boot_id) > 256
+        or "\n" in boot_id
+        or "\r" in boot_id
+    ):
+        raise ValidationError("boot_id must be a bounded single-line identity")
+    _require_int(event["monotonic_ns"], "monotonic_ns", minimum=0)
+    return dict(event)
+
+
 def telemetry_state_root() -> Path:
     explicit = os.environ.get("AGENTIC_STARTER_EXECUTION_TELEMETRY_DIR")
     if explicit:
@@ -513,6 +568,276 @@ def _trace_lock(trace_dir: Path) -> Iterator[None]:
                 fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
     except OSError as exc:
         raise TelemetryError("cannot lock telemetry trace") from exc
+
+
+def park_ledger_path(engine_root: Path | str) -> Path:
+    return telemetry_state_root() / repo_key(engine_root) / "operator-parks.jsonl"
+
+
+def _park_state_path(engine_root: Path | str, phase_id: str) -> Path:
+    if not _PHASE_RE.fullmatch(phase_id):
+        raise ValidationError("phase_id must be a dotted numeric phase id")
+    state_root = telemetry_state_root() / repo_key(engine_root) / "operator-parks"
+    return state_root / f"phase-{phase_id}.json"
+
+
+def validate_park_ledger(ledger: Path | str) -> list[dict[str, Any]]:
+    ledger_path = Path(ledger)
+    if not ledger_path.exists():
+        return []
+    try:
+        raw = ledger_path.read_bytes()
+    except OSError as exc:
+        raise TelemetryError(f"cannot read operator park ledger: {ledger_path}") from exc
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValidationError("operator park ledger is not valid utf-8") from exc
+    if raw and not raw.endswith(b"\n"):
+        raise ValidationError("operator park ledger has an unterminated final JSONL row")
+    events: list[dict[str, Any]] = []
+    states: dict[str, str] = {}
+    identities: dict[str, tuple[str, str]] = {}
+    for number, line in enumerate(text.splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            event = validate_park_event(json.loads(line))
+        except (json.JSONDecodeError, ValidationError) as exc:
+            raise ValidationError(f"invalid operator park ledger row {number}: {exc}") from exc
+        park_id = event["park_id"]
+        identity = (event["phase_id"], event["reason"])
+        if event["event"] == "open":
+            if park_id in states:
+                raise ValidationError(f"duplicate operator park open in row {number}")
+            states[park_id] = "open"
+            identities[park_id] = identity
+        else:
+            if states.get(park_id) != "open":
+                raise ValidationError(f"operator park close has no open in row {number}")
+            if identities[park_id] != identity:
+                raise ValidationError(f"operator park close identity changed in row {number}")
+            states[park_id] = "closed"
+        events.append(event)
+    return events
+
+
+def _park_intervals(events: Sequence[Mapping[str, Any]], phase_id: str) -> list[dict[str, Any]]:
+    opened: dict[str, Mapping[str, Any]] = {}
+    closed: dict[str, Mapping[str, Any]] = {}
+    for event in events:
+        if event["phase_id"] != phase_id:
+            continue
+        if event["event"] == "open":
+            opened[event["park_id"]] = event
+        else:
+            closed[event["park_id"]] = event
+    intervals: list[dict[str, Any]] = []
+    for park_id, start in opened.items():
+        end = closed.get(park_id)
+        row: dict[str, Any] = {
+            "park_id": park_id,
+            "phase_id": phase_id,
+            "reason": start["reason"],
+            "opened_at": start["at"],
+            "closed_at": end["at"] if end else None,
+            "duration_ns": None,
+            "exact": False,
+            "method": "open",
+        }
+        if end is not None:
+            if same_boot(str(start["boot_id"]), str(end["boot_id"])):
+                duration = int(end["monotonic_ns"]) - int(start["monotonic_ns"])
+                if duration < 0:
+                    raise ValidationError("operator park monotonic clock moved backward")
+                row.update(duration_ns=duration, exact=True, method="monotonic")
+            else:
+                duration = _utc_nanoseconds(end["at"], "at") - _utc_nanoseconds(start["at"], "at")
+                if duration >= 0:
+                    row.update(duration_ns=duration, exact=False, method="calendar-cross-boot")
+                else:
+                    row.update(method="unavailable-clock-order")
+            row["_start_boot"] = start["boot_id"]
+            row["_start_monotonic_ns"] = start["monotonic_ns"]
+            row["_end_monotonic_ns"] = end["monotonic_ns"]
+        intervals.append(row)
+    return sorted(intervals, key=lambda item: (item["opened_at"], item["park_id"]))
+
+
+def _append_park_event(ledger: Path, event: Mapping[str, Any]) -> None:
+    validate_park_event(event)
+    try:
+        ledger.parent.mkdir(parents=True, exist_ok=True)
+        with ledger.open("a+b") as stream:
+            fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+            stream.seek(0)
+            raw = stream.read()
+            if raw and not raw.endswith(b"\n"):
+                raise ValidationError("operator park ledger has an unterminated final JSONL row")
+            stream.seek(0, os.SEEK_END)
+            stream.write(json.dumps(event, sort_keys=True, separators=(",", ":")).encode() + b"\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        _fsync_directory(ledger.parent)
+    except OSError as exc:
+        raise TelemetryError("cannot append operator park ledger") from exc
+
+
+def open_operator_park(
+    *,
+    engine_root: Path | str,
+    phase_id: str,
+    reason: str,
+    clock: Clock | None = None,
+) -> ParkHandle:
+    if reason not in PARK_REASONS:
+        raise ValidationError("unknown operator park reason")
+    state_path = _park_state_path(engine_root, phase_id)
+    ledger = park_ledger_path(engine_root)
+    lock_dir = ledger.parent / "operator-parks-lock"
+    current_clock = clock or SystemClock()
+    with _trace_lock(lock_dir):
+        events = validate_park_ledger(ledger)
+        open_rows = [row for row in _park_intervals(events, phase_id) if row["closed_at"] is None]
+        if len(open_rows) > 1:
+            raise ValidationError("phase has multiple open operator parks")
+        if open_rows:
+            row = open_rows[0]
+            if row["reason"] != reason:
+                raise ValidationError("phase is already parked for a different reason")
+            opening = next(
+                event
+                for event in events
+                if event["park_id"] == row["park_id"] and event["event"] == "open"
+            )
+            _atomic_json(state_path, opening)
+            return ParkHandle(row["park_id"], phase_id, reason, row["opened_at"])
+        if state_path.exists():
+            raise ValidationError("operator park runtime state has no matching ledger open")
+        park_id = uuid.uuid4().hex
+        event = {
+            "schema": PARK_EVENT_SCHEMA,
+            "event": "open",
+            "park_id": park_id,
+            "phase_id": phase_id,
+            "reason": reason,
+            "at": _utc_text(current_clock.utc_now()),
+            "boot_id": current_clock.boot_id(),
+            "monotonic_ns": current_clock.monotonic_ns(),
+        }
+        _append_park_event(ledger, event)
+        _atomic_json(state_path, event)
+        return ParkHandle(park_id, phase_id, reason, event["at"])
+
+
+def close_operator_park(
+    *,
+    engine_root: Path | str,
+    phase_id: str,
+    park_id: str | None = None,
+    clock: Clock | None = None,
+) -> dict[str, Any]:
+    state_path = _park_state_path(engine_root, phase_id)
+    ledger = park_ledger_path(engine_root)
+    lock_dir = ledger.parent / "operator-parks-lock"
+    current_clock = clock or SystemClock()
+    with _trace_lock(lock_dir):
+        events = validate_park_ledger(ledger)
+        rows = _park_intervals(events, phase_id)
+        open_rows = [row for row in rows if row["closed_at"] is None]
+        if not open_rows:
+            if park_id is not None:
+                repeated = next((row for row in rows if row["park_id"] == park_id), None)
+                if repeated is not None and repeated["closed_at"] is not None:
+                    with contextlib.suppress(FileNotFoundError):
+                        state_path.unlink()
+                    return {
+                        key: value for key, value in repeated.items() if not key.startswith("_")
+                    }
+            raise ValidationError("phase has no open operator park")
+        if len(open_rows) > 1:
+            raise ValidationError("phase has multiple open operator parks")
+        row = open_rows[0]
+        if park_id is not None and row["park_id"] != _require_id(park_id, "park_id"):
+            raise ValidationError("park_id does not identify the phase's open park")
+        event = {
+            "schema": PARK_EVENT_SCHEMA,
+            "event": "close",
+            "park_id": row["park_id"],
+            "phase_id": phase_id,
+            "reason": row["reason"],
+            "at": _utc_text(current_clock.utc_now()),
+            "boot_id": current_clock.boot_id(),
+            "monotonic_ns": current_clock.monotonic_ns(),
+        }
+        _append_park_event(ledger, event)
+        with contextlib.suppress(FileNotFoundError):
+            state_path.unlink()
+        closed = next(
+            item
+            for item in _park_intervals(validate_park_ledger(ledger), phase_id)
+            if item["park_id"] == row["park_id"]
+        )
+        return {key: value for key, value in closed.items() if not key.startswith("_")}
+
+
+def phase_park_summary(
+    *, engine_root: Path | str, phase_id: str, ledger: Path | str | None = None
+) -> dict[str, Any]:
+    events = validate_park_ledger(ledger or park_ledger_path(engine_root))
+    internal = _park_intervals(events, phase_id)
+    public = [
+        {key: value for key, value in row.items() if not key.startswith("_")} for row in internal
+    ]
+    if not internal:
+        return {
+            "phase_id": phase_id,
+            "intervals": [],
+            "total_duration_ns": 0,
+            "total_exact": True,
+            "total_method": "none",
+            "open": False,
+        }
+    if any(row["closed_at"] is None or row["duration_ns"] is None for row in internal):
+        return {
+            "phase_id": phase_id,
+            "intervals": public,
+            "total_duration_ns": None,
+            "total_exact": False,
+            "total_method": "incomplete",
+            "open": any(row["closed_at"] is None for row in internal),
+        }
+    if all(row["exact"] for row in internal):
+        groups: list[tuple[str, list[tuple[int, int]]]] = []
+        for row in internal:
+            boot = str(row["_start_boot"])
+            group = next((item for item in groups if same_boot(item[0], boot)), None)
+            if group is None:
+                group = (boot, [])
+                groups.append(group)
+            group[1].append((int(row["_start_monotonic_ns"]), int(row["_end_monotonic_ns"])))
+        total = sum(_interval_union(intervals) for _, intervals in groups)
+        method = "monotonic-union"
+        exact = True
+    else:
+        utc_intervals = [
+            (
+                _utc_nanoseconds(row["opened_at"], "opened_at"),
+                _utc_nanoseconds(row["closed_at"], "closed_at"),
+            )
+            for row in internal
+        ]
+        total = _interval_union(utc_intervals)
+        method = "calendar-union-cross-boot"
+        exact = False
+    return {
+        "phase_id": phase_id,
+        "intervals": public,
+        "total_duration_ns": total,
+        "total_exact": exact,
+        "total_method": method,
+        "open": False,
+    }
 
 
 def _load_runtime(engine_root: Path | str, trace_id: str) -> tuple[Path, dict[str, Any]]:

@@ -4,6 +4,11 @@ Every phase declares its acceptance criteria as **verifiable shell commands** or
 
 Phases that touch a user-facing surface also carry an interactive try-it-yourself protocol per [`user-demo-protocols.md`](user-demo-protocols.md) — a complement to the empirical checks here, not a substitute.
 
+The evidentiary discipline around those checks—reading grep matches before
+calling them findings, naming blind spots, rejecting blacklist-as-proof, and
+testing sign-inverting proxies—is governed by
+[`verification-discipline.md`](verification-discipline.md).
+
 ## What counts as an acceptance criterion
 
 A criterion is acceptable when it is:

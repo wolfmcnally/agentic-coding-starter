@@ -72,8 +72,19 @@ These are the universals the template ships with. A project derived from this te
   [`../policies/orchestration-evidence.md`](../policies/orchestration-evidence.md)).
   Complete first reviews produce stable findings; revision reviews receive
   causal packets and rebase when authority, risk, scope, or continuity
-  changes. Iteration uses focused checks; acceptance ends with one complete
-  final gate against the unchanged approved candidate.
+  changes. Iteration uses focused checks; close runs a complete gate against
+  the unchanged approved candidate, finalizes tracked bookkeeping, then runs
+  a second bare handoff gate against the actual delivered tree. No tracked
+  write follows a successful handoff gate.
+- **Research authority follows the role** (see
+  [`../policies/research-authority.md`](../policies/research-authority.md)).
+  Planner/reviewer may search and retrieve; coder/critic retrieve named
+  authorities plus same-host structural neighbors. Installed MCP servers and
+  plugins are allow-by-default but never presumed present.
+- **Operator-input parks are measured separately** (see
+  [`../policies/execution-telemetry.md`](../policies/execution-telemetry.md)).
+  Every interval and its overlap-safe total appear in the END/report; an open
+  interval blocks close.
 - **Repository-owned toolchain contract** (see
   [`../policies/build-gates.md`](../policies/build-gates.md)). Setup,
   full/focused testing, runtime selection, metadata, locking, tests, and callers
