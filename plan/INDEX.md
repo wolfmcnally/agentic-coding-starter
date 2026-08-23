@@ -100,7 +100,7 @@ Shipped files are linked. A file a future phase will create may also appear, as 
 | Top-level agent guidance             | [`../CLAUDE.md`](../CLAUDE.md)                            |
 | Activity log                         | [`../LOG.md`](../LOG.md)                                  |
 | Lessons and maintenance flywheel     | [`../briefs/harness-self-improvement.md`](../briefs/harness-self-improvement.md), [`../policies/lessons.md`](../policies/lessons.md), [`../bin/lessons`](../bin/lessons), [`../bin/check-catalogs`](../bin/check-catalogs), [`../.claude/skills/sweep/SKILL.md`](../.claude/skills/sweep/SKILL.md) |
-| Toolchain contract                  | [`../bin/setup`](../bin/setup), [`../bin/test`](../bin/test), [`../bin/check`](../bin/check), [`../bin/python`](../bin/python), [`../policies/build-gates.md`](../policies/build-gates.md) |
+| Toolchain contract                  | [`../bin/setup`](../bin/setup), [`../bin/test`](../bin/test), [`../bin/check`](../bin/check), [`../bin/check-receipt`](../bin/check-receipt), [`../bin/python`](../bin/python), [`../policies/build-gates.md`](../policies/build-gates.md) |
 | Optional tracked hooks              | [`../.githooks/pre-push`](../.githooks/pre-push), [`../bin/install-hooks`](../bin/install-hooks) |
 | Phase orchestrator                   | [`../.claude/skills/kickoff/SKILL.md`](../.claude/skills/kickoff/SKILL.md) |
 | Candidate and evidence managers      | [`../bin/kickoff-tree-id`](../bin/kickoff-tree-id), [`../bin/kickoff-evidence`](../bin/kickoff-evidence) |

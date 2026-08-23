@@ -47,7 +47,7 @@ if [[ ! -x "$repo_root/bin/test" ]]; then
 fi
 
 for evidence_executable in \
-  kickoff-tree-id kickoff-evidence kickoff-config execution-telemetry \
+  kickoff-tree-id kickoff-evidence kickoff-config check-receipt execution-telemetry \
   check-execution-dashboards check-harness-parity check-toolchain-callers \
   lessons check-catalogs check-hooks-installed check-shell-syntax new-name; do
   if [[ ! -x "$repo_root/bin/$evidence_executable" ]]; then
@@ -74,7 +74,7 @@ run_lint() {
     cd "$project_root"
     run_gate lint uv run --locked "${python_toolchain_uv_args[@]}" ruff check \
       example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence \
-      ../bin/kickoff-tree-id ../bin/execution-telemetry \
+      ../bin/kickoff-tree-id ../bin/check-receipt ../bin/execution-telemetry \
       ../bin/check-execution-dashboards ../bin/check-harness-parity \
       ../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs \
       ../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name \
@@ -87,7 +87,7 @@ run_format() {
     cd "$project_root"
     run_gate format uv run --locked "${python_toolchain_uv_args[@]}" ruff format --check \
       example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence \
-      ../bin/kickoff-tree-id ../bin/execution-telemetry \
+      ../bin/kickoff-tree-id ../bin/check-receipt ../bin/execution-telemetry \
       ../bin/check-execution-dashboards ../bin/check-harness-parity \
       ../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs \
       ../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name \
@@ -102,17 +102,91 @@ run_test() {
 run_policy() {
   (
     cd "$repo_root"
-    run_gate policy-harness-parity ./bin/check-harness-parity
-    run_gate policy-toolchain-callers ./bin/check-toolchain-callers
-    run_gate policy-execution-dashboards ./bin/check-execution-dashboards
-    run_gate policy-config ./bin/kickoff-config show
-    run_gate policy-catalogs ./bin/check-catalogs
-    run_gate policy-lessons ./bin/lessons validate
-    run_gate policy-hooks-installed ./bin/check-hooks-installed
-    run_gate policy-shell-syntax ./bin/check-shell-syntax
-    run_gate policy-anonymization ./bin/check-anonymization.sh
+    run_gate policy-harness-parity ./bin/check-harness-parity || return $?
+    run_gate policy-toolchain-callers ./bin/check-toolchain-callers || return $?
+    run_gate policy-execution-dashboards ./bin/check-execution-dashboards || return $?
+    run_gate policy-config ./bin/kickoff-config show || return $?
+    run_gate policy-catalogs ./bin/check-catalogs || return $?
+    run_gate policy-lessons ./bin/lessons validate || return $?
+    run_gate policy-hooks-installed ./bin/check-hooks-installed || return $?
+    run_gate policy-shell-syntax ./bin/check-shell-syntax || return $?
+    run_gate policy-anonymization ./bin/check-anonymization.sh || return $?
     echo "CHECK policy PASS"
   )
+}
+
+run_all() {
+  run_lint || return $?
+  run_format || return $?
+  run_test || return $?
+  run_policy || return $?
+}
+
+run_all_with_receipt() {
+  local receipt_tool="$repo_root/bin/check-receipt"
+  local candidate_before
+  local candidate_after
+  local candidate_exit
+  local log_path
+  local gate_exit
+  local log_exit
+  local final_exit
+  local outcome
+  local -a pipeline_status
+
+  candidate_before="$("$receipt_tool" candidate --root "$repo_root")"
+  log_path="$("$receipt_tool" begin --root "$repo_root" --candidate "$candidate_before")"
+  echo "CHECK RECEIPT LOG ${log_path#"$repo_root"/}"
+
+  set +e
+  run_all 2>&1 | tee "$log_path"
+  pipeline_status=("${PIPESTATUS[@]}")
+  set -e
+  gate_exit="${pipeline_status[0]}"
+  log_exit="${pipeline_status[1]}"
+
+  set +e
+  candidate_after="$("$receipt_tool" candidate --root "$repo_root")"
+  candidate_exit=$?
+  set -e
+
+  final_exit="$gate_exit"
+  outcome="failed"
+  if [[ "$log_exit" -ne 0 ]]; then
+    final_exit="$log_exit"
+    outcome="log-failed"
+    echo "CHECK ERROR durable log write failed (exit $log_exit): $log_path" >&2
+  elif [[ "$candidate_exit" -ne 0 ]]; then
+    candidate_after="ERROR"
+    final_exit=1
+    outcome="identity-error"
+    echo "CHECK ERROR could not identify the candidate after the full gate" >&2
+  elif [[ "$candidate_before" != "$candidate_after" ]]; then
+    final_exit=1
+    outcome="candidate-drift"
+    echo "CHECK ERROR candidate changed during the full gate" >&2
+  elif [[ "$gate_exit" -eq 0 ]]; then
+    final_exit=0
+    outcome="passed"
+  fi
+
+  set +e
+  "$receipt_tool" complete \
+    --root "$repo_root" \
+    --log "$log_path" \
+    --candidate-before "$candidate_before" \
+    --candidate-after "$candidate_after" \
+    --exit-code "$final_exit" \
+    --outcome "$outcome"
+  local receipt_exit=$?
+  set -e
+  if [[ "$receipt_exit" -ne 0 ]]; then
+    echo "CHECK ERROR could not persist the full-gate result (exit $receipt_exit)" >&2
+    if [[ "$final_exit" -eq 0 ]]; then
+      return "$receipt_exit"
+    fi
+  fi
+  return "$final_exit"
 }
 
 cd "$repo_root"
@@ -123,11 +197,5 @@ case "$gate_mode" in
   format) run_format ;;
   test) run_test ;;
   policy) run_policy ;;
-  all)
-    run_lint
-    run_format
-    run_test
-    run_policy
-    echo "CHECK ALL PASS"
-    ;;
+  all) run_all_with_receipt ;;
 esac

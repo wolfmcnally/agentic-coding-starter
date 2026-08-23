@@ -112,9 +112,12 @@ The template is acceptable when:
 - A user clones this repo and invokes `/kickoff` in Claude Code or `$kickoff` in Codex — and the orchestrator picks up Phase 1, walks through plan → plan-review → code → code-review → build → log, and produces a START/END pair in `LOG.md` with a non-empty Files changed section.
 - A user invokes `/stamp ~/some-new-dir "build a small CLI that fetches the time from an NTP server"` in Claude Code or `$stamp ~/some-new-dir "build a small CLI that fetches the time from an NTP server"` in Codex — and ends up with a populated new directory that itself satisfies the bullet above, with project-specific naming everywhere references appear.
 - The example Python project exists, and the atomic repository-owned
-  `./bin/setup`, `./bin/test`, `./bin/check`, and `./bin/python` interface
-  works from any directory using `project/.python-version`,
+  `./bin/setup`, `./bin/test`, `./bin/check`, `./bin/check-receipt`, and
+  `./bin/python` interface works from any directory using `project/.python-version`,
   `project/pyproject.toml`, and `project/uv.lock`.
+- Every full gate retains a complete durable log and exact
+  candidate/environment receipt; the optional pre-push hook reuses it only for
+  a clean current `HEAD` and otherwise runs the authoritative full gate.
 - `bin/kickoff-tree-id` identifies tracked, deleted, mode-changed, symlinked,
   and nonignored-untracked candidate state; `bin/kickoff-evidence` validates
   run-scoped authority, change, finding, packet, and final-gate evidence.

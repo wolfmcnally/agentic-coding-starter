@@ -39,8 +39,9 @@ Before changing anything, verify:
    - `.claude/skills/kickoff/SKILL.md`, `.claude/skills/methodology/SKILL.md`, and `.claude/skills/roles/SKILL.md` exist.
    - `bin/kickoff-config` exists and is executable.
    - `bin/kickoff-tree-id` and `bin/kickoff-evidence` exist and are executable.
-   - `bin/setup`, `bin/test`, and `bin/check` exist and are executable; the
-     Python profile also has executable `bin/python`.
+   - `bin/setup`, `bin/test`, `bin/check`, and `bin/check-receipt` exist and are
+     executable; `tests/test_check_receipt.py` exists; the Python profile also
+     has executable `bin/python`.
    - `kickoff.yaml` exists and `./bin/kickoff-config show` validates both sections.
    - `.codex/agents/*.toml` has one TOML file per canonical agent.
    - `briefs/BRIEF.md`, `briefs/methodology.md`,
@@ -157,16 +158,19 @@ Copy these files **from this template** into the new project, then run a name su
 - `briefs/incremental-orchestration.md` (verbatim — universal candidate-bound review, revision, verification, and protocol-recovery design)
 - `briefs/deterministic-orchestration.md` (verbatim — universal draft brief: decision criteria for a deterministic kickoff loop once every supported harness has a parity workflow primitive)
 - `briefs/harness-self-improvement.md` (verbatim — the two-tier improvement flywheel the lessons ledger, `sweep`, and the transfer skills implement)
-- `.githooks/pre-push` (verbatim — optional hook; it delegates to the canonical gate and is inert until explicitly installed)
-- `bin/setup`, `bin/test`, `bin/check`, `bin/install-hooks`, and
+- `.githooks/pre-push` (verbatim — optional hook; it reuses only an exact
+  verified full-gate receipt and otherwise delegates to the canonical gate;
+  it is inert until explicitly installed)
+- `bin/setup`, `bin/test`, `bin/check`, `bin/check-receipt`, `bin/install-hooks`, and
   `bin/check-hooks-installed`
   (`install-hooks` and `check-hooks-installed` verbatim; the toolchain entry
   points are adapted together in Step 5)
 - `bin/_python-toolchain` and `bin/python` for a Python target (adapted in
   Step 5; omit both when Python is not a deliverable runtime)
 - `tests/test_toolchain_entrypoints.py` and `tests/test_check.py` (adapted with
-  the toolchain in Step 5), plus `tests/test_install_hooks.py` and
-  `tests/test_check_hooks_installed.py` (verbatim)
+  the toolchain in Step 5), plus `tests/test_check_receipt.py`,
+  `tests/test_install_hooks.py`, and `tests/test_check_hooks_installed.py`
+  (verbatim)
 - `tests/test_kickoff_config.py` (verbatim — universal behavioral coverage for the manager/watchdog contract)
 - `bin/kickoff-tree-id`, `bin/kickoff-evidence`,
   `tests/test_kickoff_tree_id.py`, and `tests/test_kickoff_evidence.py`
@@ -204,7 +208,7 @@ Verify each `readlink <dest>/.agents/skills/<name>` returns the expected target 
 
 The `bin/` directory, its `bin/README.md` convention preamble, and
 `policies/mechanistic-vs-intelligence.md` **are** carried over. The universal
-`bin/setup`, `bin/test`, `bin/check`, `bin/install-hooks`,
+`bin/setup`, `bin/test`, `bin/check`, `bin/check-receipt`, `bin/install-hooks`,
 `bin/check-hooks-installed`, `bin/kickoff-config`, `bin/kickoff-tree-id`,
 `bin/kickoff-evidence`, `bin/lessons`, `bin/check-catalogs`, tracked
 pre-push hook, and human-editable `kickoff.yaml` carry over too; Python targets
@@ -313,6 +317,10 @@ Adapt the complete atomic bundle defined by `policies/build-gates.md`:
   arguments with paths rooted at `<dest>`;
 - `<dest>/bin/check` preserves `all|lint|format|test|policy`, delegates `test`
   to `bin/test`, and runs every authoritative gate;
+- `<dest>/bin/check-receipt` records every full-gate run under the gitignored
+  `.kickoff/check-all/` tree and creates a reusable success receipt only after
+  the exact candidate, environment fingerprint, complete log, and terminal
+  metadata verify;
 - a Python target gets `<dest>/bin/_python-toolchain` plus
   `<dest>/bin/python`; the shared helper selects the managed default or a
   fail-closed authoritative override and runs a target-adapted real dependency
@@ -357,7 +365,8 @@ Node, Rust, or Go. For a Python deliverable, its committed dev dependency group
 and lockfile may cover both deliverable and root methodology tests.
 
 Adapt `<dest>/tests/test_toolchain_entrypoints.py` and
-`<dest>/tests/test_check.py` in the same step so their fake toolchains expect
+`<dest>/tests/test_check.py` in the same step, and carry
+`<dest>/tests/test_check_receipt.py`, so their controlled fixtures expect
 the target's exact setup, dependency probe, full/focused test, runtime, and
 locked-gate commands. Prove valid override selection, invalid override refusal,
 unsupported and self-referential override refusal, probe-failure status
@@ -365,7 +374,9 @@ propagation, exact gate ordering/delegation, cwd independence, child-status
 propagation, and no fallback. These tests must execute the entrypoints with
 controlled stubs; source-text assertions alone do not meet the behavioral
 coverage floor. Prove format failures in staged, unstaged, and nonignored
-untracked candidates. Then change the **Final
+untracked candidates. Prove pre-push reuse only for a clean current `HEAD` with
+an exact candidate/environment receipt and intact log/run digests; every miss,
+corruption, or query error must run the full gate. Then change the **Final
 build gate** examples in `kickoff`, the four canonical agents, `CLAUDE.md`, the
 brief, and Phase 1 to use `./bin/test ...` for focused tests and
 `./bin/check all` for the authoritative suite. No copied raw full-suite list
@@ -397,6 +408,11 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - `<dest>/bin/kickoff-config show` runs; `<dest>/bin/README.md` retains its universal entry but **not** the `### check-anonymization.sh` entry.
 - `<dest>/bin/kickoff-tree-id` and `<dest>/bin/kickoff-evidence` are
   executable; their behavioral tests pass.
+- `<dest>/bin/check-receipt` is executable and
+  `<dest>/tests/test_check_receipt.py` passes; successful full gates retain a
+  complete durable log and exact candidate/environment receipt, while dirty,
+  changed, corrupt, non-`HEAD`, and query-error pushes fail closed to the full
+  gate.
 - `<dest>/bin/lessons validate` and `<dest>/bin/check-catalogs` are executable
   and pass against the fresh destination (empty ledger, synced catalogs, one
   `⬅️`); `<dest>/lessons/.gitkeep` and `<dest>/lessons-archived/.gitkeep`
@@ -408,7 +424,7 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
   committed runtime/dependencies, then passes the target-adapted dependency
   probe.
 - `<dest>/bin/test` runs `tests/test_toolchain_entrypoints.py`,
-  `tests/test_check.py`, `tests/test_install_hooks.py`,
+  `tests/test_check.py`, `tests/test_check_receipt.py`, `tests/test_install_hooks.py`,
   `tests/test_kickoff_config.py`, `tests/test_kickoff_tree_id.py`,
   `tests/test_kickoff_evidence.py`, `tests/test_lessons.py`,
   `tests/test_check_catalogs.py`, and the deliverable tests through

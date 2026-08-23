@@ -101,8 +101,10 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 - [`mechanistic-vs-intelligence.md`](policies/mechanistic-vs-intelligence.md) — the triage rule: route each repeatable task to a deterministic script in `bin/` (consistency, determinism, repeatability) or to intelligence (synthesis, judgment, generativity). Don't burn a model on what a script does better, or script what needs judgment; split mixed tasks at the seam, and stay alert to conspicuous low-effort wall-clock improvements in expensive mechanics.
 - [`build-gates.md`](policies/build-gates.md) — every repo owns an atomic,
   cwd-independent setup/test/check contract backed by its runtime pin,
-  committed metadata, lockfile, behavioral tests, and callers; language values
-  remain repo-specific, failures stay visible, and hook installation is opt-in.
+  committed metadata, lockfile, behavioral tests, callers, and durable
+  candidate-bound full-gate receipts; language values remain repo-specific,
+  failures stay visible, receipt misses fail closed, and hook installation is
+  opt-in.
 - [`fail-closed-resume.md`](policies/fail-closed-resume.md) — mechanizes the doctrine's park/resume rules: fail closed first, five-part failure signatures with an append-only novelty ledger, the seven-condition diagnosed self-resume against `kickoff.yaml`'s `run_budgets.self_resume` budget, prelaunch-correction-is-not-a-resume, mechanistic substitution, sealing as a close-time act, instrument qualification, and the required park/resume record.
 - [`review-lanes.md`](policies/review-lanes.md) — risk-adaptive review intensity and proportional follow-up routing. A phase declares `review_lane: full` (default; all four roles) or `light` (mechanical initial work; plan review skipped); the invocation-only `one-shot` lane (coder → critic) runs well-specified isolated phases at the human's explicit token. The orthogonal `evidence_lane: full|light` axis scales candidate-bound ceremony, fail-closed against authority/irreversible/deploy triggers, with the close seal always mandatory. Every initial implementation gets a code critic; later test- or user-driven corrections use direct, coder-only, or full-cycle routing according to risk and size.
 - [`phase-status.md`](policies/phase-status.md) — status markers live only in `plan/INDEX.md`; no `status:` field in per-phase frontmatter; `kickoff` owns transitions.
@@ -126,7 +128,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
   methodology. [`bin/README.md`](bin/README.md) is the operator index. This
   repo ships the atomic `setup`/`test`/`check`/`python` toolchain interface,
   opt-in `install-hooks` with its `check-hooks-installed` liveness witness;
-  universal `kickoff-config`, `kickoff-tree-id`,
+  universal `kickoff-config`, `kickoff-tree-id`, `check-receipt`,
   `kickoff-evidence`, `execution-telemetry`, and `lessons` managers; the
   `new-name` ledger-slug generator; deterministic dashboard, harness-parity,
   caller-policy, shell-syntax, and catalog (`check-catalogs`) checkers; and
@@ -208,8 +210,9 @@ These are the universals every project derived from this template inherits. The 
 - **Mechanistic vs. intelligence.** Triage every repeatable task. Deterministic, exact, repeatable work is a script under `bin/`; synthesis, judgment, and generative work is an agent. Don't burn a model on what a script does better (cheaper, exact, harness-portable, testable), and don't script what needs judgment. Split mixed tasks at the seam — the agent decides *what*, a deterministic script does the mechanical *how*. See [`policies/mechanistic-vs-intelligence.md`](policies/mechanistic-vs-intelligence.md).
 - **Human wall-clock efficiency.** Treat the operator's elapsed wait as a first-class development cost. Stay alert when gates, builds, indexing, generation, migrations, repeated setup, or other operations materially dominate the work and a substantial, low-risk reduction appears available. Prefer conspicuous gains—safe parallel execution of genuinely independent work, one-time invariant setup, focused iteration, or reuse with complete input identity—over heroic micro-optimization. Never trade away correctness, coverage, determinism, review independence, or the complete final gate, and never expand the active phase merely to chase speed.
 - **Repository-owned toolchain contract.** Setup, focused/full testing,
-  runtime selection, metadata, locking, behavioral tests, and callers are one
-  atomic bundle. Use `./bin/setup`, `./bin/test`, and `./bin/check all`;
+  durable candidate-bound full-gate receipts, runtime selection, metadata,
+  locking, behavioral tests, and callers are one atomic bundle. Use
+  `./bin/setup`, `./bin/test`, and `./bin/check all`;
   language profiles may add a runtime wrapper such as `./bin/python`. See
   [`policies/build-gates.md`](policies/build-gates.md).
 - **Repo-relative paths only** in any file committed to this repo. Bash invocations may use absolute paths.
@@ -276,9 +279,13 @@ Terms used consistently across briefs, skills, policies, and code. Mismatched us
 - **Process observations.** The structured output field each canonical role emits for friction or ambiguity in briefs, policies, plans, or tooling — the raw sensor feed `kickoff`'s lessons harvest distills at phase close. "None" is a valid value.
 - **The four canonical agents.** `phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`. Their names are load-bearing — `kickoff` invokes them by name. Their definitions live in `.claude/agents/` (canonical) and `.codex/agents/` (mirror).
 - **Repository-owned toolchain contract.** The atomic setup, focused/full test,
-  runtime-selection, full-gate, metadata, lockfile, tests, and caller bundle.
+  runtime-selection, full-gate, durable receipt, metadata, lockfile, tests, and caller bundle.
   The authoritative full sequence is `./bin/check all`; focused tests use
   `./bin/test`.
+- **Full-gate receipt.** The gitignored durable log, terminal run metadata, and
+  success record managed by `bin/check-receipt`, bound to one exact candidate
+  and environment. The opt-in pre-push hook reuses it only for the clean
+  current `HEAD`; every miss or error runs the authoritative full gate.
 - **Candidate id.** The SHA-256 identity emitted by `bin/kickoff-tree-id` for
   the complete reviewable working tree: tracked content, deletions, modes,
   symlink targets, and nonignored untracked files. Staging alone does not

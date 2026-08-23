@@ -472,3 +472,28 @@ partition, the donor's mutation-battery row-strength prose, the serial check
 lane (this repo's gate runner has no parallel lanes), and the donor's
 calibrated timeout values (never ingested, per the kickoff-config privacy
 rule).
+
+## 2026-08-23 00:56 MDT — TAUGHT FROM TEMPLATE
+
+Source: castle (state retrieved 2026-08-23)
+
+Items applied: 1, by tier T1=0/T2=1/T3=0/T4=0
+
+Parity heals applied: 0 (AUTO); 0 surfaced as DECIDE
+
+Stale-in-light-of-teaching migrations: 14 (AUTO); 0 DECIDE; 0 DEFER
+
+Unharvested methodology lessons surfaced for `learn`: 15
+
+Files touched in target: 17
+
+Installed durable, candidate-bound full-gate receipts as one atomic toolchain
+contract. `bin/check all` now retains a complete log and terminal run metadata,
+and a successful run creates a receipt bound to the exact candidate,
+environment fingerprint, and log digest. The optional pre-push hook reuses the
+result only for a clean current `HEAD`; every absence, mismatch, corruption, or
+query error runs the authoritative full gate. Behavioral coverage exercises
+success, failure, drift, dirty-tree, non-HEAD, environment-change, tampering,
+corruption, and hook hit/miss paths. Learn, Teach, Stamp, bootstrap, policy,
+catalog, and operator documentation now propagate the complete bundle while
+preserving Starter's Python example and starter-only anonymization lane.

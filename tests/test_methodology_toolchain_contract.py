@@ -65,6 +65,17 @@ def test_atomic_contract_resolves_repeated_runtime_once() -> None:
         assert "once" in document
 
 
+def test_full_gate_receipt_contract_propagates_atomically() -> None:
+    for document in (POLICY, LEARN, TEACH, STAMP, BOOTSTRAP_BRIEF):
+        assert "full-gate receipt" in document
+        assert "environment fingerprint" in document
+        assert "complete log" in document
+        assert "fail" in document and "closed" in document
+    for document in (TEACH, STAMP, BOOTSTRAP_BRIEF):
+        assert "bin/check-receipt" in document
+        assert "tests/test_check_receipt.py" in document
+
+
 def test_anonymization_boundary_follows_write_destination() -> None:
     assert "boundary follows the destination of the write" in ANONYMIZATION_POLICY
     assert "Starter's starter-only anonymization policy" in TEACH

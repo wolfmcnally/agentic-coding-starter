@@ -75,7 +75,9 @@ mode with the identical runtime selection.
 Its `test` mode delegates to `bin/test`. `all` runs lint, format verification,
 tests, and deterministic policy checks in order. Child failures retain their
 exact status and emit a terminal `CHECK <name> FAIL`; success ends with
-`CHECK ALL PASS`.
+`CHECK ALL PASS`. Every `all` run also captures a complete durable log and
+terminal run metadata under `.kickoff/check-all/`; success stores a receipt
+bound to the exact candidate, environment fingerprint, and log digest.
 
 ```bash
 ./bin/check
@@ -89,13 +91,28 @@ Universal contract: [`policies/build-gates.md`](../policies/build-gates.md).
 `stamp`, `learn`, and `teach` preserve the atomic interface while adapting its
 implementation to the destination's language, runtime policy, metadata, and
 lockfile. Behavioral coverage lives in
-`tests/test_toolchain_entrypoints.py` and `tests/test_check.py`.
+`tests/test_toolchain_entrypoints.py`, `tests/test_check.py`, and
+`tests/test_check_receipt.py`.
+
+### `check-receipt` — durable full-gate record and exact reuse
+
+Internal manager used by `bin/check all` and the pre-push hook. It identifies
+the complete candidate through `kickoff-tree-id`, records running and terminal
+metadata plus the full gate log, and writes a reusable success receipt only
+after the candidate, environment, and durable artifacts verify. Pre-push reuse
+additionally requires a clean tree and every non-deleted pushed ref to equal
+`HEAD`; any miss, malformed record, corruption, or query failure runs the full
+gate. It is normally not invoked directly.
+
+Universal contract: [`policies/build-gates.md`](../policies/build-gates.md).
+Behavioral coverage lives in `tests/test_check_receipt.py`.
 
 ### `install-hooks` — opt in to tracked Git hooks
 
 Configures only the current checkout's `core.hooksPath` to `.githooks`. The
 pre-commit hook runs the fast harness-parity and toolchain-caller checks; the
-pre-push hook runs `./bin/check all`. Installation is explicit and idempotent.
+pre-push hook reuses a verified exact full-gate receipt or runs
+`./bin/check all` on any miss. Installation is explicit and idempotent.
 A different existing hooks path is preserved and reported; only `--force`
 replaces it. `--dry-run` reports the proposed change without writing Git
 configuration.

@@ -1,0 +1,443 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Durable, candidate-bound receipts for the authoritative full gate."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import platform
+import secrets
+import subprocess
+import sys
+import tempfile
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+SCHEMA = "agentic_starter.check_all_receipt.v1"
+RUN_SCHEMA = "agentic_starter.check_all_run.v1"
+
+
+class ReceiptError(ValueError):
+    """A receipt cannot be created or trusted."""
+
+
+def repository_root(start: Path) -> Path:
+    process = subprocess.run(
+        ["git", "-C", str(start), "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if process.returncode != 0:
+        detail = process.stderr.strip() or "not a Git repository"
+        raise ReceiptError(detail)
+    return Path(process.stdout.strip()).resolve()
+
+
+def run_command(root: Path, *arguments: str) -> str:
+    process = subprocess.run(
+        [*arguments],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if process.returncode != 0:
+        detail = process.stderr.strip() or process.stdout.strip() or "command failed"
+        raise ReceiptError(detail)
+    return process.stdout.strip()
+
+
+def candidate_id(root: Path) -> str:
+    value = run_command(root, str(root / "bin" / "kickoff-tree-id"), "--root", str(root))
+    validate_digest(value, "candidate id")
+    return value
+
+
+def utc_now() -> str:
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
+
+
+def environment_descriptor(root: Path) -> dict[str, str]:
+    override = os.environ.get("TOOLCHAIN_PYTHON")
+    return {
+        "machine": platform.machine(),
+        "platform": platform.platform(),
+        "python": platform.python_version(),
+        "toolchain_python": str(Path(override).resolve()) if override else "managed",
+        "uv": run_command(root, "uv", "--version"),
+    }
+
+
+def environment_fingerprint(root: Path) -> tuple[str, dict[str, str]]:
+    descriptor = environment_descriptor(root)
+    encoded = json.dumps(descriptor, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest(), descriptor
+
+
+def state_root(root: Path) -> Path:
+    return root / ".kickoff" / "check-all"
+
+
+def relative_to_root(path: Path, root: Path) -> str:
+    try:
+        return path.resolve().relative_to(root).as_posix()
+    except ValueError as exc:
+        raise ReceiptError(f"path escapes repository: {path}") from exc
+
+
+def atomic_json(path: Path, document: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            json.dump(document, handle, sort_keys=True, separators=(",", ":"))
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+def validate_digest(value: str, label: str) -> None:
+    if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+        raise ReceiptError(f"invalid {label}: {value!r}")
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def receipt_path(root: Path, candidate: str, fingerprint: str) -> Path:
+    validate_digest(candidate, "candidate id")
+    validate_digest(fingerprint, "environment fingerprint")
+    return state_root(root) / "receipts" / f"{candidate}-{fingerprint}.json"
+
+
+def safe_log_path(root: Path, raw: str) -> Path:
+    path = Path(raw)
+    if not path.is_absolute():
+        path = root / path
+    logs = (state_root(root) / "logs").resolve()
+    resolved = path.resolve()
+    if not resolved.is_relative_to(logs):
+        raise ReceiptError(f"log is outside {logs}: {path}")
+    if path.is_symlink():
+        raise ReceiptError(f"log must not be a symlink: {path}")
+    return resolved
+
+
+def run_metadata_path(log: Path) -> Path:
+    return log.with_suffix(".json")
+
+
+def load_json(path: Path, label: str) -> dict[str, Any]:
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ReceiptError(f"cannot read {label}: {path}: {exc}") from exc
+    if not isinstance(document, dict):
+        raise ReceiptError(f"{label} must be a JSON object: {path}")
+    return document
+
+
+def command_candidate(arguments: argparse.Namespace) -> int:
+    print(candidate_id(repository_root(arguments.root.resolve())))
+    return 0
+
+
+def command_fingerprint(arguments: argparse.Namespace) -> int:
+    root = repository_root(arguments.root.resolve())
+    fingerprint, _ = environment_fingerprint(root)
+    print(fingerprint)
+    return 0
+
+
+def command_begin(arguments: argparse.Namespace) -> int:
+    root = repository_root(arguments.root.resolve())
+    validate_digest(arguments.candidate, "candidate id")
+    fingerprint, descriptor = environment_fingerprint(root)
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S.%fZ")
+    stem = f"{stamp}-{os.getpid()}-{secrets.token_hex(4)}"
+    log = state_root(root) / "logs" / f"{stem}.log"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with log.open("x", encoding="utf-8"):
+        pass
+    atomic_json(
+        run_metadata_path(log),
+        {
+            "schema": RUN_SCHEMA,
+            "status": "running",
+            "candidate_before": arguments.candidate,
+            "environment": descriptor,
+            "environment_fingerprint": fingerprint,
+            "log": relative_to_root(log, root),
+            "started_at": utc_now(),
+        },
+    )
+    print(log)
+    return 0
+
+
+def command_complete(arguments: argparse.Namespace) -> int:
+    root = repository_root(arguments.root.resolve())
+    log = safe_log_path(root, arguments.log)
+    metadata_path = run_metadata_path(log)
+    document = load_json(metadata_path, "run metadata")
+    if document.get("schema") != RUN_SCHEMA or document.get("status") != "running":
+        raise ReceiptError(f"run metadata is not an active {RUN_SCHEMA} record: {metadata_path}")
+    if document.get("candidate_before") != arguments.candidate_before:
+        raise ReceiptError("candidate-before does not match the run metadata")
+    validate_digest(arguments.candidate_before, "candidate-before")
+    if arguments.candidate_after != "ERROR":
+        validate_digest(arguments.candidate_after, "candidate-after")
+    if not log.is_file():
+        raise ReceiptError(f"run log is missing: {log}")
+
+    if arguments.outcome == "passed":
+        if arguments.exit_code != 0:
+            raise ReceiptError("a passed run must have exit code 0")
+        if arguments.candidate_after != arguments.candidate_before:
+            raise ReceiptError("a passed run must preserve candidate identity")
+        current_fingerprint, _ = environment_fingerprint(root)
+        if current_fingerprint != document.get("environment_fingerprint"):
+            raise ReceiptError("environment fingerprint changed during the gate")
+        relative_log = relative_to_root(log, root)
+        terminal_lines = (
+            f"CHECK RECEIPT STORED candidate={arguments.candidate_before} log={relative_log}\n"
+            "CHECK ALL PASS\n"
+        )
+        with log.open("a", encoding="utf-8") as handle:
+            handle.write(terminal_lines)
+            handle.flush()
+            os.fsync(handle.fileno())
+        log_digest = sha256_file(log)
+        completed_at = utc_now()
+        receipt = {
+            "schema": SCHEMA,
+            "candidate_id": arguments.candidate_before,
+            "command": "./bin/check all",
+            "completed_at": completed_at,
+            "environment": document["environment"],
+            "environment_fingerprint": document["environment_fingerprint"],
+            "log": relative_log,
+            "log_sha256": log_digest,
+            "run": relative_to_root(metadata_path, root),
+        }
+        atomic_json(
+            receipt_path(root, arguments.candidate_before, document["environment_fingerprint"]),
+            receipt,
+        )
+        document.update(
+            {
+                "candidate_after": arguments.candidate_after,
+                "completed_at": completed_at,
+                "exit_code": 0,
+                "log_sha256": log_digest,
+                "status": "passed",
+            }
+        )
+        atomic_json(metadata_path, document)
+        print(terminal_lines, end="")
+        return 0
+
+    if arguments.exit_code == 0:
+        raise ReceiptError("a non-passed run must have a non-zero exit code")
+    if arguments.outcome == "candidate-drift":
+        if arguments.candidate_after in ("ERROR", arguments.candidate_before):
+            raise ReceiptError("candidate-drift requires two different candidate ids")
+    if arguments.outcome == "identity-error" and arguments.candidate_after != "ERROR":
+        raise ReceiptError("identity-error requires candidate-after=ERROR")
+
+    relative_log = relative_to_root(log, root)
+    terminal_line = (
+        f"CHECK RECEIPT RUN {arguments.outcome.upper()} "
+        f"exit={arguments.exit_code} log={relative_log}\n"
+    )
+    with log.open("a", encoding="utf-8") as handle:
+        handle.write(terminal_line)
+        handle.flush()
+        os.fsync(handle.fileno())
+    document.update(
+        {
+            "candidate_after": arguments.candidate_after,
+            "completed_at": utc_now(),
+            "exit_code": arguments.exit_code,
+            "log_sha256": sha256_file(log),
+            "status": arguments.outcome,
+        }
+    )
+    atomic_json(metadata_path, document)
+    print(
+        terminal_line.rstrip(),
+        file=sys.stderr,
+    )
+    return 0
+
+
+def miss(reason: str) -> int:
+    print(f"CHECK RECEIPT MISS reason={reason}; running ./bin/check all", file=sys.stderr)
+    return 1
+
+
+def parse_push_input(raw: str) -> list[str] | None:
+    local_shas: list[str] = []
+    for line in raw.splitlines():
+        fields = line.split()
+        if len(fields) != 4:
+            return None
+        local_sha = fields[1]
+        if len(local_sha) not in (40, 64) or any(
+            character not in "0123456789abcdef" for character in local_sha
+        ):
+            return None
+        if any(character != "0" for character in local_sha):
+            local_shas.append(local_sha)
+    return local_shas
+
+
+def command_pre_push(arguments: argparse.Namespace) -> int:
+    try:
+        root = repository_root(arguments.root.resolve())
+        local_shas = parse_push_input(sys.stdin.read())
+        if local_shas is None:
+            return miss("invalid-push-input")
+        if not local_shas:
+            return miss("no-nondeleted-ref")
+        head = run_command(root, "git", "rev-parse", "HEAD")
+        if any(local_sha != head for local_sha in local_shas):
+            return miss("pushed-ref-is-not-head")
+        if run_command(root, "git", "status", "--porcelain=v1", "--untracked-files=all"):
+            return miss("working-tree-not-clean")
+        candidate = candidate_id(root)
+        fingerprint, descriptor = environment_fingerprint(root)
+        path = receipt_path(root, candidate, fingerprint)
+        if not path.is_file() or path.is_symlink():
+            return miss("receipt-not-found")
+        receipt = load_json(path, "receipt")
+        required = {
+            "schema",
+            "candidate_id",
+            "command",
+            "completed_at",
+            "environment",
+            "environment_fingerprint",
+            "log",
+            "log_sha256",
+            "run",
+        }
+        if set(receipt) != required:
+            return miss("receipt-schema-mismatch")
+        if (
+            receipt.get("schema") != SCHEMA
+            or receipt.get("candidate_id") != candidate
+            or receipt.get("command") != "./bin/check all"
+            or receipt.get("environment") != descriptor
+            or receipt.get("environment_fingerprint") != fingerprint
+        ):
+            return miss("receipt-identity-mismatch")
+        log = safe_log_path(root, str(receipt.get("log", "")))
+        if not log.is_file() or sha256_file(log) != receipt.get("log_sha256"):
+            return miss("receipt-log-mismatch")
+        run_path = Path(str(receipt.get("run", "")))
+        if not run_path.is_absolute():
+            run_path = root / run_path
+        runs_root = (state_root(root) / "logs").resolve()
+        if not run_path.resolve().is_relative_to(runs_root):
+            return miss("receipt-run-path-invalid")
+        run = load_json(run_path, "run metadata")
+        run_required = {
+            "schema",
+            "status",
+            "candidate_before",
+            "candidate_after",
+            "environment",
+            "environment_fingerprint",
+            "log",
+            "log_sha256",
+            "started_at",
+            "completed_at",
+            "exit_code",
+        }
+        if (
+            set(run) != run_required
+            or run.get("schema") != RUN_SCHEMA
+            or run.get("status") != "passed"
+            or run.get("candidate_before") != candidate
+            or run.get("candidate_after") != candidate
+            or run.get("environment") != descriptor
+            or run.get("environment_fingerprint") != fingerprint
+            or run.get("log") != receipt.get("log")
+            or run.get("log_sha256") != receipt.get("log_sha256")
+            or run.get("completed_at") != receipt.get("completed_at")
+            or run.get("exit_code") != 0
+        ):
+            return miss("receipt-run-mismatch")
+        print(f"CHECK RECEIPT HIT candidate={candidate} log={receipt['log']}")
+        return 0
+    except (OSError, ReceiptError) as exc:
+        print(f"CHECK RECEIPT ERROR {exc}", file=sys.stderr)
+        return miss("receipt-query-error")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    for name, function in (
+        ("candidate", command_candidate),
+        ("fingerprint", command_fingerprint),
+    ):
+        command = subparsers.add_parser(name)
+        command.add_argument("--root", type=Path, default=Path.cwd())
+        command.set_defaults(function=function)
+
+    begin = subparsers.add_parser("begin")
+    begin.add_argument("--root", type=Path, default=Path.cwd())
+    begin.add_argument("--candidate", required=True)
+    begin.set_defaults(function=command_begin)
+
+    complete = subparsers.add_parser("complete")
+    complete.add_argument("--root", type=Path, default=Path.cwd())
+    complete.add_argument("--log", required=True)
+    complete.add_argument("--candidate-before", required=True)
+    complete.add_argument("--candidate-after", required=True)
+    complete.add_argument("--exit-code", required=True, type=int)
+    complete.add_argument(
+        "--outcome",
+        required=True,
+        choices=("passed", "failed", "candidate-drift", "identity-error", "log-failed"),
+    )
+    complete.set_defaults(function=command_complete)
+
+    pre_push = subparsers.add_parser("pre-push")
+    pre_push.add_argument("--root", type=Path, default=Path.cwd())
+    pre_push.set_defaults(function=command_pre_push)
+    return parser
+
+
+def main() -> int:
+    arguments = build_parser().parse_args()
+    try:
+        return int(arguments.function(arguments))
+    except (OSError, ReceiptError) as exc:
+        print(f"check-receipt: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

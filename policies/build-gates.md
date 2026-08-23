@@ -17,7 +17,7 @@ machine-global environment—defines what these commands mean.
 
 The contract is one unit:
 
-- `bin/setup`, `bin/test`, and `bin/check`;
+- `bin/setup`, `bin/test`, `bin/check`, and the full-gate receipt manager;
 - any runtime entry point such as `bin/python`;
 - any shared runtime resolver or dependency-chain probe used by those entry
   points;
@@ -101,6 +101,14 @@ modes and extra arguments are usage errors. Every entry point preserves child
 failures, emits unambiguous terminal results where applicable, hides no failure
 behind a pipe or fallback, and performs no commit, push, deploy, or other
 shared-state mutation.
+
+Every `all` run starts durable, gitignored run metadata and captures its complete
+output under `.kickoff/check-all/`. Success writes a receipt bound to the exact
+`bin/kickoff-tree-id` candidate, an environment fingerprint, and the log digest;
+running, failed, identity-error, and candidate-drift runs retain terminal
+metadata but never create a reusable receipt. A log/storage failure remains an
+explicit failure and never creates a receipt. `CHECK ALL PASS` is emitted only
+after the log, receipt, and terminal run metadata are durable.
 
 The `format` mode evaluates the complete candidate working-tree state:
 staged changes, unstaged changes, and nonignored untracked files. Its result
@@ -207,12 +215,28 @@ coverage, determinism, diagnostics, failure propagation, candidate binding,
 or the complete final gate. An expensive operation with no obvious safe
 leverage may simply be reported and run.
 
+## Full-gate receipt reuse
+
+The acceptance-close gate still runs once against the approved candidate. A
+receipt is a durable record of that completed gate, not permission to omit the
+initial full gate or to reuse a result across candidates or environments.
+
+The opt-in pre-push hook may reuse a receipt only when every non-deleted pushed
+ref is the current `HEAD`, the working tree is clean, the current candidate and
+environment fingerprint exactly match the receipt, and the receipt, terminal
+run metadata, complete log path, and log digest all verify. Any absence,
+malformed input, corruption, mismatch, query error, or uncertain state is an
+explicit miss and runs `./bin/check all`. The lookup never falls back to a
+reassuring value on error. The receipt manager writes only ignored local runtime
+state; it performs no Git or other shared-state mutation.
+
 ## Lifecycle hooks
 
-Tracked hooks may call `./bin/check all`, but installation is opt-in. Hooks
-contain no duplicate toolchain command list. Their installer is idempotent,
-reports conflicting configuration, and requires an explicit force option to
-replace it.
+Tracked hooks may invoke the candidate-bound receipt lookup and then
+`./bin/check all` on every miss, but installation is opt-in. Hooks contain no
+duplicate toolchain command list. Their installer is idempotent, reports
+conflicting configuration, and requires an explicit force option to replace
+it.
 
 Opt-in needs a liveness witness, because `core.hooksPath` is local Git
 configuration that does not survive a clone and can be silently repointed —
@@ -237,6 +261,10 @@ Behavioral tests prove:
 - exact child-status propagation;
 - strict argument handling and stable terminal output;
 - `bin/check test` delegation to `bin/test`.
+- complete durable logs and terminal run metadata for every completed full-gate
+  outcome, with log/storage failures explicit and never reusable;
+- exact candidate/environment receipt hits, with corruption, drift, dirty-tree,
+  non-`HEAD` push, and query-error paths all failing closed to a full-gate run.
 
 The behavioral suite is the coverage floor for every supported mode and
 override branch. A transfer must retain equivalent executable coverage after

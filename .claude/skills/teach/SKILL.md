@@ -136,7 +136,7 @@ Same tiers as `learn`:
 - **Tier 2 — Universal template content.** Every file under `policies/`
   (including both role policies and orchestration evidence), the universal
   briefs, `bin/kickoff-config`, `bin/kickoff-tree-id`,
-  `bin/kickoff-evidence`, human-editable `kickoff.yaml` schema and seed
+  `bin/kickoff-evidence`, `bin/check-receipt`, human-editable `kickoff.yaml` schema and seed
   defaults, and cross-harness symlink conventions. The mechanics are
   universal; target values, comments, extensions, telemetry, and run evidence
   are not.
@@ -165,8 +165,9 @@ For each proposed addition or update, ask:
 - **Ripple-contract adoption.** Does the target's `kickoff` SKILL.md have a Step 9a *and* Step 9b with the AUTO/DECIDE ripple sub-step? If only Step 9a exists (today's earlier teach), the target needs Step 9b added and Step 9a's ripple sub-step appended. Mechanical — surface as AUTO.
 - **Unified kickoff-config adoption.** Treat `kickoff.yaml`, `bin/kickoff-config`, `tests/test_kickoff_config.py`, both role policies, `roles`, `kickoff` Steps 0a–0c plus every initial/resume/rescue call site, `.gitignore`, `bin/README.md`, the invocation brief, and CLAUDE catalog/glossary as one atomic contract. If absent, port the bundle and seed it with `reset all`. If present, round-trip-upgrade schema/mechanics and tests while preserving the target's model choices, separate effort fields, timeout values, comments, `extensions` data, overrides, and telemetry. Never copy or open raw telemetry. Partial adoption is stale and blocking.
 - **Repository-owned toolchain adoption.** Treat `bin/setup`, `bin/test`,
-  `bin/check`, runtime wrappers, the runtime pin, manifest, lockfile,
-  behavioral tests, `policies/build-gates.md`, hooks, and every workflow caller
+  `bin/check`, `bin/check-receipt`, runtime wrappers, the runtime pin, manifest,
+  lockfile, `tests/test_check_receipt.py`, the other behavioral tests,
+  `policies/build-gates.md`, hooks, and every workflow caller
   as one atomic contract. If any member is proposed, enumerate the whole
   bundle in the stale sweep. Preserve target-owned language/version/package
   choices and adapt the universal interface to them. Any explicit runtime
@@ -178,7 +179,10 @@ For each proposed addition or update, ask:
   and active instruction uses the target runtime; format mode covers staged,
   unstaged, and nonignored untracked candidates; hot loops, mutation gates, and
   detached processes resolve the underlying interpreter once. Partial adoption
-  is stale and blocking.
+  is stale and blocking. Any durable full-gate receipt reuse preserves the
+  complete log and terminal metadata, binds the receipt to the exact candidate
+  and environment fingerprint, and fails closed to the full gate on every miss
+  or query error.
 - **Review-lane and follow-up-routing adoption.** Does the target's `kickoff` SKILL.md carry the Step 1 lane resolution, the Step 4 light-lane skip, the Step 6 lane-fit input and `Escalate: full lane` handling, Step 7's direct/coder-only/full correction routing, and the END-block `Review lane:` plus `Follow-up route:` lines — with `policies/review-lanes.md` in its `policies/` and the lane-fit duty in its `.claude/agents/code-critic.md`? Porting is mechanical — AUTO. **No phase-file migration is needed**: absent `review_lane:` frontmatter means `full`, so every existing drafted phase keeps its current initial-review behavior; follow-up routing is runtime classification, not frontmatter.
 - **Lessons-ledger adoption.** Treat `lessons/` + `lessons-archived/` (with `.gitkeep`s), `policies/lessons.md`, `bin/lessons`, `tests/test_lessons.py`, `bin/check-catalogs`, `tests/test_check_catalogs.py`, the `bin/check` registrations, `.claude/skills/sweep/SKILL.md` (with its `.agents/skills/sweep` symlink), `kickoff` Step 9c plus the END-block `Lessons:` field and `log-discipline.md`'s minimum-contract line, the four roles' Process Observations sections, the coder/evidence `failure_analysis` chain, `briefs/harness-self-improvement.md`, and the CLAUDE.md invariant/catalog/glossary entries as **one atomic contract**. If absent, port the bundle with an empty ledger — never seed the target's ledger with starter lessons. If partially present, partial adoption is stale and blocking. The target's existing ledger *content* is target state: preserve it untouched.
 - **Candidate-bound evidence adoption.** Treat
@@ -332,7 +336,8 @@ Once approved, apply the approved items to the target. Order:
 6. Substitute names in transferred files: `Agentic Coding Starter Template` → target's project name; `agentic-coding-starter-template` → target's slug; references to this template's `example/` package → target's primary surface.
 7. **Adapt the repository-owned toolchain contract.** If the approved teaching
    includes `policies/build-gates.md` or any contract member, create or update
-   the target's cwd-independent `bin/setup`, `bin/test`, and `bin/check`, plus
+   the target's cwd-independent `bin/setup`, `bin/test`, `bin/check`, and
+   `bin/check-receipt`, plus
    an appropriate runtime wrapper when the target exposes one. Reconcile the
    target's runtime pin, manifest, lockfile, behavioral tests, hook, `kickoff`,
    and four canonical agents in the same step. `bin/check test` delegates to
@@ -348,6 +353,9 @@ Once approved, apply the approved items to the target. Order:
    hot loops, mutation gates, generated multi-command workflows, and detached
    processes. Adapt behavioral tests by executing the target entrypoints with
    controlled stubs; do not reduce them to source-text checks.
+   Preserve complete durable logs, terminal run metadata, exact
+   candidate/environment receipt binding, and fail-closed pre-push reuse; adapt
+   `tests/test_check_receipt.py` with the rest of the behavioral suite.
    Otherwise preserve the complete target-owned bundle and adapt only stale
    copied examples. Never replace target language/version/package-manager
    choices with this template's Python values.

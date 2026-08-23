@@ -68,6 +68,9 @@ fi
         root / "bin" / "check-anonymization.sh",
         """#!/usr/bin/env bash
 printf 'policy cwd=%s\\n' "$PWD" >> "$CHECK_TEST_LOG"
+if [[ -n "${CHECK_POLICY_FAIL_CODE:-}" ]]; then
+  exit "$CHECK_POLICY_FAIL_CODE"
+fi
 """,
     )
     _write_executable(
@@ -80,6 +83,36 @@ printf 'config cwd=%s args=%s\\n' "$PWD" "$*" >> "$CHECK_TEST_LOG"
         root / "bin" / "lessons",
         """#!/usr/bin/env bash
 printf 'lessons cwd=%s args=%s\\n' "$PWD" "$*" >> "$CHECK_TEST_LOG"
+""",
+    )
+    _write_executable(
+        root / "bin" / "check-receipt",
+        """#!/usr/bin/env bash
+set -euo pipefail
+case "$1" in
+  candidate)
+    printf '%064d\n' 0
+    ;;
+  begin)
+    mkdir -p "$PWD/.kickoff/check-all/logs"
+    log="$PWD/.kickoff/check-all/logs/fixture.log"
+    : > "$log"
+    printf '%s\n' "$log"
+    ;;
+  complete)
+    if [[ " $* " == *" --outcome passed "* ]]; then
+      printf '%s\n' \
+        'CHECK RECEIPT STORED candidate=fixture log=.kickoff/check-all/logs/fixture.log' \
+        'CHECK ALL PASS'
+    fi
+    ;;
+  fingerprint)
+    printf '%064d\n' 1
+    ;;
+  pre-push)
+    exit 1
+    ;;
+esac
 """,
     )
     for executable, label in (
@@ -135,7 +168,7 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
         (
             f"uv cwd={root / 'project'} args=run --locked --managed-python "
             "ruff check example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence "
-            "../bin/kickoff-tree-id ../bin/execution-telemetry "
+            "../bin/kickoff-tree-id ../bin/check-receipt ../bin/execution-telemetry "
             "../bin/check-execution-dashboards ../bin/check-harness-parity "
             "../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs "
             "../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name "
@@ -144,7 +177,7 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
         (
             f"uv cwd={root / 'project'} args=run --locked --managed-python ruff format --check "
             "example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence "
-            "../bin/kickoff-tree-id ../bin/execution-telemetry "
+            "../bin/kickoff-tree-id ../bin/check-receipt ../bin/execution-telemetry "
             "../bin/check-execution-dashboards ../bin/check-harness-parity "
             "../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs "
             "../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name "
@@ -230,6 +263,36 @@ def test_failure_status_is_preserved(
     assert "CHECK format PASS" not in result.stdout
 
 
+def test_all_failure_status_survives_durable_log_pipeline(
+    check_repo: tuple[Path, dict[str, str]],
+) -> None:
+    root, environment = check_repo
+    environment["CHECK_TEST_FAIL_MATCH"] = "ruff format"
+    environment["CHECK_TEST_FAIL_CODE"] = "37"
+
+    result = _run(root, environment, "all")
+
+    assert result.returncode == 37
+    assert "CHECK lint PASS" in result.stdout
+    assert "CHECK format FAIL (exit 37)" in result.stdout
+    assert "CHECK test START" not in result.stdout
+    assert "CHECK ALL PASS" not in result.stdout
+
+
+def test_all_policy_failure_cannot_be_masked_by_later_policy_output(
+    check_repo: tuple[Path, dict[str, str]],
+) -> None:
+    root, environment = check_repo
+    environment["CHECK_POLICY_FAIL_CODE"] = "41"
+
+    result = _run(root, environment, "all")
+
+    assert result.returncode == 41
+    assert "CHECK policy-anonymization FAIL (exit 41)" in result.stdout
+    assert "CHECK policy PASS" not in result.stdout
+    assert "CHECK ALL PASS" not in result.stdout
+
+
 def test_missing_uv_fails_clearly(
     check_repo: tuple[Path, dict[str, str]],
 ) -> None:
@@ -269,6 +332,7 @@ def test_missing_project_contract_fails_clearly(
         "kickoff-tree-id",
         "kickoff-evidence",
         "kickoff-config",
+        "check-receipt",
         "execution-telemetry",
         "check-execution-dashboards",
         "check-harness-parity",

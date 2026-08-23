@@ -71,7 +71,8 @@ Build a structural map of the donor. **Do not** open every file; do targeted rea
 5. **Phase plan shape.** If `<donor>/plan/INDEX.md` exists, read it. Look for cross-cutting concerns or critical-files-map patterns we don't have.
 6. **Language conventions.** Read `<donor>/CLAUDE.md` (or `AGENTS.md`) section by section. Note any architectural invariants, glossary entries, or conventions the donor pins that this starter doesn't.
 7. **Repository-owned toolchain contract.** Inspect the donor's `bin/setup`,
-   `bin/test`, `bin/check`, any runtime wrapper (`bin/python` or equivalent),
+   `bin/test`, `bin/check`, full-gate receipt manager, any runtime wrapper
+   (`bin/python` or equivalent),
    runtime-version file, language metadata, lockfile, behavioral tests, policy,
    hooks, and workflow callers as one bundle. Note generalizable interface and
    failure-handling mechanics, including whether an explicit runtime override
@@ -81,7 +82,9 @@ Build a structural map of the donor. **Do not** open every file; do targeted rea
    that format coverage includes staged, unstaged, and nonignored untracked
    candidates; and identify hot loops, mutation gates, and detached processes
    that must resolve the repository interpreter once rather than reprobe per
-   call. Treat donor
+   call. Verify that any durable full-gate reuse is bound to the exact candidate
+   and environment fingerprint, preserves a complete log and terminal metadata,
+   and fails closed to the full gate on every miss or query error. Treat donor
    language/version/package-manager choices as donor state, not defaults to
    copy.
 8. **Anti-patterns.** Note where the donor *violates* something the template considers a load-bearing invariant (status field in phase frontmatter; absolute paths; LOG.md hand-edits). Those are not for learning; mention them as confirmation the starter's rules are correct.
@@ -192,7 +195,7 @@ If none, declare "None identified." A learned timeout improvement must list
 every member of the atomic timeout bundle here or in the proposal write set;
 importing a single donor file is not complete. The same rule applies to the
 repository-owned toolchain contract: any proposal touching setup, tests,
-gates, runtime selection, metadata, or locking must enumerate the complete
+gates, durable full-gate receipts, runtime selection, metadata, or locking must enumerate the complete
 bundle and classify partial existing adoption as stale.
 The proposed tests must execute the adapted entry points with controlled
 toolchain stubs; source-text assertions alone do not satisfy the behavioral
@@ -254,7 +257,8 @@ Once approved, apply the approved items. Before importing any donor remedy for a
    run `./bin/lessons validate`. A donor lesson approved as a direct rule
    change lands as its rule edit instead (steps 1–2) — not both.
 7. Run focused wrapper tests through `./bin/test
-   tests/test_toolchain_entrypoints.py tests/test_check.py -q`. If an older
+   tests/test_toolchain_entrypoints.py tests/test_check.py
+   tests/test_check_receipt.py -q`. If an older
    methodology-following destination lacks the atomic toolchain contract, run
    the exact focused commands declared by its current metadata and `kickoff`,
    and flag every missing contract member as a learning candidate.

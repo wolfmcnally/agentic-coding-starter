@@ -35,6 +35,7 @@ A project derived from this template contains the following **portable structure
     setup                  # Provision pinned, locked dependencies
     test                   # Full/focused repository test runner
     check                  # Authoritative lint/format/test/policy gates
+    check-receipt          # Durable candidate-bound full-gate receipts
     <runtime>              # Optional selected runtime (for example, python)
     install-hooks          # Explicit opt-in to tracked Git hooks
     check-hooks-installed  # Opt-in-aware hook-liveness witness
@@ -47,6 +48,7 @@ A project derived from this template contains the following **portable structure
   tests/
     test_toolchain_entrypoints.py # Setup/test/runtime behavioral coverage
     test_check.py          # Full-gate behavioral coverage
+    test_check_receipt.py  # Durable receipt and fail-closed reuse coverage
     test_install_hooks.py  # Hook-installer behavioral coverage
     test_check_hooks_installed.py # Hook-liveness witness coverage
     test_kickoff_config.py # Universal manager/watchdog behavioral coverage
@@ -193,6 +195,8 @@ These files encode the methodology itself, not any particular product. Copy them
   identity and run-evidence managers)
 - `tests/test_kickoff_tree_id.py` and `tests/test_kickoff_evidence.py`
   (universal behavioral coverage for candidate/evidence mechanics)
+- `bin/check-receipt` and `tests/test_check_receipt.py` (universal durable
+  full-gate records and exact, fail-closed pre-push reuse)
 - `bin/lessons` and `bin/check-catalogs` (universal lessons-ledger,
   document-link, and phase-ledger fitness managers)
 - `tests/test_lessons.py` and `tests/test_check_catalogs.py` (universal
@@ -459,9 +463,10 @@ Lay down (paths assume `project_isolation` enabled — prefix with `project/`; d
 - The test directory with one trivial test that passes (so the build gate has something to run on first kickoff).
 - A `.gitignore` clause at the repo root for the language's build artifacts.
 
-The repository owns setup, focused/full testing, runtime selection, and
-authoritative gates as one bundle. Generate `bin/setup`, `bin/test`, and
-`bin/check` with the universal interface from
+The repository owns setup, focused/full testing, runtime selection,
+authoritative gates, and durable full-gate receipts as one bundle. Generate
+`bin/setup`, `bin/test`, `bin/check`, and `bin/check-receipt` with the universal
+interface from
 [`../policies/build-gates.md`](../policies/build-gates.md); add a runtime
 wrapper such as `bin/python` when appropriate. Back them with the target's
 version declaration, committed manifest, lockfile, and behavioral tests. A
@@ -478,6 +483,11 @@ replace that interpreter while selecting it.
 or their equivalent. Make `kickoff`, the canonical agents, CLAUDE.md, and phase
 acceptance use `./bin/test ...` for focused tests and `./bin/check all` for the
 full claim; callers do not duplicate the command mappings.
+Every `all` run captures a complete log and terminal metadata under the
+gitignored `.kickoff/check-all/` tree. A success receipt is bound to the exact
+candidate and environment fingerprint; the pre-push hook reuses it only for a
+clean current `HEAD`, and fails closed by running the full gate on every miss or
+error.
 
 ### Step 10 — Sanity-check the bootstrap
 
@@ -507,6 +517,9 @@ Before declaring the bootstrap complete, verify:
   repository-internal Markdown link resolves.
 - `plan/phase-1.md`'s `Brief refs` section lists at least one brief, and each listed brief exists.
 - `bin/check all` runs from outside the repository root and passes on the trivial seeded code, including the universal methodology tests.
+- A successful full gate leaves a verifiable candidate/environment receipt and
+  complete log; dirty, changed, corrupt, non-`HEAD`, and query-error pre-push
+  cases all run the full gate.
 
 The first `kickoff` invocation should pick up Phase 1's `⬅️` row, flip it to `🚧`, and append a START block to `LOG.md`. If any of those three actions fails, the bootstrap is incomplete — a path mismatch or a missing skill is the typical culprit.
 
@@ -530,8 +543,9 @@ When adapting, edit these files (and only these) to reflect those choices:
 
 - `CLAUDE.md` — reflects all of them.
 - `plan/INDEX.md` Cross-Cutting Concerns — duplicates the invariants from `CLAUDE.md`.
-- `bin/setup`, `bin/test`, `bin/check`, runtime wrapper, version declaration,
-  manifest, lockfile, and their behavioral tests — one atomic implementation.
+- `bin/setup`, `bin/test`, `bin/check`, `bin/check-receipt`, runtime wrapper,
+  version declaration, manifest, lockfile, and their behavioral tests — one
+  atomic implementation.
 - `.claude/skills/kickoff/SKILL.md` and the four canonical agents — call the
   canonical focused/full mappings.
 - `bin/kickoff-tree-id`, `bin/kickoff-evidence`, and
@@ -608,14 +622,16 @@ Bootstrap is complete when **all** of the following hold:
 [ ] bin/lessons and bin/check-catalogs are executable; lessons/.gitkeep and
     lessons-archived/.gitkeep exist; ledger, document-link, and phase-lifecycle
     fitness tests pass
-[ ] bin/setup, bin/test, bin/check, bin/install-hooks, and
+[ ] bin/setup, bin/test, bin/check, bin/check-receipt, bin/install-hooks, and
     bin/check-hooks-installed are executable;
     the language runtime wrapper exists when applicable; .githooks/pre-push
-    calls bin/check; hook installation remains explicit and opt-in, with the
-    opt-in-aware liveness witness in the check policy lane
+    reuses only an exact verified receipt and otherwise calls bin/check; hook
+    installation remains explicit and opt-in, with the opt-in-aware liveness
+    witness in the check policy lane
 [ ] Runtime version metadata, package manifest, and lockfile form a complete
     language profile; no workflow assumes a versioned runtime binary on PATH
 [ ] tests/test_toolchain_entrypoints.py, tests/test_check.py,
+    tests/test_check_receipt.py,
     tests/test_install_hooks.py, tests/test_check_hooks_installed.py,
     tests/test_kickoff_config.py,
     tests/test_kickoff_tree_id.py, tests/test_kickoff_evidence.py,

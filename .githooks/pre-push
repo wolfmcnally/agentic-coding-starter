@@ -5,4 +5,7 @@ set -euo pipefail
 
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
+if ./bin/check-receipt pre-push; then
+  exit 0
+fi
 exec ./bin/check all

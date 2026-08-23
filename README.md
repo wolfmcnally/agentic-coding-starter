@@ -122,8 +122,10 @@ deliberate compatibility check,
 `TOOLCHAIN_PYTHON=/absolute/path/to/python ./bin/check all` makes that
 base interpreter authoritative; it must live outside `project/.venv`, and
 failure never falls back to the managed default.
-Optional tracked Git hooks use the same full-gate entry point; opt in for the
-current checkout with:
+Each full gate stores a complete durable log and a receipt bound to the exact
+candidate and environment. Optional tracked Git hooks reuse that receipt only
+for the clean current `HEAD`; every miss or error runs the same full-gate entry
+point. Opt in for the current checkout with:
 
 ```bash
 ./bin/install-hooks
@@ -199,6 +201,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── setup                       ← provision pinned + locked environment
 │   ├── test                        ← full/focused canonical test runner
 │   ├── check                       ← authoritative lint/format/test/policy gate
+│   ├── check-receipt               ← durable exact-candidate gate receipts
 │   ├── python                      ← selected managed Python interpreter
 │   ├── install-hooks               ← opt in to tracked lifecycle hooks
 │   ├── kickoff-config              ← round-trip config, preflight, watchdog
@@ -208,10 +211,11 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── check-catalogs              ← document and phase-ledger fitness
 │   └── check-anonymization.sh      ← starter-only public-repo leak guard
 ├── .githooks/
-│   └── pre-push                    ← optional; calls the canonical full gate
+│   └── pre-push                    ← exact receipt hit or canonical full gate
 ├── tests/                          ← universal methodology machinery tests
 │   ├── test_toolchain_entrypoints.py ← setup/test/runtime behavior
 │   ├── test_check.py               ← canonical gate behavioral coverage
+│   ├── test_check_receipt.py       ← receipt integrity/fail-closed coverage
 │   ├── test_install_hooks.py       ← opt-in hook installer coverage
 │   ├── test_kickoff_config.py      ← config/watchdog behavioral coverage
 │   ├── test_kickoff_tree_id.py     ← candidate identity coverage
