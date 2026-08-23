@@ -10,7 +10,6 @@ import argparse
 import hashlib
 import json
 import os
-import platform
 import secrets
 import subprocess
 import sys
@@ -21,6 +20,70 @@ from typing import Any
 
 SCHEMA = "agentic_starter.check_all_receipt.v1"
 RUN_SCHEMA = "agentic_starter.check_all_run.v1"
+RUNTIME_DESCRIPTOR_FIELDS = frozenset(
+    {
+        "base_executable",
+        "base_executable_sha256",
+        "executable",
+        "executable_sha256",
+        "implementation",
+        "machine",
+        "platform",
+        "python",
+        "uv",
+    }
+)
+RUNTIME_DESCRIPTOR_PROGRAM = """
+import hashlib
+import json
+import platform
+import subprocess
+import sys
+from pathlib import Path
+
+
+def executable_identity(raw_path):
+    path = Path(raw_path).resolve(strict=True)
+    if not path.is_file():
+        raise RuntimeError(f"selected runtime executable is not a file: {path}")
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return str(path), digest.hexdigest()
+
+
+executable, executable_sha256 = executable_identity(sys.executable)
+base_executable, base_executable_sha256 = executable_identity(
+    getattr(sys, "_base_executable", sys.executable)
+)
+uv_process = subprocess.run(
+    ["uv", "--version"], capture_output=True, text=True, check=False
+)
+if uv_process.returncode != 0:
+    detail = uv_process.stderr.strip() or uv_process.stdout.strip() or "uv query failed"
+    raise RuntimeError(detail)
+uv_version = uv_process.stdout.strip()
+if not uv_version:
+    raise RuntimeError("uv emitted an empty version descriptor")
+print(
+    json.dumps(
+        {
+            "base_executable": base_executable,
+            "base_executable_sha256": base_executable_sha256,
+            "executable": executable,
+            "executable_sha256": executable_sha256,
+            "implementation": platform.python_implementation(),
+            "machine": platform.machine(),
+            "platform": platform.platform(),
+            "python": platform.python_version(),
+            "uv": uv_version,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+)
+""".strip()
 
 
 class ReceiptError(ValueError):
@@ -64,15 +127,23 @@ def utc_now() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
+def selected_runtime_descriptor(root: Path) -> dict[str, str]:
+    raw = run_command(root, str(root / "bin" / "python"), "-c", RUNTIME_DESCRIPTOR_PROGRAM)
+    try:
+        descriptor = json.loads(raw)
+    except ValueError as exc:
+        raise ReceiptError(f"selected runtime emitted invalid descriptor JSON: {exc}") from exc
+    if not isinstance(descriptor, dict) or set(descriptor) != RUNTIME_DESCRIPTOR_FIELDS:
+        raise ReceiptError("selected runtime emitted an invalid descriptor schema")
+    if any(not isinstance(value, str) or not value for value in descriptor.values()):
+        raise ReceiptError("selected runtime descriptor values must be non-empty strings")
+    validate_digest(descriptor["executable_sha256"], "selected executable digest")
+    validate_digest(descriptor["base_executable_sha256"], "selected base executable digest")
+    return descriptor
+
+
 def environment_descriptor(root: Path) -> dict[str, str]:
-    override = os.environ.get("TOOLCHAIN_PYTHON")
-    return {
-        "machine": platform.machine(),
-        "platform": platform.platform(),
-        "python": platform.python_version(),
-        "toolchain_python": str(Path(override).resolve()) if override else "managed",
-        "uv": run_command(root, "uv", "--version"),
-    }
+    return selected_runtime_descriptor(root)
 
 
 def environment_fingerprint(root: Path) -> tuple[str, dict[str, str]]:

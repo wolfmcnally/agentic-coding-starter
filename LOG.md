@@ -497,3 +497,31 @@ success, failure, drift, dirty-tree, non-HEAD, environment-change, tampering,
 corruption, and hook hit/miss paths. Learn, Teach, Stamp, bootstrap, policy,
 catalog, and operator documentation now propagate the complete bundle while
 preserving Starter's Python example and starter-only anonymization lane.
+
+## 2026-08-23 01:30 MDT — TAUGHT FROM TEMPLATE
+
+Source: the source project (state retrieved 2026-08-23)
+
+Items applied: 2, by tier T1=0/T2=1/T3=1/T4=0
+
+Parity heals applied: 0 (AUTO); 0 surfaced as DECIDE
+
+Stale-in-light-of-teaching migrations: 8 (AUTO); 0 DECIDE; 0 DEFER
+
+Unharvested methodology lessons surfaced for `learn`: 15
+
+Files touched in target: 11
+
+Corrected durable full-gate receipts so their environment fingerprint now
+describes the repository-selected runtime that actually executes the gate, not
+the standalone receipt helper. Python descriptors are emitted through
+`bin/python` and bind the implementation, actual version, resolved executable
+and base-executable identities and file digests, machine, platform, and uv
+version while candidate hashing remains separate from the venv and external
+runtime tree. Behavioral coverage proves selected-runtime provenance,
+managed-runtime changes with an unchanged candidate, replacement behind a
+stable authoritative override path, and fail-closed fallback through the
+pre-push hook on probe or descriptor errors. Learn, Teach, Stamp, bootstrap,
+policy, catalog, and operator documentation propagate the correction while
+preserving the template's Python example, anonymization lane, policy-failure
+propagation, configuration, and target-owned state.

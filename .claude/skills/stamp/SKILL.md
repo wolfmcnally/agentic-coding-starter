@@ -320,7 +320,12 @@ Adapt the complete atomic bundle defined by `policies/build-gates.md`:
 - `<dest>/bin/check-receipt` records every full-gate run under the gitignored
   `.kickoff/check-all/` tree and creates a reusable success receipt only after
   the exact candidate, environment fingerprint, complete log, and terminal
-  metadata verify;
+  metadata verify; for a Python target, it obtains the fingerprint through the
+  repository-selected runtime path, `<dest>/bin/python`, with the selected
+  implementation, actual version, resolved executable and base-executable
+  identities and file digests, machine, platform, and uv version—not the
+  receipt helper's runtime or a version-file proxy; candidate hashing stays
+  separate from the venv and external runtime tree;
 - a Python target gets `<dest>/bin/_python-toolchain` plus
   `<dest>/bin/python`; the shared helper selects the managed default or a
   fail-closed authoritative override and runs a target-adapted real dependency
@@ -374,13 +379,17 @@ propagation, exact gate ordering/delegation, cwd independence, child-status
 propagation, and no fallback. These tests must execute the entrypoints with
 controlled stubs; source-text assertions alone do not meet the behavioral
 coverage floor. Prove format failures in staged, unstaged, and nonignored
-untracked candidates. Prove pre-push reuse only for a clean current `HEAD` with
-an exact candidate/environment receipt and intact log/run digests; every miss,
-corruption, or query error must run the full gate. Then change the **Final
-build gate** examples in `kickoff`, the four canonical agents, `CLAUDE.md`, the
-brief, and Phase 1 to use `./bin/test ...` for focused tests and
-`./bin/check all` for the authoritative suite. No copied raw full-suite list
-may remain.
+untracked candidates. Prove a Python receipt records the runtime selected by
+`bin/python`, not the receipt helper; changing the selected managed runtime or
+the interpreter behind a stable `TOOLCHAIN_PYTHON` path invalidates the old
+receipt while candidate content remains unchanged. Prove descriptor selection,
+probe, query, parse, and schema failures run the authoritative full gate. Prove
+pre-push reuse only for a clean current `HEAD` with an exact
+candidate/environment receipt and intact log/run digests; every miss,
+corruption, or query error must run the full gate. Then change the **Final build
+gate** examples in `kickoff`, the four canonical agents, `CLAUDE.md`, the brief,
+and Phase 1 to use `./bin/test ...` for focused tests and `./bin/check all` for
+the authoritative suite. No copied raw full-suite list may remain.
 
 ### Step 6 — Initialize git
 
@@ -410,9 +419,11 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
   executable; their behavioral tests pass.
 - `<dest>/bin/check-receipt` is executable and
   `<dest>/tests/test_check_receipt.py` passes; successful full gates retain a
-  complete durable log and exact candidate/environment receipt, while dirty,
-  changed, corrupt, non-`HEAD`, and query-error pushes fail closed to the full
-  gate.
+  complete durable log and exact candidate/environment receipt; Python
+  receipts identify the runtime selected by `<dest>/bin/python`, including its
+  executable and base-executable identities, while dirty, changed-runtime,
+  corrupt, non-`HEAD`, descriptor-error, and query-error pushes fail closed to
+  the full gate.
 - `<dest>/bin/lessons validate` and `<dest>/bin/check-catalogs` are executable
   and pass against the fresh destination (empty ledger, synced catalogs, one
   `⬅️`); `<dest>/lessons/.gitkeep` and `<dest>/lessons-archived/.gitkeep`

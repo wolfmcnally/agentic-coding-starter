@@ -84,9 +84,14 @@ Build a structural map of the donor. **Do not** open every file; do targeted rea
    that must resolve the repository interpreter once rather than reprobe per
    call. Verify that any durable full-gate reuse is bound to the exact candidate
    and environment fingerprint, preserves a complete log and terminal metadata,
-   and fails closed to the full gate on every miss or query error. Treat donor
-   language/version/package-manager choices as donor state, not defaults to
-   copy.
+   and fails closed to the full gate on every miss or query error. For a Python
+   target, verify that the fingerprint is emitted through the
+   repository-selected runtime path and includes the actual implementation,
+   version, resolved executable and base-executable identities and file digests,
+   machine, platform, and uv version—not the receipt helper's runtime or a
+   version-file proxy. Keep candidate hashing separate from the venv and external
+   runtime tree. Treat donor language/version/package-manager choices as donor
+   state, not defaults to copy.
 8. **Anti-patterns.** Note where the donor *violates* something the template considers a load-bearing invariant (status field in phase frontmatter; absolute paths; LOG.md hand-edits). Those are not for learning; mention them as confirmation the starter's rules are correct.
 9. **Unified kickoff configuration.** Inspect the donor's schema shape, round-trip manager, behavioral tests, both role policies, `roles`, `kickoff` call sites, invocation brief, gitignore, and reporting contract as one bundle. Learn only generalizable mechanics, schema, algorithms, and defensible universal defaults. Never read, copy, or summarize raw telemetry, percentiles, model/effort choices, calibrated values, comments, `extensions` data, or project overrides.
 10. **Candidate-bound orchestration evidence.** Inspect the donor's candidate

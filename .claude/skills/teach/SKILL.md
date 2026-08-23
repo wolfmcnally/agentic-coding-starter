@@ -182,7 +182,12 @@ For each proposed addition or update, ask:
   is stale and blocking. Any durable full-gate receipt reuse preserves the
   complete log and terminal metadata, binds the receipt to the exact candidate
   and environment fingerprint, and fails closed to the full gate on every miss
-  or query error.
+  or query error. For a Python target, the fingerprint is emitted through the
+  repository-selected runtime path and includes the actual implementation,
+  version, resolved executable and base-executable identities and file digests,
+  machine, platform, and uv version—not the receipt helper's runtime or a
+  version-file proxy. Candidate hashing stays separate from the venv and
+  external runtime tree.
 - **Review-lane and follow-up-routing adoption.** Does the target's `kickoff` SKILL.md carry the Step 1 lane resolution, the Step 4 light-lane skip, the Step 6 lane-fit input and `Escalate: full lane` handling, Step 7's direct/coder-only/full correction routing, and the END-block `Review lane:` plus `Follow-up route:` lines — with `policies/review-lanes.md` in its `policies/` and the lane-fit duty in its `.claude/agents/code-critic.md`? Porting is mechanical — AUTO. **No phase-file migration is needed**: absent `review_lane:` frontmatter means `full`, so every existing drafted phase keeps its current initial-review behavior; follow-up routing is runtime classification, not frontmatter.
 - **Lessons-ledger adoption.** Treat `lessons/` + `lessons-archived/` (with `.gitkeep`s), `policies/lessons.md`, `bin/lessons`, `tests/test_lessons.py`, `bin/check-catalogs`, `tests/test_check_catalogs.py`, the `bin/check` registrations, `.claude/skills/sweep/SKILL.md` (with its `.agents/skills/sweep` symlink), `kickoff` Step 9c plus the END-block `Lessons:` field and `log-discipline.md`'s minimum-contract line, the four roles' Process Observations sections, the coder/evidence `failure_analysis` chain, `briefs/harness-self-improvement.md`, and the CLAUDE.md invariant/catalog/glossary entries as **one atomic contract**. If absent, port the bundle with an empty ledger — never seed the target's ledger with starter lessons. If partially present, partial adoption is stale and blocking. The target's existing ledger *content* is target state: preserve it untouched.
 - **Candidate-bound evidence adoption.** Treat

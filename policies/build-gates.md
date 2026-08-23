@@ -230,6 +230,18 @@ explicit miss and runs `./bin/check all`. The lookup never falls back to a
 reassuring value on error. The receipt manager writes only ignored local runtime
 state; it performs no Git or other shared-state mutation.
 
+Candidate identity and environment identity are separate bindings. The
+environment fingerprint describes the runtime that actually executes the gate,
+not the standalone receipt helper and not a version declaration used as its
+proxy. In the Python profile, `bin/check-receipt` obtains a deterministic
+descriptor through the repository-owned `bin/python` selection path. That
+descriptor includes the selected implementation and actual version, resolved
+executable and base-executable identities with their file digests, machine,
+platform, and uv version. It does not hash `project/.venv` or an external
+runtime tree. Failure to select the runtime, query any descriptor member, parse
+the descriptor, or validate its schema is an explicit miss and runs the full
+gate.
+
 ## Lifecycle hooks
 
 Tracked hooks may invoke the candidate-bound receipt lookup and then

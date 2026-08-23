@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import os
+import platform
+import shlex
 import shutil
 import subprocess
 import sys
@@ -32,8 +34,39 @@ def repository(tmp_path: Path) -> Path:
     shutil.copy2(TREE_SOURCE, root / "bin" / "kickoff-tree-id")
     shutil.copy2(HOOK_SOURCE, root / ".githooks" / "pre-push")
     write_executable(
+        root / "bin" / "python",
+        "\n".join(
+            (
+                "#!/usr/bin/env bash",
+                "set -euo pipefail",
+                'if [[ "${CHECK_RECEIPT_TEST_RUNTIME_MODE:-}" == "fail" ]]; then',
+                "  echo 'selected runtime probe failed' >&2",
+                "  exit 23",
+                "fi",
+                'if [[ "${CHECK_RECEIPT_TEST_RUNTIME_MODE:-}" == "malformed" ]]; then',
+                "  printf '%s\\n' 'not-json'",
+                "  exit 0",
+                "fi",
+                f"selected={shlex.quote(sys.executable)}",
+                'if [[ -n "${CHECK_RECEIPT_TEST_MANAGED_PYTHON:-}" ]]; then',
+                '  selected="$CHECK_RECEIPT_TEST_MANAGED_PYTHON"',
+                "fi",
+                'if [[ -n "${TOOLCHAIN_PYTHON:-}" ]]; then',
+                '  selected="$TOOLCHAIN_PYTHON"',
+                "fi",
+                'if [[ -n "${CHECK_RECEIPT_TEST_PYTHON_VERSION:-}" ]]; then',
+                '  export PYTHONPATH="$PWD/.kickoff/runtime-site"',
+                "fi",
+                'exec "$selected" "$@"',
+                "",
+            )
+        ),
+    )
+    write_executable(
         root / "bin" / "check",
-        "#!/usr/bin/env bash\nprintf 'called\\n' >> \"$PWD/.kickoff/hook-called\"\n",
+        "#!/usr/bin/env bash\n"
+        'mkdir -p "$PWD/.kickoff"\n'
+        "printf 'called\\n' >> \"$PWD/.kickoff/hook-called\"\n",
     )
     (root / ".gitignore").write_text(".kickoff/\n", encoding="utf-8")
     (root / "tracked.txt").write_text("fixture\n", encoding="utf-8")
@@ -42,6 +75,19 @@ def repository(tmp_path: Path) -> Path:
     subprocess.run(["git", "config", "user.name", "Fixture"], cwd=root, check=True)
     subprocess.run(["git", "add", "."], cwd=root, check=True)
     subprocess.run(["git", "commit", "-q", "-m", "fixture"], cwd=root, check=True)
+    site = root / ".kickoff" / "runtime-site"
+    site.mkdir(parents=True)
+    (site / "sitecustomize.py").write_text(
+        "import os\n"
+        "import platform\n"
+        "import sys\n"
+        "if version := os.environ.get('CHECK_RECEIPT_TEST_PYTHON_VERSION'):\n"
+        "    platform.python_version = lambda: version\n"
+        "if identity := os.environ.get('CHECK_RECEIPT_TEST_RUNTIME_IDENTITY'):\n"
+        "    sys.executable = identity\n"
+        "    sys._base_executable = identity\n",
+        encoding="utf-8",
+    )
     return root
 
 
@@ -84,9 +130,22 @@ def push_input(root: Path, local_sha: str | None = None) -> str:
     return f"refs/heads/master {selected} refs/heads/master {ZERO_SHA}\n"
 
 
-def record_pass(root: Path, *, output: str = "gate output\n") -> tuple[Path, Path]:
+def record_pass(
+    root: Path,
+    *,
+    output: str = "gate output\n",
+    environment: dict[str, str] | None = None,
+) -> tuple[Path, Path]:
     identity = candidate(root)
-    begun = run_receipt(root, "begin", "--root", str(root), "--candidate", identity)
+    begun = run_receipt(
+        root,
+        "begin",
+        "--root",
+        str(root),
+        "--candidate",
+        identity,
+        environment=environment,
+    )
     assert begun.returncode == 0, begun.stderr
     log = Path(begun.stdout.strip())
     log.write_text(output, encoding="utf-8")
@@ -105,6 +164,7 @@ def record_pass(root: Path, *, output: str = "gate output\n") -> tuple[Path, Pat
         "0",
         "--outcome",
         "passed",
+        environment=environment,
     )
     assert completed.returncode == 0, completed.stderr
     assert "CHECK ALL PASS" in completed.stdout
@@ -184,10 +244,74 @@ def test_corrupt_receipt_fails_closed(repository: Path) -> None:
     assert "reason=receipt-query-error" in result.stderr
 
 
-def test_environment_change_never_reuses_receipt(repository: Path) -> None:
-    record_pass(repository)
+def write_runtime(parent: Path, name: str, repository: Path) -> Path:
+    runtime = parent / name / "python"
+    runtime.parent.mkdir(parents=True)
+    write_executable(
+        runtime,
+        "#!/usr/bin/env bash\n"
+        f"export PYTHONPATH={shlex.quote(str(repository / '.kickoff' / 'runtime-site'))}\n"
+        f"export CHECK_RECEIPT_TEST_RUNTIME_IDENTITY={shlex.quote(str(runtime))}\n"
+        f'exec {shlex.quote(sys.executable)} "$@"\n',
+    )
+    return runtime
+
+
+def test_receipt_records_the_runtime_selected_by_bin_python(repository: Path) -> None:
+    selected = write_runtime(repository.parent / "recorded-runtime", "selected", repository)
     environment = os.environ.copy()
-    environment["TOOLCHAIN_PYTHON"] = str(repository / "different-python")
+    environment["CHECK_RECEIPT_TEST_MANAGED_PYTHON"] = str(selected)
+    environment["CHECK_RECEIPT_TEST_PYTHON_VERSION"] = "9.8.7-selected"
+
+    _, receipt_path = record_pass(repository, environment=environment)
+
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    assert receipt["environment"]["python"] == "9.8.7-selected"
+    assert receipt["environment"]["python"] != platform.python_version()
+    assert receipt["environment"]["executable"] == str(selected.resolve())
+    assert receipt["environment"]["executable"] != str(Path(sys.executable).resolve())
+    assert receipt["environment"]["base_executable"] == str(selected.resolve())
+    assert len(receipt["environment"]["executable_sha256"]) == 64
+
+
+def test_selected_managed_runtime_change_never_reuses_receipt(repository: Path) -> None:
+    runtimes = repository.parent / "managed-runtimes"
+    first = write_runtime(runtimes, "first", repository)
+    second = write_runtime(runtimes, "second", repository)
+    initial_environment = os.environ.copy()
+    initial_environment["CHECK_RECEIPT_TEST_MANAGED_PYTHON"] = str(first)
+    repository_candidate = candidate(repository)
+    record_pass(repository, environment=initial_environment)
+    changed_environment = os.environ.copy()
+    changed_environment["CHECK_RECEIPT_TEST_MANAGED_PYTHON"] = str(second)
+    assert candidate(repository) == repository_candidate
+
+    result = run_receipt(
+        repository,
+        "pre-push",
+        "--root",
+        str(repository),
+        stdin=push_input(repository),
+        environment=changed_environment,
+    )
+
+    assert result.returncode == 1
+    assert "reason=receipt-not-found" in result.stderr
+
+
+def test_stable_override_path_detects_changed_interpreter(repository: Path) -> None:
+    runtimes = repository.parent / "override-runtimes"
+    first = write_runtime(runtimes, "first", repository)
+    second = write_runtime(runtimes, "second", repository)
+    stable = runtimes / "selected-python"
+    stable.symlink_to(first)
+    environment = os.environ.copy()
+    environment["TOOLCHAIN_PYTHON"] = str(stable)
+    repository_candidate = candidate(repository)
+    record_pass(repository, environment=environment)
+    stable.unlink()
+    stable.symlink_to(second)
+    assert candidate(repository) == repository_candidate
 
     result = run_receipt(
         repository,
@@ -315,4 +439,27 @@ def test_pre_push_hook_skips_only_a_verified_hit(repository: Path) -> None:
     )
     assert miss.returncode == 0, miss.stderr
     assert "reason=working-tree-not-clean" in miss.stderr
+    assert marker.read_text(encoding="utf-8") == "called\n"
+
+
+@pytest.mark.parametrize("runtime_mode", ("fail", "malformed"))
+def test_runtime_descriptor_failure_runs_full_gate(repository: Path, runtime_mode: str) -> None:
+    marker = repository / ".kickoff" / "hook-called"
+    hook = repository / ".githooks" / "pre-push"
+    environment = os.environ.copy()
+    environment["CHECK_RECEIPT_TEST_RUNTIME_MODE"] = runtime_mode
+
+    result = subprocess.run(
+        [str(hook), "origin", "fixture"],
+        cwd=repository,
+        env=environment,
+        input=push_input(repository),
+        text=True,
+        capture_output=True,
+        timeout=30,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "reason=receipt-query-error" in result.stderr
     assert marker.read_text(encoding="utf-8") == "called\n"

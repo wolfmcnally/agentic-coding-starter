@@ -71,6 +71,9 @@ def test_full_gate_receipt_contract_propagates_atomically() -> None:
         assert "environment fingerprint" in document
         assert "complete log" in document
         assert "fail" in document and "closed" in document
+        assert "repository-selected runtime" in document
+        assert "base-executable" in document
+        assert "version-file proxy" in document or "version declaration" in document
     for document in (TEACH, STAMP, BOOTSTRAP_BRIEF):
         assert "bin/check-receipt" in document
         assert "tests/test_check_receipt.py" in document

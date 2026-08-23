@@ -99,10 +99,15 @@ lockfile. Behavioral coverage lives in
 Internal manager used by `bin/check all` and the pre-push hook. It identifies
 the complete candidate through `kickoff-tree-id`, records running and terminal
 metadata plus the full gate log, and writes a reusable success receipt only
-after the candidate, environment, and durable artifacts verify. Pre-push reuse
+after the candidate, environment, and durable artifacts verify. Its environment
+descriptor comes through `bin/python`, so the implementation, actual version,
+resolved executable and base-executable identities and digests, platform, and
+uv version describe the runtime that ran the gate rather than the standalone
+receipt helper. Candidate and environment identities remain separate; no venv
+or external runtime tree is added to the candidate hash. Pre-push reuse
 additionally requires a clean tree and every non-deleted pushed ref to equal
-`HEAD`; any miss, malformed record, corruption, or query failure runs the full
-gate. It is normally not invoked directly.
+`HEAD`; any miss, malformed record, descriptor failure, corruption, or query
+failure runs the full gate. It is normally not invoked directly.
 
 Universal contract: [`policies/build-gates.md`](../policies/build-gates.md).
 Behavioral coverage lives in `tests/test_check_receipt.py`.

@@ -284,8 +284,11 @@ Terms used consistently across briefs, skills, policies, and code. Mismatched us
   `./bin/test`.
 - **Full-gate receipt.** The gitignored durable log, terminal run metadata, and
   success record managed by `bin/check-receipt`, bound to one exact candidate
-  and environment. The opt-in pre-push hook reuses it only for the clean
-  current `HEAD`; every miss or error runs the authoritative full gate.
+  and environment. The environment fingerprint comes through the
+  repository-selected runtime and includes its actual executable and
+  base-executable identity; it is not inferred from the receipt helper or a
+  version file. The opt-in pre-push hook reuses it only for the clean current
+  `HEAD`; every miss or error runs the authoritative full gate.
 - **Candidate id.** The SHA-256 identity emitted by `bin/kickoff-tree-id` for
   the complete reviewable working tree: tracked content, deletions, modes,
   symlink targets, and nonignored untracked files. Staging alone does not

@@ -485,9 +485,14 @@ acceptance use `./bin/test ...` for focused tests and `./bin/check all` for the
 full claim; callers do not duplicate the command mappings.
 Every `all` run captures a complete log and terminal metadata under the
 gitignored `.kickoff/check-all/` tree. A success receipt is bound to the exact
-candidate and environment fingerprint; the pre-push hook reuses it only for a
-clean current `HEAD`, and fails closed by running the full gate on every miss or
-error.
+candidate and environment fingerprint. The fingerprint is obtained through the
+repository-selected runtime path and records the implementation, actual
+version, resolved executable and base-executable identity and file digests,
+machine, platform, and package-manager version; it never substitutes the
+receipt helper's runtime or the declared version file. Candidate hashing stays
+separate and does not absorb a venv or external runtime tree. The pre-push hook
+reuses the receipt only for a clean current `HEAD`, and fails closed by running
+the full gate on every miss, descriptor failure, or query error.
 
 ### Step 10 — Sanity-check the bootstrap
 
