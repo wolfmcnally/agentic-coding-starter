@@ -671,6 +671,12 @@ deterministic procedure that produced it; a relayed number is remeasured or
 attributed plainly as unverified, per
 [`policies/verification-discipline.md`](../../../policies/verification-discipline.md).
 
+The END block and the report that accompanies it are addressed to the
+operator, so both are composed in the [`plain`](../../../.claude/skills/plain/SKILL.md) register: lead with what is
+true now and what it means, name every parked criterion the operator still
+owns, and keep ids, paths, and stage mechanics available on request rather
+than ambient. Identifiers the operator must act on are given exactly.
+
 Append an END entry to `LOG.md`:
 
 ```

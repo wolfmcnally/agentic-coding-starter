@@ -218,8 +218,9 @@ Each stale item gets one of three classifications:
 Identify every proposal, conflict, stale migration, or user-added request that
 requires judgment. Work through them **one at a time**:
 
-1. Explain one decision plainly: what changes, why it matters, the realistic
-   options, and your recommendation.
+1. Explain one decision in the [`plain`](../../../.claude/skills/plain/SKILL.md) register: what changes, why it
+   matters, what breaks if the call is wrong, the realistic options, and your
+   recommendation.
 2. Stop for the user's decision. Answer questions about that decision without
    advancing to the next one.
 3. Advance only after the user gives an explicit decision.
@@ -367,7 +368,7 @@ Once approved, apply the approved items to the target. Order:
 3. MODIFY existing target files (smallest diffs first; one logical change per Edit call).
 4. Maintain cross-harness parity for any *newly added or modified* skills and agents — apply the same four-surface contract the parity heals enforce, but to whatever the teach pass just added:
    - **Top-level instructions** — `CLAUDE.md` ↔ `AGENTS.md` symlink. If a fresh `CLAUDE.md` was created in step 2, also create the `AGENTS.md → CLAUDE.md` symlink (the parity-heal pass in step 1 only repairs existing-`CLAUDE.md` mismatches).
-   - **Skills — Codex native skill-discovery surface** — `.claude/skills/<name>/` ↔ `.agents/skills/<name>` (directory symlink). For every universal skill added or modified (kickoff, methodology, learn, teach, roles, sweep, demo, treatise — *not* `stamp`): `mkdir -p <target>/.agents/skills && ln -s ../../.claude/skills/<name> <target>/.agents/skills/<name>`. Directory-level, not file-level — per [openai/codex#11314](https://github.com/openai/codex/issues/11314).
+   - **Skills — Codex native skill-discovery surface** — `.claude/skills/<name>/` ↔ `.agents/skills/<name>` (directory symlink). For every universal skill added or modified (kickoff, methodology, learn, teach, roles, sweep, demo, treatise, plain — *not* `stamp`): `mkdir -p <target>/.agents/skills && ln -s ../../.claude/skills/<name> <target>/.agents/skills/<name>`. Directory-level, not file-level — per [openai/codex#11314](https://github.com/openai/codex/issues/11314).
    - **Agent roles** — `.claude/agents/<role>.md` ↔ `.codex/agents/<role>.toml` (thin wrapper TOML). For every agent .md added or modified, generate or refresh the .toml as a thin pointer: a `description` field plus a `developer_instructions` body that just says "Read .claude/agents/<role>.md and follow it."
 5. Update the target's `CLAUDE.md` catalogs (briefs catalog, policies catalog, critical-files map) so every new file is indexed. Add the catalog as a new section when the target lacks it.
 6. Substitute names in transferred files: `Agentic Coding Starter Template` → target's project name; `agentic-coding-starter-template` → target's slug; references to this template's `example/` package → target's primary surface.

@@ -66,7 +66,7 @@ Which model runs each `kickoff` role is set under `role_models` in human-editabl
 
 ## Project-specific skills
 
-In addition to the universal `kickoff`, `methodology`, `learn`, `teach`, `roles`, and `sweep` skills (carried into every derived project):
+In addition to the universal `kickoff`, `methodology`, `learn`, `teach`, `roles`, `sweep`, `demo`, `treatise`, and `plain` skills (carried into every derived project):
 
 - **`stamp`** — starter-template-only bootstrapping skill. Stamps out a new project from this repo. Registered for Codex in this template repo only; not carried into derived projects. Source: `.claude/skills/stamp/SKILL.md`; Codex native skill: `.agents/skills/stamp`.
 
@@ -154,6 +154,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
   - `sweep/SKILL.md` — recurring, user-gated maintenance pass over the rule surfaces: stale or contradictory policies, skills past review cadence, brief status transitions, aging ledger candidates, catalog drift. Judgment calls are settled with the user in conversation before the plan is composed. In a template repo it additionally audits the methodology corpus itself.
   - `demo/SKILL.md` — walks the user through an approved demo protocol one visible action at a time, answering questions without advancing.
   - `treatise/SKILL.md` — builds an audience-specific outward explanation from canonical authority, maintains the brief's editorial record, and enforces the publication gate.
+  - `plain/SKILL.md` — the register for addressing the operator: lead with the consequence, carry every detail that would change their answer, leave the mechanism available on request. Followed without invocation whenever the audience is the operator.
   - (Project-specific skills live here too; see Project Context.)
 - `.claude/agents/` — canonical role definitions invoked by `kickoff`: `phase-planner.md`, `plan-reviewer.md`, `phase-coder.md`, `code-critic.md`. These are the four roles in the methodology's planner → reviewer → coder → critic loop; do not invoke them by hand for full-phase work unless deliberately bypassing orchestration.
 - `.codex/agents/` — Codex CLI mirrors of the four canonical roles (TOML).
@@ -266,6 +267,14 @@ Full contract: [`policies/lessons.md`](policies/lessons.md); design rationale: [
 
 - **Repo-relative paths only** in committed files (also load-bearing per the invariants).
 - **Harness-specific skill invocation.** In harness-neutral prose, name a skill without a command prefix (for example, "the `kickoff` skill"). When showing an invocation, always give both forms: `/kickoff` for Claude Code and `$kickoff` for Codex. Never present Claude Code's `/name` syntax as universal.
+- **The operator gets the `plain` register.** Every message addressed to the
+  operator — a decision request, a ratification question, a phase report or
+  END block, a status update, a failure report, demo narration, the plan body
+  at an approval gate — follows [`.claude/skills/plain/SKILL.md`](.claude/skills/plain/SKILL.md).
+  Agents follow it without being invoked; the operator types `/plain` (Claude
+  Code) or `$plain` (Codex) only to correct a message that missed it. The
+  register switches at the audience boundary, per message: agent-to-agent
+  traffic keeps full fidelity.
 - **One executable command per fenced code block** when a code block is meant to be copy-pasted into a shell, so the user can copy individual commands one at a time without breaking on multi-line clipboards.
 - **Toolchain commands belong to the repository.** Use `./bin/setup` for
   provisioning, `./bin/test` for full or focused tests, and `./bin/check` for
@@ -286,6 +295,8 @@ Terms used consistently across briefs, skills, policies, and code. Mismatched us
 - **`sweep`.** Universal maintenance skill. Invoke it as `/sweep` in Claude Code or `$sweep` in Codex. Audits the accumulated rule surfaces — policies, briefs, skills, the lessons ledger, catalogs — for staleness, contradiction, and drift, settles every judgment call with the user before composing the plan, and proposes retirements and graduations as one complete plan the user ratifies. The pruning half of the improvement flywheel; governed by `policies/lessons.md` and `briefs/harness-self-improvement.md`.
 - **`demo`.** Universal interactive-evaluation skill. Invoke it as `/demo` in Claude Code or `$demo` in Codex. Runs an already approved `User Demo:` protocol one visible action per turn and preserves the resume point without repairing the product mid-demo.
 - **`treatise`.** Universal outward-explanation skill. Invoke it as `/treatise` in Claude Code or `$treatise` in Codex. Repairs the canonical brief first, renders for a named audience, and requires explicit authority plus a governing disclosure policy before external publication.
+- **`plain`.** Universal operator-register skill. Invoke it as `/plain` in Claude Code or `$plain` in Codex to recompose a message that missed the register; agents follow it unprompted for anything addressed to the operator. Two tests govern it: a detail belongs only if changing it would change the operator's answer, and every sentence must parse without the repo, the session, or the transcript open.
+- **Operator.** The human who owns the project and makes its calls — whoever holds this checkout. Never a named individual in a committed file, and referred to as *they*.
 - **Research authority.** The per-role search/retrieval boundary in `policies/research-authority.md` and `kickoff.yaml`: planner/reviewer search and retrieve; coder/critic retrieve approved authorities and same-host structural neighbors; installed resources are allow-by-default but never presumed present.
 - **Operator-input park.** A phase-level interval during which progress is waiting on a human decision or action. It is measured outside execution traces, reports every span plus an overlap-safe total, and fails closed while any interval remains open.
 - **Lessons ledger.** The `lessons/` + `lessons-archived/` directories: one file per candidate process lesson with scope, provenance, and occurrence history. Validated and tallied by `bin/lessons`; graduation is human-only. Governed by `policies/lessons.md`.

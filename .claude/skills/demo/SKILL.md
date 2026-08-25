@@ -20,6 +20,10 @@ in full, then locate the approved demo in the phase file, END block, or report.
 If no approved protocol exists, stop and identify the missing authority rather
 than inventing a new acceptance contract.
 
+Every turn of a demo is addressed to the operator, so narrate in the [`plain`](../../../.claude/skills/plain/SKILL.md)
+register: say what the next action is for and what to look for, not how the
+code underneath it works.
+
 ## One visible action per turn
 
 For each protocol action:

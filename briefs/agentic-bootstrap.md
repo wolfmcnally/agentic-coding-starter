@@ -99,6 +99,9 @@ A project derived from this template contains the following **portable structure
       roles/SKILL.md       # Universal: edit model/effort fields for any role
                            #   (wraps bin/kickoff-config)
       sweep/SKILL.md       # Universal: audit/prune accumulated rule surfaces
+      demo/SKILL.md        # Universal: one-step-at-a-time demo walkthrough
+      treatise/SKILL.md    # Universal: audience-specific outward explanation
+      plain/SKILL.md       # Universal: the register for addressing the operator
       # stamp is NOT carried over — the new project doesn't need to stamp
       # out more projects from itself by default
     agents/
@@ -125,6 +128,7 @@ A project derived from this template contains the following **portable structure
       sweep
       demo
       treatise
+      plain
       # stamp is NOT mirrored here either — starter-only
 
   project/                 # When project-isolation is enabled (default for
@@ -180,6 +184,7 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.claude/skills/sweep/SKILL.md` (universal rule-surface maintenance and lessons graduation)
 - `.claude/skills/demo/SKILL.md` (universal one-step-at-a-time user demonstration workflow)
 - `.claude/skills/treatise/SKILL.md` (universal publication-gated long-form synthesis; governed by `policies/treatise.md`)
+- `.claude/skills/plain/SKILL.md` (universal operator register; governs every message addressed to the operator)
 - `.claude/settings.json` (portable harness defaults; `worktree.bgIsolation: none` disables implicit background worktrees without disabling explicit ones)
 - `.claude/agents/phase-planner.md`
 - `.claude/agents/plan-reviewer.md`
@@ -194,6 +199,7 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.agents/skills/sweep` (directory symlink → `../../.claude/skills/sweep`)
 - `.agents/skills/demo` (directory symlink → `../../.claude/skills/demo`)
 - `.agents/skills/treatise` (directory symlink → `../../.claude/skills/treatise`)
+- `.agents/skills/plain` (directory symlink → `../../.claude/skills/plain`)
 - `AGENTS.md` symlink → `CLAUDE.md`
 - Every file under `policies/` (these are universal by design)
 - `bin/kickoff-config` (universal Python/uv round-trip config manager, fail-closed venue preflight, execution watchdog, research-budget authority, and telemetry calibrator), plus human-editable `kickoff.yaml` seeded via `bin/kickoff-config reset all`
@@ -305,6 +311,7 @@ Then create the empty directory shape:
 .claude/skills/sweep/
 .claude/skills/demo/
 .claude/skills/treatise/
+.claude/skills/plain/
 .claude/agents/
 .codex/agents/
 .agents/skills/        # (the eight skill entries here are directory symlinks
@@ -333,7 +340,7 @@ In this exact order (each feeds the next):
      - `## Project briefs` — `briefs/` entries specific to this project (initially `BRIEF.md` only).
      - `## Project surfaces` — the deliverable (location, language, seed code description).
      - `## Project conventions` — language, tooling, build-gate command shape.
-     - `## Project-specific skills` — any beyond the universal eight. Omit if none.
+     - `## Project-specific skills` — any beyond the universal nine. Omit if none.
 
 3. **`AGENTS.md`** — symlink to `CLAUDE.md`:
    ```bash
@@ -361,13 +368,14 @@ Copy verbatim, then adapt project names and surface-specific build-gate commands
 - `.claude/skills/sweep/SKILL.md`
 - `.claude/skills/demo/SKILL.md`
 - `.claude/skills/treatise/SKILL.md`
+- `.claude/skills/plain/SKILL.md`
 - `.claude/settings.json`
 - `.claude/agents/phase-planner.md`
 - `.claude/agents/plan-reviewer.md`
 - `.claude/agents/phase-coder.md`
 - `.claude/agents/code-critic.md`
 - `.codex/agents/*.toml`
-- `.agents/skills/{kickoff,methodology,learn,teach,roles,sweep,demo,treatise}` (directory symlinks → `../../.claude/skills/<name>`)
+- `.agents/skills/{kickoff,methodology,learn,teach,roles,sweep,demo,treatise,plain}` (directory symlinks → `../../.claude/skills/<name>`)
 
 Port the self-improvement machinery as the same atomic bundle:
 
@@ -515,7 +523,7 @@ Before declaring the bootstrap complete, verify:
   and resolves every tracked internal Markdown link.
 - `head -1 LOG.md` is `# Activity Log`.
 - `ls .claude/agents/` lists exactly the four canonical role files.
-- Each of `.claude/skills/{kickoff,methodology,learn,teach,roles,sweep,demo,treatise}/`
+- Each of `.claude/skills/{kickoff,methodology,learn,teach,roles,sweep,demo,treatise,plain}/`
   contains `SKILL.md`, and each corresponding `.agents/skills/<name>` entry
   is a directory symlink to `../../.claude/skills/<name>`.
 - `bin/lessons validate`, `bin/check-catalogs`, and their behavioral tests
@@ -629,11 +637,12 @@ Bootstrap is complete when **all** of the following hold:
 [ ] .claude/skills/sweep/SKILL.md exists (verbatim from template)
 [ ] .claude/skills/demo/SKILL.md exists (verbatim from template)
 [ ] .claude/skills/treatise/SKILL.md exists (verbatim from template)
+[ ] .claude/skills/plain/SKILL.md exists (verbatim from template)
 [ ] .claude/skills/stamp/ does NOT exist (starter-only meta-skill)
 [ ] .claude/agents/{phase-planner,plan-reviewer,phase-coder,code-critic}.md
     exist, adapted for this project
 [ ] .codex/agents/*.toml mirrors exist
-[ ] .agents/skills/{kickoff,methodology,learn,teach,roles,sweep,demo,treatise} exist as directory
+[ ] .agents/skills/{kickoff,methodology,learn,teach,roles,sweep,demo,treatise,plain} exist as directory
     symlinks to ../../.claude/skills/<name> (the canonical skill directory)
 [ ] .agents/skills/stamp does NOT exist (starter-only, must not propagate)
 [ ] .claude/settings.json sets worktree.bgIsolation to none while explicit

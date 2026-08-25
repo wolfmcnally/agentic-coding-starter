@@ -83,7 +83,7 @@ When a batched group turns out to be heterogeneous once written down — the ite
 
 ### Plain language is the form of every individual DECIDE
 
-An explanation must be readable by someone who has not opened the file being changed. State, in this order:
+An explanation must be readable by someone who has not opened the file being changed — the [`plain`](../../../.claude/skills/plain/SKILL.md) register, applied to a decision. State, in this order:
 
 1. **What is true today**, as behavior — "today, every phase must X."
 2. **What changes** — "nothing would require X any more."

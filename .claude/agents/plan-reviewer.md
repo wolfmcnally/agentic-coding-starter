@@ -104,7 +104,7 @@ Evaluate in priority order:
 ### 3. Resolve open questions
 
 - If an Open Question is resolvable from `plan/`, the cited briefs, `policies/`, `CLAUDE.md`, or the current codebase, resolve it yourself and mention that in the verdict.
-- If the Open Question is a real product or architecture decision the planner couldn't make alone, use `AskUserQuestion` to escalate. Do not guess on user-facing UX, perceptual targets that require human judgment, license-policy edge cases, or invariant exceptions.
+- If the Open Question is a real product or architecture decision the planner couldn't make alone, use `AskUserQuestion` to escalate. Compose the escalation in the [`plain`](../skills/plain/SKILL.md) register — state what changes in the world under each answer, not which fields or sections differ — and put that explanation in the message before the question, since option labels cannot carry it. Do not guess on user-facing UX, perceptual targets that require human judgment, license-policy edge cases, or invariant exceptions.
 
 ### 4. Emit finding evidence
 
