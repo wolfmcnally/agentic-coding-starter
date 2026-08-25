@@ -162,6 +162,13 @@ A project derived from this template contains the following **portable structure
       plain
       # stamp is NOT mirrored here either — starter-only
 
+  tooling/                 # ONLY when the deliverable is not Python: the
+                           #   committed governance environment (runtime pin,
+                           #   manifest, lockfile, no source) that runs the
+                           #   universal bin/ managers and the root tests/
+                           #   suite. A Python deliverable covers both from its
+                           #   own dev dependency group and needs no tooling/.
+
   project/                 # When project-isolation is enabled (default for
                            #   single-deliverable projects), the artifact lives
                            #   here, self-contained per
@@ -572,6 +579,28 @@ separate and does not absorb a venv or external runtime tree. The pre-push hook
 reuses the receipt only for a clean current `HEAD`, and fails closed by running
 the full gate on every miss, descriptor failure, or query error.
 
+**A non-Python deliverable makes this a two-runtime contract, not a one-line
+substitution.** The universal managers under `bin/` and the whole root `tests/`
+suite are Python, so a TypeScript, Rust, or Go project carries a second,
+committed governance environment — conventionally `tooling/`: runtime pin,
+manifest, lockfile, and no source of its own. Everything above then doubles.
+`bin/setup` provisions both from their lockfiles and probes both before
+reporting success. `bin/test` routes by path prefix — the deliverable's path to
+its own runner with the prefix stripped, `tests/...` to pytest — and refuses an
+invocation that mixes the two rather than guessing. `bin/check` splits `lint`
+and `format` per runtime while still emitting exactly one `CHECK <mode> PASS`
+line per mode, the way the policy lane emits one after its sub-gates. Each
+language gets a helper beside `bin/_python-toolchain` with the same contract —
+prerequisite check, contract members, an authoritative absolute-path override
+that never falls back, and a real dependency probe — and each helper takes its
+own root variable, because a single `project_root` no longer says enough. Pin
+the package manager in the manifest and invoke it through the launcher that
+honors the pin, so no caller depends on what happens to be installed. And pin
+the language version to what the *lint stack* supports rather than to the newest
+release: a type-checker release its linter has not adopted yet turns the lint
+gate into a load-time crash, which reads as a broken repository rather than as a
+version conflict.
+
 ### Step 10 — Sanity-check the bootstrap
 
 Before declaring the bootstrap complete, verify:
@@ -738,6 +767,12 @@ Bootstrap is complete when **all** of the following hold:
     witness in the check policy lane
 [ ] Runtime version metadata, package manifest, and lockfile form a complete
     language profile; no workflow assumes a versioned runtime binary on PATH
+[ ] For a non-Python deliverable: tooling/ carries a committed governance
+    environment; bin/setup provisions and probes both runtimes; bin/test routes
+    by path prefix and refuses an invocation spanning both suites; bin/check
+    splits lint and format per runtime while still emitting one
+    CHECK <mode> PASS line per mode; every language version pin sits inside the
+    range its lint and type tooling support, with the constraint written down
 [ ] tests/test_toolchain_entrypoints.py, tests/test_check.py,
     tests/test_check_receipt.py,
     tests/test_install_hooks.py, tests/test_check_hooks_installed.py,

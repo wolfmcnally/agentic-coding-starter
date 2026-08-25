@@ -53,15 +53,75 @@ Before changing anything, verify:
    If any check fails, refuse with a specific error naming the missing file and exit.
 
 2. **Destination directory.** Expand `~` and resolve to an absolute path. Then:
-   - If the path exists and is non-empty, refuse with: `Refusing to bootstrap into a non-empty directory: <path>`. Surface the contents so the user can decide.
-   - If the path exists and is empty, proceed.
    - If the path does not exist, `mkdir -p` it (with the user's tacit consent — they named the directory).
+   - If the path exists and is empty, proceed.
+   - If the path exists and holds nothing but a **seed brief** (defined below), adopt it and proceed.
+   - Otherwise refuse with: `Refusing to bootstrap into a non-empty directory: <path>`, naming the specific entries that disqualified it so the user can move them aside and retry.
 
 3. **Parent directory writable.** Check the parent of the destination is writable. If not, refuse.
 
+## Seed briefs — stamping onto a brief the user already wrote
+
+The best input to a bootstrap is a real brief. Writing one first and then stamping
+onto it is the intended workflow, not an edge case: [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md)
+opens by assuming a brief exists, and Step 3's phase sketches are only as good as
+the brief they enumerate. A one-line description yields one phase; a real brief
+yields the project's actual shape.
+
+**What counts as a seed.** The destination may contain, and *only* contain:
+
+- `.git/` — the user initialized a repository first.
+- `briefs/`, containing only `.md` files.
+- `.md` files at the top level.
+- `.gitignore`.
+
+Anything else — a source directory, a `package.json`, a stray archive, a nested
+project — disqualifies the destination. Refuse and name what tripped it. This
+strictness is deliberate: the stamp writes a whole repository into that path, and
+a destination holding unrelated work is a destination the user did not mean.
+
+**Adopting the seed.**
+
+1. **Place the briefs.** Top-level `.md` files move into `briefs/`, except
+   `README.md`, which stays where it is and is **not** overwritten by Step 3 —
+   the user wrote it, so keep it and adapt around it. Report every move. **When
+   `.git/` is part of the seed, move with `git mv`**, or stage the rename
+   immediately: a plain `mv` leaves the old path in the index, and
+   `bin/check-catalogs` reads tracked paths, so it then reports a broken link to
+   a file that no longer exists — a failure whose message points at the brief
+   rather than at the move that caused it.
+2. **Pick the entry point.** `briefs/BRIEF.md` if it exists; otherwise, if
+   exactly one brief is present, that file is the entry point and keeps its own
+   name — never rename a file the user wrote. If several briefs are present and
+   none is `BRIEF.md`, ask which is the entry point.
+3. **Repair frontmatter, never the body.** A hand-written brief usually lacks the
+   `title` / `date` / `status` / `scope` frontmatter [`policies/briefs.md`](../../../policies/briefs.md)
+   requires. Add what is missing, deriving `title` from the H1 and `date` from
+   today. Do not touch a single byte below the frontmatter: the brief is the
+   user's contract, and the stamp is not authorized to edit it.
+4. **Read the configuration out of the brief.** It answers the questions in
+   *Gather configuration* far better than a one-line description can —
+   `project_name`, `description`, `primary_language`, `surfaces`, and
+   `dependencies` are usually all stated or clearly implied. Ask the user only
+   what the brief genuinely leaves open.
+5. **Let an explicit `<description>` argument win.** If the argument and the
+   brief disagree, the argument is the more recent statement of intent — use it,
+   and say plainly in the report which brief statement it overrode, so the user
+   can correct whichever one is wrong.
+6. **Enumerate the real phases.** Draft `plan/phase-1.md` in full and a sketch for
+   every major phase the brief surfaces, per Step 3. This is the payoff for
+   seeding a brief; do not fall back to a single placeholder phase when the brief
+   plainly describes more.
+
+**Where the adopted brief changes later steps.** Step 3 does not author
+`briefs/BRIEF.md` over an adopted entry-point brief, and does not overwrite an
+adopted `README.md`. Step 6 skips `git init` when `.git/` already exists. Step 7
+verifies that every adopted brief's body is byte-identical to what the user
+wrote.
+
 ## Gather configuration
 
-The skill needs five pieces of information to customize the new project:
+The skill needs a small set of facts to customize the new project. When a seed brief was adopted, read them out of the brief first and ask only about what it leaves open:
 
 | Key | Purpose | Default behavior when unspecified |
 |---|---|---|
@@ -69,13 +129,17 @@ The skill needs five pieces of information to customize the new project:
 | `project_slug` | Lowercase-kebab; appears in package names, directory names | The final path segment |
 | `description` | One-line thesis | The `<description>` argument, or "(to be written)" |
 | `primary_language` | Drives the deliverable's code skeleton and build gate commands | Inferred from description heuristics; defaults to `python` |
-| `surfaces` | List of repo surfaces (e.g., `cli`, `library`, `web`, `service`) | Inferred; defaults to `[cli]` |
+| `surfaces` | List of repo surfaces: `cli`, `library`, `web`, `service`, `desktop`, `tui` | Inferred; defaults to `[cli]` |
+| `dependencies` | Runtime and dev packages the brief or description names explicitly | None beyond the language profile's own minimum |
 | `project_isolation` | Whether to adopt the `project/` subdirectory convention per [`policies/project-isolation.md`](../../../policies/project-isolation.md) | Default *opt-in* for single-deliverable projects (`cli`, `library`, `service`, `book`); default *opt-out* for polyglot or multi-deliverable repos (`surfaces` length > 1 with siblings like `web`+`service`) |
 
 **Inference heuristics** (apply only when `<description>` is informative):
 
 - Description mentions "CLI", "command-line", "terminal tool" → `surfaces: [cli]`.
-- Description mentions "web app", "frontend", "React", "Vue" → `surfaces: [web]`, `primary_language: typescript`.
+- Description mentions "web app", "frontend", "React", "Vue", "single-page", "PWA" → `surfaces: [web]`, `primary_language: typescript`.
+- Description mentions "game", "canvas", "Canvas2D", "WebGL", "sprite", "game loop", "browser app" → `surfaces: [web]`. A browser-delivered game is a `web` surface: it needs a host page, a bundler, and a dev server, none of which a library or CLI skeleton provides.
+- Description mentions "desktop app", "Electron", "Tauri", "menu bar app", "macOS app", "Windows app" → `surfaces: [desktop]`.
+- Description mentions "TUI", "terminal UI", "full-screen terminal", "ncurses", "ratatui", "textual" → `surfaces: [tui]`. A TUI still ships as a terminal binary, so it uses the `cli` layout with a screen-driving dependency and a headless-safe test.
 - Description mentions "API", "server", "service", "backend" → `surfaces: [service]`.
 - Description mentions "library", "SDK", "package" → `surfaces: [library]`.
 - Description mentions "Rust", "Cargo" → `primary_language: rust`.
@@ -91,7 +155,19 @@ The skill needs five pieces of information to customize the new project:
 - If language can't be inferred: ask for primary language with the common choices.
 - If the project name should differ from the kebab-cased slug: ask explicitly.
 
-**Do not** ask configuration questions when the description is straightforward. "Build a Rust CLI that prints the current weather" needs no further questions — `project_name` from directory, `primary_language: rust`, `surfaces: [cli]`, done.
+**Named dependencies are part of the declared architecture.** When the brief or
+the description names a package — a rendering library, a validation library, a
+test runner, a specific framework — it goes into the destination's manifest and
+lockfile at stamp time, pinned by the language's normal mechanism, even when the
+seed code does not import it yet. The brief is the contract; a dependency it
+names is a decision already made, and discovering at Phase 1 that the stamp
+silently dropped it is worse than a manifest entry that waits one phase for its
+first call site. **Do not invent dependencies nobody named** — a stamp that
+guesses a framework has made an architectural decision that was not its to make.
+Surface every dependency you recorded in the final report so the user can strike
+any that were misread.
+
+**Do not** ask configuration questions when the description is straightforward. "Build a Rust CLI that prints the current weather" needs no further questions — `project_name` from directory, `primary_language: rust`, `surfaces: [cli]`, done. "A TypeScript Canvas2D game" needs none either — `primary_language: typescript`, `surfaces: [web]`, and the browser-app skeleton in Step 4.
 
 ## Bootstrap procedure
 
@@ -305,8 +381,12 @@ Seed both config sections by running `<dest>/bin/kickoff-config reset all`; this
 preserves data under `extensions` if the destination already has it. The managers
 run via `uv`, so the destination needs `uv` on PATH, and `kickoff-config` declares
 its PEP 723 `ruamel.yaml` dependency. Keep every universal script entry in
-`bin/README.md`; delete only the starter-specific anonymization entry, and remove
-its call from the copied `bin/check`.
+`bin/README.md`; delete the starter-specific anonymization section **and every
+other reference to it in that file** — the section heading, the usage block, and
+the trailing paragraph that links `policies/anonymize-log-references.md` are
+separate hits, and leaving the last one produces a broken link that
+`bin/check-catalogs` fails on. Remove the anonymization call from the copied
+`bin/check` as well.
 
 Because the anonymization policy and its script are starter-only but `code-critic.md` is copied verbatim (above), the adaptation pass must **delete the "External / private-repo references" bullet** from the destination's `.claude/agents/code-critic.md` — it references `bin/check-anonymization.sh` and `policies/anonymize-log-references.md`, neither of which the new project will have.
 
@@ -315,7 +395,7 @@ Because the anonymization policy and its script are starter-only but `code-criti
 
 Author these afresh, using the gathered configuration:
 
-- **`<dest>/README.md`** — didactic top-level for human readers. Mirror the template's section structure (what this is, why, how to use, repository layout, status markers, four canonical agents, briefs-vs-policies-vs-plan, first-time setup). Every line is `<project_name>`-specific.
+- **`<dest>/README.md`** — didactic top-level for human readers. Mirror the template's section structure (what this is, why, how to use, repository layout, status markers, four canonical agents, briefs-vs-policies-vs-plan, first-time setup). Every line is `<project_name>`-specific. **If the seed carried a `README.md`, keep it**: append the repository-layout and getting-started sections beneath what the user wrote rather than replacing their words.
 
 - **`<dest>/CLAUDE.md`** — top-level agent guidance. The template's `CLAUDE.md` has two clearly-marked zones (HTML comments delimit them), plus a **Hard rules** section above both. The job:
   - **Copy the file as a whole.**
@@ -345,11 +425,13 @@ Author these afresh, using the gathered configuration:
 
 - **`<dest>/briefs/BRIEF.md`** — entry-point brief for the new project. Use the thesis-stub shape: H1, italic tagline, `## Thesis` paragraph from `description`, `## Catalog` pointer to `../CLAUDE.md#briefs-catalog`. Mark `status: draft` in frontmatter so the user knows it needs to be fleshed out.
 
+  **Skip this entirely when a seed brief was adopted.** The adopted entry-point brief *is* the brief; writing a stub over it would destroy the best input the bootstrap had. Catalog it — and every other adopted brief — in `CLAUDE.md`'s Project briefs section under whatever names the user gave them, with a one-line summary drawn from each brief's own opening. Leave the bodies untouched.
+
 - **`<dest>/plan/INDEX.md`** — copy this template's `plan/INDEX.md` structure, adapted: project name in the H1; the dependency graph enumerates every major phase the brief surfaces (Phase 1 + sketched Phases 2+); the phase table has one row per major phase, with Phase 1 as `⬅️` and the rest as `⏳`. See [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md) §8.
 
 - **`<dest>/plan/phase-1.md`** — a real first phase for the new project, drafted **in full**. Use the description plus inferred surfaces to draft Goal, Deliverables, and Acceptance. Mark Open Questions where the description is genuinely insufficient. Phase 1 should aim to deliver the project's "first slice end-to-end" — for a CLI, `<name> --help` plus one working subcommand; for a web app, the dev server plus one read-only page; for a library, the public API surface plus one working function.
 
-- **`<dest>/plan/phase-2.md`, `<dest>/plan/phase-3.md`, …** — sketched major phases at lower fidelity. For each major phase the brief surfaces beyond Phase 1, draft a `phase-N.md` with frontmatter (`id`, `title`, `depends_on`, `informs`, plus `review_lane: light` only when the phase is mechanical per `policies/review-lanes.md` — omit otherwise) + one-paragraph Goal + high-level Deliverables list + scaffold Acceptance + Brief refs. These sketches will be tightened by ripple at each upstream phase's close (per [`policies/phase-ripple.md`](../../../policies/phase-ripple.md)) and elaborated when their row enters `⬅️` (per the kickoff Step 1a/9a/9b machinery). If the brief surfaces only a single phase, skip the sketches.
+- **`<dest>/plan/phase-2.md`, `<dest>/plan/phase-3.md`, …** — sketched major phases at lower fidelity. When a seed brief was adopted, this is where it pays off: enumerate one sketch per major phase the brief actually surfaces, rather than settling for a single placeholder. For each major phase the brief surfaces beyond Phase 1, draft a `phase-N.md` with frontmatter (`id`, `title`, `depends_on`, `informs`, plus `review_lane: light` only when the phase is mechanical per `policies/review-lanes.md` — omit otherwise) + one-paragraph Goal + high-level Deliverables list + scaffold Acceptance + Brief refs. These sketches will be tightened by ripple at each upstream phase's close (per [`policies/phase-ripple.md`](../../../policies/phase-ripple.md)) and elaborated when their row enters `⬅️` (per the kickoff Step 1a/9a/9b machinery). If the brief surfaces only a single phase, skip the sketches.
 
 - **Do NOT draft any sub-phase files at bootstrap** — no `phase-1.1.md`, no `phase-2.1.md`, none. Sub-phase decomposition is JIT, owned by `kickoff` Step 1a at each major phase's open. The bootstrap leaves sub-phase shape to the orchestrator with each predecessor's outcomes in hand.
 
@@ -371,14 +453,41 @@ Write a minimal-but-runnable code skeleton in the project's primary language. Th
 - `tests/test_cli.py` with one passing test (e.g., asserts `--help` exits 0).
 - `.gitignore` listing Python build artifacts (`__pycache__/`, `*.py[cod]`, `*.egg-info/`, `build/`, `dist/`, `.venv/`, `.pytest_cache/`, `.ruff_cache/`, `.mypy_cache/`, `.coverage`).
 
-**TypeScript / Node (paths inside `project/`):**
-- `package.json` with `scripts: { lint, test, typecheck }`.
+**TypeScript / Node — library, CLI, or service (paths inside `project/`):**
+- `package.json` with `scripts: { lint, test, typecheck }`, the package manager
+  and its version pinned via `packageManager`, plus every named dependency.
+- The package manager's lockfile, generated from that manifest.
 - `tsconfig.json`.
 - Concise `README.md`.
-- `src/index.ts` exporting a stub function.
+- `src/index.ts` exporting a stub function (for a CLI, `src/cli.ts` with an
+  argument parser and one subcommand; for a service, `src/server.ts` with one
+  route).
 - `tests/index.test.ts` with one passing test.
 - ESLint and Prettier config files.
 - `.gitignore` listing Node build artifacts (`node_modules/`, `dist/`, `build/`, `coverage/`).
+
+**TypeScript — browser app, including a Canvas2D or WebGL game (`surfaces: [web]`,
+paths inside `project/`):** everything in the Node profile above, and then the
+parts a browser-delivered app needs and a library skeleton does not:
+- `index.html` — the host page, with a single mount point (`<canvas>` for a
+  canvas game, `<div id="app">` otherwise). Without a page there is nothing to
+  run, and a stamped "web" project that cannot be opened in a browser has failed
+  at its one job.
+- A bundler with a dev server, wired to `scripts: { dev, build, preview }`. Vite
+  is the default choice unless the brief names another; record the choice in the
+  brief's conventions so Phase 1 does not relitigate it.
+- `src/main.ts` — the entry point the page loads. For a canvas surface it
+  acquires the drawing context, runs one frame of a `requestAnimationFrame`
+  loop, and draws something visible. "Something visible" is the point: the first
+  `./bin/check all` should be followed by a dev server the user can look at.
+- `src/<slug>.ts` — the first real module (for a game, the update/draw step),
+  kept free of DOM access so it is testable headlessly.
+- `tests/<slug>.test.ts` — tests that module directly. **Do not** make the seed
+  test depend on a real browser: a gate that needs a display is a gate that fails
+  in CI and on a headless machine. Keep browser-dependent verification in the
+  phase's `User Demo:` protocol, where a human runs it, per
+  [`policies/user-demo-protocols.md`](../../../policies/user-demo-protocols.md).
+- `.gitignore` additions for the bundler's output and cache.
 
 **Rust (paths inside `project/`):**
 - `Cargo.toml` with `[package]` and one binary or one library entry.
@@ -395,7 +504,22 @@ Write a minimal-but-runnable code skeleton in the project's primary language. Th
 - `internal/<slug>/<slug>_test.go` with one passing test.
 - `.gitignore` listing Go build artifacts.
 
+**Desktop app (`surfaces: [desktop]`):** the language's normal application
+layout plus whatever the named framework requires, with the same rule as the
+browser profile — the business logic lives in a module with no window or
+platform-API access, so the seed test runs headlessly, and the window itself is
+verified through the phase's `User Demo:` protocol.
+
+**TUI (`surfaces: [tui]`):** the `cli` layout, plus the screen-driving
+dependency the brief names, plus the same separation — render state is computed
+by a pure function the test can call, and the terminal rendering itself is a
+manual check.
+
 **Other languages:** apply the same pattern — package metadata, one source file with a stub entry, one passing test, a concise README, the language's `.gitignore` inside `project/`.
+
+**Every named dependency lands in the manifest and the lockfile**, whatever the
+language and surface. Generate the lockfile from the finished manifest rather
+than hand-writing it, and never add a package nobody asked for.
 
 The artifact's `README.md` is short and self-contained (no `..` references) per [`policies/project-isolation.md`](../../../policies/project-isolation.md). The deliverable's `.gitignore` lives inside `project/` so submodule extraction carries it. The repo's top-level `.gitignore` lists only editor/OS files and agentic harness runtime state, including `.kickoff/` local timing telemetry. The repo's didactic top-level `README.md` describes the methodology and points at `project/` for the artifact.
 
@@ -455,12 +579,59 @@ at least the universal instruction/config invariants (`AGENTS.md` resolves to
 `CLAUDE.md`; `bin/kickoff-config show` succeeds) and any target-specific
 deterministic policy gates. It must not be an unconditional pass.
 
-For a non-Python deliverable, create a small committed governance-tooling
-environment (metadata plus lockfile) for the Python-based universal manager and
-root tests; `bin/check` invokes it in locked mode. Do not use an unpinned
-`uv run --with pytest` escape hatch merely because the deliverable itself is
-Node, Rust, or Go. For a Python deliverable, its committed dev dependency group
-and lockfile may cover both deliverable and root methodology tests.
+### The non-Python profile is a two-runtime contract
+
+For a Python deliverable, its committed dev dependency group and lockfile cover
+both the deliverable and the root methodology tests, and everything below is
+moot. For **any other language** the repository has two runtimes, and treating
+that as a footnote is how a stamp produces a project whose gate cannot start.
+The shape, proved by stamping a TypeScript browser game end to end:
+
+- **A committed governance environment**, conventionally `<dest>/tooling/`:
+  runtime pin, manifest, and lockfile, no source of its own. It exists to run
+  the universal managers under `bin/` and the root `tests/` suite, both of which
+  are Python. Do not reach for an unpinned `uv run --with pytest` escape hatch
+  merely because the deliverable is Node, Rust, or Go.
+- **A per-language helper beside `bin/_python-toolchain`** — `bin/_node-toolchain`
+  and so on — with the same contract: prerequisite check, contract-member check,
+  an authoritative absolute-path override (`TOOLCHAIN_NODE` alongside
+  `TOOLCHAIN_PYTHON`) that never falls back, and a real dependency-chain probe.
+  Each helper takes its own root variable (`node_project_root`,
+  `python_project_root`); the single `project_root` of the Python profile no
+  longer says enough.
+- **The package manager comes from the manifest, not from `PATH`.** Pin it in
+  the manifest's own field (`packageManager` for Node) and invoke it through the
+  launcher that honors that pin (`corepack`), so no caller depends on whichever
+  version happens to be installed.
+- **`bin/setup` provisions both**, from committed lockfiles, and probes both
+  before reporting success.
+- **`bin/test` routes by path prefix.** With no arguments it runs both suites.
+  With arguments, the leading path selects the runner — `project/...` to the
+  deliverable's runner with the prefix stripped, `tests/...` to pytest — and an
+  invocation mixing both is an error, not a guess. A focused run that silently
+  reaches the wrong suite is worse than one that refuses.
+- **`bin/check` splits `lint` and `format` per runtime** and keeps `test`
+  delegating to `bin/test`. **A split gate still owes exactly one summary line
+  per mode**: emit `CHECK lint PASS` after the sub-gates the way `run_policy`
+  emits `CHECK policy PASS`, or `./bin/check lint` stops reporting the stable
+  line every caller and test reads.
+- **Pin the deliverable's language version to what its *lint stack* supports,
+  not to the newest release.** Observed 2026-08-25: the newest TypeScript was
+  7.0, `typescript-eslint` declared a peer range of `>=4.8.4 <6.1.0`, and the
+  combination made `eslint` abort at load time rather than report a finding — a
+  broken gate that looks like a broken repo. Check the peer ranges of the lint
+  and type tooling before choosing the pin, and record the constraint in the
+  destination's conventions so the next person to bump it knows what it is
+  waiting on.
+
+**One shell trap, because it bit during that run and fails silently.** Capturing
+a child's status with `if ! command; then command_exit=$?` yields **0**: after an
+`if` whose condition failed and which has no `else`, `$?` is the status of the
+`if` statement, not of the command. Every failure then propagates as success, or
+as a diagnostic reading `(exit 0)`. Use the shape the existing entry points
+already use — `if command; then :; else command_exit=$?; ...; fi` — and prove it
+with a test that injects a specific nonzero code and asserts that exact code
+comes back.
 
 Adapt `<dest>/tests/test_toolchain_entrypoints.py` and
 `<dest>/tests/test_check.py` in the same step, and carry
@@ -509,8 +680,14 @@ In the destination directory:
 
 ```
 git init
+```
+
+```
 git add .
 ```
+
+Skip `git init` when the seed already carried a `.git/` directory; stage and
+commit onto the existing repository instead.
 
 Then make the new repo's initial commit ([`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md)) — an ordinary factual message such as `Stamp project scaffold from the agentic starter template`, with no agent credit. Do **not** push: a freshly initialized repo has no configured upstream, and selecting or creating a remote belongs to the user. If `git init` fails, or the destination was already a repo with content the stamp did not write, leave the tree staged and report it instead of committing.
 
@@ -564,6 +741,23 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
   Hard rules section (rule 3 is gone) and the Policies catalog inside the
   Methodology Contract zone.
 - The new `CLAUDE.md`'s catalogs reference every file in `briefs/` and `policies/`.
+- When a seed brief was adopted: every adopted brief's body below its frontmatter
+  is **byte-identical** to what the user wrote, an adopted `README.md` still
+  contains the user's own text, and `plan/` carries one sketch per major phase
+  the brief surfaces rather than a lone placeholder. Diff the bodies; do not
+  eyeball them.
+- When `surfaces` includes `web`: `<dest>/project/index.html` exists and names
+  the mount point `src/main.ts` acquires, the dev/build scripts run, and the seed
+  test suite passes **without a browser or a display** — a gate that needs a
+  screen is a broken gate. Prove the page actually serves rather than merely
+  builds: run the preview server and fetch `/`, confirming the mount point and
+  the bundled entry script both appear in the response.
+- Every language-version pin the lint or type tooling constrains is inside that
+  tooling's supported range, and the constraint is written down in the
+  destination's conventions rather than left to be rediscovered.
+- Every dependency named in the brief or the description appears in the
+  destination's manifest and in its lockfile, and no dependency appears that
+  nobody named.
 - `<dest>/kickoff.yaml` exists; `show` prints the seeded cross-vendor model routing, portable timeout values, and per-role research budgets; a scoped model edit preserves timeout/research comments and values; `<dest>/.gitignore` includes `.kickoff/`; the role, timeout, and research-authority policies plus invocation brief exist.
 - `<dest>/bin/setup` succeeds from outside `<dest>` and provisions only the
   committed runtime/dependencies, then passes the target-adapted dependency

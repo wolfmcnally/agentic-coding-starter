@@ -236,6 +236,18 @@ For each proposed addition or update, ask:
   while any of these executables is missing, so a partial port is not a smaller
   transfer — it is a broken target.
 
+- **Two-runtime toolchain adoption.** A target whose deliverable is not Python
+  needs a committed governance environment (conventionally `tooling/`: runtime
+  pin, manifest, lockfile, no source) for the universal `bin/` managers and the
+  root `tests/` suite, plus a per-language helper beside `bin/_python-toolchain`
+  with the same override-and-probe contract. `bin/setup` provisions and probes
+  both; `bin/test` routes by path prefix and refuses a mixed invocation;
+  `bin/check` splits lint and format per runtime while still emitting one
+  `CHECK <mode> PASS` line per mode. Treat the governance environment, the
+  helpers, the entry points, and their behavioral tests as one atomic contract —
+  porting the managers without the environment that runs them leaves the target's
+  gate unable to start.
+
 - **Operator-register adoption.** `.claude/skills/plain/SKILL.md` and its
   `.agents/skills/plain` directory symlink travel together with the CLAUDE.md
   convention that every message addressed to the operator follows it.
