@@ -1,7 +1,7 @@
 ---
 title: "Agentic Coding Starter Template — Product Brief"
-date: 2026-08-23
-status: methodology
+date: 2026-08-25
+status: implemented
 scope: Entry-point brief for this repository. Describes what the starter template is, who it's for, the two operating modes, and acceptance criteria.
 ---
 
@@ -17,7 +17,7 @@ The result is a workflow where each phase is incremental, testable, and reviewed
 
 ## Catalog
 
-See [`CLAUDE.md` — Briefs catalog](../CLAUDE.md#briefs-catalog) for the index of sibling briefs.
+See [`CLAUDE.md` — Project briefs](../CLAUDE.md#project-briefs) and [`CLAUDE.md` — Methodology briefs](../CLAUDE.md#methodology-briefs) for the index of sibling briefs.
 
 ---
 

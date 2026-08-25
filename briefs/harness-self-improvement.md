@@ -1,6 +1,6 @@
 ---
 title: "Harness Self-Improvement: The Two-Tier Flywheel"
-date: 2026-08-10
+date: 2026-08-11
 status: implemented
 scope: How this template captures process lessons at phase scale, prunes its rule surfaces on a cadence, and propagates both disciplines to every derived project.
 ---

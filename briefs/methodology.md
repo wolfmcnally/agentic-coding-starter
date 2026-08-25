@@ -1,6 +1,6 @@
 ---
 title: "The Agentic Coding Methodology — Eleven Steps"
-date: 2026-08-23
+date: 2026-08-24
 status: methodology
 scope: The canonical statement of the methodology this template implements. Authoritative reference for every skill, agent, and policy in the repo.
 ---

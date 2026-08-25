@@ -1,6 +1,6 @@
 ---
 title: "Deterministic Orchestration of the Kickoff Loop"
-date: 2026-06-09
+date: 2026-08-25
 status: draft
 scope: Design and decision criteria for encoding kickoff's delegate → verdict → route-back loop as a deterministic workflow program instead of orchestrator prose; deferred until every supported harness has a parity workflow primitive.
 ---
@@ -40,10 +40,12 @@ The program orchestrates; it does not judge. These remain model (or human) work:
 - Build-failure classification (coder / plan / environment) — the *routing* on each classification is deterministic; the classification itself is judgment.
 - Human-facing reporting and everything in [`../policies/human-in-the-loop.md`](../policies/human-in-the-loop.md). A reviewer's product question must still reach the human; a deterministic loop must surface it, never swallow it.
 
-## 4. Harness state of the art (as of 2026-06)
+## 4. Harness state of the art (as of 2026-08-25)
 
 - **Claude Code** ships a workflow primitive: a deterministic script that spawns subagents, enforces JSON-schema structured outputs per agent call, supports sequential/parallel/pipelined composition, journals execution, and resumes from the journal. Everything §2 needs exists today on this harness.
-- **Codex CLI** has no announced parity primitive. Orchestration there is prose or external scripting.
+- **Codex CLI** ships native *subagents* — a spawn/wait/close lifecycle plus custom agent definitions at `.codex/agents/*.toml`, the shape this repo already uses for its four role mirrors — but **no workflow-program primitive**. Orchestration across those subagents is model-driven: the vendor documentation has Codex itself handling "orchestration across agents, including spawning new subagents, routing follow-up instructions, waiting for results, and closing agent threads." There is no per-call schema enforcement and no resume-from-journal, so a deterministic path there remains external scripting (the Agents SDK) rather than a harness primitive.
+
+Read that second bullet precisely, because it is the one a future session is most likely to misread: **subagent spawning is not the trigger.** Codex gained subagents between this brief's first draft and its 2026-08-25 re-check, and the deferral did not move — what §2 needs is a deterministic *control plane* (a script that holds the loop, the caps, and the routing), not the ability to delegate work to a child agent, which the prose loop already does.
 
 This asymmetry is the blocker. [`../policies/cross-harness-parity.md`](../policies/cross-harness-parity.md) requires one canonical `kickoff` to drive both harnesses; a deterministic path that exists on one harness only is acceptable **only** in the shape cross-harness review already proved out: a config-gated enhancement with graceful fallback to the prose path, where the canonical contract stays in `SKILL.md`.
 
@@ -59,10 +61,10 @@ This asymmetry is the blocker. [`../policies/cross-harness-parity.md`](../polici
 
 Implement when **all** of:
 
-1. **Codex (or whatever the second supported harness is) ships a workflow-parity function** — deterministic script, subagent spawning, schema-enforced outputs, resume. This is the trigger this brief waits on.
+1. **Codex (or whatever the second supported harness is) ships a workflow-parity *program* primitive** — a user-authored deterministic script that drives the loop, with per-call schema-enforced outputs and journal-backed resume. Native subagents alone do **not** satisfy this (§4). This is the trigger this brief waits on.
 2. Both harnesses' primitives can express the `role-models.md` fallback state machine and the review-lane escalation path — the two most stateful parts of the loop.
 3. The drift guard (§5) has a concrete mechanical design.
-4. Re-validation of §4: harness APIs churn; the sketch above describes 2026-06 reality and must be re-checked, not trusted.
+4. Re-validation of §4: harness APIs churn; §4 describes 2026-08-25 reality and must be re-checked, not trusted. Re-check history: 2026-06-09 (first draft), 2026-08-25 (briefs sweep — trigger had not fired).
 
 Until then, the prose loop stands — the field evidence says it is executing faithfully, so there is no urgency, only an improving cost/robustness trade to claim when parity arrives.
 

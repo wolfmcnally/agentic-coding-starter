@@ -51,7 +51,7 @@ Don't write a brief for ephemeral state, single-session decisions, or anything t
 ## Status lifecycle
 
 - `draft` — still being shaped; numbers and conclusions tentative.
-- `methodology` — defines an approach the project defers to. In a methodology-following repo this marker also signals *portable Methodology Contract content* — do not apply it to a project-specific design or survey merely because it feels durable or foundational; a cross-repo `learn` pass that trusts the marker as a selector would mis-transfer domain content into the template. Durable domain briefs belong in `draft`/`implemented`/`historical`.
+- `methodology` — defines an approach the project defers to. This is a *lifecycle* value like the other three, and **not** a portability marker: a brief earns it by stating an approach the project defers to, whether or not that brief travels to another repo, and a methodology brief later realized in code correctly moves on to `implemented`. **Portability is decided by the `CLAUDE.md` catalog, not by `status`** — the Project briefs / Methodology briefs split there is what `stamp` copies from and what a cross-repo `learn` or `teach` pass reads. Do not infer either fact from the other.
 - `implemented` — the position has been realized in code or operational practice.
 - `historical` — superseded by a later brief or by changed reality; kept for the audit trail.
 
