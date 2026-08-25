@@ -19,7 +19,7 @@ they do not require moving today's control flow out of prose.
 
 `kickoff` is a state machine written in prose. The orchestrating model reads `.claude/skills/kickoff/SKILL.md` and *performs* the machine: classify initial work versus a follow-up correction, resolve venue (Step 0a), resolve phase and lane (Step 1), decompose (Step 1a), delegate to the needed roles, parse verdicts by string match, route follow-ups by risk and size, run convergence-based full revision loops (a judgment call — iterate while objections narrow, escalate on stall or divergence — bounded by a deterministic 10-cycle runaway backstop), run the cross-harness fallback state machine, run the ripple pass, assemble the END block.
 
-Field use across this template and its derived projects shows the prose machine executing faithfully — END blocks match status flips, revision caps hold, fallbacks degrade gracefully. But the state count has grown monotonically: venue resolution, per-stage fallback, turn-cap rescue, review lanes with escalation, proportional follow-up routing, AUTO/DECIDE ripple classification. Prose execution risk grows with the number of states the orchestrating model must track, and every addition is paid on every phase. The known failure classes — none yet observed at damaging scale, all structurally possible — are: a skipped step, a mis-parsed verdict (`## Verdict:` is matched by string; [`../policies/four-canonical-agents.md`](../policies/four-canonical-agents.md) already warns that any deviation breaks orchestration), an under-classified follow-up, a forgotten ripple pass, a revision loop that loses count, venue thrash after a fallback.
+Field use across this template and its derived projects shows the prose machine executing faithfully — END blocks match status flips, revision caps hold, fallbacks degrade gracefully. But the state count has grown monotonically: venue resolution, per-stage fallback, turn-cap rescue, review lanes with escalation, proportional follow-up routing, AUTO/DECIDE ripple classification. Prose execution risk grows with the number of states the orchestrating model must track, and every addition is paid on every phase. The known failure classes — none yet observed at damaging scale, all structurally possible — are: a skipped step, a mis-parsed verdict (`## Verdict:` is matched by string, and any deviation from that exact header breaks orchestration), an under-classified follow-up, a forgotten ripple pass, a revision loop that loses count, venue thrash after a fallback.
 
 ## 2. What a deterministic encoding buys
 
@@ -36,9 +36,9 @@ Field use across this template and its derived projects shows the prose machine 
 The program orchestrates; it does not judge. These remain model (or human) work:
 
 - The four roles' actual work — planning, reviewing, coding, critiquing.
-- AUTO vs. DECIDE ripple classification ([`../policies/phase-ripple.md`](../policies/phase-ripple.md)) — judgment-bearing by definition.
+- AUTO vs. DECIDE ripple classification — deciding whether a closing phase's pinned decision lands downstream mechanically or has to surface as a named follow-up is judgment-bearing by definition.
 - Build-failure classification (coder / plan / environment) — the *routing* on each classification is deterministic; the classification itself is judgment.
-- Human-facing reporting and everything in [`../policies/human-in-the-loop.md`](../policies/human-in-the-loop.md). A reviewer's product question must still reach the human; a deterministic loop must surface it, never swallow it.
+- Human-facing reporting, and every criterion a human owes judgment on. A reviewer's product question must still reach the human; a deterministic loop must surface it, never swallow it.
 
 ## 4. Harness state of the art (as of 2026-08-25)
 
@@ -47,7 +47,7 @@ The program orchestrates; it does not judge. These remain model (or human) work:
 
 Read that second bullet precisely, because it is the one a future session is most likely to misread: **subagent spawning is not the trigger.** Codex gained subagents between this brief's first draft and its 2026-08-25 re-check, and the deferral did not move — what §2 needs is a deterministic *control plane* (a script that holds the loop, the caps, and the routing), not the ability to delegate work to a child agent, which the prose loop already does.
 
-This asymmetry is the blocker. [`../policies/cross-harness-parity.md`](../policies/cross-harness-parity.md) requires one canonical `kickoff` to drive both harnesses; a deterministic path that exists on one harness only is acceptable **only** in the shape cross-harness review already proved out: a config-gated enhancement with graceful fallback to the prose path, where the canonical contract stays in `SKILL.md`.
+This asymmetry is the blocker. One canonical `kickoff` has to drive both harnesses; a deterministic path that exists on one harness only is acceptable **only** in the shape cross-harness review already proved out: a config-gated enhancement with graceful fallback to the prose path, where the canonical contract stays in `SKILL.md`.
 
 ## 5. Design sketch (tentative — to be re-validated at implementation time)
 

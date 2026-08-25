@@ -177,11 +177,15 @@ def test_missing_phase_table_fails_closed(tmp_path: Path) -> None:
 
 def test_valid_internal_links_and_explicit_exclusions_pass(tmp_path: Path) -> None:
     root = fixture(tmp_path)
-    write_tracked(root, "docs/guide.md", "# Guide\n")
+    write_tracked(root, "docs/guide.md", "# Guide\n\n## Usage\n")
     write_tracked(
         root,
         "README.md",
         """\
+# Readme
+
+## Local
+
 [guide](docs/guide.md)
 [guide section](docs/guide.md#usage)
 [reference][guide-ref]
@@ -266,6 +270,137 @@ def test_real_missing_link_beside_a_code_span_is_still_reported(tmp_path: Path) 
     assert result.returncode == 1
     assert "links\tREADME.md\tline 1: missing target docs/broken.md" in result.stdout
     assert "docs/absent.md" not in result.stdout
+
+
+def test_missing_cross_file_anchor_is_reported(tmp_path: Path) -> None:
+    """A link can resolve to a real file and still land nowhere.
+
+    Validating only the path half of a compound reference reports on the half
+    it checked in language that sounds like it covered the whole thing.
+    """
+    root = fixture(tmp_path)
+    write_tracked(root, "docs/guide.md", "# Guide\n\n## Usage\n")
+    write_tracked(root, "README.md", "[renamed section](docs/guide.md#getting-started)\n")
+
+    result = run(root)
+
+    assert result.returncode == 1
+    assert "links\tREADME.md\tline 1: missing anchor #getting-started in docs/guide.md" in (
+        result.stdout
+    )
+
+
+def test_missing_same_document_anchor_is_reported(tmp_path: Path) -> None:
+    root = fixture(tmp_path)
+    write_tracked(root, "README.md", "# Readme\n\n## Usage\n\n[jump](#instalation)\n")
+
+    result = run(root)
+
+    assert result.returncode == 1
+    assert "links\tREADME.md\tline 5: missing anchor #instalation in README.md" in result.stdout
+
+
+def test_anchor_slugs_survive_markup_punctuation_and_repetition(tmp_path: Path) -> None:
+    """Anchors come from rendered heading text, not the raw source line."""
+    root = fixture(tmp_path)
+    write_tracked(
+        root,
+        "docs/guide.md",
+        "# Guide\n\n"
+        "## The `kickoff` skill — what it does\n\n"
+        '## "Authorization stands for the scope specified"\n\n'
+        "## Notes\n\n"
+        "## Notes\n\n"
+        "## A [linked](https://example.com) heading\n",
+    )
+    write_tracked(
+        root,
+        "README.md",
+        "[a](docs/guide.md#the-kickoff-skill--what-it-does)\n"
+        "[b](docs/guide.md#authorization-stands-for-the-scope-specified)\n"
+        "[c](docs/guide.md#notes)\n"
+        "[d](docs/guide.md#notes-1)\n"
+        "[e](docs/guide.md#a-linked-heading)\n",
+    )
+
+    result = run(root)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_headings_inside_a_fenced_block_do_not_define_anchors(tmp_path: Path) -> None:
+    root = fixture(tmp_path)
+    write_tracked(root, "docs/guide.md", "# Guide\n\n```markdown\n## Quoted\n```\n")
+    write_tracked(root, "README.md", "[quoted](docs/guide.md#quoted)\n")
+
+    result = run(root)
+
+    assert result.returncode == 1
+    assert "links\tREADME.md\tline 1: missing anchor #quoted in docs/guide.md" in result.stdout
+
+
+def test_fragment_into_a_non_markdown_target_is_skipped(tmp_path: Path) -> None:
+    """A declared blind spot: only Markdown has a derivable anchor set."""
+    root = fixture(tmp_path)
+    write_tracked(root, "bin/tool.py", "print('hello')\n")
+    write_tracked(root, "README.md", "[a line](bin/tool.py#L1)\n")
+
+    result = run(root)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_brief_citing_a_policy_or_a_plan_file_is_reported(tmp_path: Path) -> None:
+    """A brief never cites a policy or a plan file.
+
+    The thinking predates the rule derived from it; inverting the citation
+    direction means neither document can be read on its own.
+    """
+    root = fixture(tmp_path)
+    write_tracked(
+        root,
+        "briefs/design.md",
+        "# Design\n\nPer [`example.md`](../policies/example.md).\n\n"
+        "See [plan](../plan/INDEX.md).\n",
+    )
+
+    result = run(root)
+
+    assert result.returncode == 1
+    assert "citations\tbriefs/design.md\tline 3: brief cites policies/example.md" in result.stdout
+    assert "citations\tbriefs/design.md\tline 5: brief cites plan/INDEX.md" in result.stdout
+
+
+def test_brief_citing_a_policy_that_does_not_exist_is_still_a_direction_failure(
+    tmp_path: Path,
+) -> None:
+    """Direction is judged before existence — a dangling cite inverts order too."""
+    root = fixture(tmp_path)
+    write_tracked(root, "briefs/design.md", "# Design\n\nPer [absent](../policies/absent.md).\n")
+
+    result = run(root)
+
+    assert result.returncode == 1
+    assert "citations\tbriefs/design.md\tline 3: brief cites policies/absent.md" in result.stdout
+
+
+def test_the_citation_rule_is_directional_not_symmetric(tmp_path: Path) -> None:
+    """A policy or a plan file may cite a brief; only the upward direction is barred."""
+    root = fixture(tmp_path)
+    write_tracked(
+        root,
+        "policies/example.md",
+        "# Policy: Example\n\nRationale: [`design.md`](../briefs/design.md).\n",
+    )
+    write_tracked(
+        root,
+        "briefs/design.md",
+        "# Design\n\nA sibling brief: [`design.md`](design.md), and `../policies/example.md`.\n",
+    )
+
+    result = run(root)
+
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_phase_frontmatter_status_field_is_rejected(tmp_path: Path) -> None:

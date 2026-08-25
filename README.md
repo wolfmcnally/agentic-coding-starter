@@ -218,7 +218,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── kickoff-tree-id             ← complete review candidate identity
 │   ├── kickoff-evidence            ← authority/change/finding/gate records
 │   ├── lessons                     ← validate and query the lessons ledger
-│   ├── check-catalogs              ← document and phase-ledger fitness
+│   ├── check-catalogs              ← catalogs, links, citations, phase ledger
 │   └── check-anonymization.sh      ← starter-only public-repo leak guard
 ├── .githooks/
 │   └── pre-push                    ← exact receipt hit or canonical full gate

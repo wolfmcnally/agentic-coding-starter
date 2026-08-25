@@ -147,4 +147,4 @@ A protocol that the user can run as a deterministic shell command without thinki
 
 ## Per-phase waiver
 
-The human may waive this policy for a named phase ("Phase 3.2 is a pure refactor — skip the demo block"). Waivers are explicit, scoped, logged in the END block, and one-shot. The next phase reverts to the default. See [`human-in-the-loop.md`](human-in-the-loop.md#exception-clause).
+The human may waive this policy for a named phase ("Phase 3.2 is a pure refactor — skip the demo block"). Waivers are explicit, scoped, logged in the END block, and one-shot. The next phase reverts to the default. See [`human-in-the-loop.md`](human-in-the-loop.md#restriction-clause).

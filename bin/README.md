@@ -371,7 +371,15 @@ entry points.
 Verifies the durable-document catalogs stay closed under sync: every
 `policies/*.md` and `briefs/*.md` file is indexed in `CLAUDE.md` and every
 indexed entry resolves to a file (no orphans either way). It also validates
-tracked repository-internal Markdown links and the complete phase lifecycle:
+tracked repository-internal Markdown links — both the path *and* the
+`#fragment`, resolved against the target document's own headings, so a link
+cannot be green and dead at once; a fragment into a non-Markdown target has no
+derivable anchor set and is skipped rather than guessed at. It enforces the
+one-way citation direction from
+[`policies/briefs-and-policies.md`](../policies/briefs-and-policies.md): a file
+under `briefs/` may not link into `policies/` or `plan/`, because the thinking
+predates the rule derived from it. And it validates the complete phase
+lifecycle:
 each phase-table row has one recognized status, at most one row is `⬅️`, idle
 incomplete work has exactly one next row, and active or complete work may have
 none. Link scanning exempts fenced code blocks *and* inline code spans — a

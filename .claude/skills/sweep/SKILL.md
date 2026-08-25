@@ -44,8 +44,9 @@ The Stage 3 plan stays the canonical plan body in both paths. Plan mode is a har
 
 Run the mechanical checks first — they are deterministic and their output anchors the rest:
 
-1. `./bin/check-catalogs` — catalog/file sync, tracked internal-link integrity,
-   and the lifecycle-aware phase-ledger state machine.
+1. `./bin/check-catalogs` — catalog/file sync, tracked internal-link integrity
+   (paths *and* `#fragment` anchors), the one-way brief → policy/plan citation
+   direction, and the lifecycle-aware phase-ledger state machine.
 2. `./bin/lessons validate` — ledger schema health.
 3. `./bin/lessons candidates` — graduation-ready lessons (≥3 occurrences).
 

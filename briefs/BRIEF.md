@@ -48,7 +48,7 @@ See [`CLAUDE.md` — Project briefs](../CLAUDE.md#project-briefs) and [`CLAUDE.m
 - **A `briefs/` library.** Durable design decisions and methodology notes.
 - **A `policies/` library.** The non-negotiable rules every phase respects.
 - **A `LOG.md`.** Append-only activity log, owned by `kickoff`.
-- **A minimal example project.** A tiny Python package under `project/example/` so build gates have a real target to lint and test against from the first session. The deliverable lives under `project/` per [`../policies/project-isolation.md`](../policies/project-isolation.md), making it submodule-ready once the project is real.
+- **A minimal example project.** A tiny Python package under `project/example/` so build gates have a real target to lint and test against from the first session. The deliverable lives under `project/`, self-contained enough that nothing inside it references anything above it, which is what makes it submodule-ready once the project is real.
 
 ## 2. Two operating modes
 
@@ -76,7 +76,7 @@ The new project comes up ready for `kickoff`. The old template repo is unchanged
 
 ### Mode B — Self-build
 
-A secondary mode used to validate that the template actually works, and to give human readers a fully working example. If a user opens *this* repo and invokes `kickoff` (`/kickoff` in Claude Code; `$kickoff` in Codex), the orchestrator picks up Phase 1 from [`../plan/INDEX.md`](../plan/INDEX.md) and walks through the full plan → review → code → review → build → log cycle against the example Python project.
+A secondary mode used to validate that the template actually works, and to give human readers a fully working example. If a user opens *this* repo and invokes `kickoff` (`/kickoff` in Claude Code; `$kickoff` in Codex), the orchestrator picks up Phase 1 from the plan ledger and walks through the full plan → review → code → review → build → log cycle against the example Python project.
 
 In Mode B, the example project under `project/example/` is the build target. In Mode A, the example may be deleted or replaced as soon as the new project's real surface lands.
 
@@ -91,14 +91,14 @@ In Mode B, the example project under `project/example/` is the build target. In 
 
 - Single-file scripts. The overhead is not worth it.
 - Throwaway prototypes where the goal is to learn whether an idea works, not to build it well. (Use the methodology *before* a throwaway prototype, to decide if the prototype is the right next step.)
-- Teams that want no human judgment in the loop at all. The agent does commit and push accepted work on its own — but the template's load-bearing assumption is that a human judges each phase at its seam, and that every subjective, product, or custody criterion parks for that human. That part is non-negotiable. See [`../policies/human-in-the-loop.md`](../policies/human-in-the-loop.md).
+- Teams that want no human judgment in the loop at all. The agent does commit and push accepted work on its own — but the template's load-bearing assumption is that a human judges each phase at its seam, and that every subjective, product, or custody criterion parks for that human. That part is non-negotiable: objective criteria — executable, independently reviewed, gate-proved — close on their own, and everything a person has to look at, judge, or take custody of waits for them.
 
 ## 5. Anti-goals
 
 This template deliberately does *not*:
 
 - **Prescribe a language stack.** The example is Python because Python is broadly familiar, but the methodology is language-agnostic. The `stamp` skill asks about the primary language and adapts build gates.
-- **Prescribe a specific agent host.** Claude Code and Codex CLI are first-class. The cross-harness parity policy ([`../policies/cross-harness-parity.md`](../policies/cross-harness-parity.md)) describes how to add a third.
+- **Prescribe a specific agent host.** Claude Code and Codex CLI are first-class. Adding a third is a documented procedure rather than a fork: each skill and role definition has exactly one canonical home, every other harness gets a thin pointer at it, and a parity check rejects a mirror that is missing, copied, or orphaned.
 - **Touch the destructive git surface.** The orchestrator commits and fast-forward-pushes work whose gates are all green, and stops there. Force-pushing, tags, rebases, resets, branch deletion, remote selection, and any history rewrite stay with the human, who owns the shape of the git history.
 - **Manage secrets, deployments, or infrastructure.** Those belong in project-specific briefs and policies once a project graduates beyond the template.
 

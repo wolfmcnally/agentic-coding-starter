@@ -9,6 +9,8 @@ source: sweep
 occurrences:
   - date: 2026-08-25
     ref: "sweep (briefs only) — user-actions-archived/perfect-sloth.md finding A1"
+  - date: 2026-08-25
+    ref: "citation-direction + fragment enforcement — policies/user-demo-protocols.md linked human-in-the-loop.md#exception-clause after that section was renamed Restriction clause"
 ---
 
 `bin/check-catalogs` verifies that every tracked internal link resolves to a
@@ -38,8 +40,18 @@ unmatched fragment. That is exactly the mechanistic half of
 — no judgment involved, and a written reminder to "check your anchors" would be
 a rule wired to nothing.
 
-Counting note: one occurrence so far. Filed rather than graduated because a
-single instance cannot say whether anchors are a recurring defect here or a
-one-off — the repo currently has exactly one anchor link in `briefs/`, which is
-itself weak evidence either way. If a later sweep or a `teach` pass finds a
-second dead fragment, recur it here rather than filing a second entry.
+Counting note: two occurrences. The first was filed rather than graduated
+because a single instance cannot say whether anchors are a recurring defect
+here or a one-off. The second arrived the same day, from the other direction:
+building the fragment check surfaced a *second* dead anchor nobody had looked
+for — `policies/user-demo-protocols.md` pointed at
+`human-in-the-loop.md#exception-clause` long after that section was renamed
+**Restriction clause**. Two of the repo's four fragment links were dead. The
+weak-evidence caveat in the first row is therefore answered: fragments rot
+whenever a heading is renamed, and nothing was watching.
+
+Status note (2026-08-25): the `bin` guard this lesson proposed now exists —
+`bin/check-catalogs` derives each Markdown document's anchor set from its
+headings and refuses an unmatched fragment, and both dead anchors above were
+caught by it rather than by reading. Whether that closes the lesson is the
+operator's call; this entry stays open until they make it.

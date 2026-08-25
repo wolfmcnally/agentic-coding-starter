@@ -2,7 +2,12 @@
 # /// script
 # requires-python = ">=3.11"
 # ///
-"""Fail closed when durable-document catalogs drift from the files on disk."""
+"""Fail closed when durable-document catalogs, links, or citations drift.
+
+Covers catalog/file sync, the phase-ledger state machine, tracked internal
+link targets *and* their `#fragment` anchors, and the one-way citation
+direction between briefs, policies, and the plan.
+"""
 
 from __future__ import annotations
 
@@ -15,8 +20,14 @@ from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
 DRIFT: list[str] = []
+ANCHOR_CACHE: dict[Path, frozenset[str] | None] = {}
 
 CATALOGED_DIRECTORIES = ("policies", "briefs")
+# policies/briefs-and-policies.md contract item 1: a policy or a plan file may
+# cite a brief, and a brief never cites a policy or a plan file. The thinking
+# predates the rule derived from it, so the citation runs one way only.
+CITATION_SOURCE_DIRECTORY = "briefs"
+CITATION_FORBIDDEN_DIRECTORIES = ("policies", "plan")
 PHASE_STATUSES = ("⏳", "⬅️", "🚧", "✅")
 NEXT_MARKER = "⬅️"
 IN_PROGRESS_MARKER = "🚧"
@@ -29,6 +40,13 @@ CODE_SPAN_PATTERN = re.compile(r"(?<!`)(`+)(?!`)(?:.+?)(?<!`)\1(?!`)")
 INLINE_LINK_PATTERN = re.compile(r"!?\[[^\]\n]*\]\((?P<destination>[^)\n]+)\)")
 REFERENCE_LINK_PATTERN = re.compile(r"^ {0,3}\[[^\]\n]+\]:\s*(?P<destination><[^>\n]+>|\S+)")
 URI_SCHEME_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+ATX_HEADING_PATTERN = re.compile(r"^ {0,3}#{1,6}\s+(?P<text>\S.*?)(?:\s+#+)?\s*$")
+# A heading's anchor is derived from its *rendered* text, so inline markup is
+# removed before slugging: link syntax collapses to its label, and code-span,
+# emphasis, and strong markers drop out.
+HEADING_LINK_PATTERN = re.compile(r"!?\[(?P<label>[^\]\n]*)\]\([^)\n]*\)")
+HEADING_MARKUP_PATTERN = re.compile(r"[`*]")
+ANCHOR_DISALLOWED_PATTERN = re.compile(r"[^\w\- ]")
 PLACEHOLDER_PATTERN = re.compile(r"<[^>]+>|\{[^}]+\}")
 FRONTMATTER_STATUS_PATTERN = re.compile(r"^status\s*:", re.IGNORECASE)
 STATUS_DECLARATION_PATTERN = re.compile(
@@ -217,17 +235,106 @@ def link_destination(raw_destination: str) -> str | None:
     return unquote(destination.replace("\\(", "(").replace("\\)", ")"))
 
 
+def heading_slug(text: str) -> str:
+    """Slugify heading text the way Markdown hosts derive a heading anchor."""
+    rendered = HEADING_LINK_PATTERN.sub(lambda match: match.group("label"), text)
+    rendered = HEADING_MARKUP_PATTERN.sub("", rendered)
+    return ANCHOR_DISALLOWED_PATTERN.sub("", rendered.strip().lower()).replace(" ", "-")
+
+
+def document_anchors(path: Path) -> frozenset[str] | None:
+    """Anchors a Markdown document defines, or None when they cannot be derived.
+
+    Only Markdown targets have a mechanically derivable anchor set. A fragment
+    into any other file kind is skipped rather than guessed at — a declared
+    blind spot, not a silent pass for Markdown.
+    """
+    key = path.resolve(strict=False)
+    if key in ANCHOR_CACHE:
+        return ANCHOR_CACHE[key]
+
+    anchors: frozenset[str] | None = None
+    if path.suffix.lower() == ".md":
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            anchors = None
+        else:
+            frontmatter_numbers = {line_number for line_number, _ in frontmatter_lines(text)}
+            seen: dict[str, int] = {}
+            collected: set[str] = set()
+            for line_number, line in markdown_prose_lines(text):
+                if line_number in frontmatter_numbers:
+                    continue
+                match = ATX_HEADING_PATTERN.match(line)
+                if match is None:
+                    continue
+                slug = heading_slug(match.group("text"))
+                if not slug:
+                    continue
+                # Repeated heading text disambiguates as slug, slug-1, slug-2…
+                occurrence = seen.get(slug, 0)
+                seen[slug] = occurrence + 1
+                collected.add(slug if occurrence == 0 else f"{slug}-{occurrence}")
+            anchors = frozenset(collected)
+
+    ANCHOR_CACHE[key] = anchors
+    return anchors
+
+
+def check_fragment(source: Path, line_number: int, target: Path, fragment: str) -> None:
+    anchors = document_anchors(target)
+    if anchors is None or fragment in anchors:
+        return
+    resolved_target = target.resolve(strict=False)
+    try:
+        shown = resolved_target.relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        shown = resolved_target.as_posix()
+    report(
+        "links",
+        source.relative_to(ROOT).as_posix(),
+        f"line {line_number}: missing anchor #{fragment} in {shown}",
+    )
+
+
+def check_citation_direction(
+    source: Path, line_number: int, relative_target: Path, destination: str
+) -> None:
+    """A brief never cites a policy or a plan file (policies/briefs-and-policies.md).
+
+    Direction is judged before the target's existence: citing a policy that does
+    not exist inverts the dependency order just the same.
+    """
+    relative_source = source.relative_to(ROOT)
+    if relative_source.parts[:1] != (CITATION_SOURCE_DIRECTORY,):
+        return
+    if not relative_target.parts or relative_target.parts[0] not in CITATION_FORBIDDEN_DIRECTORIES:
+        return
+    report(
+        "citations",
+        relative_source.as_posix(),
+        f"line {line_number}: brief cites {relative_target.as_posix()} ({destination}); "
+        "state the constraint in the brief's own words and let the policy carry the link back",
+    )
+
+
 def check_link(source: Path, line_number: int, destination: str) -> None:
     if (
         not destination
-        or destination.startswith(("#", "//"))
+        or destination.startswith("//")
         or URI_SCHEME_PATTERN.match(destination)
         or PLACEHOLDER_PATTERN.search(destination)
     ):
         return
 
-    file_destination = destination.split("#", 1)[0].split("?", 1)[0]
+    file_part, has_fragment, fragment = destination.partition("#")
+    fragment = fragment.strip()
+    file_destination = file_part.split("?", 1)[0]
     if not file_destination:
+        # A same-document link resolves against the source file's own headings.
+        if has_fragment and fragment:
+            check_fragment(source, line_number, source, fragment)
         return
     if file_destination.startswith("/"):
         candidate = ROOT / file_destination.lstrip("/")
@@ -244,12 +351,16 @@ def check_link(source: Path, line_number: int, destination: str) -> None:
             f"line {line_number}: link escapes repository: {destination}",
         )
         return
+    check_citation_direction(source, line_number, relative_candidate, destination)
     if not candidate.exists():
         report(
             "links",
             source.relative_to(ROOT).as_posix(),
             f"line {line_number}: missing target {relative_candidate.as_posix()}",
         )
+        return
+    if has_fragment and fragment:
+        check_fragment(source, line_number, candidate, fragment)
 
 
 def check_markdown_links() -> None:

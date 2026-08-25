@@ -43,7 +43,7 @@ A project derived from this template contains the following **portable structure
     kickoff-tree-id        # Complete review candidate identity
     kickoff-evidence       # Authority/change/finding/packet/gate records
     lessons                # Validate/query the lessons ledger
-    check-catalogs         # Catalog, internal-link, and phase-ledger checks
+    check-catalogs         # Catalog, link, anchor, citation, ledger checks
 
   tests/
     test_toolchain_entrypoints.py # Setup/test/runtime behavioral coverage
@@ -454,7 +454,7 @@ Sub-phase files (`plan/phase-1.1.md`, etc.) follow the same frontmatter shape wi
 
 - Frontmatter: same shape (`id`, `title`, `depends_on`, `informs`).
 - **Goal** — one paragraph from the brief.
-- **Deliverables** — a high-level list (the surfaces this phase will produce). May shift as upstream phases close and ripple changes downstream (per [`../policies/phase-ripple.md`](../policies/phase-ripple.md)).
+- **Deliverables** — a high-level list (the surfaces this phase will produce). May shift as upstream phases close and ripple their pinned decisions downstream — mechanical edits land in the same session, judgment-level ones surface as named follow-ups.
 - **Acceptance** — scaffold-level criteria. Tighten at phase start via Step 1a; pinned values from upstream phases ripple in automatically.
 - **Brief refs** — links to the briefs this phase implements.
 
@@ -466,8 +466,8 @@ If the brief surfaces only Phase 1 (a small, single-phase project), no sketches 
 
 The template's example is Python. The new project may be Python, TypeScript, Rust, Go, Swift, Kotlin, a polyglot, or pure documentation.
 
-**Decide first whether to adopt the `project/` convention**
-([`../policies/project-isolation.md`](../policies/project-isolation.md)). The
+**Decide first whether to adopt the `project/` convention** — isolating the
+deliverable so that nothing inside it references anything above it. The
 default for a single-deliverable project is opt-in: the artifact goes under
 `project/` and the repository-owned toolchain wrappers select it internally.
 The default for polyglot or multi-deliverable repos is opt-out: deliverable
@@ -486,9 +486,8 @@ Lay down (paths assume `project_isolation` enabled — prefix with `project/`; d
 The repository owns setup, focused/full testing, runtime selection,
 authoritative gates, and durable full-gate receipts as one bundle. Generate
 `bin/setup`, `bin/test`, `bin/check`, and `bin/check-receipt` with the universal
-interface from
-[`../policies/build-gates.md`](../policies/build-gates.md); add a runtime
-wrapper such as `bin/python` when appropriate. Back them with the target's
+interface — cwd-independent, atomic, and never inferring a runtime from the
+host `PATH`; add a runtime wrapper such as `bin/python` when appropriate. Back them with the target's
 version declaration, committed manifest, lockfile, and behavioral tests. A
 profile that permits an explicit runtime override treats it as authoritative:
 the override either passes a target-adapted dependency-chain load/run probe or
@@ -687,4 +686,4 @@ The last item is the operational test. Until it passes, the bootstrap is not don
 
 - **The template (this repo) is itself the canonical donor.** Future versions of the bootstrap procedure should be updated *in the template first*, then propagated to derived projects' copies of `agentic-bootstrap.md` on next opportunity.
 - **The methodology** is documented in [`methodology.md`](methodology.md) (sibling brief, copied verbatim into every derived project).
-- **The cross-harness contract** is in [`../policies/cross-harness-parity.md`](../policies/cross-harness-parity.md). Adding a third or fourth harness is governed by that policy.
+- **The cross-harness contract** is one canonical home per skill and role definition, with thin pointers from every other harness and a parity check that rejects a missing, copied, or orphaned mirror. Adding a third or fourth harness follows that contract rather than forking the definitions.
