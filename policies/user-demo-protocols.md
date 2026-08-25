@@ -79,18 +79,18 @@ Two consequences:
 A minimal, well-formed protocol for a hypothetical CLI subcommand:
 
 ```
-User Demo: `kiln render` subcommand
+User Demo: `toneforge render` subcommand
 
 Entry point:
-  cd project && uv run --locked kiln render score-bump-small
+  cd project && uv run --locked toneforge render chime-short
 
 Suggested inputs:
-- `score-bump-small` — the canonical happy-path recipe; should render in ~2s.
-- `score-bump-tiny --duration 0.5` — exercises the short-tail branch; listen for a clean cutoff.
-- `nonexistent-recipe` — exercises the error path; the message should name the recipe and suggest `kiln list`.
+- `chime-short` — the canonical happy-path recipe; should render in ~2s.
+- `chime-tiny --duration 0.5` — exercises the short-tail branch; listen for a clean cutoff.
+- `nonexistent-recipe` — exercises the error path; the message should name the recipe and suggest `toneforge list`.
 
 What to look for:
-- A `renders/<recipe>/vNNN/<recipe>__vNNN.aiff` file appears with a non-empty size and a sensible duration.
+- An `out/<recipe>.aiff` file appears with a non-empty size and a sensible duration.
 - The CLI prints the output path and exits 0.
 - On the error case, exit code is non-zero and the message is a single line (no Python traceback).
 

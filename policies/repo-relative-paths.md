@@ -32,18 +32,27 @@ Every path embedded in a committed file is **repo-relative**. Absolute paths (`/
 
 ## Verification
 
-A quick sweep, runnable from the repo root:
+`bin/check-anonymization.sh` enforces this rule mechanically over every tracked
+file, and `./bin/check all` runs it:
 
 ```bash
-# Find absolute Unix-style paths in committed text files (excluding state dirs)
-grep -RIn '/Users/\|/home/\|/var/\|/etc/' \
-  --include='*.md' --include='*.py' --include='*.toml' \
-  --include='*.json' --include='*.yaml' --include='*.yml' \
-  --exclude-dir=.git --exclude-dir=.venv --exclude-dir=node_modules \
-  . | grep -v '^.claude/scheduled_tasks.lock' || echo "no absolute paths found"
+bin/check-anonymization.sh
 ```
 
-A clean repo prints `no absolute paths found`.
+Its first pass is this policy's check: it matches real `/Users/<user>/`,
+`/home/<user>/`, `C:\Users\<user>\`, and home-relative forms, excludes the
+placeholder spellings this policy itself recommends (`/Users/me/`, `<your-clone>/`),
+and reports a hit against this policy by name.
+
+**Do not hand-write a `grep` for this rule.** The token it would search for is the
+token this policy, its catalog entry, the code critic's checklist, the sanitizer
+that strips such paths, and the tests asserting their absence all legitimately
+contain — so such a grep reports hits on a clean repository and can never print a
+clean result. That is the detector defect
+[`verification-discipline.md`](verification-discipline.md) § "A grep lead is not a
+finding" names: never key a detector solely on a token the subject itself
+legitimately emits. The checker's exclusion list is what makes the same question
+answerable.
 
 ## Exception: documented scratch roots
 

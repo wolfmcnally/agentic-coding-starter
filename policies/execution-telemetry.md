@@ -211,7 +211,7 @@ Kickoff closes in this order:
 5. END log and sanitized report land;
 6. bare `./bin/check all` passes against the actual handoff tree and writes its
    ignored receipt;
-7. delivery — the ordinary commit and non-force push of fully accepted work,
+7. delivery — the ordinary commit and non-force push of gate-proved work,
    unless the operator restricted it ([`human-in-the-loop.md`](human-in-the-loop.md))
    — and the read-only opening of the already-generated report may follow.
 

@@ -1,10 +1,12 @@
 ---
 slug: crimson-shrew
 title: Link checkers that validate paths but not fragments let dead anchors live indefinitely
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: bin
 filed: 2026-08-25
+closed: 2026-08-25
+graduated_to: bin/check-catalogs
 source: sweep
 occurrences:
   - date: 2026-08-25
@@ -55,3 +57,20 @@ Status note (2026-08-25): the `bin` guard this lesson proposed now exists —
 headings and refuses an unmatched fragment, and both dead anchors above were
 caught by it rather than by reading. Whether that closes the lesson is the
 operator's call; this entry stays open until they make it.
+
+## Disposition — 2026-08-25
+
+Closed as codified during `sweep (policies)`, ratified by the operator. The guard
+this lesson proposed exists: `bin/check-catalogs` derives each Markdown document's
+anchor set from its headings and refuses an unmatched `#fragment`, and it runs
+inside `./bin/check all`. Both dead anchors the lesson named were caught by it
+rather than by reading. The two-occurrence count never reached the automatic
+threshold; the guard was built anyway, which makes the threshold moot here.
+
+**The blind spot the guard leaves, recorded so it is not rediscovered.** Anchors
+are resolved only for links whose target is a *tracked Markdown file*. A fragment
+pointing into any other kind of tracked file, and any fragment on an external URL,
+is still unchecked — the path half is verified, the anchor half is not, which is
+the same green-and-dead shape one level out. That case has zero observed
+instances, so it is stated here rather than filed as its own candidate; file one
+if it ever bites.

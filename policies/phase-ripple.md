@@ -62,21 +62,25 @@ The user owns DECIDE resolution and may also override any AUTO edit by editing t
 
 ## Verification
 
-A clean state after a phase close satisfies all of:
+Verification here is a **manual sweep**, and there is deliberately no command for
+it. Read the closing phase's `Ripple:` block in `LOG.md`, then:
 
-```bash
-# Every AUTO ripple recorded in the closing phase's END block has a corresponding
-# edit visible in `git status` (uncommitted) or in the immediately preceding
-# commit if the user committed the kickoff's output.
-grep -A20 -E '^## .*— END$' LOG.md | tail -40 | grep -E '^- AUTO ' && echo "AUTO ripples claimed; verify with git diff"
+- For every `AUTO:` line, confirm a corresponding edit is in the phase's delivered
+  diff. An AUTO claim with no edit behind it is a false END block, which
+  [`log-discipline.md`](log-discipline.md) § Rules treats as the most dangerous
+  failure mode in the file.
+- For every name, path, or value the closing phase pinned, search `plan/phase-*.md`
+  for stragglers the classifier missed.
+- For every `DECIDE:` line, confirm it names a follow-up condition. DECIDE items
+  reappear in the next kickoff's reading protocol until resolved.
 
-# No phase file references a name, path, or value the closing phase explicitly
-# renamed in its END block. (Run after kickoff completes; before committing.)
-# This is a manual sweep — the closing phase's END block names what was pinned;
-# grep each pinned name across plan/phase-*.md to spot stragglers.
-
-# DECIDE ripples are listed in the END block under a dedicated heading.
-grep -A20 -E '^## .*— END$' LOG.md | tail -40 | grep -E '^- DECIDE ' || echo "no DECIDE ripples this close (clean)"
-```
-
-A clean repo prints "no DECIDE ripples this close (clean)" or lists each DECIDE item with its follow-up condition. AUTO claims correspond to real edits. DECIDE items reappear in the next kickoff's reading protocol until resolved.
+**No grep against `LOG.md` substitutes for that read.** The previous version of
+this section shipped two, and both were structurally incapable of reporting a
+problem: they matched `- AUTO` and `- DECIDE` followed by a space, while the
+orchestrator writes those lines with a colon, so one branch never fired and the
+other printed "clean" on every run regardless of the truth. A check that can only
+return one answer carries no information —
+[`acceptance-empirical.md`](acceptance-empirical.md) § "A check must be able to
+fail". Mechanizing this properly means comparing END-block claims against the
+delivered diff, which is a real checker and not a one-liner; until one exists, the
+honest form is the read above.

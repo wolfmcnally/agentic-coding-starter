@@ -23,6 +23,31 @@ If the rule under review discusses `TODO`, a grep for `TODO` will select the
 rule along with unfinished code. If a safety document discusses a prohibited
 term, matching the term does not establish the prohibited act.
 
+## Never reason over output you truncated yourself
+
+A view you narrowed is not the thing you narrowed it from. When output is passed
+through `head`, `tail`, `sed -n`, a line cap, or any other cut, the cut is part of
+the instrument, and a conclusion drawn from the remainder is scoped to the
+remainder. State the cut in the same breath as the conclusion, and re-read the
+output whole before any claim that depends on what might have been outside it.
+
+This is distinct from the pipe-status defect in
+[`acceptance-empirical.md`](acceptance-empirical.md) § "A check must be able to
+fail". There the exit status is lost and the command's own verdict disappears.
+Here the status is fine and the *content* is missing, so nothing about the run
+looks wrong — which is why the same reader can commit it twice.
+
+Motivating incidents, cited per the doctrine's growth rule (donor project,
+2026-08-16 and 2026-08-20): a field read as whole after the reader's own `sed` cut
+it, with the cut falling exactly where two candidates diverge; a gate battery piped
+through `tail -6`, removing the gate's own verdict from what the reader then
+reasoned over; and four days later a process listing cut by the reader's own
+`head -5`, from which the orchestrator concluded that all surviving processes were
+the operator's editor and no cleanup was needed — two of its own probe processes
+had been running the whole time. The third was committed by a reader who had cited
+the first earlier that same day, which is the argument for stating this at its
+class rather than at any one command.
+
 ## Blacklists do not prove a closed world
 
 A denylist can establish that named bad cases were absent. It cannot establish

@@ -89,3 +89,29 @@ one-reachable-answer and vacuous-green rules in `acceptance-empirical.md`, the
 material-count reproduction rule in `verification-discipline.md`). This entry will
 sit on the candidates list until that call is made; its presence there is not an
 oversight.
+
+## Ledger note — 2026-08-25 (sweep, policies)
+
+**One member was carved off and graduated; the family stays open.**
+
+Graduated: *never reason over output you truncated yourself* — now a section in
+[`policies/verification-discipline.md`](../policies/verification-discipline.md),
+citing the `2026-08-16` `sed` truncation, the `tail -6` gate battery, and the
+`2026-08-20` `head -5` process listing inline. It is stated at its class (any cut
+you applied is part of your instrument) rather than at any one command, and it is
+distinguished there from the pipe-status rule in `acceptance-empirical.md`, which
+covers a different failure: there the exit status is lost, here the status is fine
+and the content is missing.
+
+Why that member and not the family: it has two independent sightings four days
+apart, with different tools and different subject matter, and the second was
+committed by a reader who had cited the first earlier the same day. That is a
+class with evidence, not an example generalized upward.
+
+**Graduation of the family sentence was reconsidered and held again.** *State a
+rule at its class, not at the example that produced it* remains the only phrasing
+broad enough to cover all eight occurrences, and remains the kind this repository
+warns does not fire. The occurrence rows are unchanged — the carve-off graduated a
+rule, not a count, and the remaining members still describe this family. The next
+sweep should not re-litigate this from scratch: the open question is whether a
+firing form of the family rule exists, not whether the evidence is sufficient.

@@ -1,10 +1,12 @@
 ---
 slug: lean-meerkat
 title: The sweep skill templates a LOG entry that log discipline does not authorize it to write
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-25
+closed: 2026-08-25
+graduated_to: policies/log-discipline.md
 source: sweep
 occurrences:
   - date: 2026-08-25
@@ -35,3 +37,21 @@ Two ways to close it, and the choice belongs to the operator:
 
 Filed rather than fixed: one sighting, and the fix is a rule edit either way,
 which is the operator's to ratify.
+
+## Disposition — 2026-08-25
+
+Graduated by widening the policy, ratified by the operator during `sweep (policies)`.
+
+The deciding evidence was the file itself rather than either argument. `LOG.md`
+holds twenty-six entries; **none** is a phase START/END pair. Twenty-five were
+written by `learn` and `teach`, one by the preceding sweep. The ownership sentence
+therefore described zero percent of the file's contents, and narrowing the skill
+would have left twenty-five existing entries contradicting the rule that governs
+them.
+
+`policies/log-discipline.md` now carries an entry-kind table naming which skill
+writes which heading — `kickoff` for phase entries, `learn` for `LEARN`, `teach`
+for `TAUGHT FROM …`, `sweep` for `SWEEP (<focus>)` — and states that a skill absent
+from the table does not write to the log, so adding one is a policy amendment.
+Rule 2 became "Skills write; humans read." `.claude/skills/sweep/SKILL.md` records
+that its log entry is authorized, so the next sweep does not re-decide.

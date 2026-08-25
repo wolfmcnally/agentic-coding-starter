@@ -76,7 +76,7 @@ grep -RIn -E '(deprecated|legacy|backward.compat|_v1\b|_old\b|fixme.*migration)'
 # No version-conditional branches in code without an explicit waiver in LOG.md
 grep -RIn -E 'if .*[Vv]ersion *[<=>]|if .*format *==.*[\"\x27]v?1' \
   --include='*.py' --include='*.ts' --include='*.rs' --include='*.go' \
-  project/ 2>/dev/null
+  project/ 2>/dev/null && echo "REVIEW: possible version-conditional branch" || echo "no version-conditional branches"
 ```
 
 These greps are heuristics, not proofs. The real verification is review during the `code-critic` pass: any compat-shaped code is flagged unless the phase's END block carries an explicit waiver line.

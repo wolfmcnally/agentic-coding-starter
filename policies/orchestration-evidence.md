@@ -188,7 +188,7 @@ handoff gate must pass before completion is reported. Its ignored full-gate
 receipt binds the post-bookkeeping tree. No tracked write may follow a
 successful handoff gate.
 
-The ordinary commit and non-force push of fully accepted work
+The ordinary commit and non-force push of gate-proved work
 ([`human-in-the-loop.md`](human-in-the-loop.md)) are close-out bookkeeping in
 exactly that sense: they run only after the successful `--require-final`
 validation and the handoff gate, they change no tracked content, and they

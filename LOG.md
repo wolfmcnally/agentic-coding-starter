@@ -710,3 +710,85 @@ now. One occurrence, nothing proposed.
 **Nothing retired.** No policy was found contradicted, orphaned, or dead, and no
 lesson had a remedy already codified in the repo. The remaining 39 open candidates
 are schema-clean and below the threshold.
+
+---
+
+## 2026-08-25 10:09 MDT — SWEEP (policies)
+
+First sweep of `policies/`. All 28 files read against what they actually govern;
+every shipped verification recipe was run rather than read. `check-catalogs`,
+`lessons validate`, and `check-anonymization.sh` were clean going in.
+
+**One anonymization repair.** Two policies taught by example using a real private
+project by name, quoting its CLI, a real recipe name, and its real versioned
+output-path shape. Replaced with an invented tool throughout
+(`policies/acceptance-empirical.md`, `policies/user-demo-protocols.md`).
+`policies/anonymize-log-references.md` now states that "external" means "not this
+repository," the operator's own private projects included, and that examples reach
+for a familiar project precisely because it is familiar — which is what makes them
+identifying. No mechanical check could have caught this; the policy's own
+Verification section says so.
+
+**Three deletions.**
+
+- `policies/repo-relative-paths.md` § Verification — a grep that could never print
+  its own declared clean result. It matched the policy's text, the catalog line
+  describing it, the critic's checklist quoting it, the sanitizer's regex, and two
+  tests asserting absence: fifteen hits on a clean tree. Replaced with a pointer to
+  `bin/check-anonymization.sh`, whose first pass is this policy's check, excludes
+  the placeholder spellings, names the policy in its output, and runs in the full
+  gate. The section now also says why not to hand-write the grep.
+- `policies/phase-ripple.md` § Verification — two greps matching `- AUTO ` and
+  `- DECIDE ` with a trailing space, while the END-block template writes them with a
+  colon. One branch could never fire; the other printed "clean" on every run. Also
+  removed the block's pre-reversal committing language. The honest manual sweep
+  survives as prose, with the reason the greps went.
+- `policies/user-actions.md` — a slug-collision snippet duplicated verbatim between
+  § Slug discipline and § Verification. One copy kept.
+
+**Four cross-reference contradictions resolved by precedence.** `CLAUDE.md` Hard
+Rule 1 and `policies/human-in-the-loop.md` say delivery is *not* acceptance and
+covers gate-proved work; four files said the orchestrator delivers "fully accepted
+work" — `policies/execution-telemetry.md`, `policies/orchestration-evidence.md`,
+`briefs/methodology.md`, `.claude/skills/kickoff/SKILL.md`. All now say
+gate-proved. `policies/fail-closed-resume.md`'s standing-bound clause still listed
+the ordinary commit and push among things the human owns; it now names what the
+human actually owns (the destructive and custody-bearing Git surface, subjective
+acceptance) and states the real constraint — a parked run has not closed, so it
+delivers nothing.
+
+**Two smaller corrections.** `policies/project-isolation.md` used bare `./bin/check`
+where the canonical form is `./bin/check all`. `policies/greenfield-until-released.md`
+had a verification grep with no success branch, so a clean run said nothing at all.
+
+**Ledger.** `lean-meerkat` graduated → `policies/log-discipline.md`. The deciding
+evidence was the file: `LOG.md` holds 26 entries and none is a phase entry — 25 from
+`learn`/`teach`, one from the previous sweep — so the "owned by `kickoff`" sentence
+described none of its contents. The policy now carries an entry-kind table naming
+which skill writes which heading, states that a skill absent from the table does not
+write to the log, and Rule 2 became "Skills write; humans read." `sweep`'s template
+records that its entry is authorized.
+
+`crimson-shrew` graduated → `bin/check-catalogs`; the fragment guard it proposed
+shipped and caught both instances. Its disposition records the blind spot that
+remains: anchors resolve only inside tracked Markdown.
+
+`russet-mole` stays open, with one member carved off and graduated: *never reason
+over output you truncated yourself* is now a section in
+`policies/verification-discipline.md`, citing all three incidents inline and
+distinguished from the pipe-status rule in `acceptance-empirical.md` — there the
+exit status is lost, here the status is fine and the content is missing. The family
+sentence was reconsidered and held again, with the reason recorded so the next sweep
+does not re-litigate it.
+
+Two candidates filed. `magenta-ferret` — the policy corpus's own Verification blocks
+are not subject to the verification rules the corpus states, and nothing runs them;
+two occurrences, both found here, failing in opposite directions.
+`green-markhor` — the END block's `Ripple:` field is the only one with no
+independent witness; filed rather than built because this repo has never run a phase
+to develop the checker against.
+
+**Left open, deliberately.** Multi-command fenced blocks in three policies, where
+the one-command-per-block convention's scope is genuinely ambiguous. The
+user-actions queue has no frontmatter validator. The demo example's entry point
+bypasses `./bin/`.

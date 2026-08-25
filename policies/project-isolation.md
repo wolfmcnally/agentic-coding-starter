@@ -134,7 +134,7 @@ ls project/pyproject.toml project/package.json project/Cargo.toml project/go.mod
   || echo "no metadata file in project/"
 
 # The repository-owned full gate passes
-./bin/check
+./bin/check all
 ```
 
 ## When to opt out

@@ -14,7 +14,7 @@ testing sign-inverting proxies—is governed by
 A criterion is acceptable when it is:
 
 - **Executable.** A literal shell command the orchestrator can run, with a defined success condition (exit code 0, or a named substring in the output, or a JSON value at a path).
-- **Observable.** A manual check named precisely enough that the human knows what to look at (e.g., "open `renders/foo/v003/foo.aiff` in QuickTime and confirm the tail decays cleanly with no clicks" — not "the audio sounds good").
+- **Observable.** A manual check named precisely enough that the human knows what to look at (e.g., "open `out/notify.aiff` in an audio player and confirm the tail decays cleanly with no clicks" — not "the audio sounds good").
 - **Bounded.** The criterion either passes or fails on inspection. Open-ended ("the code is clean") is not a criterion; it is a wish.
 
 ## Examples
@@ -27,8 +27,8 @@ A criterion is acceptable when it is:
 
 **Good** — empirical:
 - `pytest -q` exits 0 with at least 8 passing tests, including `test_cli_help_lists_subcommands` and `test_validate_rejects_missing_required_field`.
-- `kiln render score-bump-small` produces `renders/score-bump-small/v001/score-bump-small__v001.aiff` with exact 3.000 s duration, true peak ≤ −1 dBTP, integrated LUFS within the `small_reward` family target.
-- Manual: open `renders/score-bump-small/v001/score-bump-small__v001.aiff` and confirm rumble → whoosh → soft pop → sparkle tail is recognizable as "a small reward."
+- `toneforge render chime-short` produces `out/chime-short.aiff` with exact 3.000 s duration, true peak ≤ −1 dBTP, and integrated LUFS within the loudness target the recipe declares.
+- Manual: open `out/chime-short.aiff` and confirm the rise → strike → decay sequence is recognizable as a short confirmation chime.
 - `git status` is clean after the build gate runs (no leaked generated files).
 - `cat README.md | grep -c '## Quickstart'` returns 1.
 

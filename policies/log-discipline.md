@@ -1,12 +1,27 @@
 # Policy: Activity Log Discipline
 
-`LOG.md` is the **append-only** record of phase work in this repo. It is owned by `kickoff`. Do not hand-edit historical entries.
+`LOG.md` is the **append-only** record of what has been done to this repository. It is written by skills, never by hand. Do not hand-edit historical entries.
 
 ## What `LOG.md` is
 
-- The narrative record of phase entries and exits.
+`LOG.md` carries two kinds of entry, and every entry belongs to exactly one skill.
+
+**Phase entries**, written by `kickoff`:
+
 - A START/END pair per phase, plus append-only `END (correction)` blocks when explicit user feedback corrects an already closed phase.
 - The primary artifact the human reviews after `kickoff` finishes.
+
+**Repository-operation entries**, written by the skill that performed the operation. These record work done *to* the repository rather than *through* the plan, which is why they carry no phase id and no status transition:
+
+| Entry heading | Written by | Records |
+|---|---|---|
+| `LEARN` | `learn` | Patterns absorbed from a donor repository. |
+| `TAUGHT FROM TEMPLATE` / `TAUGHT FROM DONOR` | `teach` | Patterns exported to a target repository. |
+| `SWEEP (<focus>)` | `sweep` | A maintenance pass over the rule surfaces: what was retired, graduated, and left open. |
+
+The `Only finalized evidence may claim exact timing` rule and the START/END formats below govern phase entries. A repository-operation entry has no fixed schema beyond a `## <YYYY-MM-DD HH:MM> — <HEADING>` line and the same append-only, no-back-dating, no-fabrication rules; each owning skill defines its own body.
+
+A skill that is not in that table does not write to `LOG.md`. Adding a row is a policy amendment, not a skill author's decision — the point of the table is that a reader can tell, from this file alone, whether an entry had authority to exist.
 
 ## What `LOG.md` is not
 
@@ -131,7 +146,7 @@ This block records a correction to an already authorized goal; it does not reope
 ## Rules
 
 1. **Append-only.** Never edit a historical START or END block. Mistakes get a follow-up END block ("END (correction)") with the corrected information. "Historical" begins at the first commit: the active run's own entry, while it has never been committed, may still be corrected in place when the run's final state changes before close — enshrining a count or claim already known to be false would be worse than the amendment. Once an entry has been committed, or belongs to any earlier run, corrections are append-only blocks.
-2. **`kickoff` writes; humans read.** Humans don't write to `LOG.md` directly. The exceptions are bootstrapping (creating the initial `# Activity Log` header) and recovery (when `kickoff` failed and left an inconsistent state).
+2. **Skills write; humans read.** Only the skills named in the table above append to `LOG.md`, each writing only its own entry kind. Humans don't write to it directly. The exceptions are bootstrapping (creating the initial `# Activity Log` header) and recovery (when a skill failed partway and left an inconsistent state).
 3. **Timestamps are real.** Use the orchestrator's actual wall-clock time when the block was written. Do not back-date.
 4. **The END block is a contract.** When the orchestrator writes an END block claiming the phase is done, the human is entitled to expect that every claim in the block is true. Fabricated evidence is the most dangerous failure mode this policy guards against; the orchestrator must never claim a build gate passed when it didn't, never claim a manual check was performed by the orchestrator, never embellish the file list.
 5. **The handoff gate closes the current block.** The active uncommitted END and

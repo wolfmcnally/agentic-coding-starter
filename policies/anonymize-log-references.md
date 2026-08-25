@@ -16,6 +16,14 @@ The reason for the asymmetry: **this repository is intended to be public**. Ever
 
 ## What must be anonymized
 
+**"External" means "not this repository," including the operator's own private
+projects.** The rule is about what a public template discloses, not about whose
+work it discloses. A sibling repository the same person owns is exactly as
+private as a third party's, and a worked example is exactly as much of a
+disclosure as a `LOG.md` entry — an example reaches for a familiar project
+precisely because the author knows it well, which is what makes it identifying.
+Invent the names in examples.
+
 Wherever a committed file documents a cross-repo operation or references external work, the following must not appear verbatim:
 
 - **Project names** of external repos. Use `Donor A`, `Donor B`, … to distinguish multiple donors in a single entry; use `the donor` or `the target` when there's one and no ambiguity.

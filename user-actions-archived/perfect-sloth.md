@@ -214,6 +214,8 @@ same session. Four of the five decisions took the recommendation; one did not.
 
 **Recurring learning: yes.** The dead anchor survived every prior
 `bin/check-catalogs` run because that checker validates a link's path and not its
-`#fragment`. Filed as [`lessons/crimson-shrew.md`](../lessons/crimson-shrew.md)
+`#fragment`. Filed as [`crimson-shrew`](../lessons-archived/crimson-shrew.md)
 (`scope: methodology`, `proposed_surface: bin`) — one occurrence, not
-graduation-ready.
+graduation-ready. (Link updated 2026-08-25: the lesson graduated into
+`bin/check-catalogs` and moved to `lessons-archived/`. The claim above stands as
+written at the time.)

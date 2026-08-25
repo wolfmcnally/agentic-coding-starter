@@ -147,6 +147,8 @@ Use this shape:
 ## Proposed LOG.md entry
 ```
 
+The `SWEEP (<focus>)` entry is an authorized `LOG.md` entry kind — see the entry-kind table in [`policies/log-discipline.md`](../../../policies/log-discipline.md) § What `LOG.md` is. Write it; do not re-decide whether a sweep earns one.
+
 An empty plan ("nothing stale") is a valid, reportable outcome.
 
 End the plan with one line: **"Approve this plan to apply, ask for revisions, or reject."**

@@ -74,11 +74,7 @@ Recipe (recommended — filler-filtered and collision-checked against all four l
 ./bin/new-name
 ```
 
-Any deterministic two-word generator is acceptable as long as the slug is unique across both `user-actions/` and `user-actions-archived/`. If generating some other way, confirm uniqueness before writing — a slug is just a filename, so a basename collision across the two directories is the thing to avoid:
-
-```bash
-ls user-actions user-actions-archived 2>/dev/null | grep -E '^[a-z]+-[a-z]+\.md$' | sort | uniq -d
-```
+Any deterministic two-word generator is acceptable as long as the slug is unique across both `user-actions/` and `user-actions-archived/`. If generating some other way, confirm uniqueness before writing — a slug is just a filename, so a basename collision across the two directories is the thing to avoid; § Verification below carries the check.
 
 Slugs are not reused after closure. An archived file keeps its slug forever.
 

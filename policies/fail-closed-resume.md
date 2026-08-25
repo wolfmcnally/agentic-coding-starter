@@ -205,6 +205,9 @@ untouched.
   generated dispatch command, and the exit-66 protocol exception.
 - [`execution-telemetry.md`](execution-telemetry.md) owns the trace whose
   truthful finalization a park must complete.
-- [`human-in-the-loop.md`](human-in-the-loop.md) is a standing narrower bound:
-  no self-resume authority ever reaches a commit, push, or acceptance the
-  human owns.
+- [`human-in-the-loop.md`](human-in-the-loop.md) is a standing narrower bound.
+  A parked run has not closed, so it delivers nothing: no self-resume authority
+  reaches the ordinary commit and push, which follow a green handoff gate and
+  nothing else. Nor does it reach the destructive and custody-bearing Git
+  surface or any subjective acceptance, which are the human's in every run,
+  parked or not.

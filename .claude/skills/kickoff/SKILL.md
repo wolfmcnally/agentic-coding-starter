@@ -182,7 +182,7 @@ Then resolve the **review lane** per [`policies/review-lanes.md`](../../../polic
 
 Also resolve the **evidence lane**: read optional `evidence_lane:` frontmatter (absent or `full` → full apparatus; `light` → structural tests, the operator gate, and the mandatory seal at close, with role registration/span joins/stage envelopes validated-if-present). Refuse a `light` declaration whose deliverables touch an authority surface, irreversible or external state, or a deploy seam; you may upgrade `light` → `full`, never downgrade. Report both lanes in the opening report and END block.
 
-Tell the user which phase you are picking up, the path to its file (`plan/phase-<id>.md`), the resolved review lane, and that fully accepted work will be committed and fast-forward-pushed at close unless they restrict it now (`policies/human-in-the-loop.md`). Stating the delivery posture in the first minute is what makes a restriction cheap to give — it costs one sentence before any commit exists.
+Tell the user which phase you are picking up, the path to its file (`plan/phase-<id>.md`), the resolved review lane, and that gate-proved work will be committed and fast-forward-pushed at close (delivery is not acceptance) unless they restrict it now (`policies/human-in-the-loop.md`). Stating the delivery posture in the first minute is what makes a restriction cheap to give — it costs one sentence before any commit exists.
 
 ### Step 1a: Sub-phase decomposition (parent phases only — just-in-time, one at a time)
 
