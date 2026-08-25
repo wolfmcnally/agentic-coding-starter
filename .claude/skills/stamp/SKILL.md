@@ -9,7 +9,7 @@ description: >-
   the new project's name and primary language. Invoke as /stamp <directory>
   [<description>] in Claude Code or $stamp <directory> [<description>] in Codex.
 argument-hint: "<directory> [<description>]"
-last-reviewed: 2026-08-23
+last-reviewed: 2026-08-25
 ---
 
 # Stamp — Bootstrap a new agentic-coding project
@@ -106,6 +106,11 @@ Follow [`briefs/agentic-bootstrap.md` §3](../../../briefs/agentic-bootstrap.md)
   briefs/
   policies/
   plan/
+  bin/
+  lib/
+  tests/
+  reports/
+  .githooks/
   .claude/skills/kickoff/
   .claude/skills/methodology/
   .claude/skills/learn/
@@ -114,6 +119,7 @@ Follow [`briefs/agentic-bootstrap.md` §3](../../../briefs/agentic-bootstrap.md)
   .claude/skills/sweep/
   .claude/skills/demo/
   .claude/skills/treatise/
+  .claude/skills/plain/
   .claude/agents/
   .codex/agents/
   .agents/skills/         # (kickoff, methodology, learn, teach, roles, sweep,
@@ -121,9 +127,13 @@ Follow [`briefs/agentic-bootstrap.md` §3](../../../briefs/agentic-bootstrap.md)
                           #  added as directory symlinks in Step 2)
   lessons/                # (empty ledger — .gitkeep only; policies/lessons.md)
   lessons-archived/       # (empty — .gitkeep only)
-  user-actions/
-  user-actions-archived/
+  user-actions/           # (empty — .gitkeep only; policies/user-actions.md)
+  user-actions-archived/  # (empty — .gitkeep only)
 ```
+
+All four ledger directories get a `.gitkeep`; an empty directory does not survive
+`git add`, and a ledger that vanishes at the first commit is a ledger the next
+session will not find.
 
 Plus the language-specific deliverable directories. When `project_isolation` is enabled (the default for single-deliverable projects), the deliverable goes under `project/`:
 
@@ -139,62 +149,130 @@ When `project_isolation` is disabled (polyglot or multi-deliverable repos), the 
 
 ### Step 2 — Copy verbatim, adapt names
 
-Copy these files **from this template** into the new project, then run a name substitution pass (replacing `Agentic Coding Starter Template`, `agentic-coding-starter-template`, and `starter` with `<project_name>`, `<project_slug>`, and a project-appropriate handle):
+**The copy rule is a denylist, not an allowlist.** Copy *everything* under the
+universal surfaces below into the new project, leave behind only the starter-only
+entries named in the table, then run a name substitution pass (replacing
+`Agentic Coding Starter Template`, `agentic-coding-starter-template`, and
+`starter` with `<project_name>`, `<project_slug>`, and a project-appropriate
+handle).
 
-- `.claude/skills/kickoff/SKILL.md`
-- `.claude/skills/methodology/SKILL.md`
-- `.claude/skills/learn/SKILL.md`
-- `.claude/skills/teach/SKILL.md`
-- `.claude/skills/roles/SKILL.md`
-- `.claude/skills/sweep/SKILL.md`
-- `.claude/skills/demo/SKILL.md`
-- `.claude/skills/treatise/SKILL.md`
+The direction matters. An allowlist of files to copy goes stale silently: every
+universal script, skill, or test added to the template after the list was written
+is invisible to it, and the omission surfaces downstream as a stamped project
+whose own gate refuses to start — `bin/check` fails closed on the first missing
+executable. A denylist fails the other way: a forgotten entry copies one harmless
+extra file, which the adaptation pass or the next `sweep` catches.
+
+**Universal surfaces — copy the whole directory:**
+
+- `.claude/skills/` — every skill directory, each with its `SKILL.md`
+- `.claude/agents/` and `.codex/agents/` — the four canonical roles and their mirrors
 - `.claude/settings.json`
-- `.claude/agents/phase-planner.md`
-- `.claude/agents/plan-reviewer.md`
-- `.claude/agents/phase-coder.md`
-- `.claude/agents/code-critic.md`
-- `.codex/agents/phase-planner.toml`
-- `.codex/agents/plan-reviewer.toml`
-- `.codex/agents/phase-coder.toml`
-- `.codex/agents/code-critic.toml`
-- Every file under `policies/` **except** any policy explicitly marked starter-only (currently `policies/anonymize-log-references.md` — the public-repo LOG anonymization rule; the asymmetry is driven by this template's publicness, not by methodology).
-- `briefs/methodology.md` (verbatim — methodology is universal)
-- `briefs/agentic-bootstrap.md` (verbatim — so the next bootstrap from this project is possible)
-- `briefs/cross-agent-invocation.md` (verbatim — the cross-CLI invocation BCPs that `policies/role-models.md` cites are universal)
-- `briefs/incremental-orchestration.md` (verbatim — universal candidate-bound review, revision, verification, and protocol-recovery design)
-- `briefs/deterministic-orchestration.md` (verbatim — universal draft brief: decision criteria for a deterministic kickoff loop once every supported harness has a parity workflow primitive)
-- `briefs/harness-self-improvement.md` (verbatim — the two-tier improvement flywheel the lessons ledger, `sweep`, and the transfer skills implement)
-- `.githooks/pre-push` (verbatim — optional hook; it reuses only an exact
-  verified full-gate receipt and otherwise delegates to the canonical gate;
-  it is inert until explicitly installed)
-- `bin/setup`, `bin/test`, `bin/check`, `bin/check-receipt`, `bin/install-hooks`, and
-  `bin/check-hooks-installed`
-  (`install-hooks` and `check-hooks-installed` verbatim; the toolchain entry
-  points are adapted together in Step 5)
-- `bin/_python-toolchain` and `bin/python` for a Python target (adapted in
-  Step 5; omit both when Python is not a deliverable runtime)
-- `tests/test_toolchain_entrypoints.py` and `tests/test_check.py` (adapted with
-  the toolchain in Step 5), plus `tests/test_check_receipt.py`,
-  `tests/test_install_hooks.py`, and `tests/test_check_hooks_installed.py`
-  (verbatim)
-- `tests/test_kickoff_config.py` (verbatim — universal behavioral coverage for the manager/watchdog contract)
-- `bin/kickoff-tree-id`, `bin/kickoff-evidence`,
-  `tests/test_kickoff_tree_id.py`, and `tests/test_kickoff_evidence.py`
-  (verbatim — universal candidate identity and orchestration-evidence
-  contract, governed by `policies/orchestration-evidence.md`)
-- `bin/lessons`, `bin/check-catalogs`, `tests/test_lessons.py`, and
-  `tests/test_check_catalogs.py` (verbatim — universal lessons-ledger,
-  document-link, and phase-lifecycle fitness machinery, governed by
-  `policies/lessons.md`). The
-  destination's ledger starts **empty**: create `lessons/.gitkeep` and
-  `lessons-archived/.gitkeep`; never copy Starter's lesson files.
+- `policies/`
+- `briefs/`
+- `bin/`, including `bin/README.md` and its convention preamble
+- `lib/` — the shared deterministic library the universal `bin/` scripts import
+- `tests/`, including `tests/fixtures/`
+- `reports/execution/`, including its vendored `assets/`
+- `.githooks/`
+- `.gitignore`, `.gitattributes`, `kickoff.yaml`
 
-This inventory, the manual bootstrap brief, `teach`'s atomic transfer list,
-acceptance checklists, role contracts, and methodology narrative are one
-propagation boundary. Whenever the universal bundle grows, reconcile every
-member in the same change; a current executable path does not excuse a stale
-manual path.
+**Starter-only — leave behind:**
+
+| Entry | Why it does not propagate |
+|---|---|
+| `.claude/skills/stamp/` and `.agents/skills/stamp` | this skill itself; a derived project stamps out more projects only if it deliberately becomes a template too |
+| `policies/anonymize-log-references.md` | starter-only: the rule exists because *this* template is public, not because of any methodology principle |
+| `bin/check-anonymization.sh` and `bin/anonymization-denylist.local.example` | that policy's enforcement (also drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`) |
+| `tests/test_methodology_toolchain_contract.py` | asserts on `stamp` and the anonymization policy, neither of which the destination has |
+| `briefs/BRIEF.md`, `briefs/eacp-pattern-map.md`, `briefs/methodology-treatise.md` | about *this* repository; `BRIEF.md` is authored fresh in Step 3 |
+| `LICENSE` and `.vscode/` | the operator's choices, not the template's |
+| `plan/`, `LOG.md`, `README.md`, `CLAUDE.md`, `project/` | authored or adapted fresh in Steps 3–5 |
+| the *contents* of `lessons/`, `lessons-archived/`, `user-actions/`, `user-actions-archived/` | every ledger starts **empty** — a `.gitkeep` in each of the four, never Starter's own entries |
+
+Everything else under those surfaces is universal by construction. When in doubt,
+copy it: an extra file downstream is a nuisance, a missing one is a broken gate.
+
+**Load-bearing members — a floor, not a ceiling.** The denylist above is the
+authority for what to copy; this list names members whose absence is known to
+break the destination, so a copy that omits any of them is wrong regardless of how
+the copy was performed. It is not exhaustive and does not need to be.
+
+- Every universal skill: `.claude/skills/kickoff/SKILL.md`,
+  `.claude/skills/methodology/SKILL.md`, `.claude/skills/learn/SKILL.md`,
+  `.claude/skills/teach/SKILL.md`, `.claude/skills/roles/SKILL.md`,
+  `.claude/skills/sweep/SKILL.md`, `.claude/skills/demo/SKILL.md`,
+  `.claude/skills/treatise/SKILL.md`, `.claude/skills/plain/SKILL.md`
+- `.claude/settings.json` (an explicitly requested worktree stays available; only
+  implicit background worktree isolation is disabled)
+- The four canonical agents and their Codex mirrors:
+  `.claude/agents/phase-planner.md`, `.claude/agents/plan-reviewer.md`,
+  `.claude/agents/phase-coder.md`, `.claude/agents/code-critic.md`;
+  `.codex/agents/phase-planner.toml`, `.codex/agents/plan-reviewer.toml`,
+  `.codex/agents/phase-coder.toml`, `.codex/agents/code-critic.toml`
+- Every file under `policies/` except the starter-only entry above
+- `briefs/methodology.md` (methodology is universal),
+  `briefs/agentic-bootstrap.md` (so the next bootstrap from this project is
+  possible), `briefs/cross-agent-invocation.md` (the cross-CLI invocation BCPs
+  that `policies/role-models.md` cites),
+  `briefs/incremental-orchestration.md` (candidate-bound review, revision,
+  verification, and protocol-recovery design),
+  `briefs/deterministic-orchestration.md` (draft: decision criteria for a
+  deterministic kickoff loop once every supported harness has a parity workflow
+  primitive), `briefs/harness-self-improvement.md` (the two-tier improvement
+  flywheel the lessons ledger, `sweep`, and the transfer skills implement), and
+  `briefs/session-context-compaction.md` (managing harness compaction during long
+  orchestration runs)
+- `.githooks/pre-push` (optional hook; it reuses only an exact verified full-gate
+  receipt and otherwise delegates to the canonical gate; inert until explicitly
+  installed)
+- The toolchain entry points `bin/setup`, `bin/test`, `bin/check`, and
+  `bin/check-receipt` (adapted together in Step 5), plus `bin/install-hooks` and
+  `bin/check-hooks-installed` (verbatim)
+- `bin/_python-toolchain` and `bin/python` for a Python target (adapted in Step 5;
+  omit both when Python is not a deliverable runtime)
+- The universal managers and checkers, all of which `bin/check` requires present
+  before it will run a single gate: `bin/kickoff-config`, `bin/kickoff-tree-id`,
+  `bin/kickoff-evidence`, `bin/check-receipt`, `bin/execution-telemetry`,
+  `bin/check-execution-dashboards`, `bin/check-harness-parity`,
+  `bin/check-toolchain-callers`, `bin/lessons`, `bin/treatise`,
+  `bin/check-catalogs`, `bin/check-hooks-installed`, `bin/check-shell-syntax`,
+  `bin/new-name`; plus the operator convenience `bin/serve-execution-dashboard`
+- `lib/agentic_starter/` — `bin/execution-telemetry` and
+  `bin/check-execution-dashboards` import it; without it both fail at startup and
+  take the whole gate with them
+- `reports/execution/` with `index.html`, `index-data.js`, and `assets/` —
+  `bin/check-execution-dashboards` reads the archive and validates the vendored
+  offline renderer. A fresh destination's archive holds zero phases, which the
+  checker reports as `EXECUTION DASHBOARDS PASS (0 phases)`
+- `tests/test_toolchain_entrypoints.py` and `tests/test_check.py` (adapted with
+  the toolchain in Step 5), plus verbatim `tests/test_check_receipt.py`,
+  `tests/test_install_hooks.py`, `tests/test_check_hooks_installed.py`,
+  `tests/test_kickoff_config.py`, `tests/test_kickoff_tree_id.py`,
+  `tests/test_kickoff_evidence.py`, `tests/test_lessons.py`,
+  `tests/test_check_catalogs.py`, `tests/test_treatise.py`,
+  `tests/test_new_name.py`, `tests/test_shell_syntax.py`,
+  `tests/test_toolchain_callers.py`, `tests/test_mirror_parity.py`,
+  `tests/test_research_authority.py`, `tests/test_execution_telemetry.py`,
+  `tests/test_execution_dashboard.py`,
+  `tests/render_execution_dashboard_fixture.py`, and `tests/fixtures/`
+- `.gitattributes` — the line-ending normalization that keeps cross-harness
+  mirrors byte-identical across platforms
+
+The candidate-identity and orchestration-evidence contract
+(`bin/kickoff-tree-id`, `bin/kickoff-evidence`, `tests/test_kickoff_tree_id.py`,
+`tests/test_kickoff_evidence.py`, governed by
+`policies/orchestration-evidence.md` and designed in
+`briefs/incremental-orchestration.md`) is atomic: transfer every member or none.
+So is the self-improvement bundle (`.claude/skills/sweep/SKILL.md`,
+`briefs/harness-self-improvement.md`, `policies/lessons.md`, `bin/lessons`,
+`bin/check-catalogs`, `tests/test_lessons.py`, `tests/test_check_catalogs.py`,
+and the empty `lessons/` + `lessons-archived` ledger).
+
+The denylist, this floor, the manual bootstrap brief, `teach`'s atomic transfer
+list, acceptance checklists, role contracts, and methodology narrative are one
+propagation boundary. Whenever the universal bundle grows, reconcile every member
+in the same change; a current executable path does not excuse a stale manual path.
 
 Then create the `.agents/skills/` **directory symlinks** for Codex CLI's native skill discovery. Each is a relative symlink whose target is the canonical skill *directory* (not the SKILL.md file inside it — Codex doesn't follow file-level symlinks inside a skill dir per [openai/codex#11314](https://github.com/openai/codex/issues/11314), but does traverse a symlinked skill directory):
 
@@ -209,27 +287,29 @@ ln -s ../../.claude/skills/roles       .agents/skills/roles
 ln -s ../../.claude/skills/sweep       .agents/skills/sweep
 ln -s ../../.claude/skills/demo        .agents/skills/demo
 ln -s ../../.claude/skills/treatise    .agents/skills/treatise
+ln -s ../../.claude/skills/plain       .agents/skills/plain
 ```
+
+There is one mirror per canonical skill directory, and `bin/check-harness-parity`
+fails closed on a missing mirror, an orphan mirror, or a wrong target — so a skill
+copied without its symlink breaks the destination's gate just as surely as a skill
+never copied at all.
 
 Verify each `readlink <dest>/.agents/skills/<name>` returns the expected target and `test -L <dest>/.agents/skills/<name> && test -d <dest>/.agents/skills/<name>` passes before moving on.
 
-**Do not** copy `.claude/skills/stamp/` (this skill itself), create `.agents/skills/stamp` in the destination, or copy `policies/anonymize-log-references.md`, `bin/check-anonymization.sh`, or `bin/anonymization-denylist.local.example` (and drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`). The new project doesn't need to stamp out more projects unless it explicitly wants to be a template too, and the anonymization rule (and its enforcement script) doesn't apply to private downstream projects. The eight universal skills *are* carried over, including cross-repo `learn`/`teach`, interactive `demo`, and publication-gated `treatise`.
+The nine universal skills are all carried over, including cross-repo `learn` and
+`teach`, interactive `demo`, publication-gated `treatise`, and the operator
+register `plain`.
 
-The `bin/` directory, its `bin/README.md` convention preamble, and
-`policies/mechanistic-vs-intelligence.md` **are** carried over. The universal
-`bin/setup`, `bin/test`, `bin/check`, `bin/check-receipt`, `bin/install-hooks`,
-`bin/check-hooks-installed`, `bin/kickoff-config`, `bin/kickoff-tree-id`,
-`bin/kickoff-evidence`, `bin/lessons`, `bin/check-catalogs`, tracked
-pre-push hook, and human-editable `kickoff.yaml` carry over too; Python targets
-also carry `bin/python`. Seed both config sections by running
-`<dest>/bin/kickoff-config reset all`; this preserves data under `extensions`
-if the destination already has it. The managers run via `uv`; the destination
-therefore needs `uv` on PATH, and `kickoff-config` declares its PEP 723
-`ruamel.yaml` dependency. Keep these universal script entries in
-`bin/README.md`; delete only the starter-specific anonymization entry and
-remove its call from the copied `bin/check`.
+Seed both config sections by running `<dest>/bin/kickoff-config reset all`; this
+preserves data under `extensions` if the destination already has it. The managers
+run via `uv`, so the destination needs `uv` on PATH, and `kickoff-config` declares
+its PEP 723 `ruamel.yaml` dependency. Keep every universal script entry in
+`bin/README.md`; delete only the starter-specific anonymization entry, and remove
+its call from the copied `bin/check`.
 
 Because the anonymization policy and its script are starter-only but `code-critic.md` is copied verbatim (above), the adaptation pass must **delete the "External / private-repo references" bullet** from the destination's `.claude/agents/code-critic.md` — it references `bin/check-anonymization.sh` and `policies/anonymize-log-references.md`, neither of which the new project will have.
+
 
 ### Step 3 — Write the project-specific files
 
@@ -237,9 +317,13 @@ Author these afresh, using the gathered configuration:
 
 - **`<dest>/README.md`** — didactic top-level for human readers. Mirror the template's section structure (what this is, why, how to use, repository layout, status markers, four canonical agents, briefs-vs-policies-vs-plan, first-time setup). Every line is `<project_name>`-specific.
 
-- **`<dest>/CLAUDE.md`** — top-level agent guidance. The template's `CLAUDE.md` has two clearly-marked zones (HTML comments delimit them). The job:
+- **`<dest>/CLAUDE.md`** — top-level agent guidance. The template's `CLAUDE.md` has two clearly-marked zones (HTML comments delimit them), plus a **Hard rules** section above both. The job:
   - **Copy the file as a whole.**
-  - **Inside the `<!-- METHODOLOGY_CONTRACT_START --> ... <!-- METHODOLOGY_CONTRACT_END -->` markers**: leave verbatim. This is the universal methodology content; every derived project gets the same text.
+  - **Above both zones — the Hard rules section**: delete **Hard rule 3**, the starter-only anonymization rule. Its own text says it does not propagate, and it links `policies/anonymize-log-references.md`, which the destination will not have — a link `bin/check-catalogs` will report as a missing target. Then repair the sentence that introduces the rules: "Rules 1 and 2 are universal … Rule 3 is **starter-only** …" becomes a statement that both remaining rules are universal. Leave rules 1 and 2, and the restriction/waiver paragraph beneath them, untouched.
+  - **Inside the `<!-- METHODOLOGY_CONTRACT_START --> ... <!-- METHODOLOGY_CONTRACT_END -->` markers**: verbatim *except* for the starter-only members it names. This is the universal methodology content and every derived project gets the same text, but the zone also carries the catalog of what exists in *this* repo, and two of those entries do not travel:
+    - Delete the `anonymize-log-references.md` bullet from the **Policies catalog**. Left in place, it is a `CLAUDE.md` reference to a file the destination does not have, and `bin/check-catalogs` fails closed on it.
+    - Drop the trailing `check-anonymization.sh` clause from the `bin/` bullet in **Universal repo layout**, and repair the sentence so it still reads as one list.
+    - Nothing else in the zone changes. If a future starter-only surface is added to the template, it gets an entry in Step 2's denylist *and* a line here.
   - **Inside the `<!-- PROJECT_CONTEXT_START --> ... <!-- PROJECT_CONTEXT_END -->` markers**: rewrite from scratch for the new project. Sections to author:
     - `# Project Context` header (unchanged).
     - `## This Repo is <project_name>` — canonical spelling, one-sentence thesis (from `description`), pointer to `briefs/BRIEF.md`.
@@ -248,7 +332,7 @@ Author these afresh, using the gathered configuration:
     - `## Project conventions` — language, tooling, build-gate command shape for this project.
     - `## Model & review venue` — describe `kickoff.yaml` as the human-editable source for separate model/effort fields and execution budgets; `roles` is an optional validated editor; the shipped default gives cross-vendor review. Governed by the two role policies.
     - `## Project-specific skills` — if the new project carries any skills beyond the universal nine (kickoff, methodology, learn, teach, roles, sweep, demo, treatise, plain), list them here. For most fresh projects, this section is empty (or omitted).
-  - Preserve the introductory paragraph that explains the two-zone contract; it is informational and lives outside both markers.
+  - Preserve the introductory paragraph that explains the two-zone contract; it is informational and lives outside both markers. Adjust only its `stamp`-specific wording: the destination is not a template, so the zones are described as written-for-this-project and carried-from-the-template rather than as things `stamp` does.
 
 - **`<dest>/AGENTS.md`** — symlink to `CLAUDE.md`. Create with `ln -s CLAUDE.md AGENTS.md` in the destination.
 
@@ -395,10 +479,29 @@ receipt while candidate content remains unchanged. Prove descriptor selection,
 probe, query, parse, and schema failures run the authoritative full gate. Prove
 pre-push reuse only for a clean current `HEAD` with an exact
 candidate/environment receipt and intact log/run digests; every miss,
-corruption, or query error must run the full gate. Then change the **Final build
-gate** examples in `kickoff`, the four canonical agents, `CLAUDE.md`, the brief,
-and Phase 1 to use `./bin/test ...` for focused tests and `./bin/check all` for
-the authoritative suite. No copied raw full-suite list may remain.
+corruption, or query error must run the full gate.
+
+`<dest>/tests/test_check.py` needs one adaptation beyond the command strings, and
+it is easy to miss because it is about a gate the destination does not have.
+Starter's `check-anonymization.sh` is the **last** policy gate, so the test uses
+it three ways: as the failure-injection stub honoring `CHECK_POLICY_FAIL_CODE`,
+as the trailing `policy cwd=…` entry in two ordered call lists, and as the
+subject of `CHECK policy-anonymization FAIL`. All three must move onto the
+destination's own last policy gate — `check-shell-syntax` for a repo carrying
+the standard set — so the test still proves what it exists to prove: that a
+policy failure cannot be masked by a later policy gate's output. Moving the stub
+without moving the ordered lists leaves the test passing for the wrong reason.
+
+Also adapt the dependency probe string in
+`<dest>/bin/_python-toolchain`, which imports Starter's example package by name,
+and the `ruff check` / `ruff format --check` target lists in `<dest>/bin/check`,
+which name it as a directory. Both appear again inside the two toolchain tests;
+the four must agree exactly or the ordered-call assertions fail.
+
+Then change the **Final build gate** examples in `kickoff`, the four canonical
+agents, `CLAUDE.md`, the brief, and Phase 1 to use `./bin/test ...` for focused
+tests and `./bin/check all` for the authoritative suite. No copied raw
+full-suite list may remain.
 
 ### Step 6 — Initialize git
 
@@ -436,9 +539,30 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
   the full gate.
 - `<dest>/bin/lessons validate` and `<dest>/bin/check-catalogs` are executable
   and pass against the fresh destination (empty ledger, synced catalogs, one
-  `⬅️`); `<dest>/lessons/.gitkeep` and `<dest>/lessons-archived/.gitkeep`
-  exist and no Starter lesson files were copied.
+  `⬅️`); a `.gitkeep` exists in each of `lessons/`, `lessons-archived/`,
+  `user-actions/`, and `user-actions-archived/`, and no Starter ledger entries
+  were copied into any of the four.
+- Every executable `<dest>/bin/check` requires before it runs a gate is present
+  and executable: `kickoff-tree-id`, `kickoff-evidence`, `kickoff-config`,
+  `check-receipt`, `execution-telemetry`, `check-execution-dashboards`,
+  `check-harness-parity`, `check-toolchain-callers`, `lessons`, `treatise`,
+  `check-catalogs`, `check-hooks-installed`, `check-shell-syntax`, `new-name`.
+  This is the fastest way to catch an incomplete copy: `bin/check` fails closed
+  on the first one missing, before any gate runs.
+- `<dest>/lib/agentic_starter/` exists and
+  `<dest>/bin/execution-telemetry --help` runs; `<dest>/reports/execution/`
+  carries `index.html`, `index-data.js`, and `assets/`, and
+  `<dest>/bin/check-execution-dashboards` reports
+  `EXECUTION DASHBOARDS PASS (0 phases)` against the fresh archive.
+- `<dest>/bin/check-harness-parity` passes: one `.agents/skills/` mirror per
+  canonical skill, no orphans, and one `.codex/agents/*.toml` per canonical role.
 - `<dest>/.agents/skills/stamp` does **not** exist (starter-only, must not propagate).
+- `<dest>/policies/anonymize-log-references.md`,
+  `<dest>/bin/check-anonymization.sh`, and
+  `<dest>/tests/test_methodology_toolchain_contract.py` do **not** exist, and no
+  file in the destination links or names any of them — including the `CLAUDE.md`
+  Hard rules section (rule 3 is gone) and the Policies catalog inside the
+  Methodology Contract zone.
 - The new `CLAUDE.md`'s catalogs reference every file in `briefs/` and `policies/`.
 - `<dest>/kickoff.yaml` exists; `show` prints the seeded cross-vendor model routing, portable timeout values, and per-role research budgets; a scoped model edit preserves timeout/research comments and values; `<dest>/.gitignore` includes `.kickoff/`; the role, timeout, and research-authority policies plus invocation brief exist.
 - `<dest>/bin/setup` succeeds from outside `<dest>` and provisions only the
@@ -448,7 +572,11 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
   `tests/test_check.py`, `tests/test_check_receipt.py`, `tests/test_install_hooks.py`,
   `tests/test_kickoff_config.py`, `tests/test_kickoff_tree_id.py`,
   `tests/test_kickoff_evidence.py`, `tests/test_lessons.py`,
-  `tests/test_check_catalogs.py`, and the deliverable tests through
+  `tests/test_check_catalogs.py`, `tests/test_treatise.py`,
+  `tests/test_new_name.py`, `tests/test_shell_syntax.py`,
+  `tests/test_toolchain_callers.py`, `tests/test_mirror_parity.py`,
+  `tests/test_research_authority.py`, `tests/test_execution_telemetry.py`,
+  `tests/test_execution_dashboard.py`, and the deliverable tests through
   committed locked environments; a focused repo-relative test argument runs
   only that selection.
 - `<dest>/bin/check test` delegates to `<dest>/bin/test`.

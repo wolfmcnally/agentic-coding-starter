@@ -151,6 +151,71 @@ def test_self_improvement_bundle_propagates_atomically() -> None:
         assert phrase in BOOTSTRAP_BRIEF
 
 
+def test_every_universal_skill_propagates_with_its_codex_mirror() -> None:
+    """Every canonical skill except starter-only `stamp` reaches a derived project.
+
+    `bin/check-harness-parity` fails closed on a canonical skill with no
+    `.agents/skills` mirror, so a skill named in the transfer documents without
+    its symlink breaks the destination's gate exactly as a missing skill does.
+    """
+    canonical_root = REPO_ROOT / ".claude" / "skills"
+    universal = sorted(
+        item.name for item in canonical_root.iterdir() if item.is_dir() and item.name != "stamp"
+    )
+    assert "plain" in universal, "the operator register is a universal skill"
+    for skill in universal:
+        canonical = f".claude/skills/{skill}/SKILL.md"
+        mirror = f".agents/skills/{skill}"
+        for document in (STAMP, BOOTSTRAP_BRIEF):
+            assert canonical in document, f"{skill} missing from a transfer document"
+            assert mirror in document, f"{skill} mirror missing from a transfer document"
+        assert skill in TEACH
+
+
+def test_every_gate_required_executable_propagates() -> None:
+    """`bin/check` names the executables it refuses to start without.
+
+    That list is the authority: a transfer document that omits one produces a
+    destination whose gate exits before running a single check. Reading the
+    requirement out of `bin/check` keeps this test honest when the list grows.
+    """
+    check = (REPO_ROOT / "bin" / "check").read_text()
+    marker = "for evidence_executable in \\\n"
+    start = check.index(marker) + len(marker)
+    end = check.index("; do", start)
+    required = check[start:end].replace("\\\n", " ").split()
+    assert len(required) >= 14, required
+    starter_only = {"check-anonymization.sh"}
+    for name in required:
+        if name in starter_only:
+            continue
+        for document in (STAMP, BOOTSTRAP_BRIEF, TEACH):
+            assert f"bin/{name}" in document, f"bin/{name} missing from a transfer document"
+
+
+def test_shared_library_and_report_archive_propagate_with_their_callers() -> None:
+    """`bin/execution-telemetry` imports `lib/`; neither travels alone."""
+    for phrase in ("lib/agentic_starter/", "reports/execution/"):
+        for document in (STAMP, BOOTSTRAP_BRIEF, TEACH):
+            assert phrase in document, f"{phrase} missing from a transfer document"
+
+
+def test_starter_only_surfaces_are_named_as_staying_behind() -> None:
+    """Each starter-only surface exists here and is named as not propagating."""
+    starter_only = (
+        "policies/anonymize-log-references.md",
+        "bin/check-anonymization.sh",
+        "bin/anonymization-denylist.local.example",
+        "tests/test_methodology_toolchain_contract.py",
+        "briefs/eacp-pattern-map.md",
+        "briefs/methodology-treatise.md",
+    )
+    for relative in starter_only:
+        assert (REPO_ROOT / relative).exists(), f"{relative} named but absent"
+        assert relative in STAMP, f"{relative} not named as starter-only in stamp"
+        assert relative in BOOTSTRAP_BRIEF, f"{relative} not named as starter-only in the brief"
+
+
 def test_universal_demo_and_treatise_bundle_propagates_atomically() -> None:
     for skill in ("demo", "treatise"):
         canonical = f".claude/skills/{skill}/SKILL.md"

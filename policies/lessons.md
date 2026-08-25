@@ -149,7 +149,7 @@ examples of the shape: *the fix covers the named instance, not the class*, and
 
 ## Anonymization on the upstream path
 
-A `scope: methodology` lesson in a derived repo is destined for the starter template, which is public. When such a lesson is harvested into the starter (via `learn` or by hand), it obeys [`anonymize-log-references.md`](anonymize-log-references.md) *before being written*: no external project names, commit SHAs, or proprietary identifiers. The starter's `bin/check-anonymization.sh` scans the whole tree, so `lessons/` and `lessons-archived/` are inside its net. Write the lesson so the learning survives that translation — state the mechanism and the failure mode, not just the local names, so a reader with no context from the originating project can still act on it.
+A `scope: methodology` lesson in a derived repo is destined for the starter template, which is public. When such a lesson is harvested into the starter (via `learn` or by hand), it obeys the starter's own `anonymize-log-references.md` policy *before being written*: no external project names, commit SHAs, or proprietary identifiers. The starter's `bin/check-anonymization.sh` scans the whole tree, so `lessons/` and `lessons-archived/` are inside its net. Write the lesson so the learning survives that translation — state the mechanism and the failure mode, not just the local names, so a reader with no context from the originating project can still act on it.
 
 ## Relationship to other artifacts
 

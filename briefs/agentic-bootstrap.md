@@ -1,6 +1,6 @@
 ---
 title: "Standing Up a New Project From This Template"
-date: 2026-08-23
+date: 2026-08-25
 status: methodology
 scope: Procedure for using this repository as a master template to stand up a new project under the agentic coding methodology. Authoritative reference for the `stamp` skill.
 ---
@@ -27,7 +27,10 @@ A project derived from this template contains the following **portable structure
                            #   START/END blocks here
   lessons/                # Open candidate process lessons (.gitkeep initially)
   lessons-archived/       # Codified/rejected lesson audit trail (.gitkeep initially)
+  user-actions/           # Open human-only action items (.gitkeep initially)
+  user-actions-archived/  # Closed action-item audit trail (.gitkeep initially)
   .gitignore               # Editor/harness state; includes local .kickoff/
+  .gitattributes           # Line-ending normalization for cross-harness mirrors
   kickoff.yaml             # Human-editable model/effort/timeout/research configuration
 
   bin/
@@ -42,8 +45,25 @@ A project derived from this template contains the following **portable structure
     kickoff-config         # Round-trip editor, preflight, watchdog, calibration
     kickoff-tree-id        # Complete review candidate identity
     kickoff-evidence       # Authority/change/finding/packet/gate records
+    execution-telemetry    # Exact stage/role/wait/gate trace and park ledger
+    check-execution-dashboards # Offline report archive and renderer checks
+    serve-execution-dashboard  # Local viewer for a generated report
+    check-harness-parity   # Canonical-vs-mirror drift, fail-closed
+    check-toolchain-callers # Every caller uses the repository runtime
+    check-shell-syntax     # Shell scripts parse before they are needed
     lessons                # Validate/query the lessons ledger
+    treatise               # Validate treatise editorial records
     check-catalogs         # Catalog, link, anchor, citation, ledger checks
+    new-name               # Collision-checked ledger slug generator
+
+  lib/
+    agentic_starter/       # Shared deterministic library the bin/ scripts import
+                           #   (telemetry, evidence schemas, dashboard rendering)
+
+  reports/
+    execution/             # Committed privacy-safe offline phase reports plus
+                           #   index.html, index-data.js, and vendored assets/.
+                           #   A fresh repo's archive holds zero phases.
 
   tests/
     test_toolchain_entrypoints.py # Setup/test/runtime behavioral coverage
@@ -54,8 +74,18 @@ A project derived from this template contains the following **portable structure
     test_kickoff_config.py # Universal manager/watchdog behavioral coverage
     test_kickoff_tree_id.py # Candidate identity behavioral coverage
     test_kickoff_evidence.py # Evidence/packet/gate behavioral coverage
+    test_execution_telemetry.py # Trace, join, and park-ledger coverage
+    test_execution_dashboard.py # Deterministic offline report coverage
+    render_execution_dashboard_fixture.py # Report-rendering fixture helper
+    test_mirror_parity.py  # Canonical-vs-mirror parity coverage
+    test_toolchain_callers.py # Caller-policy coverage
+    test_shell_syntax.py   # Shell-syntax checker coverage
+    test_research_authority.py # Per-role search/retrieval boundary coverage
     test_lessons.py        # Lessons-ledger schema/query coverage
+    test_treatise.py       # Editorial-record validation coverage
     test_check_catalogs.py # Document and phase-ledger coverage
+    test_new_name.py       # Slug-generator coverage
+    fixtures/              # Shared test fixtures (telemetry traces, config seed)
 
   briefs/
     BRIEF.md               # Entry-point brief, project-specific
@@ -65,6 +95,7 @@ A project derived from this template contains the following **portable structure
     incremental-orchestration.md # Candidate-bound incremental assurance
     deterministic-orchestration.md  # Draft: deterministic kickoff loop (copied verbatim)
     harness-self-improvement.md # Lessons capture, pruning, and propagation
+    session-context-compaction.md # Managing compaction during long runs
     <topic>.md             # Project-specific topic briefs as they appear
 
   policies/
@@ -214,6 +245,25 @@ These files encode the methodology itself, not any particular product. Copy them
   document-link, and phase-ledger fitness managers)
 - `tests/test_lessons.py` and `tests/test_check_catalogs.py` (universal
   behavioral coverage for those managers)
+- `bin/execution-telemetry`, `bin/check-execution-dashboards`, and
+  `bin/serve-execution-dashboard`, together with `lib/agentic_starter/` (the
+  shared deterministic library the first two import) and `reports/execution/`
+  with its `index.html`, `index-data.js`, and vendored offline `assets/`. The
+  new project's archive starts empty, which the checker reports as
+  `EXECUTION DASHBOARDS PASS (0 phases)`
+- `tests/test_execution_telemetry.py`, `tests/test_execution_dashboard.py`,
+  `tests/render_execution_dashboard_fixture.py`, and `tests/fixtures/`
+  (universal behavioral coverage for telemetry and offline report rendering)
+- `bin/check-harness-parity`, `bin/check-toolchain-callers`,
+  `bin/check-shell-syntax`, `bin/new-name`, and `bin/treatise` (the universal
+  deterministic checkers and the ledger-slug generator), with
+  `tests/test_mirror_parity.py`, `tests/test_toolchain_callers.py`,
+  `tests/test_shell_syntax.py`, `tests/test_new_name.py`, and
+  `tests/test_treatise.py`
+- `tests/test_research_authority.py` (universal coverage for the per-role
+  search/retrieval boundary)
+- `.gitattributes` (line-ending normalization that keeps cross-harness mirrors
+  byte-identical across platforms)
 - `briefs/methodology.md`
 - `briefs/agentic-bootstrap.md` (this file, so the next bootstrap is possible)
 - `briefs/cross-agent-invocation.md` (the cross-CLI invocation BCPs cited by `policies/role-models.md`)
@@ -222,6 +272,8 @@ These files encode the methodology itself, not any particular product. Copy them
 - `briefs/deterministic-orchestration.md` (draft universal brief: decision criteria for a deterministic kickoff loop, so the derived project can act when its harnesses gain parity workflow primitives)
 - `briefs/harness-self-improvement.md` (phase-scale lessons capture,
   rule-surface pruning, and cross-repo propagation)
+- `briefs/session-context-compaction.md` (managing harness context compaction
+  during long orchestration runs)
 - The skeletal headings/structure of `plan/INDEX.md`
 - The skeletal frontmatter shape for `plan/phase-*.md` (`id`, `title`, `depends_on`, `informs`, optional `review_lane` per `policies/review-lanes.md`)
 - The START/END block format for `LOG.md`
@@ -232,7 +284,7 @@ These files encode the methodology itself, not any particular product. Copy them
 These files have a stable shape and a project-specific body. Mirror the shape; write fresh content from the new project's brief.
 
 - `README.md` — keep the section structure (what the project is, why, how to use, repository layout, status markers, four canonical agents, briefs-vs-policies-vs-plan, first-time setup), but every line is project-specific.
-- `CLAUDE.md` — uses a two-zone structure delimited by HTML comment markers. The `Methodology Contract` zone (between `<!-- METHODOLOGY_CONTRACT_START -->` and `<!-- METHODOLOGY_CONTRACT_END -->`) is copied verbatim — methodology briefs catalog, policies catalog, universal repo layout, phase-work protocol, status markers, reading protocol, architectural invariants, activity-log contract, universal conventions, glossary. The `Project Context` zone (between `<!-- PROJECT_CONTEXT_START -->` and `<!-- PROJECT_CONTEXT_END -->`) is rewritten for the new project — the project's thesis, project-specific briefs list, project surfaces description, project conventions, and any project-specific skills.
+- `CLAUDE.md` — uses a two-zone structure delimited by HTML comment markers, with a **Hard rules** section above both. The `Methodology Contract` zone (between `<!-- METHODOLOGY_CONTRACT_START -->` and `<!-- METHODOLOGY_CONTRACT_END -->`) is copied verbatim — methodology briefs catalog, policies catalog, universal repo layout, phase-work protocol, status markers, reading protocol, architectural invariants, activity-log contract, universal conventions, glossary — **except for the starter-only members its catalogs name**. That zone lists what exists in *this* repository, so any entry pointing at a file the new project will not have (today: the `anonymize-log-references.md` policy bullet, and the `check-anonymization.sh` clause in the `bin/` layout bullet) comes out; left in, it is a `CLAUDE.md` reference to a missing file, which `bin/check-catalogs` fails closed on. The Hard rules section above the zones drops **Hard rule 3**, the starter-only anonymization rule, and the sentence introducing the rules is repaired to say the two survivors are universal. The `Project Context` zone (between `<!-- PROJECT_CONTEXT_START -->` and `<!-- PROJECT_CONTEXT_END -->`) is rewritten for the new project — the project's thesis, project-specific briefs list, project surfaces description, project conventions, and any project-specific skills.
 - `briefs/BRIEF.md` — the entry-point brief for the new project. Pick a shape:
   - **Thesis-stub.** One short paragraph plus a pointer to `../CLAUDE.md#briefs-catalog`. Use when the project will quickly grow many topic briefs.
   - **Full single-document brief.** Opens with thesis + a catalog pointer, then continues with the long-form spec under H2 sections. Use when the project's brief is comprehensive and fits in one document.
@@ -247,8 +299,15 @@ These files have a stable shape and a project-specific body. Mirror the shape; w
 - `.agents/skills/stamp` — same reason. The starter-only `stamp` skill is intentionally absent from Codex's native skill discovery in derived projects.
 - The starter template's own `plan/phase-1.md` (which is a placeholder for "decide what you're building") — replace it entirely with the new project's real Phase 1.
 - The starter template's `example/` Python package and `tests/test_cli.py` — replace with the new project's surface, in whatever language(s) the project uses.
+- `policies/anonymize-log-references.md`, `bin/check-anonymization.sh`, and `bin/anonymization-denylist.local.example` — starter-only: the rule exists because *this* template is public, not because of any methodology principle. Also drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`, delete the `### check-anonymization.sh` entry from `bin/README.md`, remove its call from `bin/check`, and delete the "External / private-repo references" bullet from the copied `.claude/agents/code-critic.md`, which names both.
+- `tests/test_methodology_toolchain_contract.py` — asserts on the `stamp` skill and the anonymization policy, neither of which the new project has.
+- `briefs/eacp-pattern-map.md` and `briefs/methodology-treatise.md` — both are *about this repository*: one maps its structures onto a named pattern corpus, the other is its outward explanation. A derived project writes its own if it wants them.
+- `LICENSE` and `.vscode/` — the new repository's licensing and editor settings belong to whoever owns it.
+- This repository's `lessons/`, `lessons-archived/`, `user-actions/`, and `user-actions-archived/` entries — every ledger starts empty, with only a `.gitkeep` in each of the four so the directories survive the first commit.
 
 If in doubt, ask: "does this file describe the methodology or a universally useful agentic capability, or does it describe the template itself?" Methodology and universal-capability files transfer; template-specific files don't.
+
+**And prefer copying to omitting.** The list above is the whole set that stays behind; everything else under the universal surfaces travels. An unnecessary extra file in the new project is a nuisance that the next `sweep` removes. A missing one is a gate that will not start — `bin/check` fails closed on the first executable it cannot find, before it runs a single check.
 
 ---
 
@@ -650,9 +709,27 @@ Bootstrap is complete when **all** of the following hold:
     preserve human comments and `extensions` data; `.kickoff/` is gitignored
 [ ] bin/kickoff-tree-id and bin/kickoff-evidence are executable; candidate
     identity and run-scoped evidence behavioral tests pass
-[ ] bin/lessons and bin/check-catalogs are executable; lessons/.gitkeep and
-    lessons-archived/.gitkeep exist; ledger, document-link, and phase-lifecycle
-    fitness tests pass
+[ ] bin/lessons and bin/check-catalogs are executable; a .gitkeep exists in
+    each of lessons/, lessons-archived/, user-actions/, and
+    user-actions-archived/, and none of the four carries an entry copied from
+    the template; ledger, document-link, and phase-lifecycle fitness tests pass
+[ ] Every executable bin/check requires is present and executable:
+    kickoff-tree-id, kickoff-evidence, kickoff-config, check-receipt,
+    execution-telemetry, check-execution-dashboards, check-harness-parity,
+    check-toolchain-callers, lessons, treatise, check-catalogs,
+    check-hooks-installed, check-shell-syntax, new-name. bin/check fails closed
+    on the first one missing, before any gate runs — this is the fastest way to
+    catch an incomplete transfer
+[ ] lib/agentic_starter/ exists (bin/execution-telemetry and
+    bin/check-execution-dashboards import it); reports/execution/ carries
+    index.html, index-data.js, and assets/, and
+    bin/check-execution-dashboards reports 0 phases against the fresh archive
+[ ] bin/check-harness-parity passes: one .agents/skills mirror per canonical
+    skill, no orphans, one .codex/agents/*.toml per canonical role
+[ ] policies/anonymize-log-references.md, bin/check-anonymization.sh, and
+    tests/test_methodology_toolchain_contract.py do NOT exist, and no file in
+    the new repo links or names them — including CLAUDE.md's Hard rules
+    (rule 3 is gone) and its Policies catalog
 [ ] bin/setup, bin/test, bin/check, bin/check-receipt, bin/install-hooks, and
     bin/check-hooks-installed are executable;
     the language runtime wrapper exists when applicable; .githooks/pre-push
@@ -666,8 +743,11 @@ Bootstrap is complete when **all** of the following hold:
     tests/test_install_hooks.py, tests/test_check_hooks_installed.py,
     tests/test_kickoff_config.py,
     tests/test_kickoff_tree_id.py, tests/test_kickoff_evidence.py,
-    tests/test_lessons.py, and tests/test_check_catalogs.py pass
-    through bin/test
+    tests/test_lessons.py, tests/test_check_catalogs.py,
+    tests/test_treatise.py, tests/test_new_name.py, tests/test_shell_syntax.py,
+    tests/test_toolchain_callers.py, tests/test_mirror_parity.py,
+    tests/test_research_authority.py, tests/test_execution_telemetry.py, and
+    tests/test_execution_dashboard.py pass through bin/test
 [ ] Every file in policies/ from the template exists, with project-name
     references updated
 [ ] No template-specific skills, briefs, or example code remain in the new

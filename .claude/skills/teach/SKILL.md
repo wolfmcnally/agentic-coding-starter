@@ -172,9 +172,11 @@ For each proposed addition or update, ask:
 - **Unified kickoff-config adoption.** Treat `kickoff.yaml`, `bin/kickoff-config`, `tests/test_kickoff_config.py`, the role, timeout, and research-authority policies, `roles`, `kickoff` Steps 0a–0c plus every initial/resume/rescue call site, `.gitignore`, `bin/README.md`, the invocation brief, and CLAUDE catalog/glossary as one atomic contract. If absent, port the bundle and seed it with `reset all`. If present, round-trip-upgrade schema/mechanics and tests while preserving the target's model choices, separate effort fields, timeout values, research budgets, comments, `extensions` data, overrides, and telemetry. Never copy or open raw telemetry. Preserve allow-by-default resource discovery: no global MCP/plugin denylist and no assumption that a particular server exists. Partial adoption is stale and blocking.
 - **Background-isolation default.** Transfer `.claude/settings.json`'s `worktree.bgIsolation: none` as a portable default, merging around target-owned settings. It disables automatic worktree creation for background agents while retaining explicit, user-selected worktrees. A conflicting explicit target value is DECIDE, not an automatic overwrite.
 - **Repository-owned toolchain adoption.** Treat `bin/setup`, `bin/test`,
-  `bin/check`, `bin/check-receipt`, runtime wrappers, the runtime pin, manifest,
-  lockfile, `tests/test_check_receipt.py`, the other behavioral tests,
-  `policies/build-gates.md`, hooks, and every workflow caller
+  `bin/check`, `bin/check-receipt`, `bin/install-hooks`,
+  `bin/check-hooks-installed`, runtime wrappers, the runtime pin, manifest,
+  lockfile, `tests/test_check_receipt.py`, `tests/test_install_hooks.py`,
+  `tests/test_check_hooks_installed.py`, the other behavioral tests,
+  `policies/build-gates.md`, `.githooks/pre-push`, and every workflow caller
   as one atomic contract. If any member is proposed, enumerate the whole
   bundle in the stale sweep. Preserve target-owned language/version/package
   choices and adapt the universal interface to them. Any explicit runtime
@@ -206,6 +208,39 @@ For each proposed addition or update, ask:
   contract. Preserve target-defined risk tags and stricter assurance layers.
   Never transfer run directories or their findings, candidates, hashes, gate
   artifacts, or telemetry. Partial adoption is stale and blocking.
+
+- **Execution-telemetry and dashboard adoption.** Treat
+  `policies/execution-telemetry.md`, `lib/agentic_starter/`,
+  `bin/execution-telemetry`, `bin/check-execution-dashboards`,
+  `bin/serve-execution-dashboard`, `reports/execution/` (with `index.html`,
+  `index-data.js`, and the vendored offline `assets/`),
+  `tests/test_execution_telemetry.py`, `tests/test_execution_dashboard.py`,
+  `tests/render_execution_dashboard_fixture.py`, `tests/fixtures/`, the
+  `bin/check` registrations, and the CLAUDE.md layout/invariant/glossary entries
+  as one atomic contract. `bin/execution-telemetry` and
+  `bin/check-execution-dashboards` import `lib/agentic_starter/`; porting either
+  script without the library leaves `bin/check` failing at startup. Never
+  transfer this repository's own phase reports — the target's archive starts
+  empty, which the checker reports as `EXECUTION DASHBOARDS PASS (0 phases)`.
+  Partial adoption is stale and blocking.
+
+- **Deterministic-checker adoption.** Treat `bin/check-harness-parity`,
+  `bin/check-toolchain-callers`, `bin/check-shell-syntax`, `bin/new-name`,
+  `bin/treatise`, and their behavioral tests
+  (`tests/test_mirror_parity.py`, `tests/test_toolchain_callers.py`,
+  `tests/test_shell_syntax.py`, `tests/test_new_name.py`,
+  `tests/test_treatise.py`) plus their `bin/check policy` registrations and
+  `bin/README.md` entries as one atomic contract with the policies they enforce
+  (`cross-harness-parity.md`, `build-gates.md`, `treatise.md`,
+  `mechanistic-vs-intelligence.md`). `bin/check` refuses to run a single gate
+  while any of these executables is missing, so a partial port is not a smaller
+  transfer — it is a broken target.
+
+- **Operator-register adoption.** `.claude/skills/plain/SKILL.md` and its
+  `.agents/skills/plain` directory symlink travel together with the CLAUDE.md
+  convention that every message addressed to the operator follows it.
+  `bin/check-harness-parity` fails closed on a canonical skill with no mirror,
+  so a skill copied without its symlink breaks the target's gate.
 
 Each stale item gets one of three classifications:
 

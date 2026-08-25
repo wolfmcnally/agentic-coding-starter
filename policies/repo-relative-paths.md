@@ -32,8 +32,8 @@ Every path embedded in a committed file is **repo-relative**. Absolute paths (`/
 
 ## Verification
 
-`bin/check-anonymization.sh` enforces this rule mechanically over every tracked
-file, and `./bin/check all` runs it:
+In the starter template, `bin/check-anonymization.sh` enforces this rule
+mechanically over every tracked file, and `./bin/check all` runs it:
 
 ```bash
 bin/check-anonymization.sh
@@ -43,6 +43,13 @@ Its first pass is this policy's check: it matches real `/Users/<user>/`,
 `/home/<user>/`, `C:\Users\<user>\`, and home-relative forms, excludes the
 placeholder spellings this policy itself recommends (`/Users/me/`, `<your-clone>/`),
 and reports a hit against this policy by name.
+
+That script exists because the starter is public, so it is starter-only and does
+not propagate. A project derived from the template carries this policy without
+that checker; there the rule is enforced by the code critic's policy-adherence
+pass, which greps for the same absolute-path prefixes. A derived project that
+wants the mechanical check can adopt the script deliberately — but it is not part
+of the universal bundle, and its absence is not a gap in the gate.
 
 **Do not hand-write a `grep` for this rule.** The token it would search for is the
 token this policy, its catalog entry, the code critic's checklist, the sanitizer

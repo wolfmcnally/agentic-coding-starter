@@ -219,7 +219,32 @@ def test_validate_is_the_default_command(briefs: Path) -> None:
     assert "validated" in result.stdout
 
 
-def test_the_repository_own_treatise_validates() -> None:
+def declared_treatise_briefs() -> list[str]:
+    """Return every brief in this repository whose frontmatter declares a treatise.
+
+    Derived from the tree rather than hard-coded. This test is carried into every
+    project stamped from the template, and those projects do not carry the
+    template's own treatise brief — a hard-coded filename would fail there for a
+    reason that is not a defect.
+    """
+    briefs = ROOT / "briefs"
+    if not briefs.is_dir():
+        return []
+    declared: list[str] = []
+    for path in sorted(briefs.glob("*.md")):
+        lines = path.read_text(encoding="utf-8").splitlines()
+        if not lines or lines[0].strip() != "---":
+            continue
+        for line in lines[1:]:
+            if line.strip() in ("---", "..."):
+                break
+            if line.startswith("treatise:"):
+                declared.append(f"briefs/{path.name}")
+                break
+    return declared
+
+
+def test_the_repository_own_treatises_validate() -> None:
     result = subprocess.run(
         [str(TREATISE), "validate"],
         capture_output=True,
@@ -228,4 +253,9 @@ def test_the_repository_own_treatise_validates() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr
-    assert "briefs/methodology-treatise.md" in result.stdout
+    declared = declared_treatise_briefs()
+    if declared:
+        for relative in declared:
+            assert relative in result.stdout
+    else:
+        assert "no treatises declared" in result.stdout
