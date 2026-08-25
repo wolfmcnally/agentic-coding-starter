@@ -134,7 +134,7 @@ The template is acceptable when:
   and nonignored-untracked candidate state; `bin/kickoff-evidence` validates
   run-scoped authority, change, finding, packet, and implementation-final-gate
   evidence; the separate handoff gate proves the post-bookkeeping tree.
-- No file in this repo references Wolf McNally, his email, his other projects, or any third-party PII. The template is distributable.
+- No file in this repo attributes the methodology to a particular operator, or references any individual's email, unrelated projects, or third-party PII. The template author is named in `LICENSE` and cited where an external work of theirs is quoted; nowhere else does a personal name appear, and no rule is written as though a specific person were running the checkout. The template is distributable.
 - Every file under `briefs/` and `policies/` is cataloged bidirectionally, and
   every tracked repository-internal Markdown link resolves. No orphans or
   dangling document links.

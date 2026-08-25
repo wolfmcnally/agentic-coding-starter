@@ -486,7 +486,7 @@ When the bootstrap finishes cleanly, report to the user:
 
 ## Rules
 
-- The destination repo's content is the user's. Never mirror Wolf McNally, his projects, his email, or any third-party PII. The stamp skill itself ships in a distributable repo; the new repo is even more so.
+- The destination repo's content is the user's. Never carry over the template author's personal identity, the identity of whoever ran this stamp, their other projects, their email, or any third-party PII. The stamp skill itself ships in a distributable repo; the new repo is even more so.
 - Ask only the questions inference cannot answer. A clear description shortens the bootstrap to seconds.
 - When in doubt about a name, file path, or convention, prefer this template's choice — that's why it exists.
 - Surface every assumption you made (inferred language, inferred surfaces, derived project name) in the final report so the user can correct anything before kickoff.
