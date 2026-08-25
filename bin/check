@@ -49,7 +49,7 @@ fi
 for evidence_executable in \
   kickoff-tree-id kickoff-evidence kickoff-config check-receipt execution-telemetry \
   check-execution-dashboards check-harness-parity check-toolchain-callers \
-  lessons check-catalogs check-hooks-installed check-shell-syntax new-name; do
+  lessons treatise check-catalogs check-hooks-installed check-shell-syntax new-name; do
   if [[ ! -x "$repo_root/bin/$evidence_executable" ]]; then
     echo "CHECK ERROR missing required executable: bin/$evidence_executable" >&2
     exit 1
@@ -76,7 +76,7 @@ run_lint() {
       example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence \
       ../bin/kickoff-tree-id ../bin/check-receipt ../bin/execution-telemetry \
       ../bin/check-execution-dashboards ../bin/check-harness-parity \
-      ../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs \
+      ../bin/check-toolchain-callers ../bin/lessons ../bin/treatise ../bin/check-catalogs \
       ../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name \
       ../tests
   )
@@ -89,7 +89,7 @@ run_format() {
       example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence \
       ../bin/kickoff-tree-id ../bin/check-receipt ../bin/execution-telemetry \
       ../bin/check-execution-dashboards ../bin/check-harness-parity \
-      ../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs \
+      ../bin/check-toolchain-callers ../bin/lessons ../bin/treatise ../bin/check-catalogs \
       ../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name \
       ../tests
   )
@@ -108,6 +108,7 @@ run_policy() {
     run_gate policy-config ./bin/kickoff-config show || return $?
     run_gate policy-catalogs ./bin/check-catalogs || return $?
     run_gate policy-lessons ./bin/lessons validate || return $?
+    run_gate policy-treatise ./bin/treatise validate || return $?
     run_gate policy-hooks-installed ./bin/check-hooks-installed || return $?
     run_gate policy-shell-syntax ./bin/check-shell-syntax || return $?
     run_gate policy-anonymization ./bin/check-anonymization.sh || return $?

@@ -325,6 +325,29 @@ outside this tool.
 Governed by [`policies/lessons.md`](../policies/lessons.md); behavioral
 coverage lives in `tests/test_lessons.py`.
 
+### `treatise` — editorial-record validation
+
+Validates every brief whose frontmatter carries a `treatise:` mapping: the
+required keys, the field shapes, ISO dates on directives, renderings, and
+external facts, and the append-only rule on `directives` compared against the
+committed brief. A leftover `briefs/<name>.yaml` sidecar beside its brief fails,
+because the record has one home.
+
+```
+./bin/treatise validate
+```
+
+```
+./bin/treatise show
+```
+
+`validate` is the default subcommand. Exit 0 when every treatise validates, 1 on
+a violation, 2 when `briefs/` cannot be read. An uncommitted brief skips the
+append-only comparison, which is the only honest answer before a first commit.
+
+Governed by [`policies/treatise.md`](../policies/treatise.md); behavioral
+coverage in `tests/test_treatise.py`.
+
 ### `check-harness-parity` — canonical/mirror consistency
 
 Verifies the top-level instruction symlink, skill-directory symlinks, and thin

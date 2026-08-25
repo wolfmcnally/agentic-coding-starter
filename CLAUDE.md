@@ -113,7 +113,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 - [`phase-ripple.md`](policies/phase-ripple.md) — at phase close, pinned decisions from the closing phase propagate into downstream drafted phase files. AUTO ripples (mechanical) land in the same session; DECIDE ripples (judgment) surface as named follow-ups in the END block.
 - [`acceptance-empirical.md`](policies/acceptance-empirical.md) — every phase's Acceptance section lists verifiable shell commands or named manual checks. "It compiles" is not acceptance.
 - [`user-demo-protocols.md`](policies/user-demo-protocols.md) — when a phase touches a user-facing surface, Acceptance carries an interactive try-it-yourself protocol (entry point, suggested inputs, what to look for, variations). When there's nothing meaningful to demo, declare `User Demo: N/A` with a one-line reason instead. Silence is blocking; contrived demos are blocking.
-- [`treatise.md`](policies/treatise.md) — requires outward explanations to derive from canonical briefs/policies, lead with decisions rather than file inventories, preserve claim provenance and audience-specific disclosure, and stop at the two-part external publication gate.
+- [`treatise.md`](policies/treatise.md) — requires outward explanations to derive from canonical briefs/policies, lead with decisions rather than file inventories, preserve claim provenance and audience-specific disclosure, and stop at the two-part external publication gate. A treatise records its editorial intent in a `treatise:` frontmatter block on its own brief — purpose, audience, register, coverage, append-only operator directives, renderings, and dated external facts — validated by `bin/treatise`.
 - [`verification-discipline.md`](policies/verification-discipline.md) — requires verification to name blind spots, treat grep as a lead rather than a finding, avoid blacklist-as-closed-world claims, test proxies for sign inversion, and make material counts reproducible.
 - [`log-discipline.md`](policies/log-discipline.md) — `LOG.md` is append-only and owned by `kickoff`. Never hand-edit historical entries.
 - [`user-actions.md`](policies/user-actions.md) — `user-actions/` at the repo root is the live queue of human-only action items, one file per action (`<slug>.md`, YAML frontmatter); closed actions move to `user-actions-archived/`; no index. Glob at session start; surface relevant items before doing dependent work.
@@ -133,7 +133,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
   repo ships the atomic `setup`/`test`/`check`/`python` toolchain interface,
   opt-in `install-hooks` with its `check-hooks-installed` liveness witness;
   universal `kickoff-config`, `kickoff-tree-id`, `check-receipt`,
-  `kickoff-evidence`, `execution-telemetry`, and `lessons` managers; the
+  `kickoff-evidence`, `execution-telemetry`, `lessons`, and `treatise` managers; the
   `new-name` ledger-slug generator; deterministic dashboard, harness-parity,
   caller-policy, shell-syntax, and catalog (`check-catalogs`) checkers; and
   the starter-only `check-anonymization.sh` leak guard.
@@ -153,7 +153,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
   - `roles/SKILL.md` — edits separate model/effort fields for any canonical role (thin wrapper over `bin/kickoff-config`); governed by [`policies/role-models.md`](policies/role-models.md).
   - `sweep/SKILL.md` — recurring, user-gated maintenance pass over the rule surfaces: stale or contradictory policies, skills past review cadence, brief status transitions, aging ledger candidates, catalog drift. In a template repo it additionally audits the methodology corpus itself.
   - `demo/SKILL.md` — walks the user through an approved demo protocol one visible action at a time, answering questions without advancing.
-  - `treatise/SKILL.md` — builds an audience-specific outward explanation from canonical authority and enforces the publication gate.
+  - `treatise/SKILL.md` — builds an audience-specific outward explanation from canonical authority, maintains the brief's editorial record, and enforces the publication gate.
   - (Project-specific skills live here too; see Project Context.)
 - `.claude/agents/` — canonical role definitions invoked by `kickoff`: `phase-planner.md`, `plan-reviewer.md`, `phase-coder.md`, `code-critic.md`. These are the four roles in the methodology's planner → reviewer → coder → critic loop; do not invoke them by hand for full-phase work unless deliberately bypassing orchestration.
 - `.codex/agents/` — Codex CLI mirrors of the four canonical roles (TOML).
@@ -289,6 +289,7 @@ Terms used consistently across briefs, skills, policies, and code. Mismatched us
 - **Research authority.** The per-role search/retrieval boundary in `policies/research-authority.md` and `kickoff.yaml`: planner/reviewer search and retrieve; coder/critic retrieve approved authorities and same-host structural neighbors; installed resources are allow-by-default but never presumed present.
 - **Operator-input park.** A phase-level interval during which progress is waiting on a human decision or action. It is measured outside execution traces, reports every span plus an overlap-safe total, and fails closed while any interval remains open.
 - **Lessons ledger.** The `lessons/` + `lessons-archived/` directories: one file per candidate process lesson with scope, provenance, and occurrence history. Validated and tallied by `bin/lessons`; graduation is human-only. Governed by `policies/lessons.md`.
+- **Editorial record.** The `treatise:` mapping in a treatise brief's frontmatter: purpose, audience, register, coverage, the operator's append-only dated directives, renderings, and external facts with retrieval dates. Its presence marks the brief as a treatise; `bin/treatise` validates it. Governed by `policies/treatise.md`.
 - **Process observations.** The structured output field each canonical role emits for friction or ambiguity in briefs, policies, plans, or tooling — the raw sensor feed `kickoff`'s lessons harvest distills at phase close. "None" is a valid value.
 - **The four canonical agents.** `phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`. Their names are load-bearing — `kickoff` invokes them by name. Their definitions live in `.claude/agents/` (canonical) and `.codex/agents/` (mirror).
 - **Repository-owned toolchain contract.** The atomic setup, focused/full test,

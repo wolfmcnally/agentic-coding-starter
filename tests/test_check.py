@@ -86,6 +86,12 @@ printf 'lessons cwd=%s args=%s\\n' "$PWD" "$*" >> "$CHECK_TEST_LOG"
 """,
     )
     _write_executable(
+        root / "bin" / "treatise",
+        """#!/usr/bin/env bash
+printf 'treatise cwd=%s args=%s\\n' "$PWD" "$*" >> "$CHECK_TEST_LOG"
+""",
+    )
+    _write_executable(
         root / "bin" / "check-receipt",
         """#!/usr/bin/env bash
 set -euo pipefail
@@ -170,7 +176,8 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
             "ruff check example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence "
             "../bin/kickoff-tree-id ../bin/check-receipt ../bin/execution-telemetry "
             "../bin/check-execution-dashboards ../bin/check-harness-parity "
-            "../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs "
+            "../bin/check-toolchain-callers ../bin/lessons ../bin/treatise "
+            "../bin/check-catalogs "
             "../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name "
             "../tests"
         ),
@@ -179,7 +186,8 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
             "example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence "
             "../bin/kickoff-tree-id ../bin/check-receipt ../bin/execution-telemetry "
             "../bin/check-execution-dashboards ../bin/check-harness-parity "
-            "../bin/check-toolchain-callers ../bin/lessons ../bin/check-catalogs "
+            "../bin/check-toolchain-callers ../bin/lessons ../bin/treatise "
+            "../bin/check-catalogs "
             "../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name "
             "../tests"
         ),
@@ -197,6 +205,7 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
         f"config cwd={root} args=show",
         f"catalogs cwd={root}",
         f"lessons cwd={root} args=validate",
+        f"treatise cwd={root} args=validate",
         f"hooksinstalled cwd={root}",
         f"shellsyntax cwd={root}",
         f"policy cwd={root}",
@@ -233,6 +242,7 @@ def test_named_mode_runs_only_selected_gate(
             f"config cwd={root} args=show",
             f"catalogs cwd={root}",
             f"lessons cwd={root} args=validate",
+            f"treatise cwd={root} args=validate",
             f"hooksinstalled cwd={root}",
             f"shellsyntax cwd={root}",
             f"policy cwd={root}",
@@ -338,6 +348,7 @@ def test_missing_project_contract_fails_clearly(
         "check-harness-parity",
         "check-toolchain-callers",
         "lessons",
+        "treatise",
         "check-catalogs",
         "check-hooks-installed",
         "check-shell-syntax",

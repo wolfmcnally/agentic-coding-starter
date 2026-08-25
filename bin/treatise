@@ -1,0 +1,350 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["pyyaml"]
+# ///
+"""Validate the editorial records defined by policies/treatise.md.
+
+A treatise is a brief whose frontmatter carries a `treatise:` mapping. That
+mapping is the editorial record: purpose, audience, register, coverage, the
+operator's dated directives, published renderings, and every external fact with
+its retrieval date. Presence of the block is the marker; there is no separate
+flag that could contradict it, and no sidecar file that could drift from it.
+
+Checks:
+
+  * every `treatise:` block carries the required keys, with the right shapes;
+  * every directive, rendering, and external fact carries its required fields,
+    with ISO dates;
+  * `directives` is append-only against the committed brief: the committed list
+    must be an unchanged prefix of the working list;
+  * no orphaned `<brief>.yaml` sidecar remains beside a brief.
+
+Exit status is 0 when every treatise validates, 1 on any violation, and 2 when
+the repository itself cannot be read.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import subprocess
+import sys
+from datetime import date
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+DEFAULT_ROOT = Path(__file__).resolve().parents[1]
+BRIEFS_DIRECTORY = "briefs"
+MARKER_KEY = "treatise"
+
+REQUIRED_KEYS = {
+    "updated",
+    "purpose",
+    "audience",
+    "register",
+    "coverage",
+    "directives",
+}
+OPTIONAL_KEYS = {"renderings", "external_facts", "open_questions"}
+ALLOWED_KEYS = REQUIRED_KEYS | OPTIONAL_KEYS
+
+REQUIRED_AUDIENCE_KEYS = {"primary", "range"}
+REQUIRED_REGISTER_KEYS = {"form"}
+REQUIRED_COVERAGE_KEYS = {"includes", "excludes"}
+
+REQUIRED_DIRECTIVE_KEYS = {"date", "ruling", "effect"}
+REQUIRED_RENDERING_KEYS = {"format", "published"}
+REQUIRED_FACT_KEYS = {"claim", "source", "retrieved"}
+
+ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+class TreatiseError(ValueError):
+    """A treatise brief violates policies/treatise.md."""
+
+
+def split_frontmatter(path: Path) -> tuple[dict[str, Any], int]:
+    """Return the parsed frontmatter mapping and the line the body starts on."""
+    lines = path.read_text(encoding="utf-8").splitlines()
+    if not lines or lines[0].strip() != "---":
+        raise TreatiseError("missing YAML frontmatter")
+    try:
+        end = lines.index("---", 1)
+    except ValueError as exc:
+        raise TreatiseError("unterminated YAML frontmatter") from exc
+    try:
+        document = yaml.safe_load("\n".join(lines[1:end]))
+    except yaml.YAMLError as exc:
+        raise TreatiseError(f"unparsable YAML frontmatter: {exc}") from exc
+    if document is None:
+        document = {}
+    if not isinstance(document, dict):
+        raise TreatiseError("frontmatter must be a mapping")
+    return document, end + 1
+
+
+def require_iso_date(value: Any, field: str) -> None:
+    if isinstance(value, date):
+        return
+    if not isinstance(value, str) or not ISO_DATE.match(value):
+        raise TreatiseError(f"{field} must be an ISO date (YYYY-MM-DD), got {value!r}")
+
+
+def require_text(value: Any, field: str) -> None:
+    if not isinstance(value, str) or not value.strip():
+        raise TreatiseError(f"{field} must be a non-empty string")
+
+
+def require_list_of_text(value: Any, field: str) -> None:
+    if not isinstance(value, list) or not value:
+        raise TreatiseError(f"{field} must be a non-empty list")
+    for index, item in enumerate(value):
+        require_text(item, f"{field}[{index}]")
+
+
+def validate_block(block: Any) -> None:
+    if not isinstance(block, dict):
+        raise TreatiseError(f"`{MARKER_KEY}` must be a mapping")
+
+    unknown = set(block) - ALLOWED_KEYS
+    if unknown:
+        raise TreatiseError(f"unknown {MARKER_KEY} keys: {sorted(unknown)}")
+    missing = REQUIRED_KEYS - set(block)
+    if missing:
+        raise TreatiseError(f"missing {MARKER_KEY} keys: {sorted(missing)}")
+
+    require_iso_date(block["updated"], "updated")
+    require_text(block["purpose"], "purpose")
+
+    audience = block["audience"]
+    if not isinstance(audience, dict):
+        raise TreatiseError("audience must be a mapping")
+    for key in sorted(REQUIRED_AUDIENCE_KEYS - set(audience)):
+        raise TreatiseError(f"audience is missing `{key}`")
+    for key, value in audience.items():
+        require_text(value, f"audience.{key}")
+
+    register = block["register"]
+    if not isinstance(register, dict):
+        raise TreatiseError("register must be a mapping")
+    for key in sorted(REQUIRED_REGISTER_KEYS - set(register)):
+        raise TreatiseError(f"register is missing `{key}`")
+    require_text(register["form"], "register.form")
+
+    coverage = block["coverage"]
+    if not isinstance(coverage, dict):
+        raise TreatiseError("coverage must be a mapping")
+    for key in sorted(REQUIRED_COVERAGE_KEYS - set(coverage)):
+        raise TreatiseError(f"coverage is missing `{key}`")
+    require_list_of_text(coverage["includes"], "coverage.includes")
+    require_list_of_text(coverage["excludes"], "coverage.excludes")
+
+    directives = block["directives"]
+    if not isinstance(directives, list) or not directives:
+        raise TreatiseError("directives must be a non-empty list")
+    for index, directive in enumerate(directives):
+        if not isinstance(directive, dict):
+            raise TreatiseError(f"directives[{index}] must be a mapping")
+        missing_fields = REQUIRED_DIRECTIVE_KEYS - set(directive)
+        if missing_fields:
+            raise TreatiseError(f"directives[{index}] is missing {sorted(missing_fields)}")
+        require_iso_date(directive["date"], f"directives[{index}].date")
+        require_text(directive["ruling"], f"directives[{index}].ruling")
+        require_text(directive["effect"], f"directives[{index}].effect")
+
+    for index, rendering in enumerate(block.get("renderings", []) or []):
+        if not isinstance(rendering, dict):
+            raise TreatiseError(f"renderings[{index}] must be a mapping")
+        missing_fields = REQUIRED_RENDERING_KEYS - set(rendering)
+        if missing_fields:
+            raise TreatiseError(f"renderings[{index}] is missing {sorted(missing_fields)}")
+        require_text(rendering["format"], f"renderings[{index}].format")
+        require_iso_date(rendering["published"], f"renderings[{index}].published")
+
+    for index, fact in enumerate(block.get("external_facts", []) or []):
+        if not isinstance(fact, dict):
+            raise TreatiseError(f"external_facts[{index}] must be a mapping")
+        missing_fields = REQUIRED_FACT_KEYS - set(fact)
+        if missing_fields:
+            raise TreatiseError(f"external_facts[{index}] is missing {sorted(missing_fields)}")
+        require_text(fact["claim"], f"external_facts[{index}].claim")
+        require_text(fact["source"], f"external_facts[{index}].source")
+        require_iso_date(fact["retrieved"], f"external_facts[{index}].retrieved")
+
+
+def committed_directives(root: Path, relative: str) -> list[Any] | None:
+    """Return HEAD's directive list, or None when the brief is not committed.
+
+    An unreadable git object, a brand-new brief, and a repository without a
+    HEAD all return None: there is nothing to compare against, which is not a
+    violation. A parse failure of committed content is reported as a violation,
+    because the committed record is what the append-only rule protects.
+    """
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(root), "show", f"HEAD:{relative}"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    if completed.returncode != 0:
+        return None
+    lines = completed.stdout.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return None
+    try:
+        end = lines.index("---", 1)
+    except ValueError:
+        return None
+    try:
+        document = yaml.safe_load("\n".join(lines[1:end]))
+    except yaml.YAMLError as exc:
+        raise TreatiseError(f"committed frontmatter does not parse: {exc}") from exc
+    if not isinstance(document, dict):
+        return None
+    block = document.get(MARKER_KEY)
+    if not isinstance(block, dict):
+        return None
+    directives = block.get("directives")
+    if not isinstance(directives, list):
+        return None
+    return directives
+
+
+def validate_append_only(root: Path, relative: str, directives: list[Any]) -> None:
+    previous = committed_directives(root, relative)
+    if previous is None:
+        return
+    if len(previous) > len(directives):
+        raise TreatiseError(
+            f"directives shrank from {len(previous)} to {len(directives)}: the list is append-only"
+        )
+    for index, committed in enumerate(previous):
+        if committed != directives[index]:
+            raise TreatiseError(
+                f"directives[{index}] was edited since the last commit: "
+                "the list is append-only, so a reversal is a new dated entry"
+            )
+
+
+def orphaned_sidecars(root: Path) -> list[str]:
+    """Sidecar YAML files are the retired shape; the record lives in frontmatter."""
+    briefs = root / BRIEFS_DIRECTORY
+    if not briefs.is_dir():
+        return []
+    return [
+        candidate.relative_to(root).as_posix()
+        for candidate in sorted(briefs.glob("*.yaml"))
+        if (briefs / f"{candidate.stem}.md").exists()
+    ]
+
+
+def validate(root: Path) -> int:
+    briefs = root / BRIEFS_DIRECTORY
+    if not briefs.is_dir():
+        print(f"TREATISE ERROR missing {BRIEFS_DIRECTORY}/ directory", file=sys.stderr)
+        return 2
+
+    failures: list[str] = []
+    treatises: list[str] = []
+
+    for path in sorted(briefs.glob("*.md")):
+        relative = path.relative_to(root).as_posix()
+        try:
+            document, _ = split_frontmatter(path)
+        except TreatiseError as exc:
+            # A brief without usable frontmatter is the briefs policy's problem,
+            # not this validator's, unless it claims to be a treatise.
+            if MARKER_KEY in path.read_text(encoding="utf-8"):
+                failures.append(f"{relative}: {exc}")
+            continue
+        if MARKER_KEY not in document:
+            continue
+        treatises.append(relative)
+        try:
+            validate_block(document[MARKER_KEY])
+            validate_append_only(root, relative, document[MARKER_KEY]["directives"])
+        except TreatiseError as exc:
+            failures.append(f"{relative}: {exc}")
+
+    for sidecar in orphaned_sidecars(root):
+        failures.append(
+            f"{sidecar}: editorial records live in the brief's frontmatter; "
+            "fold this sidecar in and delete it"
+        )
+
+    if failures:
+        for failure in failures:
+            print(f"TREATISE FAIL {failure}", file=sys.stderr)
+        return 1
+
+    if not treatises:
+        print("TREATISE OK no treatises declared")
+        return 0
+    print(f"TREATISE OK {len(treatises)} validated: {', '.join(treatises)}")
+    return 0
+
+
+def show(root: Path) -> int:
+    briefs = root / BRIEFS_DIRECTORY
+    if not briefs.is_dir():
+        print(f"TREATISE ERROR missing {BRIEFS_DIRECTORY}/ directory", file=sys.stderr)
+        return 2
+    found = False
+    for path in sorted(briefs.glob("*.md")):
+        try:
+            document, _ = split_frontmatter(path)
+        except TreatiseError:
+            continue
+        block = document.get(MARKER_KEY)
+        if not isinstance(block, dict):
+            continue
+        found = True
+        relative = path.relative_to(root).as_posix()
+        directives = block.get("directives") or []
+        renderings = block.get("renderings") or []
+        questions = block.get("open_questions") or []
+        print(f"{relative}")
+        print(f"  title      {document.get('title', '(untitled)')}")
+        print(f"  updated    {block.get('updated', '(unset)')}")
+        register = block.get("register") or {}
+        if isinstance(register, dict):
+            print(f"  form       {register.get('form', '(unset)')}")
+        print(f"  directives {len(directives)}")
+        print(f"  renderings {len(renderings)}")
+        if questions:
+            print(f"  open       {len(questions)} question(s)")
+    if not found:
+        print("no treatises declared")
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="treatise",
+        description="Validate the editorial records defined by policies/treatise.md.",
+    )
+    parser.add_argument(
+        "--root",
+        type=Path,
+        default=DEFAULT_ROOT,
+        help="repository root (defaults to this script's repository)",
+    )
+    subparsers = parser.add_subparsers(dest="command")
+    subparsers.add_parser("validate", help="validate every declared treatise")
+    subparsers.add_parser("show", help="summarize every declared treatise")
+
+    arguments = parser.parse_args(argv)
+    root = arguments.root.resolve()
+    if arguments.command == "show":
+        return show(root)
+    return validate(root)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -11,6 +11,8 @@ occurrences:
     ref: "LEARN from Donor A — adding a required --evidence-lane flag to the evidence tool"
   - date: 2026-08-17
     ref: "LEARN from Donor A — adding check-hooks-installed to bin/check's required-executable preflight and policy lane broke ten test_check.py cases across three independent inventories in that one file (the fixture stub loop, the exact expected-call lists for two modes, and the missing-executable parametrize); caught by the authoritative gate, exactly the costly backstop path this lesson names"
+  - date: 2026-08-25
+    ref: "Adding bin/treatise to the same preflight and policy lane broke fourteen test_check.py cases across the same four inventories, in a session where this very lesson had been re-filed hours earlier. Two further traps surfaced on the repair: the eight-space expected-call string is a substring of the twelve-space one, so a naive text replacement double-applied, and four nearby integers that look like lane counts are sentinel exit codes the fixture propagates — changing them broke four passing tests. Both were caught by running the suite, neither by reading the file"
 ---
 
 Adding a required member to a shared repository contract — a mandatory CLI

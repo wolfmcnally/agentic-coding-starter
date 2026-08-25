@@ -1,8 +1,148 @@
 ---
 title: "The Project Remembers"
-date: 2026-08-24
+date: 2026-08-25
 status: implemented
 scope: Canonical primer on this repository for a general audience, from working engineers to readers who have never written code. Explains what the repository is for and how its parts work. Source of truth for every derivative rendering.
+
+# Editorial record, managed by the `treatise` skill under policies/treatise.md.
+# The presence of this block is what marks the brief as a treatise.
+# `directives` is append-only: a reversal is a new dated entry, never an edit.
+treatise:
+  updated: 2026-08-25
+
+  purpose: >-
+    Explain what this repository is for and how its parts work, to a reader who
+    has not seen it. Canonical outward explanation; every rendered format
+    derives from this brief, and corrections land here first.
+
+  audience:
+    primary: >-
+      Anyone evaluating or curious about the repository, whether or not they
+      write software.
+    range: >-
+      Experienced engineers through readers who have never coded. Both ends
+      must be able to finish the piece.
+    may_assume: >-
+      That the reader has heard of AI coding assistants and knows software is
+      built in steps. Nothing further.
+    must_not_assume: >-
+      Git vocabulary, test-suite vocabulary, agent-harness vocabulary, or any
+      familiarity with this repository's own file layout and terms.
+    not_written_for: >-
+      Contributors needing implementation detail; they are served by the
+      policies and the eleven-step brief, which this piece links.
+
+  register:
+    form: primer
+    flow: magazine article
+    voice_skills: [humanizer, minto]
+    constraints:
+      - No self-congratulation. Praising the design reads as slop.
+      - Present tense. What the repository does, never where it has been.
+      - Explain each term in plain words at first use.
+      - Paths and commands stay out of the argument.
+      - Sentence-case headings. Straight quotes. No emoji.
+
+  coverage:
+    includes:
+      - The repository's purpose as an opinionated, evolving practice collection.
+      - The claim that the project, rather than the conversation, holds the state.
+      - The three failures the method answers, and one answer per failure.
+      - The four roles, the two-run close, and the acceptance boundary.
+      - The lessons ledger and the hub-and-spoke transfer between projects.
+      - The honest costs, including where enforcement is written rather than mechanized.
+      - Where to find the repository and the two ways to start using it.
+    excludes:
+      - A directory tour or a file inventory.
+      - Change history of the methodology itself.
+      - Implementation detail the policies already own.
+      - Any claim not traceable to this repository or a dated external source.
+
+  directives:
+    - date: 2026-08-24
+      ruling: >-
+        "on the subject of this repo: the methodology, its architecture, its
+        workflows, skills, etc. You can credit me as author and maintainer.
+        Markdown brief as always then publish as an artifact for my review."
+      effect: Established the treatise, this brief, and the private artifact rendering.
+    - date: 2026-08-24
+      ruling: '"It is dense. It needs to have a better, magazine-article like flow."'
+      effect: Replaced numbered sections with an article; fewer sections, more air.
+    - date: 2026-08-24
+      ruling: >-
+        "It is too technical. The audience ranges from experienced engineers to
+        people who have never coded."
+      effect: Removed repository vocabulary from the argument; glossed every term at first use.
+    - date: 2026-08-24
+      ruling: '"It has many AI tells. It should be run through /humanizer."'
+      effect: Voice pass applied and mechanically checked; recorded as standing, not one-time.
+    - date: 2026-08-24
+      ruling: '"It should probably follow the /minto flow."'
+      effect: Restructured answer-first, three arguments, one concrete each; standing.
+    - date: 2026-08-24
+      ruling: '"self-congratulatory statements read as slop."'
+      effect: Cut every line praising the design's own cleverness; standing constraint.
+    - date: 2026-08-24
+      ruling: >-
+        "this is not a history, it is a primer; explain what the repo does, not
+        where it's been."
+      effect: Removed all before-and-after narration; form fixed as primer, tense as present.
+    - date: 2026-08-24
+      ruling: >-
+        "It should introduce me as the creator of https://aipatternbook.com and
+        https://bartleyeditions.com."
+      effect: Byline expanded, both sites visited so the description is sourced.
+    - date: 2026-08-24
+      ruling: >-
+        "it should state what the overall purpose of the repo is: to collect in
+        one place an evolving yet opinionated set of best practices for agentic
+        software construction."
+      effect: Purpose moved to the opening section; the two adjectives earned in their own paragraph.
+    - date: 2026-08-24
+      ruling: >-
+        "The treatise describes a repo so you should probably tell people where
+        to find it and how to get started with it."
+      effect: Added the getting-started section, sourced from README.md.
+    - date: 2026-08-25
+      ruling: >-
+        "I forgot that we can actually put the sidecar in as YAML front matter
+        directly in the markdown... It would obviate the need for another file
+        and more closely couple this metadata."
+      effect: >-
+        Editorial record folded into this frontmatter; the separate
+        methodology-treatise.yaml deleted. Presence of the `treatise` block is
+        now the marker, so no separate flag can contradict it.
+
+  renderings:
+    - format: artifact
+      url: https://claude.ai/code/artifact/d1bf77fe-e6d5-46a3-8599-c5e00ff69de4
+      visibility: private
+      published: 2026-08-24
+
+  external_facts:
+    - claim: >-
+        Bartley Editions publishes living reference works curated by human
+        experts and kept current by the Bartley engine, in place of a publishing
+        house and a decades-long production cycle.
+      source: https://bartleyeditions.com
+      retrieved: 2026-08-24
+    - claim: >-
+        The Encyclopedia of Agentic Coding Patterns is a compendium of tested
+        patterns for building software with AI agents, roughly 308 entries
+        across patterns, antipatterns, and concepts.
+      source: https://aipatternbook.com
+      retrieved: 2026-08-24
+      volatility: >-
+        The entry count moves; briefs/eacp-pattern-map.md recorded 295 articles
+        on 2026-07-23. Re-check before republishing.
+    - claim: The repository is public at github.com/wolfmcnally/agentic-coding-starter.
+      source: git remote of this checkout
+      retrieved: 2026-08-24
+
+  open_questions:
+    - >-
+      Whether the artifact should ever be shared beyond the operator's own
+      account. Separate publication decision under policies/treatise.md.
 ---
 
 # The Project Remembers

@@ -40,6 +40,11 @@ Don't write a brief for ephemeral state, single-session decisions, or anything t
   - `date:` — ISO date authored or last revised.
   - `status:` — one of `draft` | `methodology` | `implemented` | `historical`.
   - `scope:` — one sentence describing the brief's purpose.
+  - `treatise:` — **only on a treatise brief.** A mapping holding that
+    treatise's editorial record: purpose, audience, register, coverage, the
+    operator's dated directives, renderings, and external facts. Its presence is
+    what marks the brief as governed by [`treatise.md`](treatise.md), and
+    `bin/treatise validate` enforces its shape. Ordinary briefs never carry it.
 - **Body:** purpose paragraph, then numbered or named sections, then a Sources section if applicable.
 - **Cross-references:** when one brief depends on another's numbers or methodology, link explicitly so the dependency is auditable.
 

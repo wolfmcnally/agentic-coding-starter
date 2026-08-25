@@ -12,21 +12,32 @@ material claim. If the repository lacks a canonical explanation, write or
 repair that internal brief first. Rendered formats are derivatives; corrections
 land in the canonical source and are regenerated outward.
 
-## Intent is recorded beside the brief
+## Intent is recorded in the brief's frontmatter
 
-Every treatise carries a sidecar, `<brief-name>.yaml`, next to its canonical
-brief. It holds the purpose, audience, register, scope, the operator's dated
-editorial rulings, the published renderings, and every external fact with its
-retrieval date. The prose argues; the sidecar records the instructions that
-shaped it, which the prose cannot state about itself.
+A treatise is a brief whose YAML frontmatter carries a `treatise:` mapping. That
+mapping is the editorial record: `purpose`, `audience`, `register`, `coverage`,
+the operator's dated `directives`, the published `renderings`, and every
+`external_facts` entry with its retrieval date. The prose argues; the block
+records the instructions that shaped it, which the prose cannot state about
+itself.
 
-Read the sidecar before drafting and update it in the same pass that changes the
-treatise. Its `directives` list is append-only: a reversal is a new dated entry
-naming the one it supersedes, never an edit. A revision that contradicts a
+**Presence of the block is the marker.** There is no separate boolean that could
+contradict it and no sidecar file that could be renamed, orphaned, or forgotten
+apart from the brief it describes. The record travels with the document by
+construction.
+
+Read the block before drafting and update it in the same pass that changes the
+treatise. Its `directives` list is **append-only**: a reversal is a new dated
+entry naming the one it supersedes, never an edit. A revision that contradicts a
 recorded ruling surfaces the conflict to the operator rather than resolving it
-silently. A treatise revised without its sidecar re-derives audience and register
-from whatever draft is in front of it, which is how a piece drifts from what was
-asked for.
+silently. A treatise revised without reading its record re-derives audience and
+register from whatever draft is in front of it, which is how a piece drifts from
+what was asked for.
+
+`bin/treatise validate` enforces the schema, the required fields, the ISO dates,
+and the append-only rule against the committed brief; it runs in `./bin/check
+all`. A leftover `briefs/<name>.yaml` beside its brief fails the check, because
+the record has one home.
 
 ## Explain decisions, not files
 
