@@ -52,8 +52,10 @@ treatise:
       - The lessons ledger and the hub-and-spoke transfer between projects.
       - The honest costs, including where enforcement is written rather than mechanized.
       - Where to find the repository and the two ways to start using it.
+      - An annotated map of the essential directories and what each is for.
+      - An inventory of the skills, with what each one does.
     excludes:
-      - A directory tour or a file inventory.
+      - A file-by-file walk of the repository.
       - Change history of the methodology itself.
       - Implementation detail the policies already own.
       - Any claim not traceable to this repository or a dated external source.
@@ -120,6 +122,18 @@ treatise:
         surface; `directives` is now a provenance log whose earlier states live
         in version history. The guard had no motivating incident, which the
         repository's own growth rule forbids; filed as lessons/swinging-hoatzin.
+    - date: 2026-08-25
+      ruling: >-
+        "I don't see any schematic of the directory structure showing and
+        describing essential directories like briefs/ and policies/." and
+        "I don't see any inventory of essential skills: /kickoff, /learn,
+        /teach, /roles, etc."
+      effect: >-
+        Added an annotated directory map and a skills table. Narrowed the
+        standing exclusion from "a directory tour or a file inventory" to "a
+        file-by-file walk": a reader who wants to use the repository needs to
+        know its surfaces and its verbs, which is orientation rather than a
+        tour.
 
   renderings:
     - format: artifact
@@ -207,6 +221,34 @@ Two rules keep the paperwork from rotting.
 
 The effect: a new session reads the ledger and the last entry, then picks up. Nobody re-explains the project. When a long session runs out of room and its memory gets compressed, the compression takes the conversation and leaves the files, which is where the state was.
 
+Laid out, those surfaces are the shape of the repository:
+
+```
+briefs/        What is being built, how, and what was decided. Durable
+               reasoning that outlives the session that produced it.
+policies/      The rules every phase honors. Short, prescriptive, and
+               non-negotiable; a violation blocks acceptance.
+plan/          The work, broken into phases and ordered. INDEX.md is the
+               single place a phase's status lives.
+LOG.md         What actually happened, appended per phase and never edited.
+lessons/       What the work keeps re-teaching, one entry per lesson,
+               waiting to become a rule or to be discarded.
+user-actions/  The queue of things only a human can do: a login, a
+               purchase, a check on a screen the agent cannot see.
+bin/           The deterministic half. Every exact, repeatable job lives
+               here as a script rather than in a model.
+tests/         Tests for that machinery, held to the same standard as
+               product code.
+project/       The deliverable itself, isolated so it can be lifted out.
+.claude/       The skills and the four role definitions, canonical.
+.codex/        Thin pointers to those same files for a second agent host.
+```
+
+Two of those deserve a note. `policies/` and `briefs/` look similar and do
+opposite jobs: a brief explains and persuades, a policy binds. And `plan/` beats
+both when they disagree, because the plan is what was actually decided for the
+work at hand.
+
 ## Nothing is accepted on its author's word
 
 Work on a phase passes through four specialists, each with a narrow job. A planner turns the phase into a file-by-file plan and writes no code. A plan reviewer approves that plan or sends it back. A coder implements the approved plan. A code critic reads the result and approves it or sends it back. A fifth participant, the orchestrator, moves work between them, keeps the records, and runs the tests.
@@ -281,6 +323,27 @@ The repository is at [github.com/wolfmcnally/agentic-coding-starter](https://git
 **Or work in the template itself.** Invoke `kickoff` (`/kickoff`, or `$kickoff`) and it picks up the first phase of the template's own plan and walks the entire loop, writing its records as it goes. This is the way to watch the method run before adopting it.
 
 The host needs `uv` and nothing else. `./bin/setup` provisions the pinned environment, `./bin/test` runs the tests, and `./bin/check all` runs everything the method claims to run.
+
+### The verbs
+
+Everything the method does is invoked as a named skill. In Claude Code they take
+a leading slash; in Codex, a dollar sign. The set is small on purpose.
+
+| Skill | What it does |
+|---|---|
+| `kickoff` | Runs one phase end to end: plan, review, code, review, test, record, deliver. The one you use daily. |
+| `stamp` | Creates a new project from this template. Starter-only; derived projects do not carry it. |
+| `learn` | Reads another repository and proposes what to absorb from it. Plan first, your approval, then applies. |
+| `teach` | The inverse: proposes what this repository should send out to another one. |
+| `sweep` | Audits the accumulated rules, briefs, skills, and lessons for staleness and contradiction, and proposes what to retire. |
+| `demo` | Walks you through a phase's hands-on demo one visible action at a time, without repairing the product mid-demo. |
+| `roles` | Changes which model runs which of the four roles. |
+| `treatise` | Produces an explanation like this one from the repository's own authority. |
+| `methodology` | Restates the eleven steps, for a session that needs the reminder without reading the whole brief. |
+
+`learn`, `teach`, and `sweep` are the machinery behind the evolving half of the
+opening claim. They are how a practice discovered in one project reaches the
+others.
 
 ## Checking any of this
 
