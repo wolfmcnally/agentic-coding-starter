@@ -53,3 +53,16 @@ An internal canonical brief may be written under ordinary repository authority.
 Do not publish externally without explicit user authority and a governing
 disclosure or release policy for the receiving venue. When either is absent,
 deliver the internal artifact and name the blocked publication action.
+
+## 7. Deliver the repository artifact
+
+The repaired brief and any tracked rendering are ordinary repository work: once
+`./bin/check all` passes against the unchanged tree, commit them by explicit
+path and non-force-push to one unambiguous configured upstream
+([`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md)).
+Untracked renderings stay in the session scratchpad and are never committed.
+
+**Committing is not publishing.** Section 6 governs anything that leaves the
+repository, and no green gate opens it. Park delivery and report on an
+unexpected path, an unresolved gate, a missing or ambiguous upstream, or a
+divergence.

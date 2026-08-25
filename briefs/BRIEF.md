@@ -85,13 +85,13 @@ In Mode B, the example project under `project/example/` is the build target. In 
 - People who want to use coding agents seriously but find ad-hoc prompting unreliable.
 - Teams that need agent-driven work to leave a reviewable audit trail per phase.
 - Individual builders standing up many small projects who want a repeatable scaffold.
-- Anyone willing to let a human decide what "done" means — the methodology assumes a human in the loop and is the wrong tool for fully autonomous code generation.
+- Anyone willing to judge the work at each seam — the methodology assumes a human's judgment on the questions a gate cannot answer, and is the wrong tool for code generation with no human judgment at all.
 
 ## 4. Who this is *not* for
 
 - Single-file scripts. The overhead is not worth it.
 - Throwaway prototypes where the goal is to learn whether an idea works, not to build it well. (Use the methodology *before* a throwaway prototype, to decide if the prototype is the right next step.)
-- Teams that want the agent to commit autonomously. The template's load-bearing assumption — that a human accepts each phase — is non-negotiable. See [`../policies/human-in-the-loop.md`](../policies/human-in-the-loop.md).
+- Teams that want no human judgment in the loop at all. The agent does commit and push accepted work on its own — but the template's load-bearing assumption is that a human judges each phase at its seam, and that every subjective, product, or custody criterion parks for that human. That part is non-negotiable. See [`../policies/human-in-the-loop.md`](../policies/human-in-the-loop.md).
 
 ## 5. Anti-goals
 
@@ -99,7 +99,7 @@ This template deliberately does *not*:
 
 - **Prescribe a language stack.** The example is Python because Python is broadly familiar, but the methodology is language-agnostic. The `stamp` skill asks about the primary language and adapts build gates.
 - **Prescribe a specific agent host.** Claude Code and Codex CLI are first-class. The cross-harness parity policy ([`../policies/cross-harness-parity.md`](../policies/cross-harness-parity.md)) describes how to add a third.
-- **Auto-commit.** The orchestrator reports each phase's status; the human commits. The human owns the git history.
+- **Touch the destructive git surface.** The orchestrator commits and fast-forward-pushes work whose gates are all green, and stops there. Force-pushing, tags, rebases, resets, branch deletion, remote selection, and any history rewrite stay with the human, who owns the shape of the git history.
 - **Manage secrets, deployments, or infrastructure.** Those belong in project-specific briefs and policies once a project graduates beyond the template.
 
 ## 6. Architectural invariants
@@ -115,7 +115,7 @@ These are the rules the template assumes about itself. A project derived from th
   invalidates earlier gates.
 - **Repo-relative paths only** in committed files.
 - **Cross-harness parity.** Canonical files have one home; mirrors are symlinks or thin wrappers.
-- **Human decides done.** The orchestrator never auto-commits and never claims subjective acceptance.
+- **Autonomous delivery, human judgment.** Objective acceptance is independently reviewed and gate-proved, and the orchestrator delivers it; subjective, manual, product, and custody criteria always park. The orchestrator never claims subjective acceptance.
 
 ## 7. Acceptance for *this template*
 

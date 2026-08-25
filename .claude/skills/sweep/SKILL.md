@@ -64,7 +64,7 @@ On approval:
 2. For each graduated lesson: make the ratified edit to the target surface, then archive the lesson (`status: codified`, `closed:`, `graduated_to:`) into `lessons-archived/`. For each rejected lesson: archive with `status: rejected`. Run `./bin/lessons validate`.
 3. Update `last-reviewed:` to today's date on every skill the sweep actually re-read — including ones with no findings.
 4. Re-run the mechanical checks (`./bin/check-catalogs`, `./bin/lessons validate`) and finish with `./bin/check all`.
-5. Report: findings by area, what was applied, what was declined, what remains open. **Do not commit** — the user drives commits per [`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md).
+5. After the unchanged approved sweep passes `./bin/check all`, stage only its explicit paths, create an ordinary factual commit, and make a non-force push to one unambiguous configured upstream, then verify clean aligned tips ([`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md)). Park delivery on any unexpected path, unresolved gate, missing or ambiguous upstream, divergence, or destructive Git need. Then report: findings by area, what was applied, what was declined, what remains open, and delivery status.
 
 ## Rules
 

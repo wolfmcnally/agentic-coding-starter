@@ -12,7 +12,7 @@
 
 - A status indicator. Status lives in `plan/INDEX.md` ([`phase-status.md`](phase-status.md)).
 - A planning document. Plans live in `plan/` and per-session conversational planning context.
-- A commit message. Commits are written separately by the human.
+- A commit message. `kickoff` writes a separate factual commit message when it delivers the phase ([`human-in-the-loop.md`](human-in-the-loop.md)). The END block records the standing delivery policy or an explicit user restriction *before* the handoff gate; the actual delivery outcome happens afterward, is reported to the user, and is never written back into tracked state.
 - A general-purpose changelog. (A `CHANGELOG.md` is a different artifact, owned by humans for end-user audiences.)
 - An action queue for the human. The live set of items only the user can resolve lives in [`../user-actions/`](../user-actions/) (one file per action; closed in `../user-actions-archived/`), governed by [`user-actions.md`](user-actions.md). `LOG.md` records what happened; `user-actions/` records what's pending on the human.
 
@@ -69,8 +69,12 @@ Awaiting user input:
 - <opened UTC> → <closed UTC|open>: <duration|unavailable> (<stable reason>; <basis>)
 - Total: <union duration|unavailable> (<basis>)
 
-Manual checks for user:
-- <named check that needs human eyes> | None
+Acceptance:
+- Objective (independently reviewed, gate-proved, candidate-bound): <named criteria> | None
+- Parked for the user: <named manual, perceptual, product, or custody criteria, and the `User Demo:` protocol when unrun> | None
+
+Delivery:
+- default — commit + fast-forward push after the handoff gate | restricted: <user's words, verbatim> | parked: <reason>
 
 Lessons:
 - <slug> filed/recurred — <one-line lesson, scope> | none
@@ -83,6 +87,14 @@ Remaining:
 Build-status lines are project-specific. A Python project might list `ruff check`, `ruff format`, `pytest`. A polyglot project lists every surface's gate. Use `N/A` for gates that don't apply to this phase.
 
 The `Lessons:` field is part of the minimum END contract because the harvest question is mandatory at every close ([`lessons.md`](lessons.md)): `none` is a valid answer, but the field may not be omitted. Ledger content and graduation mechanics are governed by `policies/lessons.md`; `kickoff`'s Step 10 may extend this block with additional evidence fields.
+
+The `Acceptance:` field is likewise mandatory, and both halves are written even
+when one is `None`. It is the per-phase record of the boundary in
+[`human-in-the-loop.md`](human-in-the-loop.md): what the orchestrator closed on
+its own evidence, and what is waiting on the user's judgment. Writing only the
+objective half would let "delivered" read as "accepted"; writing only the parked
+half would hide what the gate actually proved. The `Delivery:` field records the
+policy in force *before* the handoff gate — never a predicted outcome.
 
 When a phase pauses (not completes), the END block uses the same format but adds a `Pause reason:` line and leaves the phase row in `plan/INDEX.md` at `🚧`.
 
@@ -106,6 +118,9 @@ Files changed:
 
 Build status:
 - <focused and touched-surface validation evidence>
+
+Delivery:
+- default — commit + fast-forward push after validation | restricted: <user's words, verbatim> | parked: <reason>
 
 Remaining:
 - <anything significant left incomplete, or "None">

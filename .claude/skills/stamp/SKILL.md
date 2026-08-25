@@ -409,7 +409,7 @@ git init
 git add .
 ```
 
-Do *not* run `git commit`. The user owns the first commit ([`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md)).
+Then make the new repo's initial commit ([`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md)) — an ordinary factual message such as `Stamp project scaffold from the agentic starter template`, with no agent credit. Do **not** push: a freshly initialized repo has no configured upstream, and selecting or creating a remote belongs to the user. If `git init` fails, or the destination was already a repo with content the stamp did not write, leave the tree staged and report it instead of committing.
 
 ### Step 7 — Sanity-check
 
@@ -482,7 +482,7 @@ When the bootstrap finishes cleanly, report to the user:
   3. Read and edit `plan/phase-1.md` if the inferred Phase 1 isn't what you want.
   4. Run `/kickoff` in Claude Code or `$kickoff` in Codex to start Phase 1.
 
-**Do not auto-commit** in the new project. The user owns the first commit.
+**The scaffold is committed; the remote is not chosen.** The new project starts with one initial commit and no upstream — the user decides where it lives.
 
 ## Rules
 

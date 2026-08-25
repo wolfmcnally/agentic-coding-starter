@@ -17,7 +17,7 @@ A methodology for writing software with AI coding agents in a way that scales be
 
 3. **Brief → architecture document.** Decide *how*. This probably involves the LLM researching Best Current Practices (BCPs) for each technical aspect: which libraries, which protocols, which data formats, which platform conventions. The architecture document lives under `briefs/` too (or `ARCHITECTURE.md` at the root for very large efforts).
 
-4. **Repo-level policies.** Put policies in place that enforce standards and practices. Examples: each completed phase must be incremental and testable; the repo tracks which phases are complete, in progress, up next, or yet to start; **the human, not the agent, decides when work is committed as "done."** Policies live under `policies/`. Every phase honors every policy.
+4. **Repo-level policies.** Put policies in place that enforce standards and practices. Examples: each completed phase must be incremental and testable; the repo tracks which phases are complete, in progress, up next, or yet to start; **objective acceptance is independently reviewed and gate-proved, while the human owns subjective and owner-only judgment** — fully accepted work is then committed and fast-forward-pushed by default. Policies live under `policies/`. Every phase honors every policy.
 
 5. **Brief + architecture → phased plan.** Break the work down by phase. Each phase is independently testable, mostly independently deliverable, and has a clearly defined goal and acceptance criteria. Phases live under `plan/`; the spine is `plan/INDEX.md`. Major phases are written *after* the brief (step 2) and architecture (step 3) exist — without those, the phase plan is speculation. If you find yourself wanting to plan phases before there's a primary brief, go back to step 2.
 
@@ -54,9 +54,9 @@ A methodology for writing software with AI coding agents in a way that scales be
    change is large/cross-cutting. A failed lightweight attempt upgrades to the
    full cycle; every relevant change invalidates prior gate evidence.
 
-9. **Append-only phase log and lessons harvest.** Use an append-only log (`LOG.md`) to **open and close** work on every phase. Closing requires recording the **evidence** of what happened and **why** the orchestrator believes the success criteria were met. Before finalizing the END block, harvest every role's Process Observations, revision failure analyses, wall-clock observations, and relevant dispositions into the `lessons/` ledger per [`policies/lessons.md`](../policies/lessons.md). `None` is valid; skipping the question is not. The human reads the END block before accepting the phase.
+9. **Append-only phase log and lessons harvest.** Use an append-only log (`LOG.md`) to **open and close** work on every phase. Closing requires recording the **evidence** of what happened and **why** the orchestrator believes the success criteria were met. Before finalizing the END block, harvest every role's Process Observations, revision failure analyses, wall-clock observations, and relevant dispositions into the `lessons/` ledger per [`policies/lessons.md`](../policies/lessons.md). `None` is valid; skipping the question is not. After the handoff gate, the orchestrator ordinarily commits and fast-forward-pushes the accepted tree; the END block remains the human's compact audit surface, read at the seam rather than before the commit.
 
-10. **Human evaluation.** The human evaluates each sub-phase, and re-invokes the orchestrator (or specific agents) to refine or fix anything found before moving on. This is where the human exercises engineering, UX, and product judgment. **The orchestrator does not decide done.**
+10. **Human evaluation where judgment is required.** Objective criteria — executable, independently reviewed, proved by a complete gate against the exact candidate — close autonomously, and the phase is delivered. Every named manual, subjective, product, custody, or owner-only criterion still parks for the human, who evaluates the sub-phase at the seam (the END block and the demo protocol) and re-invokes the orchestrator to refine or fix anything found. This is where the human exercises engineering, UX, and product judgment. **The orchestrator never fabricates that acceptance, and delivery never substitutes for it.**
 
 11. **Stay agile.** Add new phases, or break existing phases into more sub-phases, as the problem and solution space become clearer. The phase plan is mutable. Phases that turn out to be wrong are split, merged, or rewritten.
 
@@ -92,7 +92,7 @@ low-risk follow-up correction whose intended shape is already determined.
 
 - **Every completed phase is incremental and testable** (step 4).
 - **Every initial phase implementation passes the code critic**, whichever review lane it declares; repeat review on follow-ups is risk- and size-based (steps 7–8).
-- **The human decides when work is "done"**; the orchestrator does not (step 4, step 10).
+- **The human owns subjective and owner-only acceptance; objective acceptance is independently reviewed and gate-proved** (steps 4, 8, 10).
 - **The orchestrator writes code only for eligible small, low-risk follow-up corrections** (step 8).
 - **Closing a phase requires recorded evidence and a lessons-harvest answer**, not just a green test run (step 9).
 - **Research authority follows the role across harnesses.** Planner and
@@ -160,7 +160,7 @@ Four words with exact meanings, evolved in fail-closed orchestration practice. T
 Honest accounting of the cost.
 
 - **Speed of a single throwaway iteration.** A one-line ad-hoc prompt is faster than spinning up a brief, a plan, and a phase. Use ad-hoc for one-off scripts; use this methodology for projects that will exist next month.
-- **Autonomy.** The methodology assumes a human reviewer per phase. The orchestration runtime doctrine (above) earns long unattended stretches *between* designed checkpoints, but every phase still terminates at a human gate; if your goal is code generation with no human gates at all, this is still the wrong tool.
+- **Unbounded autonomy.** Objectively accepted phases deliver themselves — committed and fast-forward-pushed unattended — but the methodology still parks at every designed manual, subjective, product, custody, destructive, or owner-only gate, and silence never becomes judgment. If your goal is code generation with no human gates at all, this is still the wrong tool.
 - **Flexibility within a session.** The orchestrator follows the plan. If you want to wander, do it before `kickoff` starts or in between phases — not mid-orchestration.
 
 What you get in exchange: each phase leaves a reviewable artifact pair (END block + commit diff), the next session resumes from a known state without re-explaining anything, and the structural surface (briefs, policies, plan, log) tells the next human contributor — or the next session of you — what's true about the project.

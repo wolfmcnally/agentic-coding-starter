@@ -83,7 +83,7 @@ When any role resolves to a non-`default` model, add a one-line reminder:
 
 > These take effect on the next `kickoff`. Its fail-closed preflight aborts before phase mutation if a required external CLI, authentication path, or model is unavailable; a later runtime failure falls back with a 🚨 in the `kickoff` summary.
 
-Do **not** commit the change — the user owns commits ([`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md)).
+Once `./bin/kickoff-config show` validates the edited configuration, commit that one file by explicit path and non-force-push it ([`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md)). The change is small, mechanically validated, and exactly what the user asked for; park delivery and report instead if validation fails, if `git status` shows a path this skill did not touch, or if the upstream is missing or ambiguous.
 
 ## Notes
 

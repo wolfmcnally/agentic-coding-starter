@@ -182,7 +182,7 @@ Then resolve the **review lane** per [`policies/review-lanes.md`](../../../polic
 
 Also resolve the **evidence lane**: read optional `evidence_lane:` frontmatter (absent or `full` → full apparatus; `light` → structural tests, the operator gate, and the mandatory seal at close, with role registration/span joins/stage envelopes validated-if-present). Refuse a `light` declaration whose deliverables touch an authority surface, irreversible or external state, or a deploy seam; you may upgrade `light` → `full`, never downgrade. Report both lanes in the opening report and END block.
 
-Tell the user which phase you are picking up, the path to its file (`plan/phase-<id>.md`), and the resolved review lane.
+Tell the user which phase you are picking up, the path to its file (`plan/phase-<id>.md`), the resolved review lane, and that fully accepted work will be committed and fast-forward-pushed at close unless they restrict it now (`policies/human-in-the-loop.md`). Stating the delivery posture in the first minute is what makes a restriction cheap to give — it costs one sentence before any commit exists.
 
 ### Step 1a: Sub-phase decomposition (parent phases only — just-in-time, one at a time)
 
@@ -564,6 +564,19 @@ follow-up classification and invalidation loop.
 
 Per [`policies/acceptance-empirical.md`](../../../policies/acceptance-empirical.md), every acceptance criterion is either executable or named manual. Treat ambiguous criteria as manual and flag them in the END block.
 
+**This classification now gates delivery**
+([`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md)), so
+type each criterion deliberately rather than by convenience. A criterion counts
+as objective only if it is executable, was independently reviewed, was proved by
+the complete gate, and is bound to the exact candidate; a manual, perceptual,
+product, custody, or owner-only criterion parks no matter how green the gate is,
+and so does an unrun `User Demo:` protocol. Write both halves into the END
+block's `Acceptance:` field. A phase delivers on its **gates**, not on its
+parked half: an open manual, perceptual, product, or custody criterion does not
+hold the commit, and the END block says plainly that it is still the user's.
+Misclassifying a subjective criterion as objective is the one error that would
+let a phase claim evidence that does not exist; when in doubt, park it.
+
 ### Step 8b: Finalize exact execution evidence
 
 Run `$EVIDENCE_TOOL validate --run-dir <run> --require-final
@@ -720,8 +733,12 @@ Candidate-bound evidence (per `policies/orchestration-evidence.md`):
 Wall-clock observations:
 - <material operation; substantial safe improvement used or surfaced; why guarantees were preserved> | None
 
-Manual checks for user:
-- <named check> | None
+Acceptance (per `policies/human-in-the-loop.md`):
+- Objective (independently reviewed, gate-proved, candidate-bound): <named criteria> | None
+- Parked for the user: <named manual, perceptual, product, or custody criteria, and the `User Demo:` protocol when unrun> | None
+
+Delivery:
+- default — commit + fast-forward push after the handoff gate | restricted: <user's words, verbatim> | parked: <reason>
 
 Ripple (per `policies/phase-ripple.md`):
 - AUTO: <downstream phase file> — <one-line: what was pinned and how the file was updated> | None
@@ -826,12 +843,52 @@ implementation defect rather than close bookkeeping, return to Step 7's
 proportional correction route; the prior implementation gate is invalidated by
 any implementation-candidate change.
 
-After the handoff gate passes, open the already generated phase page without
-modifying it. Then report to the user.
+### Step 13: Deliver the accepted phase
 
-Report to the user:
+Runs after the handoff gate is green. Parked acceptance criteria do not hold it
+up — they stay open for the user and are reported. Governed by
+[`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md).
+
+1. **Re-read the tree.** Run `git status` and read the complete final diff.
+   Every path must be one this phase touched. An unexpected path means a
+   concurrent session shares this checkout — park and report it; never sweep it
+   in.
+2. **Stage explicitly.** `git add <exact paths>` or `git commit -- <paths>`.
+   **Never `git add -A` or `git add .`.**
+3. **Commit.** An ordinary factual message describing the change. No agent
+   credit, no `--no-verify`. A pre-commit hook refusal parks the commit and is
+   reported truthfully — never retried around.
+4. **Push**, only when the current branch has exactly one unambiguous
+   configured upstream and the update is a fast-forward. Never force. Never
+   create an upstream, select a remote, tag, rebase, or repair history — those
+   belong to the user.
+5. **Verify.** Fetch, then prove `HEAD`, the tracking ref, and the remote tip
+   agree and the tree is clean.
+
+Any of the parks in the policy — unexpected path, hook refusal, missing or
+ambiguous upstream, rejected push, divergence, residual dirt — stops delivery,
+is reported, and is never worked around. An open parked criterion is not one of
+them.
+A user restriction recorded in the END block (`Delivery: restricted — …`) makes
+the run local-only or uncommitted; a restriction narrows delivery only and never
+relaxes a gate.
+
+Commit and push change no tracked content, so they legitimately follow the
+handoff gate. **No later tracked write records their outcome** — the outcome is
+reported to the user and nowhere else.
+
+### Step 14: Open the report and hand off
+
+Open the already generated phase page without modifying it. A browser-open
+failure is presentation-only and may be retried; it changes no artifact. Then
+report to the user.
+
+Report to the user, in this order:
 
 - **🚨 Role disconnects (per [`policies/role-models.md`](../../../policies/role-models.md)):** for every role whose runtime call failed after a successful preflight (three-signal gate or timeout) so it ran native instead, add a 🚨 line stating what was configured, what actually ran, and why — e.g. `🚨 coder configured for opus but ran native (call timed out) — output was NOT produced by opus`. If every role ran on its resolved venue, omit this entirely. Preflight failures never reach Step 10 because they abort before phase state exists.
+- **What to try: the user testing protocol** for what's new or changed (Step 10a). This leads because it is what the user does next — the phase is already delivered, so the demo, not a commit instruction, is the handoff (`policies/user-demo-protocols.md`).
+- **Acceptance:** what closed objectively on gate evidence, and what is parked for the user's judgment. Both halves, even when one is `None`.
+- **Delivery:** the commit id and the push result — or the park and its reason, or the user's restriction verbatim.
 - Which phase was completed and which is next (`⬅️`).
 - Files created/modified, grouped by surface.
 - Build and gate status.
@@ -843,10 +900,10 @@ Report to the user:
   observations.
 - Any Minor Corrections or Observations the reviewers noted that the user may want to track.
 - Lessons filed or recurred this phase, and any graduation DECIDE items awaiting the user's ratification (with the proposed target surface for each).
-- Manual checks the user needs to perform that the orchestrator couldn't.
-- **A user testing protocol** for what's new or changed (Step 10a).
 
-**Do not auto-commit.** The user drives commits, per [`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md).
+**Delivery is not acceptance.** The phase being committed and pushed settles
+nothing the user owes judgment on; the parked criteria stay parked, and saying
+otherwise in the report is the failure this whole boundary exists to prevent.
 
 ---
 

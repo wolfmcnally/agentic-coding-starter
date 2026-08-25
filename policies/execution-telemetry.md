@@ -211,10 +211,13 @@ Kickoff closes in this order:
 5. END log and sanitized report land;
 6. bare `./bin/check all` passes against the actual handoff tree and writes its
    ignored receipt;
-7. the already-generated report may be opened read-only.
+7. delivery — the ordinary commit and non-force push of fully accepted work,
+   unless the operator restricted it ([`human-in-the-loop.md`](human-in-the-loop.md))
+   — and the read-only opening of the already-generated report may follow.
 
-No tracked write follows step 6. A step-5 or step-6 failure reopens the current
-uncommitted close; completion is not reported until the handoff gate passes.
+No tracked write follows step 6; step 7 changes no tracked content. A step-5 or
+step-6 failure reopens the current uncommitted close; completion is not reported
+until the handoff gate passes.
 
 ## Related policies
 

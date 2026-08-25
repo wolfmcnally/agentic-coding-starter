@@ -83,7 +83,8 @@ Evaluate in priority order:
   - Hand-edited historical entries in `LOG.md`.
   - Subjective claims in END blocks ("the audio sounds great", "the page looks clean") that the orchestrator cannot honestly assert.
 - Block on any match.
-- **User demo protocol**, per `policies/user-demo-protocols.md`: if the approved plan carries a `User Demo:` block, verify against the merged code that the entry point exists, the suggested inputs are valid, and the observable outcomes are reachable. A stale or broken demo is blocking. If the plan declared `User Demo: N/A`, sanity-check that the phase really has no user-facing change worth demoing.
+- **User demo protocol**, per `policies/user-demo-protocols.md`: if the approved plan carries a `User Demo:` block, verify against the merged code that the entry point exists, the suggested inputs are valid, and the observable outcomes are reachable. A stale or broken demo is blocking. If the plan declared `User Demo: N/A`, sanity-check that the phase really has no user-facing change worth demoing. Since the demo is the user's acceptance surface for work that will be delivered without waiting, a padded or unreachable demo is blocking, not a note.
+- **The acceptance split**, per `policies/human-in-the-loop.md`: check every acceptance criterion's *type*, not just its result. A criterion is objective only if it is executable, independently reviewed, gate-proved, and candidate-bound; anything manual, perceptual, product-shaped, or custody-bearing must park for the user. **A subjective criterion typed as objective is blocking** — it is the one defect that would let the phase deliver itself on evidence that does not exist. You are the last independent reviewer before delivery; this check is yours.
 
 **Plan adherence**
 - Every planned file change is implemented.

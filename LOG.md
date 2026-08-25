@@ -571,3 +571,84 @@ responsive rendering keeps those tables readable on narrow screens. Finally,
 the template sets background worktree isolation to `none` while preserving
 explicit worktrees, and Stamp and Teach propagate or deliberately reconcile
 that setting alongside the expanded universal skill and research contracts.
+
+## 2026-08-24 17:25 MDT — LEARN
+Donor: Donor A @ <sha withheld>
+Items absorbed: 5, by tier T1=5/T2=0/T3=0/T4=0
+Donor lessons harvested: 30 (0 absorbed as rule proposals; 28 filed to lessons/; 2 declined as non-reproducing)
+Application-found return candidates: 1 filed to lessons/
+Stale-in-light-of-learning migrations: 26 (AUTO); 0 DECIDE; 0 DEFER
+Files touched: 56
+
+**Delivery posture inverted, by four ratified decisions.** The donor replaced its
+invocation-line `commit`/`push` grant tokens with a standing default: fully
+accepted work is committed and fast-forward-pushed without asking. The user
+adopted it for this template — *"Human demo and review at seams is now more
+important than commit and push authority"* — and additionally ruled that the
+compensating judgment surface be strengthened rather than inherited, that the new
+default propagate universally (Starter, every stamped project, every `teach`
+target — no fork in the rule text), and that every skill deliver per its own gate.
+
+Hard Rule 1 now reads *deliver gate-proved work; the user owns judgment and the
+destructive git surface*. `policies/human-in-the-loop.md` was rewritten around an
+explicit **acceptance boundary**: a criterion is objective only if it is
+executable, independently reviewed, proved by a complete gate, and candidate-bound;
+manual, perceptual, product, custody, and owner-only criteria — and an unrun
+`User Demo:` protocol — always park. The two are deliberately decoupled: **an open
+parked criterion does not hold the commit.** What blocks a phase from closing at
+all is an unresolved *gate*, not an open judgment; conflating the two is what made
+the old posture expensive, since it charged the user's attention for a `git commit`
+in order to collect it for a demo. `kickoff` gains Step 13 (re-read the tree, stage
+explicit paths, ordinary factual commit, non-force push to one unambiguous
+upstream, prove aligned tips) and Step 14, whose report now **leads with the demo
+protocol** as the user's next action instead of ending on a commit instruction. The
+END block gains mandatory `Acceptance:` (both halves, even when one is `None`) and
+`Delivery:` fields; `Manual checks for user:` was replaced by the former rather than
+kept beside it.
+
+**Strengthening the seam gate, which the donor does not have.** The code critic
+gains a blocking check on the acceptance *split* — a subjective criterion typed as
+objective is the one defect that would let a phase claim evidence that does not
+exist, and the critic is now the last independent reviewer before delivery.
+`user-demo-protocols.md` gains a section making the demo the user's acceptance
+surface, with a padded or unreachable demo blocking rather than noted.
+`briefs/eacp-pattern-map.md` was re-derived honestly across four rows: **Human in
+the Loop** is now a typed boundary rather than a list of prohibitions; **Dark
+Factory** is deliberately partial, with the line drawn by criterion type rather
+than by activity; **Continuous Deployment** stops at a push; **Approval Fatigue**
+spends one judgment per phase on the demo rather than on a commit.
+
+**Two coherence hunks the prior harvest missed** landed with it:
+`acceptance-empirical.md` gains the candidate-bound acceptance section it never
+had (verified absent — the rule lived only in the glossary and the evidence
+policy), and `four-canonical-agents.md` now states the two orchestrator-owned close
+gates and the orchestrator-only delivery authority.
+
+**Ledger harvest.** 33 donor `scope: methodology` entries carry two or more
+occurrence rows; three were already represented here, leaving 30 assessed
+individually. 28 were filed with fresh Starter slugs, `source: learn`, and
+anonymized occurrence rows — spanning git staging discipline, the
+absence-vs-ignorance conflation, ledger-mechanism skepticism, guard-class
+conversion, cross-repository evidence, conformance-vs-validity checks, progress
+instrumentation, throughput normalization, cost classes at loop seams, inert test
+doubles, and the failure-replacement boundary. None reached the graduation
+threshold, so the ledger gained no DECIDE items. The 66 single-occurrence donor
+entries were left for a later run.
+
+**Direction-verification notes.** Two declined because the defect does not
+reproduce here: the donor's undocumented close ordering (this repo's `kickoff`
+documents the same order explicitly, including validating while the trace is open),
+and its worktree-population incident (this repo's entrypoint sweep already uses the
+hardcoded allowlist that is the donor's own prescribed fix). Two places where this
+repo now stands ahead, recorded for a later `teach`: the donor's own delivery sweep
+missed its `roles` skill (still asserting the operator owns commits, citing a policy
+that no longer says so) and its `treatise` skill (gating a push on an authority its
+same commit dissolved) — both swept here; and the seam-gate strengthening has no
+donor counterpart. The donor's uncommitted expected-warning-multiset contract was
+left for a later run as in-flight source.
+
+**One application-found return candidate.** Porting the donor's text carried its
+conditioning clause — "…and every named manual or subjective criterion is closed" —
+into six surfaces before the contradiction with the ratified looser variant was
+caught by read-back. No gate can see a mismatch between prose and a decision made
+in conversation, so the lesson is filed against the transfer skills themselves.

@@ -227,4 +227,4 @@ mechanics but never donor operational state.
 - [`research-authority.md`](research-authority.md) owns search/retrieval authority, allow-by-default venue resources, egress boundaries, and query budgets.
 - [`role-timeouts.md`](role-timeouts.md) owns execution budgets, process-group termination, telemetry, and recalibration.
 - [`mechanistic-vs-intelligence.md`](mechanistic-vs-intelligence.md) puts validation and editing in `bin/kickoff-config`; model-choice judgment stays with the human or `roles` interpretation.
-- [`human-in-the-loop.md`](human-in-the-loop.md) still governs completion and commits.
+- [`human-in-the-loop.md`](human-in-the-loop.md) still governs completion and delivery: a delegated venue may not commit, push, advance a gate, or claim subjective acceptance, whichever vendor reviewed. Only the orchestrator delivers, and only after the phase closes with every gate green.

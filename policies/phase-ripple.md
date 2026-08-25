@@ -58,7 +58,7 @@ The user owns DECIDE resolution and may also override any AUTO edit by editing t
 - [`phase-status.md`](phase-status.md) — sibling policy governing status-marker flips. A phase's status is flipped *before* the ripple pass runs (so AUTO edits to downstream files don't accidentally land on the closing phase itself).
 - [`acceptance-empirical.md`](acceptance-empirical.md) — downstream Acceptance criteria tightened by an AUTO ripple must still be empirical, not aspirational.
 - [`log-discipline.md`](log-discipline.md) — the END block is append-only; AUTO ripples are recorded there in the same write that closes the phase, not as a later amendment.
-- [`human-in-the-loop.md`](human-in-the-loop.md) — DECIDE items are surfaced to the user; the user owns commits and may roll back AUTO ripples before committing.
+- [`human-in-the-loop.md`](human-in-the-loop.md) — DECIDE items are surfaced to the user and are an unresolved gate: an open DECIDE ripple parks the phase, so it also parks delivery. AUTO ripples ride along in the delivered commit, and the user may revert them like any other part of the phase.
 
 ## Verification
 

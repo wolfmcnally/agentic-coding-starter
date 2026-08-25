@@ -114,7 +114,7 @@ CLAUDE.md and the policies in `policies/`:
 - **Acceptance is empirical.** Acceptance items are verifiable via shell commands or named manual checks.
 - **Repo-relative paths only.** All committed files use repo-relative paths.
 - **Cross-harness parity.** If this phase touches a skill or agent definition, the canonical source is edited and the mirror is updated in the same plan step.
-- **Human decides done.** This plan does not auto-commit, does not skip gates, and does not silently extend a brief.
+- **Autonomous delivery, human judgment.** This plan may end in an ordinary commit and non-force push once the phase closes with every gate green; it never skips a gate, claims subjective acceptance, performs a destructive git operation, or silently extends a brief.
 
 ## Dependency Changes
 [Packages added or updated. State "No new dependencies." if none. For each new dep, name the license and the minimum version.]

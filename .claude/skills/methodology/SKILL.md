@@ -52,7 +52,7 @@ The authoritative source is [`briefs/methodology.md`](../../../briefs/methodolog
 
 9. **Append-only phase log and lessons harvest.** `LOG.md` opens and closes work on every phase. Closing requires recorded evidence plus the mandatory lessons question: harvest role Process Observations, revision failure analyses, wall-clock observations, and relevant dispositions into `lessons/`; `None` is valid, omission is not.
 
-10. **Human evaluation.** The human evaluates each sub-phase. The orchestrator does not decide done.
+10. **Human evaluation where judgment is required.** Objective criteria may close autonomously after independent review and complete gates, and the phase is delivered. Named manual, subjective, product, custody, or owner-only criteria still park for the human, who evaluates each sub-phase at the seam. Delivery never substitutes for that judgment.
 
 11. **Stay agile.** Add new phases, or break existing phases into more sub-phases, as the problem and solution space become clearer.
 
@@ -83,7 +83,7 @@ The orchestrator delegates to four specialist roles. Their names are load-bearin
 - **Review, findings, and gates are bound to exact candidate identity.**
 - **Revision rounds use causal packets and widen when continuity is uncertain.**
 - **The orchestrator, not the coder, owns the one complete acceptance-close gate.**
-- **The human decides when work is "done."**
+- **The human owns subjective and owner-only acceptance; objective acceptance is independently reviewed and gate-proved.**
 - **The orchestrator writes code only for eligible small, low-risk follow-up corrections.**
 - **Closing a phase requires recorded evidence and a lessons-harvest answer.**
 - **Phases and sub-phases are mutable.**

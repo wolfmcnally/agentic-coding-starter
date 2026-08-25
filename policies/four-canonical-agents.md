@@ -27,6 +27,15 @@ are available by default unless a project or phase explicitly narrows them.
 
 So do **not** assume any role runs as an in-harness subagent on the session model when reasoning about orchestration — check the resolved venue. The one invariant: **orchestration and build gates always run on the invoking session's model** and are never pinnable.
 
+Every lane closes with two orchestrator-owned gates. The
+**implementation-candidate gate** follows code-critic approval and binds the
+unchanged reviewed implementation. The bare **handoff gate** follows every
+tracked status, ripple, lesson, END, and report write; no tracked write follows
+it. Delivery — the ordinary commit and non-force push of gate-proved work
+([`human-in-the-loop.md`](human-in-the-loop.md)) — is likewise
+orchestrator-only: it happens after the handoff gate, and no delegated role
+ever commits or pushes.
+
 ## Execution cadence: review lanes
 
 Whether *both* reviewer roles run on a phase's initial implementation is governed by [`review-lanes.md`](review-lanes.md). The default `full` lane runs all four roles; a `light` lane (mechanical phases only, declared in the phase file's frontmatter) skips the initial `plan-reviewer` invocation and gives `code-critic` one additional duty — judging whether the work actually stayed mechanical, with an `Escalate: full lane — <reason>` Required Change when it did not. The code critic runs on every initial implementation. Later test- or user-driven corrections may use a direct-fix or coder-only route when both risk and change size are low; this omits an invocation, not a role from the canonical set.

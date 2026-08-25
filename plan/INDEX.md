@@ -92,7 +92,7 @@ These are the universals the template ships with. A project derived from this te
   `./bin/check all`.
 - **Repo-relative paths only** in any file committed to this repo (see [`../policies/repo-relative-paths.md`](../policies/repo-relative-paths.md)). Bash invocations may use absolute paths.
 - **Cross-harness parity** (see [`../policies/cross-harness-parity.md`](../policies/cross-harness-parity.md)). The same canonical files drive Claude Code, Codex CLI, and any other harness. Mirrors do not get hand-edited.
-- **Human decides done** (see [`../policies/human-in-the-loop.md`](../policies/human-in-the-loop.md)). `kickoff` never auto-commits, never advances past unresolved gates, never claims subjective acceptance.
+- **Autonomous delivery, human judgment** (see [`../policies/human-in-the-loop.md`](../policies/human-in-the-loop.md)). `kickoff` commits and fast-forward-pushes work whose gates are all green; it never advances past an unresolved gate, never claims subjective acceptance, and never touches the destructive git surface.
 - **Log discipline** (see [`../policies/log-discipline.md`](../policies/log-discipline.md)). `LOG.md` is append-only and owned by `kickoff`.
 - **Lessons compound** (see [`../policies/lessons.md`](../policies/lessons.md)).
   Every phase close harvests process observations into the lessons ledger;

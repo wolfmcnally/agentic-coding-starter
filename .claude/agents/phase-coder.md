@@ -188,6 +188,6 @@ passes this object unchanged to
 - Make targeted edits to existing files; don't rewrite a 200-line file to change three lines.
 - Propagate errors cleanly. Avoid silent fallbacks. A failure becomes a typed error the orchestrator can classify; it does not become a silently-degraded result.
 - Add an inline comment only when a non-obvious invariant truly needs explanation. The pattern "self-documenting code + the rare necessary comment" applies.
-- Do not write commit messages or commit. Commits are the human's job.
+- Do not write commit messages, commit, or push. The orchestrator owns delivery, and only after independent criticism and a green close.
 - Do not claim `./bin/check all` passed unless the orchestrator supplied the
   exact result from the named implementation-candidate or handoff gate.

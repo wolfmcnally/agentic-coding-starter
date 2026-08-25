@@ -314,7 +314,7 @@ Once approved, apply the approved items. Before importing any donor remedy for a
     rule, lesson, stale-migration, and LOG writes. This is the authoritative
     final gate; any subsequent candidate change invalidates it.
 
-**Do not auto-commit.** Per [`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md), the human owns commits. Report the file list, the build-gate status, and any unresolved manual steps so the user can review and commit.
+**Deliver the approved learning.** Per [`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md), once the complete unchanged candidate passes `./bin/check all`, stage only the explicit apply paths, create an ordinary factual commit, and make a non-force push to one unambiguous configured upstream, then verify clean aligned tips. Park delivery on any unexpected path, unresolved gate, hook refusal, missing or ambiguous upstream, divergence, or destructive Git need — and report it. Either way, report the file list, the build-gate status, and any unresolved manual steps: the user still judges whether the learning was the right one to absorb, and that judgment is not what the commit settles.
 
 ## Rules
 

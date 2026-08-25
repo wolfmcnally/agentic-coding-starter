@@ -82,7 +82,7 @@ Evaluate in priority order:
 - **Repo-relative paths only.** No absolute paths in any committed file path the plan proposes.
 - **Cross-harness parity.** If the plan touches `.claude/`, it also touches the matching `.codex/` (or other harness) mirror, or explicitly relies on a symlink that exists.
 - **Lane fit.** Per `policies/review-lanes.md`, check any declared `evidence_lane: light` against the plan's actual blast radius: a `light` declaration over an authority surface (`policies/`, schemas, agent definitions, skills, evidence/gate tooling, `CLAUDE.md`), irreversible or external state, or a deploy seam is a **blocking issue**.
-- **Human decides done.** The plan does not include auto-commits, silent gate skips, or claims of subjective acceptance.
+- **Autonomous delivery, human judgment.** The plan may end in an ordinary commit and non-force push once the phase closes with every gate green; it includes no silent gate skip, no fabricated subjective acceptance, and no destructive git operation. Criteria the plan marks as manual, perceptual, product, or custody-bearing must park for the human.
 
 **Concreteness**
 - Every new file has an exact path.

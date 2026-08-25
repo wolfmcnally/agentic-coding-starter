@@ -39,6 +39,29 @@ A criterion is acceptable when it is:
 - **Step 8 (acceptance check).** The orchestrator runs every executable criterion. Manual criteria are surfaced to the human in the phase's END block and in the user-facing report.
 - **Step 10 (human evaluation).** The human inspects the manual criteria and either accepts the phase or asks for revisions.
 
+Which criteria the orchestrator may close on its own, and which always park for
+the human, is the acceptance boundary in
+[`human-in-the-loop.md`](human-in-the-loop.md). An executable criterion that was
+independently reviewed and proved by a complete gate against the exact candidate
+is objective and closes autonomously; a manual, perceptual, product, custody, or
+owner-only criterion parks no matter how green the gate is.
+
+## Acceptance evidence is candidate-bound
+
+A green result proves only the exact reviewable working tree it exercised. Every
+implementation-gate command is recorded with the candidate id from
+`bin/kickoff-tree-id`. A relevant candidate change invalidates the result;
+staging alone does not. The complete phase-prescribed sequence ends with
+`./bin/check all` once after code-critic approval, and the candidate id must be
+unchanged before and after the sequence. After tracked close bookkeeping changes
+the tree, a second bare `./bin/check all` proves the actual handoff candidate; no
+tracked write follows that gate.
+
+During editing and revision, run the smallest falsifying test first and then the
+affected suites. That focused evidence narrows defects efficiently but does not
+replace final acceptance. See
+[`orchestration-evidence.md`](orchestration-evidence.md).
+
 ## Test discipline
 
 When acceptance leans on a test suite:

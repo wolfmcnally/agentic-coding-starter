@@ -411,7 +411,7 @@ Once approved, apply the approved items to the target. Order:
     all detected.
 12. Append the TAUGHT FROM TEMPLATE entry to the target's `LOG.md` (create the file with the standard header if it doesn't exist). The entry lists the transferred items, the **parity heals applied** (separately from transferred items), the stale items migrated, the parity-heal and stale-sweep items surfaced for user decision, and the patterns to feed back via `learn`. Follow the target's LOG/provenance policy and the approved teaching-plan template. Starter's starter-only anonymization policy governs writes to Starter, not writes to the target.
 
-**Do not auto-commit in the target.** The target's owner owns commits. Report the file list, build-gate status, and any unresolved manual steps.
+**Follow the target's delivery policy.** After the unchanged target candidate passes its full gate and every approved manual step is closed, use the target's standing commit/push authority if it has one; a target that still requires its owner to commit gets the file list and nothing more. Always stage explicit target paths, never force or select an ambiguous remote, and verify clean aligned tips after any push. Report the file list, build-gate status, and any unresolved manual steps regardless.
 
 **Do not write anything to *this* repo.** This skill is read-only against the starter. If the user wants to capture a learning here as a result of the teaching exchange, that's a separate `/learn` invocation in Claude Code or `$learn` invocation in Codex against the target afterward.
 
