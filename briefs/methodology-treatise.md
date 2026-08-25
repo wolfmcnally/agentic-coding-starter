@@ -9,7 +9,9 @@ scope: Canonical primer on this repository for a general audience, from working 
 
 *A primer on what this repository is for and how it works.*
 
-**Wolf McNally** is the creator of the Encyclopedia of Agentic Coding Patterns ([aipatternbook.com](https://aipatternbook.com)) and of Bartley Editions ([bartleyeditions.com](https://bartleyeditions.com)). He is the author and maintainer of this repository.
+**Wolf McNally** created Bartley Editions ([bartleyeditions.com](https://bartleyeditions.com)), which publishes living reference works: books kept current by an agent, the Bartley engine, under human curators, in place of a publishing house and a decades-long production cycle. One of those works is the Encyclopedia of Agentic Coding Patterns ([aipatternbook.com](https://aipatternbook.com)), a compendium of tested patterns for building software with AI agents, running to roughly 308 entries across patterns, antipatterns, and concepts (retrieved 2026-08-24). The two fit together: the engine is an agent that writes books, and the Encyclopedia is a book about directing agents.
+
+He is the author and maintainer of this repository.
 
 *Companion to [`BRIEF.md`](BRIEF.md), which describes the template's surface, and [`methodology.md`](methodology.md), which states the eleven steps. This brief is the canonical explanation; rendered formats derive from it, and corrections land here first, per [`../policies/treatise.md`](../policies/treatise.md).*
 
@@ -121,6 +123,16 @@ It gives up unattended autonomy at the end. Work that can be proved gets deliver
 It gives up wandering mid-flight. Once a phase starts, the orchestrator follows the plan. Explore before it starts, or between phases.
 
 And the enforcement is uneven in one area. Sixteen rules govern what happens when a long automated run hits trouble: when it may recover on its own, when it must stop and wait, how it proves its instruments before trusting them. Some of those rules are enforced by machinery. The rest are written guidance that the orchestrator and the human carry between them. The repository says which is which rather than leaving a reader to find out.
+
+## Where to find it, and how to start
+
+The repository is at [github.com/wolfmcnally/agentic-coding-starter](https://github.com/wolfmcnally/agentic-coding-starter). It works with Claude Code, with Codex CLI, and with any agent host that reads project instructions and agent definitions from the usual places. Clone it, then pick one of two ways in.
+
+**Start a new project from it.** From inside the clone, invoke the `stamp` skill with a destination and a one-line description of what you want to build: `/stamp ~/path/to/new-project "..."` in Claude Code, `$stamp ~/path/to/new-project "..."` in Codex. It copies the structure, adapts the names and build commands, asks only what the description leaves open, and hands back a project ready to work on.
+
+**Or work in the template itself.** Invoke `kickoff` (`/kickoff`, or `$kickoff`) and it picks up the first phase of the template's own plan and walks the entire loop, writing its records as it goes. This is the way to watch the method run before adopting it.
+
+The host needs `uv` and nothing else. `./bin/setup` provisions the pinned environment, `./bin/test` runs the tests, and `./bin/check all` runs everything the method claims to run.
 
 ## Checking any of this
 

@@ -17,9 +17,16 @@ classifying or writing the artifact.
 
 ## 1. Resolve the request
 
-Identify the topic, audience, intended venue, and requested format. Infer only
-when the repository makes the answer unambiguous; otherwise ask for the single
-decision that materially changes the artifact.
+**Read the sidecar first.** Every treatise carries `<brief-name>.yaml` beside its
+canonical brief, holding the scope, audience, register, and the operator's
+standing editorial rulings (section 7). When it exists, it is binding: a later
+pass may not quietly reverse a recorded ruling, and a request that conflicts with
+one is a decision to surface, not to resolve silently. When it does not exist,
+this pass creates it.
+
+Then identify the topic, audience, intended venue, and requested format. Infer
+only when the sidecar or the repository makes the answer unambiguous; otherwise
+ask for the single decision that materially changes the artifact.
 
 ## 2. Build a claim map
 
@@ -54,9 +61,39 @@ Do not publish externally without explicit user authority and a governing
 disclosure or release policy for the receiving venue. When either is absent,
 deliver the internal artifact and name the blocked publication action.
 
-## 7. Deliver the repository artifact
+## 7. Maintain the sidecar
 
-The repaired brief and any tracked rendering are ordinary repository work: once
+`<brief-name>.yaml`, beside the canonical brief, is where a treatise's intent
+lives between passes. Prose carries the argument; the sidecar carries the
+instructions that shaped it, which the prose cannot state about itself. Without
+it, each revision re-derives the audience and register from the draft in front of
+it, and the piece drifts from what the operator asked for.
+
+Write or update it in the same pass that changes the treatise, before delivery.
+Fields:
+
+- `treatise`, `title`, `brief`, `updated` — identity and the canonical path.
+- `purpose` — one or two sentences on what this treatise is for.
+- `audience` — who it is written for, the range it must serve, what knowledge it
+  may assume, and who it is explicitly not for.
+- `register` — the form (primer, essay, white paper) and the voice constraints
+  in force, including any skill the operator asked to run over it.
+- `scope` — what belongs in the piece and what stays out.
+- `directives` — **append-only.** One dated entry per editorial ruling the
+  operator gives, in their own words where possible, with what changed in
+  response. Never edit or delete a past entry; a reversal is a new entry that
+  names the one it supersedes.
+- `renderings` — each published format and its location.
+- `external_facts` — every claim not sourced from this repository, with its
+  source and retrieval date, so a later pass can re-check rather than re-trust.
+- `open_questions` — anything the operator has not yet decided.
+
+Record a ruling the moment it is given, in the pass that acts on it. A directive
+reconstructed later from memory is the failure this file exists to prevent.
+
+## 8. Deliver the repository artifact
+
+The repaired brief, its sidecar, and any tracked rendering are ordinary repository work: once
 `./bin/check all` passes against the unchanged tree, commit them by explicit
 path and non-force-push to one unambiguous configured upstream
 ([`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md)).

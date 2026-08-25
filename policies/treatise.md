@@ -12,6 +12,22 @@ material claim. If the repository lacks a canonical explanation, write or
 repair that internal brief first. Rendered formats are derivatives; corrections
 land in the canonical source and are regenerated outward.
 
+## Intent is recorded beside the brief
+
+Every treatise carries a sidecar, `<brief-name>.yaml`, next to its canonical
+brief. It holds the purpose, audience, register, scope, the operator's dated
+editorial rulings, the published renderings, and every external fact with its
+retrieval date. The prose argues; the sidecar records the instructions that
+shaped it, which the prose cannot state about itself.
+
+Read the sidecar before drafting and update it in the same pass that changes the
+treatise. Its `directives` list is append-only: a reversal is a new dated entry
+naming the one it supersedes, never an edit. A revision that contradicts a
+recorded ruling surfaces the conflict to the operator rather than resolving it
+silently. A treatise revised without its sidecar re-derives audience and register
+from whatever draft is in front of it, which is how a piece drifts from what was
+asked for.
+
 ## Explain decisions, not files
 
 A treatise answers:

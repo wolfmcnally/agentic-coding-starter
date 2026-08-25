@@ -1,6 +1,6 @@
 # Agentic Coding Starter Template
 
-A repository template for building software with AI coding agents under a structured, multi-agent methodology. It encodes a workflow that turns a vague idea into shippable software through a planner → reviewer → coder → critic loop, with humans deciding what "done" means.
+A repository template for building software with AI coding agents under a structured, multi-agent methodology. It encodes a workflow that turns a vague idea into shippable software through a planner → reviewer → coder → critic loop, with humans owning every judgment a check cannot settle.
 
 This template is harness-agnostic. It works with [Claude Code](https://claude.com/claude-code), with [Codex CLI](https://github.com/openai/codex), and with any other agent host that reads project-level instructions and agent definitions from `.claude/`, `.codex/`, `.agents/`, or `AGENTS.md`. The same files drive both — never edit a harness-specific mirror by hand.
 
@@ -59,7 +59,7 @@ Coding with agents is high-leverage but easy to do badly. Without structure, you
 
 - Agents that re-derive the same decisions every session.
 - Plans nobody reviewed and code nobody checked.
-- "Done" that means "the agent stopped talking" rather than "the human accepted the work."
+- "Done" that means "the agent stopped talking" rather than "the work was independently reviewed and proved."
 - A directory whose state is impossible to reconstruct from its files.
 
 This template solves those problems by externalizing the parts of the work that *must* persist across sessions: the brief (what), the architecture (how), the plan (in what order), the log (what actually happened), and the policies (what's off-limits). Each session starts from those artifacts and ends by updating them.
