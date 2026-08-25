@@ -1,5 +1,5 @@
 ---
-title: "The Project Remembers"
+title: "Wolf's Agentic Coding Starter Kit"
 date: 2026-08-25
 status: implemented
 scope: Canonical primer on this repository for a general audience, from working engineers to readers who have never written code. Explains what the repository is for and how its parts work. Source of truth for every derivative rendering.
@@ -145,6 +145,16 @@ treatise:
         unpinned options), policies hold decisions. Added the one-way direction
         rule, and removed this brief's own references to policy files, which
         violated it.
+    - date: 2026-08-25
+      ruling: >-
+        'Change the title to "Wolf's Agentic Coding Starter Kit", subtitle
+        "An introduction". Byline: "Wolf McNally".' and '"This repository
+        collects, in one place, an evoling..." -> "This repository is a hub
+        that contains an evolving..."'
+      effect: >-
+        Retitled the piece and its rendering; masthead restructured as title,
+        subtitle, byline, with the fuller author note kept beneath. Opening
+        sentence reworded to hub framing.
 
   renderings:
     - format: artifact
@@ -178,9 +188,11 @@ treatise:
       account. That is a separate publication decision.
 ---
 
-# The Project Remembers
+# Wolf's Agentic Coding Starter Kit
 
-*A primer on what this repository is for and how it works.*
+*An introduction*
+
+**Wolf McNally**
 
 **Wolf McNally** created Bartley Editions ([bartleyeditions.com](https://bartleyeditions.com)), which publishes living reference works: books kept current by an agent, the Bartley engine, under human curators, in place of a publishing house and a decades-long production cycle. One of those works is the Encyclopedia of Agentic Coding Patterns ([aipatternbook.com](https://aipatternbook.com)), a compendium of tested patterns for building software with AI agents, running to roughly 308 entries across patterns, antipatterns, and concepts (retrieved 2026-08-24). The two fit together: the engine is an agent that writes books, and the Encyclopedia is a book about directing agents.
 
@@ -192,7 +204,7 @@ He is the author and maintainer of this repository.
 
 ## What this is for
 
-This repository collects, in one place, an evolving and deliberately opinionated set of best practices for building software with AI agents.
+This repository is a hub that contains an evolving and deliberately opinionated set of best practices for building software with AI agents.
 
 It is a working template. You copy it to start a project, and the practices arrive with it as files: rules the agent must respect, a plan it must follow, records it must keep. The opinions are not advice sitting in a document somewhere. They are the shape of the project itself.
 
