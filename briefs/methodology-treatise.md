@@ -1,202 +1,138 @@
 ---
-title: "Structure as the Substrate: How This Template Makes Agentic Coding Reviewable"
+title: "The Project Remembers"
 date: 2026-08-24
 status: implemented
-scope: Canonical outward explanation of this repository — its thesis, governing principles, architecture, workflows, and skills — for practitioners and engineering leads evaluating or adopting the methodology. Source of truth for every derivative rendering.
+scope: Canonical outward explanation of this repository for a general audience, from working engineers to readers who have never written code. Source of truth for every derivative rendering.
 ---
 
-# Structure as the Substrate
+# The Project Remembers
 
 **Author and maintainer: Wolf McNally.**
 
-*Audience: practitioners and engineering leads who already use coding agents seriously, and who have noticed that the failures are not about model capability. Companion to [`BRIEF.md`](BRIEF.md) (what the template is) and [`methodology.md`](methodology.md) (the eleven steps). This brief is the canonical explanation; rendered formats derive from it and corrections land here first, per [`../policies/treatise.md`](../policies/treatise.md).*
+*Companion to [`BRIEF.md`](BRIEF.md), which describes what the template is, and [`methodology.md`](methodology.md), which states the eleven steps. This brief is the canonical explanation; rendered formats derive from it, and corrections land here first, per [`../policies/treatise.md`](../policies/treatise.md).*
 
 ---
 
-## 1. Thesis
+An AI coding agent will write you a plausible plan, a plausible implementation, and a plausible report saying it all worked. Whether any of that is true has less to do with the model than with what the project around it writes down.
 
-Agentic coding fails for structural reasons, not cognitive ones. A capable model produces a plan nobody reviewed, code nobody checked, and a workspace whose state cannot be reconstructed from its files — not because it reasoned badly, but because nothing in the environment required otherwise.
+That is the claim this repository makes, and it is narrow enough to check: **an AI agent becomes reliable when the project holds the memory, the rules, and the evidence, so that every session starts from a written record and ends by updating it.**
 
-This repository's claim is narrow and testable: **put the load-bearing state outside the session — the brief (*what*), the architecture (*how*), the plan (*in what order*), the log (*what actually happened*), the policies (*what is off-limits*), and the lessons ledger (*what this keeps re-teaching us*) — and the quality problem changes shape.** It stops being a prompting problem and becomes an engineering problem: reviewable, testable, and improvable by ordinary means.
+Everything else here follows from that. The specialist roles, the phase ledger, the two rounds of testing at the end of every phase, the small deterministic scripts, the file where mistakes accumulate: each one exists because moving state out of the conversation made a specific failure visible, and a visible failure can be fixed.
 
-Everything else here is consequence. The four agent roles, the phase ledger, the candidate-bound evidence, the two close gates, the deterministic scripts, the improvement flywheel — each exists because externalized state made a specific failure mode visible and fixable.
+## What goes wrong
 
-## 2. The problem, stated precisely
+Anyone who has worked with a coding agent for more than an afternoon has seen the same three things.
 
-Three failures recur in unstructured agentic work, and they compound:
+The first is forgetting. A session ends, or its memory fills up and gets compressed, and everything decided along the way goes with it. The next session has to be told again. Worse, it will happily re-open questions that were settled last week, because nothing in front of it says they were settled.
 
-**State lives in the conversation.** The next session — or the same session after a context compaction — cannot recover what was decided, why, or what was already tried. Re-explaining is not merely expensive; it silently re-litigates settled decisions.
+The second is a kind of circular grading. The agent that wrote the plan is the one asked whether the plan is good. The agent that wrote the code reports that the code works. Nothing independent ever disagrees, and a confident wrong answer looks exactly like a correct one right up until someone runs it.
 
-**Verification is self-referential.** The agent that wrote the plan assesses the plan. The agent that wrote the code reports the code works. Nothing structurally independent contradicts it, and a confident wrong answer is indistinguishable from a correct one at the point of delivery.
+The third is that none of it accumulates. The same mistake gets made and corrected on a two-week cycle. When a lesson does survive, it survives in one person's head, or in one tool's private memory on one laptop, none of which reaches the next session.
 
-**Nothing accumulates.** The same mistake is made and corrected weekly. Any learning that does survive lives in one operator's memory, one harness's memory store, or one machine — none of which binds the next session.
+Three problems, three answers. Write the state down. Have something other than the author do the checking. Collect the mistakes on purpose.
 
-The methodology addresses each: externalized state for the first, role separation plus candidate-bound evidence for the second, and a lessons ledger with human-ratified graduation for the third.
+## Writing survives what talking loses
 
-## 3. Governing principles
+The first answer is the least clever and does the most work.
 
-Six principles generate nearly every rule in the repository.
+Every project built this way keeps a small set of files that outlive any conversation. A brief says what is being built and why. An architecture document says how. A plan breaks the work into phases and puts them in order. A log records what actually happened. A policies folder holds the rules that every phase has to respect. None of this is exotic; it is the paperwork a careful team would keep anyway. The difference is that here the agent is required to read it before acting and to update it before finishing.
 
-### Rules, not memory
+Two details make the difference between paperwork that helps and paperwork that rots.
 
-Anything that should bind future sessions belongs in the repository, routed by kind: a universal rule to `policies/` or `CLAUDE.md`; a per-action workflow to the owning skill; a tunable to the policy that holds its tunables; longitudinal context or a pinned decision to a brief. Agent-side memory is local to one operator, one harness, one machine — the wrong place for engine knowledge. When a harness offers to remember something, the answer is to write a repo rule instead.
+**A fact lives in exactly one place.** Whether a phase is finished, in progress, or next up is recorded in one file and nowhere else. Individual phase documents are forbidden from carrying their own status field. Two places to look is one place to be wrong, and a project where two files disagree about what is done is worse off than one that never wrote it down.
 
-The corollary matters as much: when a learning is real but its surface is unknown, or it has been seen only once and codifying now would lock in a rule its variations have not tested, it goes to `lessons/` — the holding pen between noticing and knowing.
+**The log only ever grows.** Each phase opens with an entry saying what is being attempted and closes with an entry recording what happened, what was checked, and what remains open. Old entries are never edited. If something recorded last month turns out to be wrong, the correction is a new entry, so the record of the mistake survives alongside the fix.
 
-### Briefs describe, policies prescribe, the plan sequences
+The practical effect is undramatic and worth a lot: a new session reads the ledger and the last entry, and picks up. Nobody re-explains the project. When a long session runs out of room and its memory gets compressed, the compression takes the conversation and leaves the files, which are where the real state was.
 
-Three document classes with disjoint jobs ([`../policies/briefs-and-policies.md`](../policies/briefs-and-policies.md)). A brief explains what and why and stays authoritative for cross-session reasoning. A policy is a short prescriptive rule every phase honors — a policy violation blocks acceptance. The plan orders the work. When the plan and a brief disagree, the plan wins; when two briefs disagree, the briefs get fixed.
+## Nothing is accepted on its author's word
 
-The discipline this enforces is against the most common documentation failure in agentic repos: a single swelling instruction file that means everything and binds nothing.
+The second answer is where the design gets opinionated.
 
-### Two kinds of work, triaged consciously
+Work on a phase passes through four specialists, each with a narrow job. A planner turns the phase into a file-by-file plan and writes no code. A plan reviewer approves that plan or sends it back. A coder implements the approved plan. A code critic reads the result and approves it or sends it back. A fifth participant, the orchestrator, moves the work between them, keeps the records, and runs the tests.
 
-Half the work in any real engine is mechanical — exact, repeatable, judgment-free — and belongs in deterministic code, not in a model ([`../policies/mechanistic-vs-intelligence.md`](../policies/mechanistic-vs-intelligence.md)). Reconcilers, parity audits, leak scans, index generators, format checks: a script does these cheaper, exactly, idempotently, unit-testably, and byte-identically across harnesses. A model asked to do them will sometimes get them subtly wrong.
-
-The inverse error is equally real: a brittle script faking judgment with keyword heuristics fails silently and confidently, which is worse than an agent. Mixed tasks split at the seam — **the agent decides *what*, a deterministic script does the mechanical *how*.**
-
-### Assurance is candidate-bound
-
-A green result proves only the exact working tree it exercised. So review, findings, revision packets, and gates all name the specific complete candidate they describe — tracked content, deletions, modes, symlink targets, and non-ignored untracked files, hashed by `bin/kickoff-tree-id` ([`../policies/orchestration-evidence.md`](../policies/orchestration-evidence.md)). A relevant change to the tree invalidates prior evidence rather than quietly inheriting it.
-
-This is the structural answer to "the tests passed" meaning nothing. It also produces one of the repository's stranger-looking rules — verification captures go to a scratch path, never a bare filename — because a stray screenshot in the tree moves the candidate id that a phase's whole evidence chain is bound to.
-
-### A check must be able to fail
-
-An instrument earns trust only if it can report the failure it claims to guard against ([`../policies/acceptance-empirical.md`](../policies/acceptance-empirical.md)). The policy enumerates the ways instruments lose that property: a pipe that masks the real exit status; a swallowed failure defaulting to success; a proxy standing in for the real assertion; a wrapper that prints FAIL and exits zero. Then the subtler three — a check that passes on an empty result, a survey reporting perfect uniformity, and their unifying form: **the instrument could return only one answer, so its answer carried no information.**
-
-### Lessons compound, and rules are curated
-
-Every phase close asks what generalizable process lesson was learned; "none" is a permitted recorded answer, but the question is mandatory. Lessons file as discrete addressable entries with provenance and occurrence counters. **Graduation into a rule is the human's act, never the agent's**, and needs three occurrences or explicit approval ([`../policies/lessons.md`](../policies/lessons.md)).
-
-Three is the stabilization threshold: a lesson codified on first sight tends to be wrong in ways its variations would have revealed. And the naive alternative — "agent, update the instruction file with what you learned" — degrades under iteration, each rewrite shortening and blanding the document until accumulated knowledge collapses into generic filler. The ledger grows; the rules are curated.
-
-## 4. Architecture
-
-The repository is a harness: skills, agent definitions, policies, briefs, and deterministic scripts wrapped around whichever coding-agent CLI hosts the session.
-
-**Externalized state** lives in five surfaces. `briefs/` is the durable design library. `policies/` is the law — 28 files, each a rule every phase honors. `plan/` holds the phase ledger, with `plan/INDEX.md` as the single source of truth for phase status; per-phase frontmatter never carries a `status` field, because two places to look is one place to be wrong. `LOG.md` is the append-only record, owned by the orchestrator, never hand-edited. `lessons/` and its archive hold candidate process lessons and the permanent trail linking every rule to the incidents that earned it.
-
-**The mechanistic half** lives in `bin/` — 20 executables that own everything exact: the atomic toolchain contract (`setup`, `test`, `check`, `python`), candidate identity (`kickoff-tree-id`), the evidence manager (`kickoff-evidence`), configuration with validation and preflight (`kickoff-config`), execution telemetry, durable full-gate receipts, and the deterministic checkers for catalog drift, harness parity, caller policy, shell syntax, and external-reference leaks. These are tested like product code: 18 test modules, 572 assertions as of 2026-08-24.
-
-**The intelligence half** lives in `.claude/skills/` (9 skills) and `.claude/agents/` (the four canonical roles). Harness-specific surfaces — `.codex/agents/*.toml`, `.agents/skills/`, `AGENTS.md` — are thin pointers to the canonical files, and `bin/check-harness-parity` rejects missing, copied, or orphaned mirrors. One home per fact; mirrors that drift fail the gate.
-
-**Isolation.** When a repo has one primary deliverable it lives under `project/`, referencing nothing above it, which keeps it submodule-ready and keeps methodology machinery out of the shipped artifact.
-
-## 5. The workflow
-
-`kickoff` orchestrates one phase end-to-end, delegating to four specialists whose names are load-bearing because the orchestrator invokes them by name.
+The separation is the point. Reviewing your own homework produces a grade, not a check.
 
 | Role | Writes code | Job |
 |---|---|---|
-| `phase-planner` | No | Turn one phase into a file-level implementation plan |
-| `plan-reviewer` | No | Approve the plan or send it back |
-| `phase-coder` | Yes | Implement the approved plan; run focused and revision-close gates |
-| `code-critic` | No | Approve the code or send it back |
+| Planner | No | Turn one phase into a file-by-file plan |
+| Plan reviewer | No | Approve the plan or send it back |
+| Coder | Yes | Implement the approved plan |
+| Code critic | No | Approve the result or send it back |
 
-The orchestrator is the fifth participant: it owns authority, change, finding, and gate evidence, handles verdicts and both close gates, runs the lessons harvest, writes `LOG.md`, and may write code only for a small low-risk follow-up whose shape is already determined.
+Round-trips between these roles are bounded. The loop continues while each pass is genuinely shrinking the list of open problems, and it stops for a human when the same complaint keeps coming back, which means the fix is not reaching whatever is generating the problem.
 
-**Revision loops are convergence-bounded.** Iterate while converging; escalate on stall; a 10-cycle backstop catches runaway iteration. An explicit extension is a *convergence lease* — continue while each cycle strictly shrinks the open-finding set, nothing closed reopens at equal-or-worse severity, no new defect class appears, and the touched surface stays within named bounds. Counts measure effort, not health; a count-scoped grant expires mid-convergence and pages the operator to re-authorize work that never stopped working.
+Then comes the part that sounds like a technicality and is the sharpest idea in the repository.
 
-**Ceremony is proportional.** A phase declares a review lane — `full` (all four roles), `light` (mechanical work; plan review skipped, the code critic still runs and can escalate back), or the invocation-only `one-shot` — on an orthogonal axis from the evidence lane, which scales candidate-bound apparatus. Both fail closed over authority surfaces, irreversible state, and deploy seams ([`../policies/review-lanes.md`](../policies/review-lanes.md)).
+Every test result here is stamped with a fingerprint of the exact version of the project it ran against. Change any relevant file and the old result stops counting, because it was evidence about a version that no longer exists. This is why a phase ends with the full test suite running **twice**. The first run proves the code the critic approved. Then the orchestrator writes the closing paperwork: flip the status, append the log entry, file the lessons, generate the report. Those writes change the project. So the suite runs a second time against the version that is actually being handed over, and after that, nothing may be written at all.
 
-**Closing has two gates.** The implementation-candidate gate runs the complete prescribed sequence against the unchanged approved candidate. Then status, ripple, lessons, the END block, and the report all land — and because those are tracked writes, they move the tree. So a second bare `./bin/check all` proves the *actual handoff tree*, and no tracked write may follow it. A gate that certified a tree nobody will ever have is not a gate.
+A test run that certified a version nobody will ever have is not a test run.
 
-**Then the phase delivers itself**, and this is the design's most consequential recent decision (§6).
+That same insistence on knowing what a check actually proves shows up as a rule about instruments in general: a check earns trust only when it is able to report the failure it claims to guard against. The policies file spends a long section on the ways checks quietly lose that ability. A pipe that hides the real error code. A failure swallowed and replaced with a default that reads as fine. A stand-in measurement that was never the thing anyone cared about. And the subtle ones: a check that passes because it found nothing at all, or a survey that reports perfect uniformity because it was reading a field that cannot vary. All of these are one defect wearing different clothes. The instrument could only ever return one answer, so its answer carried no information.
 
-## 6. Consequential decisions
+### The line between what a machine can prove and what a person must judge
 
-The interesting content of any methodology is where it chose against the obvious alternative.
+Given all that machinery, an obvious question follows: if the checking is this thorough, what is the human still for?
 
-### The acceptance boundary is typed, and delivery is decoupled from it
+The repository answers by sorting every acceptance criterion into two kinds.
 
-The template originally required the human to commit every phase. As of 2026-08-24 it does not. The rule now distinguishes two kinds of acceptance criterion ([`../policies/human-in-the-loop.md`](../policies/human-in-the-loop.md)):
+A criterion is **objective** when it can be run as a command, was reviewed by someone other than its author, was proved by the full test suite against that exact version, and was recorded rather than asserted. Those close on the machinery's own evidence.
 
-- **Objective** — executable, independently reviewed by a role the implementer does not control, proved by a complete gate against the exact candidate, and recorded. These close autonomously.
-- **Subjective and owner-only** — named manual checks, perceptual and UX judgment, product decisions, custody (credentials, billing, anything behind a console), and an unrun `User Demo:` protocol. These *always* park. No amount of green closes them.
+A criterion is **subjective or owner-only** when no amount of green output can settle it. Does this feel right to use. Is this the right feature at all. Does the audio sound clean, does the page look wrong, is this copy any good. Anything requiring a password, a credit card, or a login the agent does not have. And the phase's own hands-on demo, until a person has actually sat down and tried it. Those always wait for the human, and the agent is forbidden from claiming them.
 
-The orchestrator then commits and fast-forward-pushes: explicit paths only (never `git add -A`, since the checkout may be shared with a concurrent session), no agent credit, never `--no-verify`, one unambiguous upstream, no force. The destructive surface — tags, resets, rebases, branch deletion, remote selection, history rewrite — stays with the human, always.
+Until recently the human also had to make every commit by hand, which is to say: approve, in a formal sense, work they had no grounds to refuse. The test suite was green, the review was independent, the evidence named the version. As of 2026-08-24 the orchestrator does that step itself, under tight constraints. It stages only the files the phase touched, never a blanket "add everything," because another session may be working in the same folder. It writes an ordinary factual message with no credit to any agent. It never bypasses the safety hooks. It publishes only when there is exactly one unambiguous destination and the update is a clean fast-forward. Everything destructive stays with the person: no force, no rewriting history, no deleting branches, no choosing where the code goes.
 
-Two properties make this safe rather than reckless. First, **delivery is not acceptance and does not wait on it**: a phase with parked criteria still delivers, and those criteria stay open afterward exactly as they were. Second, **what blocks a phase is an unresolved gate, not an open judgment.** Conflating the two is what made the old posture expensive — it charged the reviewer's attention for a `git commit` they had no basis to refuse, at exactly the moment the demo needed that attention.
+Two properties keep that from being reckless.
 
-The compensating control is that the human's gate moved rather than disappearing: it now sits at the seam, on the END block's acceptance split and the demo protocol, and the code critic blocks on a *mistyped* criterion — a subjective criterion labeled objective is the one defect that would let a phase claim evidence that does not exist.
+Delivery does not mean acceptance, and it does not wait for it. A phase whose gates are green gets delivered even when its subjective criteria are still open, and those criteria stay open afterward exactly as they were. Being published is not the same as being liked. If the work turns out to be wrong, the correction is an ordinary follow-up, and nothing about having published it makes reversing it harder.
 
-The honest cost: a phase can be delivered and later judged wrong, and the correction is a follow-up commit rather than an unpushed diff. That trade was made deliberately.
+And what stops a phase is a failed check, never an open judgment. Confusing the two is exactly what made the old arrangement expensive: it spent the reviewer's attention on a bookkeeping step at precisely the moment the actual review needed that attention.
 
-### Sub-phases are decomposed just-in-time
+The compensating control is that the human's job moved rather than disappearing. It now sits at the seam between phases, on the closing entry and the hands-on demo. And the code critic has a new blocking duty: catch a criterion that has been filed under the wrong kind. A judgment call dressed up as an automated check is the one defect that would let a phase claim proof that does not exist.
 
-Major phases are drafted up front at general specificity, so the roadmap is visible from bootstrap. Sub-phases are decomposed **one at a time**, each drafted at the close of its predecessor with that predecessor's outcomes in hand. Pre-decomposing locks in premature assumptions and resists the very revisions that doing the work reveals.
+The honest cost of the trade: a phase can be delivered and then judged wrong, and the fix is a follow-up rather than an unpublished draft. That was chosen deliberately.
 
-Bite size is capability-indexed, not calendar-indexed: a model class that routinely closes phases of the current size on first-cycle approval can take bigger bites. Per-phase ceremony is a fixed cost, and over-fine decomposition under a strong coder pays it more often than the work needs.
+## Mistakes are collected, and a person decides which become rules
 
-### Autonomous self-modification was declined
+The third answer is the one most projects skip.
 
-The fully closed improvement loop — agent mines weaknesses, edits its own rules, validates, merges — was considered and rejected. It contradicts the human-in-the-loop boundary and imports the literature's own top risks: reward hacking and evaluator contamination. **Humans move up the stack, not out of the loop**; the human is the Curator, and that is a design choice rather than a maturity gap. Correspondingly, `./bin/check all` never bends to a lesson.
+Every phase ends with a required question: what did this teach us that will apply again? "Nothing" is an acceptable answer. Skipping the question is not. Whatever comes back gets filed as its own small document with a date, a description, and a count of how many times this has now happened.
 
-### Ceremony grows only against incidents, and every review prunes
+Nothing becomes a rule on the third occurrence by itself. A person promotes it, one at a time, onto a named surface: a policy, a brief, a role definition, a script, a test. The threshold exists because a lesson written into law the first time it happens is usually wrong in ways its next two occurrences would have revealed. The human ratification exists because the alternative has a known failure mode.
 
-Fail-closed pressure ratchets: every defect adds rigor, and nothing subtracts. Left alone, a methodology accretes binding steps until the ceremony costs more than the failures it prevents. So a new binding rule enters only with its motivating incident cited inline, every binding step must name the park it prevents, and every review pass treats steps whose failure families are structurally dead as deletion candidates. The worked form is a **ceremony audit** — walk a protocol step by step under that test and delete or demote the rest. A donor repo's first such audit deleted or demoted four binding steps, including a per-fix reseal duty that had cost roughly twenty-seven whole-repository reseal cycles in a single phase, each invalidated by the next one-line fix.
+That alternative is the obvious one: tell the agent to update its own instruction file with what it learned. Try it for a few months and watch the document. Each rewrite shortens it a little and sands off a little of what made it specific, until a page of hard-won detail has degraded into generic advice that no longer binds anything. Keeping the raw entries separate from the curated rules avoids that. The pile of entries grows. The rules are edited by hand, deliberately, one at a time, and each one can be traced back to the incidents that earned it.
 
-The same anti-ratchet logic applies to instruments: when a design change eliminates a defect class, retire its instrument rather than perfecting it.
+The same logic runs between projects. This repository is a hub. One command stamps a new project from it. Another pushes improvements out to a project that was stamped from an older version. A third harvests back what those projects learned, along with any new defect exposed by the act of transferring, because applying a pattern somewhere new is a real test of that pattern. The return path matters most, and for a specific reason: a working project exercises this machinery at a scale the template itself never does, so that is where the interesting defects surface first.
 
-### Greenfield until released
+Two disciplines keep that traffic honest. A project being further ahead in general proves nothing about any particular file, so direction is established one item at a time. And before importing somebody's fix, the problem it fixes has to be shown to exist here, because a repair for a defect the destination solved differently is a regression wearing the shape of an improvement.
 
-No backward-compatibility shims, legacy aliases, schema migrations, or transitional code paths until the project ships a stable external release. A wrong shape gets replaced directly, with every call site, fixture, test, sample, brief, and doc updated in the same phase. The rule ends by explicit amendment, not by drift.
+## What it costs
 
-### One canonical home, thin mirrors
+An honest accounting, since the structure is not free.
 
-Skills and agent definitions have exactly one canonical source, with harness-specific pointers generated around it, enforced mechanically. The alternative — maintaining parallel prose per harness — fails the way all duplicated documentation fails, except that here the duplicates are executable instructions and the drift is invisible until an agent behaves differently under one CLI than another.
+It loses to a one-line prompt on anything small. Writing a brief, a plan, and a phase to change a script that will be thrown away next week is silly. Use the quick thing for the quick thing.
 
-## 7. The improvement flywheel
+It gives up unattended autonomy at the end. Work that can be proved gets delivered without asking, but the process still stops at every point where a judgment is genuinely required, and silence from an absent human is never read as approval. A project that wants no human judgment anywhere wants a different method.
 
-The repository improves at two scales, and owns both.
+It gives up wandering mid-flight. Once a phase starts, the orchestrator follows the plan. Explore before it starts, or between phases.
 
-**Inner tier, within a repo.** Each role emits Process Observations — friction or ambiguity in briefs, policies, plans, or tooling — and the coder states *why* a previous attempt failed on revision rounds. `kickoff` harvests these at every close into `lessons/`. `bin/lessons` validates and tallies; `bin/lessons candidates` lists graduation-ready entries. `sweep` runs the pruning half over policies, briefs, skills, catalogs, and the ledger.
+There is also a limit inside the method rather than a trade against it. A set of sixteen rules governs what happens when a long automated run hits trouble, distilled from a single production day in a real project where one run stopped nine times, and each stop was diagnosed and turned into a standing rule. Most of those rules are still written guidance rather than enforced machinery. Some of the enforcement exists; some does not. The document says so in its own text rather than leaving a reader to discover it, which is the same discipline it asks of everything else.
 
-**Outer tier, between repos.** The starter is a hub. `stamp` ships the machinery into new projects; `teach` retrofits it onto existing ones; `learn` harvests back — both a spoke's `scope: methodology` lessons and the new defects exposed while applying a donor bundle, because applying a pattern is empirical evidence about that pattern's contract.
+## Checking any of this
 
-The seam between tiers is the lesson's `scope` field: `local` stays home, `methodology` is a standing export. This is the answer to the portability problem — knowledge is repo-local by default, and the hub-and-spoke channel is what makes phase-scale learning compound across a family of projects. The return path earns its cost precisely because of where defects surface first: a spoke exercises the machinery at a scale the template never does.
+None of the above has to be taken on faith. From a copy of the project, one command runs every check the method claims to run: twelve categories, 572 tests, which passed on 2026-08-24. Other commands verify that the rules are indexed, that no duplicated instruction file has drifted from its original, that the lessons ledger is well formed, and that no private path or external project name has leaked into a public repository. Counts in this document come from those commands, and a reader who wants to reproduce them can find each one in the table at the end of the eleven-step brief.
 
-Two disciplines keep the transfer honest. **Direction of advance is established per item, never per repo** — a donor being "ahead" overall proves nothing about any single file or fix, and before importing a remedy, its defect must be shown to reproduce in the destination. **Anonymization runs at write time**, not as a cleanup pass, because this repository is public.
+The verification that matters most needs no command at all. Read one phase's closing entry, then read the change it delivered. Those two documents should agree, and if they do not, that is visible to anyone who looks.
 
-## 8. What this gives up
-
-Stated as the methodology states it about itself.
-
-- **Speed of a single throwaway iteration.** A one-line prompt beats a brief, a plan, and a phase. Use ad-hoc for one-off scripts; use this for what will exist next month.
-- **Unbounded autonomy.** Objectively accepted phases deliver themselves unattended, but the loop still parks at every designed manual, subjective, product, custody, destructive, or owner-only gate. Silence never becomes judgment. If the goal is code generation with no human judgment at all, this is the wrong tool.
-- **Flexibility within a session.** The orchestrator follows the plan. Wander before `kickoff` starts or between phases, not mid-orchestration.
-- **Overhead on small things.** Single-file scripts and throwaway prototypes are not worth the structure.
-
-One limit is internal rather than a trade: the orchestration runtime doctrine — sixteen fail-closed rules distilled from a production day in a derived repo where one orchestration halted nine times, each halt diagnosed and compiled into a standing rule — is **doctrine, not yet mechanics**. Self-resume budgets are mechanized; delta-merge tooling and instrument-qualification harnesses are not. Until they land, the `kickoff` prose loop and the human relay carry those rules. The brief says so in its own text rather than leaving a reader to discover it.
-
-## 9. Verifying the claims
-
-Every claim above is checkable from a clone. Counts are as of 2026-08-24, each reproducible by the command beside it.
-
-| Claim | Verification |
-|---|---|
-| The full gate is green and warning-free | `./bin/check all` — 12 lanes, 572 tests |
-| Policies bind and are cataloged | `ls policies/*.md` (28); `./bin/check-catalogs` |
-| Briefs are indexed and links resolve | `ls briefs/*.md` (9); `./bin/check-catalogs` |
-| The mechanistic half is real and tested | `find bin -maxdepth 1 -type f -perm -u+x` (20); `ls tests/test_*.py` (18) |
-| Mirrors never drift from canonical | `./bin/check-harness-parity` |
-| The ledger is valid and tallied | `./bin/lessons validate`; `./bin/lessons candidates` |
-| No external-repo identifiers leak | `./bin/check-anonymization.sh` |
-| Candidate identity is deterministic | `./bin/kickoff-tree-id` twice, unchanged tree |
-| Phase history is auditable | `LOG.md` START/END pairs; `git log` |
-
-The strongest verification is not a command: read one phase's END block, then read the commit it delivered. The methodology's whole proposition is that those two artifacts, together, tell the next reader what is true.
-
-## 10. Authority map
+## Where this comes from
 
 This brief derives from, and must stay consistent with:
 
-- [`BRIEF.md`](BRIEF.md) — what the template is, who it is for, the two operating modes, acceptance criteria.
-- [`methodology.md`](methodology.md) — the eleven steps, the four roles, the runtime doctrine, the run-lifecycle vocabulary.
-- [`harness-self-improvement.md`](harness-self-improvement.md) — the two-tier flywheel, its grounding, and what was declined.
-- [`incremental-orchestration.md`](incremental-orchestration.md) — the implemented evidence plane.
-- [`eacp-pattern-map.md`](eacp-pattern-map.md) — this repository mapped onto named patterns from the Encyclopedia of Agentic Coding Patterns, with the patterns deliberately declined and the antipatterns structurally guarded against.
-- `policies/` — every prescriptive claim above; the file is named inline where the claim is made.
+- [`BRIEF.md`](BRIEF.md), the entry-point brief: what the template is, who it is for, the two ways it gets used, and what counts as done.
+- [`methodology.md`](methodology.md), the eleven steps, the four roles, the runtime doctrine, and the vocabulary for how runs end.
+- [`harness-self-improvement.md`](harness-self-improvement.md), the two-tier improvement loop, its grounding in the literature, and what was deliberately declined.
+- [`incremental-orchestration.md`](incremental-orchestration.md), the evidence machinery as implemented.
+- [`eacp-pattern-map.md`](eacp-pattern-map.md), this repository mapped onto named patterns from the Encyclopedia of Agentic Coding Patterns, including the patterns it declines and the failure modes it guards against.
+- The `policies/` folder, which owns every prescriptive claim above.
 
-Corrections land here and in the owning source, then regenerate outward. A derivative rendering that disagrees with this brief is stale, not authoritative.
+Corrections land here and in the owning source, then regenerate outward. A rendered version that disagrees with this brief is out of date, not authoritative.
