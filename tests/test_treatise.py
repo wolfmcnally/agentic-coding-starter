@@ -81,28 +81,10 @@ def run(*arguments: str, root: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
-def git(root: Path, *arguments: str) -> None:
-    subprocess.run(
-        ["git", "-C", str(root), *arguments],
-        capture_output=True,
-        text=True,
-        timeout=60,
-        check=True,
-    )
-
-
 @pytest.fixture
 def briefs(tmp_path: Path) -> Path:
     (tmp_path / "briefs").mkdir()
     return tmp_path
-
-
-@pytest.fixture
-def committed_briefs(briefs: Path) -> Path:
-    git(briefs, "init", "--initial-branch", "master")
-    git(briefs, "config", "user.email", "test@example.invalid")
-    git(briefs, "config", "user.name", "Test")
-    return briefs
 
 
 def test_a_repository_with_no_treatise_passes(briefs: Path) -> None:
@@ -213,60 +195,6 @@ def test_a_sidecar_without_a_matching_brief_is_ignored(briefs: Path) -> None:
     write_treatise(briefs)
     (briefs / "briefs" / "unrelated-data.yaml").write_text("some: data\n")
     result = run("validate", root=briefs)
-    assert result.returncode == 0, result.stderr
-
-
-def test_appending_a_directive_passes(committed_briefs: Path) -> None:
-    write_treatise(committed_briefs, directives=2)
-    git(committed_briefs, "add", "briefs/example.md")
-    git(committed_briefs, "commit", "-m", "add treatise")
-    write_treatise(committed_briefs, directives=3)
-    result = run("validate", root=committed_briefs)
-    assert result.returncode == 0, result.stderr
-
-
-def test_editing_a_committed_directive_fails(committed_briefs: Path) -> None:
-    write_treatise(committed_briefs, directives=2)
-    git(committed_briefs, "add", "briefs/example.md")
-    git(committed_briefs, "commit", "-m", "add treatise")
-    path = committed_briefs / "briefs" / "example.md"
-    path.write_text(path.read_text().replace('"Ruling 1"', '"Ruling 1, revised"'))
-    result = run("validate", root=committed_briefs)
-    assert result.returncode == 1
-    assert "append-only" in result.stderr
-
-
-def test_deleting_a_committed_directive_fails(committed_briefs: Path) -> None:
-    write_treatise(committed_briefs, directives=3)
-    git(committed_briefs, "add", "briefs/example.md")
-    git(committed_briefs, "commit", "-m", "add treatise")
-    write_treatise(committed_briefs, directives=2)
-    result = run("validate", root=committed_briefs)
-    assert result.returncode == 1
-    assert "shrank" in result.stderr
-
-
-def test_reordering_committed_directives_fails(committed_briefs: Path) -> None:
-    write_treatise(committed_briefs, directives=2)
-    git(committed_briefs, "add", "briefs/example.md")
-    git(committed_briefs, "commit", "-m", "add treatise")
-    path = committed_briefs / "briefs" / "example.md"
-    text = path.read_text()
-    path.write_text(
-        text.replace('"Ruling 1"', "PLACEHOLDER")
-        .replace('"Ruling 2"', '"Ruling 1"')
-        .replace("PLACEHOLDER", '"Ruling 2"')
-    )
-    result = run("validate", root=committed_briefs)
-    assert result.returncode == 1
-    assert "append-only" in result.stderr
-
-
-def test_an_uncommitted_treatise_skips_the_append_only_check(
-    committed_briefs: Path,
-) -> None:
-    write_treatise(committed_briefs, directives=1)
-    result = run("validate", root=committed_briefs)
     assert result.returncode == 0, result.stderr
 
 

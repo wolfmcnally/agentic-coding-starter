@@ -11,13 +11,16 @@ operator's dated directives, published renderings, and every external fact with
 its retrieval date. Presence of the block is the marker; there is no separate
 flag that could contradict it, and no sidecar file that could drift from it.
 
+The checks below are about shape, not about history. `directives` is a
+provenance log whose past states live in the repository's own version history;
+nothing here forbids editing one, because no incident has yet shown that it
+needs forbidding.
+
 Checks:
 
   * every `treatise:` block carries the required keys, with the right shapes;
   * every directive, rendering, and external fact carries its required fields,
     with ISO dates;
-  * `directives` is append-only against the committed brief: the committed list
-    must be an unchanged prefix of the working list;
   * no orphaned `<brief>.yaml` sidecar remains beside a brief.
 
 Exit status is 0 when every treatise validates, 1 on any violation, and 2 when
@@ -28,7 +31,6 @@ from __future__ import annotations
 
 import argparse
 import re
-import subprocess
 import sys
 from datetime import date
 from pathlib import Path
@@ -175,63 +177,6 @@ def validate_block(block: Any) -> None:
         require_iso_date(fact["retrieved"], f"external_facts[{index}].retrieved")
 
 
-def committed_directives(root: Path, relative: str) -> list[Any] | None:
-    """Return HEAD's directive list, or None when the brief is not committed.
-
-    An unreadable git object, a brand-new brief, and a repository without a
-    HEAD all return None: there is nothing to compare against, which is not a
-    violation. A parse failure of committed content is reported as a violation,
-    because the committed record is what the append-only rule protects.
-    """
-    try:
-        completed = subprocess.run(
-            ["git", "-C", str(root), "show", f"HEAD:{relative}"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    except OSError:
-        return None
-    if completed.returncode != 0:
-        return None
-    lines = completed.stdout.splitlines()
-    if not lines or lines[0].strip() != "---":
-        return None
-    try:
-        end = lines.index("---", 1)
-    except ValueError:
-        return None
-    try:
-        document = yaml.safe_load("\n".join(lines[1:end]))
-    except yaml.YAMLError as exc:
-        raise TreatiseError(f"committed frontmatter does not parse: {exc}") from exc
-    if not isinstance(document, dict):
-        return None
-    block = document.get(MARKER_KEY)
-    if not isinstance(block, dict):
-        return None
-    directives = block.get("directives")
-    if not isinstance(directives, list):
-        return None
-    return directives
-
-
-def validate_append_only(root: Path, relative: str, directives: list[Any]) -> None:
-    previous = committed_directives(root, relative)
-    if previous is None:
-        return
-    if len(previous) > len(directives):
-        raise TreatiseError(
-            f"directives shrank from {len(previous)} to {len(directives)}: the list is append-only"
-        )
-    for index, committed in enumerate(previous):
-        if committed != directives[index]:
-            raise TreatiseError(
-                f"directives[{index}] was edited since the last commit: "
-                "the list is append-only, so a reversal is a new dated entry"
-            )
-
-
 def orphaned_sidecars(root: Path) -> list[str]:
     """Sidecar YAML files are the retired shape; the record lives in frontmatter."""
     briefs = root / BRIEFS_DIRECTORY
@@ -268,7 +213,6 @@ def validate(root: Path) -> int:
         treatises.append(relative)
         try:
             validate_block(document[MARKER_KEY])
-            validate_append_only(root, relative, document[MARKER_KEY]["directives"])
         except TreatiseError as exc:
             failures.append(f"{relative}: {exc}")
 

@@ -85,10 +85,11 @@ Keys under `treatise:`:
   skills standing over the piece, and the constraints in force.
 - `coverage` — `includes` and `excludes`: what belongs in the piece and what
   stays out.
-- `directives` — **append-only.** One dated entry per editorial ruling the
+- `directives` — the provenance log. One dated entry per editorial ruling the
   operator gives, quoting their words where possible, with a one-line `effect`
-  naming what changed. Never edit or delete a past entry; a reversal is a new
-  entry that names the one it supersedes.
+  naming what changed. Record a reversal as a new entry naming the one it
+  supersedes; removing a past entry is a deliberate act rather than a tidy-up,
+  and version history holds every earlier state of the log either way.
 - `renderings` — each published format, where it lives, and when.
 - `external_facts` — every claim not sourced from this repository, with its
   source and retrieval date, so a later pass can re-check rather than re-trust.
@@ -99,8 +100,7 @@ Record a ruling the moment it is given, in the pass that acts on it. A directive
 reconstructed later from memory is the failure this record exists to prevent.
 
 Run `./bin/treatise validate` before delivery. It enforces the schema, the
-required fields, the ISO dates, and the append-only rule against the committed
-brief, and it runs again inside `./bin/check all`.
+required fields, and the ISO dates, and it runs again inside `./bin/check all`.
 
 ## 8. Deliver the repository artifact
 

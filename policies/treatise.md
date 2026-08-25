@@ -27,17 +27,21 @@ apart from the brief it describes. The record travels with the document by
 construction.
 
 Read the block before drafting and update it in the same pass that changes the
-treatise. Its `directives` list is **append-only**: a reversal is a new dated
-entry naming the one it supersedes, never an edit. A revision that contradicts a
-recorded ruling surfaces the conflict to the operator rather than resolving it
-silently. A treatise revised without reading its record re-derives audience and
-register from whatever draft is in front of it, which is how a piece drifts from
-what was asked for.
+treatise. A revision that contradicts a recorded ruling surfaces the conflict to
+the operator rather than resolving it silently. A treatise revised without
+reading its record re-derives audience and register from whatever draft is in
+front of it, which is how a piece drifts from what was asked for.
 
-`bin/treatise validate` enforces the schema, the required fields, the ISO dates,
-and the append-only rule against the committed brief; it runs in `./bin/check
-all`. A leftover `briefs/<name>.yaml` beside its brief fails the check, because
-the record has one home.
+The block separates two things deliberately. `audience`, `register`, and
+`coverage` are **current state**, edited freely to say what is true now.
+`directives` is a **provenance log** explaining how that state was arrived at:
+one dated entry per ruling, quoting the operator where possible. Removing a past
+entry is a deliberate act, not a tidy-up, and the repository's own version
+history holds every earlier state of the log.
+
+`bin/treatise validate` enforces the schema, the required fields, and ISO dates;
+it runs in `./bin/check all`. A leftover `briefs/<name>.yaml` beside its brief
+fails the check, because the record has one home.
 
 ## Explain decisions, not files
 

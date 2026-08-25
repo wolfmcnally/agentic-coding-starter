@@ -112,6 +112,14 @@ treatise:
         Editorial record folded into this frontmatter; the separate
         methodology-treatise.yaml deleted. Presence of the `treatise` block is
         now the marker, so no separate flag can contradict it.
+    - date: 2026-08-25
+      ruling: >-
+        "Is append-only really necessary for treatises?" then "yes, drop it".
+      effect: >-
+        Append-only enforcement removed from `bin/treatise` and every rule
+        surface; `directives` is now a provenance log whose earlier states live
+        in version history. The guard had no motivating incident, which the
+        repository's own growth rule forbids; filed as lessons/swinging-hoatzin.
 
   renderings:
     - format: artifact
