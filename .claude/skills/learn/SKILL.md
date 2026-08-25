@@ -10,7 +10,7 @@ description: >-
   /learn <donor-dir> [<desc>] in Claude Code or $learn <donor-dir> [<desc>]
   in Codex.
 argument-hint: "<donor-dir> [<desc>]"
-last-reviewed: 2026-08-23
+last-reviewed: 2026-08-25
 ---
 
 # Learn — Absorb patterns from another repo into this repo
@@ -55,7 +55,7 @@ Stages 1, 2, and 3 are read-only against both repos; Stage 4 surfaces the plan t
 
 - **If the current harness exposes an `EnterPlanMode`-like tool** (Claude Code does today; Codex does not yet — see [openai/codex#11180](https://github.com/openai/codex/issues/11180)), **call it now** before starting Stage 1. The harness then enforces no-write through Stages 1–3; the bespoke "do not write to disk" rule below becomes belt-and-braces.
 - **If the harness does not expose programmatic plan-mode entry**, proceed without calling anything — the bespoke read-only discipline through Stages 1–3 carries the contract. The user may have entered plan mode interactively (Codex CLI's `/plan`; the Codex desktop app's plan mode); that's fine and orthogonal to this skill.
-- **At Stage 4**, if you entered plan mode in Stage 1 (or detected the user did so interactively and the harness exposes `ExitPlanMode`), call `ExitPlanMode` with the Stage 3 plan body — that becomes the plan content the harness surfaces for approval. The user's accept / revise / reject from the plan-mode UI is the Stage 4 approval signal. If `ExitPlanMode` is not available, fall back to the free-text approval described in Stage 4.
+- **At Stage 4**, if you entered plan mode in Stage 1 (or detected the user did so interactively and the harness exposes `ExitPlanMode`), place the Stage 3 plan body where the harness's plan-mode contract specifies — Claude Code names a plan file to write; other harnesses may differ — and then call `ExitPlanMode`. That plan body is the content the harness surfaces for approval. The user's accept / revise / reject from the plan-mode UI is the Stage 4 approval signal. If `ExitPlanMode` is not available, fall back to the free-text approval described in Stage 4.
 - **Stage 5 (Apply) always runs outside plan mode.** Either the harness has handed control back after `ExitPlanMode`, or no plan mode was entered. Either way, edits to this repo are permitted only after the user has approved.
 
 The skill's bespoke Stage 3 plan template stays the canonical plan body in both paths. Plan mode is a harness affordance layered on top, not a replacement for the structured plan.
@@ -264,7 +264,7 @@ Do not write a single byte to disk in this repo until the user clearly approves.
 
 **Two paths, by harness capability** (per the Plan-mode lifecycle section above):
 
-- **Plan-mode path.** If you entered plan mode at Stage 1 (or the user did interactively), call `ExitPlanMode` with the Stage 3 plan body. The harness presents accept / revise / reject affordances; the user's choice is the approval signal. A plain accept maps to "approved (all items)"; revise routes back to Stage 3 with the user's constraints; reject means write nothing and no LOG entry.
+- **Plan-mode path.** If you entered plan mode at Stage 1 (or the user did interactively), place the Stage 3 plan body where the harness's plan-mode contract specifies (Claude Code names a plan file to write), then call `ExitPlanMode`. The harness presents accept / revise / reject affordances; the user's choice is the approval signal. A plain accept maps to "approved (all items)"; revise routes back to Stage 3 with the user's constraints; reject means write nothing and no LOG entry.
 - **Free-text path** (when plan mode is unavailable in the current harness). Wait for a clear approval signal in chat: "approved", "go ahead", "apply it", "yes", or specific opt-in like "apply items 1, 3, and 5 only." Revisions return to Stage 3; rejections mean write nothing and no LOG entry.
 
 If the user partially approves (a subset of items, whether via plan-mode revise-with-constraints or free-text opt-in), the apply step honors the subset exactly. Track which items were dropped for the LOG entry.
