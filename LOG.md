@@ -652,3 +652,61 @@ conditioning clause — "…and every named manual or subjective criterion is cl
 into six surfaces before the contradiction with the ratified looser variant was
 caught by read-back. No gate can see a mismatch between prose and a decision made
 in conversation, so the lesson is filed against the transfer skills themselves.
+
+## 2026-08-25 09:02 MDT — SWEEP (lessons)
+
+First lessons-focused maintenance pass over the ledger. 45 open candidates read,
+each occurrence row checked against its own body. Mechanical checks green
+throughout (`check-catalogs`, `lessons validate`); `lessons candidates` listed one
+entry, and the pass found two more the ledger's own bookkeeping was hiding.
+
+**Two graduations.** `macho-collie` absorbed `fractal-beetle` — the two prescribe
+the same fix for opposite halves of one move (adding a required contract member;
+relaxing an enforcement for one mode), and fractal-beetle's own body said so — and
+graduated at four occurrences into `policies/verification-discipline.md`
+§ "Sweep every embodiment of a changed contract". The surface was widened from its
+recorded `proposed_surface: skill`, which predated two sightings that involved no
+cross-repo transfer at all. The graduated rule keeps the asymmetry between the two
+directions: an addition fails loudly at the gate, while a relaxation implemented at
+N−1 of N enforcement sites reads as implemented everywhere, because only the
+demoted mode's rare path ever reaches the unguarded one.
+
+`banana-macaw` absorbed `wisteria-termite`, reached three, and graduated into
+`policies/role-timeouts.md` § "The harness ceiling bounds every budget". That
+policy's own shipped-budget table declares 1,800 s, 7,200 s, and 2,700 s hard
+deadlines, none of which a foreground command call can reach: the orchestrating
+harness caps below all three and silently clamps a larger request rather than
+refusing it. The rule now states the ceiling, the four-part silent-death signature
+(exit 143, a zero-byte artifact, a stopped stream, no dispatch row) with its
+empty-mid-run discriminator, the tracked-background dispatch requirement, and
+wisteria-termite's contribution as its own step — diagnose at the caller before
+the venue, because the caller is the thing doing the looking.
+
+**One under-count corrected.** `russet-mole` was recorded as seen twice while its
+body enumerated the instances individually and stated that nine occurred in one
+phase. The rows now match the body, at eight — one more than first estimated,
+because the "truncated field read as whole" member names two distinct cuts. This is
+the batched filing `policies/lessons.md` forbids, and it had kept the entry
+invisible to `bin/lessons candidates` since the day it was filed. Graduation was
+considered and **held**: the only rule broad enough to cover the family risks being
+too abstract to fire, and several of its members are already graduated here as
+narrower rules. The hold is recorded in the entry so a later sweep does not reopen
+a settled question.
+
+**Three rows examined and left as written.** `gigantic-puma` (its "five instances"
+belong to a family the donor had already graduated, cited as background),
+`rugged-gharial` (one run, one diagnosis, one moment of noticing — the closest call
+in the ledger, and splitting it would reach the threshold), and `blazing-cicada`
+(an ordering corollary from the same incident, not a second sighting). Reasoning
+recorded so it is not re-derived.
+
+**One new candidate.** `lean-meerkat` — the `sweep` skill's plan template ends with
+a `Proposed LOG.md entry` section while `policies/log-discipline.md` assigns
+`LOG.md` to `kickoff`. The first sweep resolved this silently by writing nothing;
+this one writes an entry on the precedent of the existing `LEARN` and
+`TAUGHT FROM TEMPLATE` entries. Two sweeps, two answers, neither recorded until
+now. One occurrence, nothing proposed.
+
+**Nothing retired.** No policy was found contradicted, orphaned, or dead, and no
+lesson had a remedy already codified in the repo. The remaining 39 open candidates
+are schema-clean and below the threshold.

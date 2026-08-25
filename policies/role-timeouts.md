@@ -15,7 +15,7 @@ The human-editable `role_timeouts` section of [`kickoff.yaml`](../kickoff.yaml) 
 
 Every role must produce its first structured event within **120 seconds**. The turn column is deliberately named `claude_max_turns` in configuration: Claude exposes that CLI circuit breaker, while Codex and native subagents do not expose an equivalent per-invocation flag. Their enforceable guards are the three clocks. Authentication preflight has its own 120-second deadline in [`role-models.md`](role-models.md). The 10-cycle convergence backstop remains separate: it limits revision rounds, while this policy limits one round.
 
-These are hang guards, not performance targets or promises. Planning and review get enough room for repository inspection and reasoning; implementation gets a materially larger envelope; critique sits between them. There is deliberately no whole-phase timeout because phase scope and build gates vary too widely.
+These are hang guards, not performance targets or promises. Planning and review get enough room for repository inspection and reasoning; implementation gets a materially larger envelope; critique sits between them. There is deliberately no whole-phase timeout because phase scope and build gates vary too widely. None of these numbers is reachable through a foreground command call — see [The harness ceiling bounds every budget](#the-harness-ceiling-bounds-every-budget) below.
 
 ## Enforcement
 
@@ -43,6 +43,46 @@ The role-shape and candidate-bound evidence gates in
 Native roles use the same role-specific hard and idle budgets through the orchestrating harness's sub-agent wait/status mechanism. If the harness cannot expose structured progress or an idle watchdog, enforce the hard deadline and report that idle telemetry was unavailable; do not invent activity. The orchestrator remains responsive and gives the user a progress update at least every 60 seconds while it waits.
 
 One max-turn rescue is allowed only for a review role that completed investigation but failed to emit its verdict. Resume the existing session with the concise “conclude now” instruction. Do not automatically rerun a timed-out role from scratch: a timeout falls through the existing stage fallback state machine and is surfaced with a 🚨.
+
+### The harness ceiling bounds every budget
+
+The orchestrating harness's **foreground** command tool caps execution well below
+every hard deadline in the table above, and a requested timeout above that cap is
+**accepted and silently reduced**, never refused. Nothing in the call, the result,
+or the transcript says "clamped." A foreground `bin/kickoff-config watch`
+therefore cannot complete for any role.
+
+**Dispatch every role through the harness's own tracked background mechanism.**
+Not a foreground call, which the ceiling kills mid-work; and not detached
+`nohup`, which dodges the ceiling but forfeits the completion signal and leaves
+the orchestrator polling blind.
+
+**The silent-death signature** — all four together, none of which says "timeout":
+
+- exit 143 (SIGTERM to the watcher; the process group takes the child too);
+- an artifact present, zero bytes, well-formed path;
+- stdout that simply stops mid-stream;
+- no row in the role-timings ledger, and no dispatch row recorded at all.
+
+The discriminator that matters: an empty artifact **mid-run is normal**, because
+the child writes its final message at the end. Empty is a death signal only
+together with a stopped stream and exit 143.
+
+**Diagnose at the caller before the venue.** The observable symptom is the *child*
+dying beside a healthy-looking parent, and every instinct sends the investigation
+to the delegated venue — is the model wedged, is the CLI broken, is the sandbox
+denying something. Before blaming a venue, check what actually bounded the child:
+the tool's own limits, the harness ceiling, the parent's timeout, the process
+group. The caller is the last place anyone looks, because the caller is the thing
+doing the looking.
+
+**Standing mitigation.** After *any* interrupted role dispatch, verify the dispatch
+row exists and close orphaned spans **unconditionally**. The append-then-amend
+opened/terminal dispatch lifecycle in `bin/kickoff-evidence`
+([`orchestration-evidence.md`](orchestration-evidence.md)) is the durable repair —
+a row written only at the end loses every death before that point — but a swept
+trace and an unswept one look identical afterward, so the sweep can never be
+conditional on having noticed.
 
 ## Authoritative and local telemetry
 

@@ -1,10 +1,11 @@
 ---
 slug: wisteria-termite
 title: A timeout above a tool's documented maximum is silently clamped, and the corpse points at the child
-status: candidate
+status: superseded
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-17
+closed: 2026-08-25
 source: learn
 occurrences:
   - date: 2026-08-13
@@ -34,3 +35,16 @@ the parent's timeout, the process group. Prefer launching long-running
 delegated work as harness-tracked background work, which persists across turns
 and re-invokes the session on completion, rather than inside a foreground call
 whose ceiling is lower than the work.
+
+## Disposition
+
+Superseded 2026-08-25 by [`banana-macaw`](banana-macaw.md), which graduated the
+same day into [`policies/role-timeouts.md`](../policies/role-timeouts.md)
+§ "The harness ceiling bounds every budget". This entry's occurrence was carried
+onto that one.
+
+Same mechanism, same remedy: the two entries recorded one failure from two angles.
+banana-macaw held the four-part signature you recognize the death by; this entry
+held what it costs to miss it, and its distinct contribution — check what bounded
+the child before blaming where it ran — is stated in the graduated rule as its own
+paragraph rather than folded into the signature checklist.
