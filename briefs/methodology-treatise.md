@@ -4,7 +4,7 @@ date: 2026-08-25
 status: implemented
 scope: Canonical primer on this repository for a general audience, from working engineers to readers who have never written code. Explains what the repository is for and how its parts work. Source of truth for every derivative rendering.
 
-# Editorial record, managed by the `treatise` skill under policies/treatise.md.
+# Editorial record, managed by the `treatise` skill.
 # The presence of this block is what marks the brief as a treatise.
 # `directives` is append-only: a reversal is a new dated entry, never an edit.
 treatise:
@@ -134,6 +134,17 @@ treatise:
         file-by-file walk": a reader who wants to use the repository needs to
         know its surfaces and its verbs, which is orientation rather than a
         tour.
+    - date: 2026-08-25
+      ruling: >-
+        "I don't say that briefs/ represent things that have been decided...
+        It is policies/ that actually documents what was decided. And remember:
+        policies can refer to briefs as supporting material, but briefs never
+        refer to policies."
+      effect: >-
+        Corrected the map: briefs hold thinking (intent as of a date, research,
+        unpinned options), policies hold decisions. Added the one-way direction
+        rule, and removed this brief's own references to policy files, which
+        violated it.
 
   renderings:
     - format: artifact
@@ -164,7 +175,7 @@ treatise:
   open_questions:
     - >-
       Whether the artifact should ever be shared beyond the operator's own
-      account. Separate publication decision under policies/treatise.md.
+      account. That is a separate publication decision.
 ---
 
 # The Project Remembers
@@ -175,7 +186,7 @@ treatise:
 
 He is the author and maintainer of this repository.
 
-*Companion to [`BRIEF.md`](BRIEF.md), which describes the template's surface, and [`methodology.md`](methodology.md), which states the eleven steps. This brief is the canonical explanation; rendered formats derive from it, and corrections land here first, per [`../policies/treatise.md`](../policies/treatise.md).*
+*Companion to [`BRIEF.md`](BRIEF.md), which describes the template's surface, and [`methodology.md`](methodology.md), which states the eleven steps. This brief is the canonical explanation; rendered formats derive from it, and corrections land here first.*
 
 ---
 
@@ -224,10 +235,12 @@ The effect: a new session reads the ledger and the last entry, then picks up. No
 Laid out, those surfaces are the shape of the repository:
 
 ```
-briefs/        What is being built, how, and what was decided. Durable
-               reasoning that outlives the session that produced it.
-policies/      The rules every phase honors. Short, prescriptive, and
-               non-negotiable; a violation blocks acceptance.
+briefs/        Thinking. What was intended as of some date, research on
+               whatever the work required, positions taken and options
+               weighed. Much of it is never pinned down.
+policies/      Decisions. The rules every phase honors: short,
+               prescriptive, non-negotiable, and a violation blocks
+               acceptance. What the project actually settled on.
 plan/          The work, broken into phases and ordered. INDEX.md is the
                single place a phase's status lives.
 LOG.md         What actually happened, appended per phase and never edited.
@@ -244,10 +257,17 @@ project/       The deliverable itself, isolated so it can be lifted out.
 .codex/        Thin pointers to those same files for a second agent host.
 ```
 
-Two of those deserve a note. `policies/` and `briefs/` look similar and do
-opposite jobs: a brief explains and persuades, a policy binds. And `plan/` beats
-both when they disagree, because the plan is what was actually decided for the
-work at hand.
+The first two look similar and do different jobs, and the difference is worth
+getting right. A brief is **thinking**: what was intended at a moment, research
+into a question the work raised, an option weighed and maybe never chosen. A lot
+of it never becomes anything. A policy is a **decision**: this is how we do it,
+and work that violates it does not pass.
+
+That difference sets a direction, and the direction only runs one way. A policy
+may cite the brief whose reasoning produced it, because a decision should be
+able to show its work. A brief never cites a policy. If it did, the thinking
+would depend on the rule that was derived from the thinking, and neither one
+could be read on its own afterward.
 
 ## Nothing is accepted on its author's word
 
@@ -360,6 +380,8 @@ This brief derives from, and must stay consistent with:
 - [`harness-self-improvement.md`](harness-self-improvement.md), the two-tier improvement loop, its grounding, and what was deliberately declined.
 - [`incremental-orchestration.md`](incremental-orchestration.md), the evidence machinery as implemented.
 - [`eacp-pattern-map.md`](eacp-pattern-map.md), this repository mapped onto named patterns from the Encyclopedia of Agentic Coding Patterns, including the patterns it declines and the failure modes it guards against.
-- The `policies/` folder, which owns every prescriptive claim above.
+- Every prescriptive claim above is owned by a rule the project has already
+  settled. This brief describes those rules rather than restating them, and the
+  rule is the authority wherever the two differ.
 
 Corrections land here and in the owning source, then regenerate outward. A rendered version that disagrees with this brief is out of date, not authoritative.

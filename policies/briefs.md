@@ -4,7 +4,7 @@ This file defines what `briefs/` is in this project, who writes there, and how b
 
 ## What briefs are
 
-`briefs/` is a **read-write working library** of internal documents — research, methodology, audits, decision records, source-material snapshots, and pinned positions — produced and consulted as the project evolves.
+`briefs/` is a **read-write working library** of internal documents — research, methodology, audits, source-material snapshots, positions taken, options weighed — produced and consulted as the project evolves. It holds *thinking*, not settled decisions: what a brief works out may or may not become a rule, and the rules themselves live in `policies/` ([`briefs-and-policies.md`](briefs-and-policies.md)). Much of a brief is never pinned down, which is normal rather than a defect.
 
 A brief captures *durable* analysis or reasoning that future work will refer back to. A brief is the answer to questions like:
 - "What's the canonical way to do X, and where did we get that?"
