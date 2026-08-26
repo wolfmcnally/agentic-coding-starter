@@ -66,7 +66,7 @@ Which model runs each `kickoff` role is set under `role_models` in human-editabl
 
 ## Project-specific skills
 
-In addition to the universal `kickoff`, `methodology`, `learn`, `teach`, `roles`, `sweep`, `sweep-planning`, `demo`, `treatise`, and `plain` skills (carried into every derived project):
+In addition to the universal `kickoff`, `methodology`, `learn`, `teach`, `roles`, `sweep`, `sweep-planning`, `sweep-coding`, `demo`, `treatise`, and `plain` skills (carried into every derived project):
 
 - **`stamp`** — starter-template-only bootstrapping skill. Stamps out a new project from this repo. Registered for Codex in this template repo only; not carried into derived projects. Source: `.claude/skills/stamp/SKILL.md`; Codex native skill: `.agents/skills/stamp`.
 
@@ -138,8 +138,9 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
   `new-name` ledger-slug generator; deterministic dashboard, harness-parity,
   caller-policy, shell-syntax, and catalog (`check-catalogs`) checkers; the
   `check-plan-concreteness` mechanical pre-review `kickoff` runs over every
-  plan artifact before it reaches the reviewer; the `review-verdicts` trace
-  harvester behind `sweep-planning`; and
+  plan artifact before it reaches the reviewer and the `check-plan-delivery`
+  post-implementation check it runs before the critic; the `review-verdicts`
+  trace harvester behind `sweep-planning` and `sweep-coding`; and
   the starter-only `check-anonymization.sh` leak guard.
 - `lib/agentic_starter/` — shared deterministic implementation for exact execution telemetry, evidence schemas, and offline dashboard generation.
 - `reports/execution/` — committed, privacy-safe, offline phase reports and aggregate index generated from sanitized telemetry handoffs.
@@ -157,6 +158,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
   - `roles/SKILL.md` — edits separate model/effort fields for any canonical role (thin wrapper over `bin/kickoff-config`); governed by [`policies/role-models.md`](policies/role-models.md).
   - `sweep/SKILL.md` — recurring, user-gated maintenance pass over the rule surfaces: stale or contradictory policies, skills past review cadence, brief status transitions, aging ledger candidates, catalog drift. Judgment calls are settled with the user in conversation before the plan is composed. In a template repo it additionally audits the methodology corpus itself.
   - `sweep-planning/SKILL.md` — longitudinal, user-gated sweep of the plan-review (and optionally code-review) verdicts harvested from every harness trace on the machine: categorizes why plans were sent back, attributes each category to a correctable planner defect or a reviewer false positive, and proposes persona, script, and policy changes as one plan the user ratifies. In a template repo the changes land here and propagate via `teach`; in a derived project they file as `scope: methodology` lessons for `learn`.
+  - `sweep-coding/SKILL.md` — the sibling sweep over the coder ↔ critic loop: harvests code-review verdicts and the coder's own failure analyses, categorizes why implementations were sent back, attributes each category to a coder defect, a critic habit, or a structural gap, and proposes corrections as one ratified plan. Follows the lifecycle `sweep-planning` defines; both enter plan mode first and present analysis and plan together, with a plain-register head.
   - `demo/SKILL.md` — walks the user through an approved demo protocol one visible action at a time, answering questions without advancing.
   - `treatise/SKILL.md` — builds an audience-specific outward explanation from canonical authority, maintains the brief's editorial record, and enforces the publication gate.
   - `plain/SKILL.md` — the register for addressing the operator: lead with the consequence, carry every detail that would change their answer, leave the mechanism available on request. Followed without invocation whenever the audience is the operator.
@@ -301,6 +303,7 @@ Terms used consistently across briefs, skills, policies, and code. Mismatched us
 - **`teach`.** Universal cross-repo skill. Invoke it as `/teach` in Claude Code or `$teach` in Codex. Inverse of `learn`. Proposes which of the current repo's patterns to apply to a target repo. Plan-first; user approves; then applies to the target. The current repo stays read-only during teaching.
 - **`sweep`.** Universal maintenance skill. Invoke it as `/sweep` in Claude Code or `$sweep` in Codex. Audits the accumulated rule surfaces — policies, briefs, skills, the lessons ledger, catalogs — for staleness, contradiction, and drift, settles every judgment call with the user before composing the plan, and proposes retirements and graduations as one complete plan the user ratifies. The pruning half of the improvement flywheel; governed by `policies/lessons.md` and `briefs/harness-self-improvement.md`.
 - **`sweep-planning`.** Universal review-loop calibration skill. Invoke it as `/sweep-planning` in Claude Code or `$sweep-planning` in Codex. Harvests every genuine plan-review verdict from the machine's Claude Code and Codex traces (`bin/review-verdicts`), categorizes the rejection reasons longitudinally, attributes each to a planner defect or a reviewer false positive, and proposes the persona, script, and policy corrections as one user-ratified plan. Template mode lands corrections in the template; derived-project mode files them as `scope: methodology` lessons.
+- **`sweep-coding`.** Universal review-loop calibration skill for the coder ↔ critic loop. Invoke it as `/sweep-coding` in Claude Code or `$sweep-coding` in Codex. Same lifecycle as `sweep-planning` (plan mode first; analysis and plan presented together; plain-register head), harvesting `CODE-F` verdicts and coder failure analyses with `bin/review-verdicts --coder-evidence`.
 - **`demo`.** Universal interactive-evaluation skill. Invoke it as `/demo` in Claude Code or `$demo` in Codex. Runs an already approved `User Demo:` protocol one visible action per turn and preserves the resume point without repairing the product mid-demo.
 - **`treatise`.** Universal outward-explanation skill. Invoke it as `/treatise` in Claude Code or `$treatise` in Codex. Repairs the canonical brief first, renders for a named audience, and requires explicit authority plus a governing disclosure policy before external publication.
 - **`plain`.** Universal operator-register skill. Invoke it as `/plain` in Claude Code or `$plain` in Codex to recompose a message that missed the register; agents follow it unprompted for anything addressed to the operator. Two tests govern it: a detail belongs only if changing it would change the operator's answer, and every sentence must parse without the repo, the session, or the transcript open.

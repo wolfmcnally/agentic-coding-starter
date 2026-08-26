@@ -82,19 +82,19 @@ def corpus(tmp_path: Path) -> tuple[Path, Path]:
     session.write_text(
         "\n".join(
             [
-                claude_record("/Users/x/proj-a", first),
-                claude_record("/Users/x/proj-a", TEMPLATE_ECHO),
-                claude_record("/Users/x/proj-a", re_aimed, "2026-08-21T10:00:00Z"),
-                claude_record("/Users/x/proj-a", approved, "2026-08-21T11:00:00Z"),
-                claude_record("/Users/x/proj-b", code),
+                claude_record("/srv/x/proj-a", first),
+                claude_record("/srv/x/proj-a", TEMPLATE_ECHO),
+                claude_record("/srv/x/proj-a", re_aimed, "2026-08-21T10:00:00Z"),
+                claude_record("/srv/x/proj-a", approved, "2026-08-21T11:00:00Z"),
+                claude_record("/srv/x/proj-b", code),
                 # The same cross-harness review echoed in the dispatching session.
-                claude_record("/Users/x/proj-a", "Result:\n" + first),
+                claude_record("/srv/x/proj-a", "Result:\n" + first),
             ]
         )
         + "\n"
     )
     (codex_root / "rollout.jsonl").write_text(
-        "\n".join(codex_records("/Users/x/proj-a", first)) + "\n"
+        "\n".join(codex_records("/srv/x/proj-a", first)) + "\n"
     )
     return claude_root, tmp_path / "codex" / "sessions"
 
@@ -144,7 +144,7 @@ def test_kind_filter_and_re_aimed_ids(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     assert "REVIEW VERDICTS 3 genuine (4 across all kinds; 0 carry" in result.stdout
     assert "proj-b" not in result.stdout.split("By week")[0]
-    assert "Re-aimed ids (distinct evidence while actionable): 1" in result.stdout
+    assert "within one session): 1" in result.stdout
     assert re.search(r"PLAN-F001 +2 objections", result.stdout)
     assert "2026-08-w3  APPROVED 1   REVISE 2   approve-rate 33%" in result.stdout
 
@@ -155,6 +155,65 @@ def test_project_filter(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     assert "REVIEW VERDICTS 1 genuine" in result.stdout
     assert "proj-a" not in result.stdout
+
+
+def test_running_session_and_explicit_exclusions_are_skipped(tmp_path: Path, monkeypatch) -> None:
+    claude_root, codex_root = corpus(tmp_path)
+    # A second Claude session that is "this" session: its transcript must not count.
+    own = claude_root / "-Users-x-proj-a" / "11111111-2222-3333-4444-555555555555.jsonl"
+    own.write_text(
+        claude_record("/srv/x/proj-a", verdict_text([finding("PLAN-F009", "own noise")])) + "\n"
+    )
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "11111111-2222-3333-4444-555555555555")
+    result = run(claude_root, codex_root, "--kind", "all", "--exclude-session", "rollout")
+    assert result.returncode == 0, result.stderr
+    assert "REVIEW VERDICTS 4 genuine" in result.stdout
+    assert "Excluded sessions: 11111111-2222-3333-4444-555555555555, rollout" in result.stdout
+    assert "PLAN-F009" not in result.stdout
+
+
+def test_re_aims_are_keyed_by_session_not_project(tmp_path: Path) -> None:
+    claude_root, codex_root = corpus(tmp_path)
+    # Another phase in the same project reuses CODE-F001 with different evidence:
+    # a fresh id namespace, not a re-aim.
+    other = claude_root / "-Users-x-proj-b" / "s2.jsonl"
+    other.parent.mkdir()
+    other.write_text(
+        claude_record("/srv/x/proj-b", verdict_text([finding("CODE-F001", "A different phase")]))
+        + "\n"
+    )
+    result = run(claude_root, codex_root, "--kind", "code")
+    assert result.returncode == 0, result.stderr
+    assert "within one session): 0" in result.stdout
+
+
+def test_coder_evidence_is_harvested_from_both_surfaces(tmp_path: Path) -> None:
+    claude_root, codex_root = corpus(tmp_path)
+    report = (
+        "## Phase Implementation Complete\n\n### Change Evidence\n```json\n"
+        + json.dumps(
+            {
+                "risk_tags": [],
+                "failure_analysis": "The previous attempt scored a stand-in for the property.",
+            }
+        )
+        + "\n```\n\n### Failure Analysis (revision rounds only)\n"
+        "- The prior selection followed the implementation's shape rather than the plan's "
+        "matrix.\n\n"
+        "### Notes\n- none\n"
+    )
+    session = claude_root / "-Users-x-proj-a" / "coder.jsonl"
+    session.write_text(claude_record("/srv/x/proj-a", report) + "\n")
+    output = tmp_path / "out.json"
+    result = run(
+        claude_root, codex_root, "--kind", "code", "--coder-evidence", "--json", str(output)
+    )
+    assert result.returncode == 0, result.stderr
+    assert "Coder failure-analysis statements: 2" in result.stdout
+    payload = json.loads(output.read_text())
+    surfaces = sorted(item["surface"] for item in payload["coder_evidence"])
+    assert surfaces == ["change-evidence", "report"]
+    assert all(item["project"] == "proj-a" for item in payload["coder_evidence"])
 
 
 def test_missing_roots_are_a_usage_error(tmp_path: Path) -> None:

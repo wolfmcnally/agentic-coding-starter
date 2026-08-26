@@ -9,6 +9,17 @@ calling them findings, naming blind spots, rejecting blacklist-as-proof, and
 testing sign-inverting proxies—is governed by
 [`verification-discipline.md`](verification-discipline.md).
 
+## A test carries its falsifier
+
+Every new or materially changed test names the one-line mutation of the code
+under test that would turn it red — the coder records the pair in Change
+Evidence (`falsifiers`), the critic judges whether the mutation really reds
+the test. A test with no nameable falsifier is scoring a stand-in for the
+property: the implementation's own output, a constant lifted from the code, a
+count preserved by any write. It is rewritten or deleted, never shipped as
+coverage. (A month of code reviews across three derived projects put this
+shape first among all findings.)
+
 ## What counts as an acceptance criterion
 
 A criterion is acceptable when it is:

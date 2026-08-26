@@ -1,0 +1,212 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Refuse an implementation that delivered a subset of the approved plan.
+
+Mechanistic post-implementation check, run by `kickoff` after
+`capture-change` and before the code critic is dispatched. A month of
+code-review rejections showed that about one finding in seven was the critic
+discovering an item the approved plan named and the coder never wrote — a
+test node, a fixture, a function, a file. None of those needs a critic; a
+script can read the plan's own inventory against the tree.
+
+For the approved plan artifact it checks that:
+
+- every `### New Files` path exists in the tree;
+- every identifier the plan declared **introduced** in its
+  `## Definitions Read` table occurs somewhere in the tree;
+- every backticked `test_*` node and every `path::member` cited under the
+  plan's Testing Strategy or Build Gate Sequence exists.
+
+An item that is missing but named as a deviation in the coder's report
+(`--deviations <report>`, matched by literal mention under a `### Notes` or
+`### Files to Delete` heading) is reported as `DEVIATION`, not `ERROR`, so a
+declared narrowing is visible to the critic without failing the check.
+
+Exit 0 prints `PLAN DELIVERY PASS`; exit 1 prints one
+`ERROR\\t<check>\\t<line>\\t<message>` row per missing item (plus any
+`DEVIATION` rows); exit 2 is a usage or I/O error.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT / "lib"))
+
+from agentic_starter.plan_artifact import (  # noqa: E402
+    CODE_SPAN_PATTERN,
+    NEW_MARKERS,
+    NODE_ID_PATTERN,
+    Plan,
+    Tree,
+    looks_like_path,
+    parse_plan,
+    path_of,
+)
+
+TEST_NODE_PATTERN = re.compile(r"^test_\w+$")
+TEST_SECTIONS = ("testing strategy", "build gate sequence", "acceptance")
+DEVIATION_HEADINGS = re.compile(r"^###\s+(Notes|Files to Delete)", re.IGNORECASE)
+WORD_PATTERN = re.compile(r"(?<![\w])%s(?![\w])")
+
+
+def deviations_in(report: Path | None) -> str:
+    """The text under the coder report's Notes / Files to Delete headings."""
+    if report is None:
+        return ""
+    try:
+        lines = report.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError as exc:
+        raise SystemExit(f"check-plan-delivery: cannot read deviations report: {exc}") from exc
+    kept: list[str] = []
+    inside = False
+    for line in lines:
+        if line.startswith("#"):
+            inside = bool(DEVIATION_HEADINGS.match(line))
+            continue
+        if inside:
+            kept.append(line)
+    return "\n".join(kept)
+
+
+def contains_word(text: str, needle: str) -> bool:
+    return re.search(WORD_PATTERN.pattern % re.escape(needle), text) is not None
+
+
+def check_new_files(
+    plan: Plan, tree: Tree, deviations: str, rows: list[tuple[str, str, int, str]]
+) -> None:
+    for number, line in plan.prose:
+        for span in CODE_SPAN_PATTERN.findall(line):
+            relative = span.strip()
+            if relative not in plan.new_paths or tree.has_path(relative):
+                continue
+            kind = "DEVIATION" if contains_word(deviations, relative) else "ERROR"
+            rows.append(
+                (
+                    kind,
+                    "new-file-missing",
+                    number,
+                    f"`{relative}` is planned as a new file and does not exist",
+                )
+            )
+            plan.new_paths.discard(relative)
+
+
+def check_introduced(
+    plan: Plan, tree: Tree, deviations: str, rows: list[tuple[str, str, int, str]]
+) -> None:
+    for number, identifier, location in plan.definitions:
+        clean = location.strip("`").strip().lower()
+        if not clean.startswith(NEW_MARKERS):
+            continue
+        needle = identifier.split(".")[-1] if not identifier.startswith("--") else identifier
+        if contains_word(tree.text, needle):
+            continue
+        kind = "DEVIATION" if contains_word(deviations, identifier) else "ERROR"
+        rows.append(
+            (
+                kind,
+                "introduced-missing",
+                number,
+                f"`{identifier}` is declared introduced and occurs nowhere in the tree",
+            )
+        )
+
+
+def check_tests(
+    plan: Plan, tree: Tree, deviations: str, rows: list[tuple[str, str, int, str]]
+) -> None:
+    seen: set[str] = set()
+    for number, line in plan.prose:
+        section = plan.section_of.get(number, "").lower()
+        if not any(section.startswith(name) for name in TEST_SECTIONS):
+            continue
+        for span in CODE_SPAN_PATTERN.findall(line):
+            span = span.strip()
+            if span in seen:
+                continue
+            seen.add(span)
+            node = NODE_ID_PATTERN.match(span)
+            if node:
+                relative = path_of(span)
+                member = node.group("member")
+                target = tree.root / relative
+                if not target.is_file():
+                    if not looks_like_path(span, tree) and relative not in plan.new_paths:
+                        continue
+                    kind = "DEVIATION" if contains_word(deviations, relative) else "ERROR"
+                    rows.append(
+                        (kind, "test-file-missing", number, f"`{span}`: {relative} does not exist")
+                    )
+                    continue
+                text = target.read_text(encoding="utf-8", errors="replace")
+                if not contains_word(text, member.split(".")[-1]):
+                    kind = "DEVIATION" if contains_word(deviations, member) else "ERROR"
+                    rows.append(
+                        (
+                            kind,
+                            "test-member-missing",
+                            number,
+                            f"`{span}`: {relative} defines no {member}",
+                        )
+                    )
+                continue
+            if TEST_NODE_PATTERN.match(span) and not contains_word(tree.text, span):
+                kind = "DEVIATION" if contains_word(deviations, span) else "ERROR"
+                rows.append(
+                    (
+                        kind,
+                        "test-missing",
+                        number,
+                        f"`{span}` is named by the plan and occurs nowhere in the tree",
+                    )
+                )
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--plan", type=Path, required=True, help="approved plan artifact")
+    parser.add_argument(
+        "--root", type=Path, default=Path.cwd(), help="repository the plan describes"
+    )
+    parser.add_argument(
+        "--deviations", type=Path, help="coder report whose Notes declare narrowings"
+    )
+    arguments = parser.parse_args()
+    try:
+        text = arguments.plan.read_text(encoding="utf-8")
+    except OSError as exc:
+        print(f"check-plan-delivery: cannot read plan: {exc}", file=sys.stderr)
+        return 2
+    try:
+        deviations = deviations_in(arguments.deviations)
+    except SystemExit as exc:
+        print(exc, file=sys.stderr)
+        return 2
+    root = arguments.root.resolve()
+    tree = Tree(root, arguments.plan.resolve())
+    plan = parse_plan(text)
+    rows: list[tuple[str, str, int, str]] = []
+    check_new_files(plan, tree, deviations, rows)
+    check_introduced(plan, tree, deviations, rows)
+    check_tests(plan, tree, deviations, rows)
+    for kind, check, number, message in sorted(rows, key=lambda item: (item[2], item[1])):
+        print(f"{kind}\t{check}\t{number}\t{message}")
+    if any(kind == "ERROR" for kind, *_ in rows):
+        return 1
+    print(
+        "PLAN DELIVERY PASS"
+        + (f" ({sum(1 for k, *_ in rows if k == 'DEVIATION')} declared deviations)" if rows else "")
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

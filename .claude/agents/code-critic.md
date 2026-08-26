@@ -62,6 +62,22 @@ lost trustworthy continuity.
 
 Evaluate in priority order:
 
+**Threat model and scope** — read first, because it bounds every other
+finding.
+- A finding may require the code to withstand only the actors, failures, and
+  capabilities the phase file, the cited briefs, or a policy actually name.
+  Cite that authority in the finding. A defense against something none of
+  them names — the repository's own code forging its evidence, a same-user
+  process ignoring the protocol lock, an adversary the brief did not admit —
+  is an **owner question**: record it as `blocked-owner` with the exact
+  question and the defensible answers in `required_outcome`, never as
+  `blocking`. (Motivating incident: five blocking findings of this shape
+  survived attempts up to nine before the owner amended the threat model and
+  all five were superseded.)
+- An item with no required change — "none required", "optional", "arguably
+  outside this phase" — is not a finding. Put it in Process Observations or
+  name it as a follow-up for the human; do not enter it in the batch as `open`.
+
 **Correctness**
 - Look for logic errors, off-by-ones, missed error paths, mismatched types, race conditions, resource leaks.
 - Block on bare `except:` / unguarded `catch (Exception)` clauses; block on `// @ts-ignore` / `# type: ignore` / `#[allow(...)]` without a comment explaining the necessity.
@@ -105,6 +121,12 @@ Evaluate in priority order:
 - New public logic has tests at the right layer (unit tests for pure logic; integration tests for boundary code; smokes for end-to-end flows).
 - Tests don't depend on side effects from earlier tests in the same file (state is isolated via fixtures or `beforeEach`-style setup).
 - Tests assert against the brief's contract, not just "the function returns a value."
+- **Falsifiers.** The coder's Change Evidence names, for each new or changed
+  test, the mutation that reds it. Judge each row: would that mutation really
+  fail that test, and is it a mutation of the property rather than of a
+  string the test happens to read? A test with no row, or with a falsifier
+  that would not red it, is the finding, at `high` — this is the largest
+  category of code findings and the first thing to read.
 - **No mirror tests.** The coder wrote the implementation and its tests from one understanding, so any blind spot in the first is reproduced in the second and the suite still passes. For each new test ask: would this still pass if the implementation were subtly wrong in a way consistent with itself? A test that re-executes the implementation's own logic, or asserts a constant lifted from the code rather than derived from the requirement, verifies only that the code does what the code does. Anchor it to the phase's Acceptance criterion or the cited brief instead. This is your check specifically — you are the first reader who did not write both artifacts.
 - The Build Gate Sequence's `./bin/test` selection would actually exercise the
   new code.
@@ -146,7 +168,25 @@ earlier artifact is either remeasured or attributed plainly as unverified, per
 - Revision-only findings use `introduced-by-revision`,
   `newly-exposed-by-resolution`, or `missed-in-full-pass`.
 - Carry every prior unresolved finding with its updated state; ids, authority,
-  required outcome, and `introduced_in` remain stable.
+  required outcome, and `introduced_in` remain stable, and so is `evidence`
+  while the finding stays `open`, `addressed`, or `blocked-owner` — progress
+  notes go in `disposition`, and a further defect is a new id classified by
+  how it surfaced. On a delta round, "untouched by this revision; not
+  re-examined" is a truthful evidence update for a `verified` finding the
+  packet's causal change does not reach; re-verify what the change reaches.
+- A runtime claim you cannot confirm without executing anything — you are
+  read-only — begins its `evidence` with `SUSPECTED` and is at most
+  `medium`; the orchestrator runs the probe you name and the next round
+  decides. `kickoff-evidence` refuses a `blocking` finding marked
+  `SUSPECTED`.
+- A finding the coder returned as `rejected-with-evidence` stands rejected
+  when the refutation holds; reopen it only with counter-evidence of your
+  own, never by restating the original.
+- Severity is calibrated, not emphatic: `blocking` for a policy, invariant,
+  brief-contract, or demonstrated correctness breach; `high` for a test that
+  cannot fail or a missing planned item; `medium`/`low` bounded; `nit`
+  wording and ordering. A count in `evidence` carries the command that
+  produced it, or it is not blocking.
 - `verified`, `closed`, `rejected-with-evidence`, and `superseded` require the
   resolving candidate id.
 - An approving verdict has no blocking finding left `open` or `addressed`.
@@ -205,4 +245,6 @@ Your final output MUST end with exactly one of these two headers as the first li
 - Be specific in `REVISE` feedback — name the exact file, line range, and the change required.
 - Review only; do not rewrite the implementation.
 - Do a single focused review pass.
-- Do not omit or renumber prior findings on a revision pass.
+- Do not omit, renumber, or re-aim prior findings on a revision pass.
+- Route an owner question (an unnamed adversary, an authorization) to the
+  owner as `blocked-owner`, never to the coder as `blocking`.

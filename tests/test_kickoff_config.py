@@ -2298,3 +2298,62 @@ def test_capture_dispatch_candidate_fails_closed(
 
     assert observed is None
     assert error is not None and expected in error
+
+
+def _coder_pinned_config(tmp_path: Path) -> Path:
+    """Every harness section pins only the coder, to a Claude model."""
+    config = tmp_path / "kickoff.yaml"
+    text = SEED_CONFIG.read_text()
+    text = text.replace(
+        "  claude:\n    reviewer:\n      model: codex\n    critic:\n      model: codex\n",
+        "  claude:\n    coder:\n      model: opus\n",
+    ).replace(
+        "  codex:\n    reviewer:\n      model: opus\n      effort: high\n    critic:\n"
+        "      model: opus\n      effort: high\n",
+        "  codex:\n    coder:\n      model: opus\n",
+    )
+    assert "coder:\n      model: opus" in text
+    config.write_text(text)
+    return config
+
+
+def _probe_aware_claude(tmp_path: Path, toolchain_reply: str) -> Path:
+    return fake_cli(
+        tmp_path,
+        "claude",
+        f"""case "$*" in
+  *KICKOFF_TOOLCHAIN_OK*) printf '%s\\n' '{{"result":"{toolchain_reply}"}}' ;;
+  *) printf '%s\\n' '{{"result":"KICKOFF_PREFLIGHT_OK"}}' ;;
+esac""",
+    )
+
+
+def test_preflight_probes_the_coder_toolchain_without_aborting(tmp_path: Path) -> None:
+    config = _coder_pinned_config(tmp_path)
+    blocked = _probe_aware_claude(
+        tmp_path, "KICKOFF_TOOLCHAIN_UNAVAILABLE: uv cache /shared/uv is outside the sandbox"
+    )
+    result = run_manager(config, "preflight", cli=blocked)
+    assert result.returncode == 0, result.stderr
+    assert (
+        "Role venue preflight: OK — claude --model opus, write-enabled; roles: coder"
+        in result.stdout
+    )
+    assert "WARNING — coder venue cannot run the toolchain (./bin/test --help)" in result.stdout
+    assert "uv cache /shared/uv is outside the sandbox" in result.stdout
+    assert "unverified-handoff guard will run the focused sequence natively" in result.stdout
+
+    reachable = _probe_aware_claude(tmp_path, "KICKOFF_TOOLCHAIN_OK")
+    result = run_manager(config, "preflight", cli=reachable)
+    assert result.returncode == 0, result.stderr
+    assert "toolchain OK — claude --model opus, write-enabled; roles: coder" in result.stdout
+    assert "WARNING" not in result.stdout
+
+
+def test_preflight_still_aborts_on_a_failed_sentinel(tmp_path: Path) -> None:
+    config = _coder_pinned_config(tmp_path)
+    broken = fake_cli(tmp_path, "claude", """printf '%s\\n' '{"result":"nope"}'""")
+    result = run_manager(config, "preflight", cli=broken)
+    assert result.returncode != 0
+    assert "preflight failed" in result.stderr
+    assert "toolchain" not in result.stdout

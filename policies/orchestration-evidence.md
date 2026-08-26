@@ -76,7 +76,8 @@ below.
   locator, and priority.
 - **Change manifest:** reviewed/current candidate ids; added, modified,
   mode-changed, and deleted paths; risk tags; selected tests and selection
-  reason; intentionally unchanged neighbors; authority drift; review-rebase
+  reason; falsifiers (the mutation that reds each new test); the coder's
+  focused gate status; intentionally unchanged neighbors; authority drift; review-rebase
   reasons.
 - **Finding ledger:** stable id, severity, authority, evidence, affected
   paths, required outcome, introduction/resolution candidates, state,
@@ -343,7 +344,11 @@ The record is not a bypass:
   recorded digests, replaying the four rules the recorded base can answer —
   namespace prefix, `introduced_in` lineage, `resolved_in` currency, and the
   allowed state transitions — with only the declared class's own rule
-  suppressed. The immutable-field check and the evidence-substitution check
+  suppressed. The immutable-field check, the evidence-substitution check,
+  the placeholder-evidence check (`carried forward unchanged` / `text not
+  supplied` is not evidence), and the suspected-not-blocking check (a
+  read-only reviewer's unexecuted claim, marked `SUSPECTED`, is capped below
+  `blocking`)
   (a finding that stays actionable keeps its `evidence`; a new objection is a
   new id) are not among them and cannot be: the recorded base is
   `{id: state}`, not the prior fields they would compare against. Nothing recorded is wrong for want of it, because that rule is

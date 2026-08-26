@@ -2,20 +2,37 @@
 name: sweep-planning
 description: >-
   Longitudinal, user-gated sweep of the plan-review loop: harvest every
-  genuine plan-review verdict (optionally code-review too) from the machine's
+  genuine plan-review verdict from the machine's
   Claude Code and Codex traces over a window, categorize why plans were sent
   back, attribute each category to a correctable planner defect or a reviewer
   false positive, and propose the persona, script, and policy corrections as
   one plan the user ratifies. In a template repo the corrections land here and
   propagate via teach; in a derived project they file as scope-methodology
   lessons for learn. Invoke as /sweep-planning in Claude Code or
-  $sweep-planning in Codex; optional arguments set the window in days, the
-  review kind (plan, code, all), and project=<name> filters.
-argument-hint: "[<days>] [plan|code|all] [project=<name> ...]"
+  $sweep-planning in Codex; optional arguments set the window in days and
+  project=<name> filters. Enters plan mode first, analyzes inside it, and
+  presents the analysis and the improvement plan together for approval. Also
+  the canonical home of the review-loop sweep lifecycle that sweep-coding
+  follows.
+argument-hint: "[<days>] [project=<name> ...]"
 last-reviewed: 2026-08-26
 ---
 
 # Sweep-planning — Calibrate the review loop from its own record
+
+This file is two things: the `sweep-planning` skill, and the **review-loop
+sweep lifecycle** that its sibling `sweep-coding` follows by citation rather
+than by copy (one procedure, two invocations — `policies/simplicity-and-consolidation.md`).
+The lifecycle sections (§Plan mode first, §Stage 0, §Stage 1, §Stage 4,
+§Stage 5, §The `LOG.md` entry) are parameterized by **kind**:
+
+| kind | invocation | loop swept | finding ids | personas corrected | extra sensors | LOG heading |
+|---|---|---|---|---|---|---|
+| `plan` | `sweep-planning` | planner ↔ reviewer | `PLAN-F` | `phase-planner.md`, `plan-reviewer.md` | none | `SWEEP-PLANNING (plan)` |
+| `code` | `sweep-coding` | coder ↔ critic | `CODE-F` | `phase-coder.md`, `code-critic.md` | coder Failure Analyses and Change Evidence (`--coder-evidence`) | `SWEEP-CODING (code)` |
+
+Stages 2 and 3 carry the kind-specific taxonomy and attribution shapes: this
+file holds the `plan` ones; `sweep-coding/SKILL.md` holds the `code` ones.
 
 Every plan review the methodology runs is recorded verbatim in the harness's
 session transcript — the reviewer's narrative, its `## Finding Evidence`
@@ -41,12 +58,12 @@ and the `evidence-substituted` ingest refusal — see
 
 Raw arguments: `!{ARGUMENTS}`
 
-- A bare integer is the window in days (default `31`); it becomes
-  `--since-days`. A wider window costs only harvest time, a narrower one
-  loses the longitudinal view — below ~14 days the weekly trend is noise.
-- `plan` (default), `code`, or `all` selects the review kind. `code` sweeps
-  the code-critic loop with the same procedure and the coder/critic personas
-  as the correction targets.
+- A bare integer is the window in days (default: from the last sweep, see
+  Stage 0; 31 with no prior sweep); it becomes `--since-days`. A wider window
+  costs only harvest time, a narrower one loses the longitudinal view —
+  below ~14 days the weekly trend is noise.
+- The kind is the invocation: `sweep-planning` sweeps `plan`, `sweep-coding`
+  sweeps `code`.
 - `project=<name>` (repeatable) restricts the harvest to sessions whose
   working directory basename matches; each becomes a `--project` flag. In
   derived-project mode the current repository is the default filter.
@@ -73,10 +90,34 @@ Decide the mode before Stage 1 and say which one you are in:
 
 The mechanics are identical in both modes; only the write set differs.
 
+## Plan mode first
+
+The sweep begins by entering plan mode, before Stage 0 — call
+`EnterPlanMode` where the harness exposes it (Claude Code does; Codex does
+not yet, see the `sweep` skill's plan-mode notes). Stages 0–3 then run
+read-only inside plan mode: reading the log, harvesting, categorizing,
+attributing. Stage 4 writes **the analysis and the improvement plan as one
+document** into the plan-mode body and calls `ExitPlanMode`; the operator's
+accept / revise / reject is the approval. Stage 5 applies only after
+approval, outside plan mode. Where the harness has no plan mode, the
+read-only discipline through Stage 3 carries the contract and approval is
+free-text. While the operator is AFK, park the Stage 4 document as an
+artifact and do not raise an interactive gate.
+
+The head of that document is written for the operator in the `plain`
+register ([`.claude/skills/plain/SKILL.md`](../plain/SKILL.md)): a
+**Summary** and a **Recommendations** block that read without the repo, the
+dataset, or the transcript open — what the loop keeps rejecting for, which
+side owns it, what changes, what it costs the operator. No finding ids, file
+paths, or finding-schema vocabulary above that fold. Everything below it —
+coverage, category table, attributions with evidence, write set — is as
+technical as the evidence requires. The same rule binds the first paragraph
+of the `LOG.md` entry.
+
 ## Stage 0 — Read the last sweep
 
-Before harvesting, find the most recent `## <ts> — SWEEP-PLANNING (<kind>)`
-entry in `LOG.md` (in template mode, also in each swept project's `LOG.md`
+Before harvesting, find the most recent `## <ts> — <LOG heading for this
+kind>` entry in `LOG.md` (in template mode, also in each swept project's `LOG.md`
 where one exists — a derived project's own sweep is evidence too). It fixes
 three things:
 
@@ -97,20 +138,12 @@ If the last sweep is younger than fourteen days and no `<days>` argument was
 given, say so and ask whether to widen — a fortnight rarely holds enough
 verdicts to distinguish a trend from one phase's weather.
 
-## Plan-mode lifecycle
-
-Stages 1–3 are read-only; Stage 4 surfaces the plan; Stage 5 is the only stage
-that writes. Follow the same harness plan-mode contract `sweep` documents:
-enter plan mode at Stage 1 where the harness exposes it, exit at Stage 4, apply
-outside it. While the operator is AFK, park the Stage 4 plan as an artifact
-and do not raise an interactive gate.
-
 ## Stage 1 — Harvest (mechanistic)
 
 Run the deterministic harvester; do not hand-grep the traces.
 
 ```bash
-./bin/review-verdicts --since-days <days> --kind <kind> [--project <name> ...] --json <scratch>/verdicts.json
+./bin/review-verdicts --since-days <days> --kind <kind> [--coder-evidence] [--project <name> ...] --json <scratch>/verdicts.json
 ```
 
 Use the session scratch directory for `<scratch>`, never a bare filename in
@@ -126,7 +159,15 @@ it prints and the dataset it wrote:
   `authority`, `evidence`, and `required_outcome`, deduplicated by
   `(project, id, evidence)`.
 - **Re-aimed ids** — finding ids that carried more than one distinct evidence
-  text while they stayed actionable. Each is a round the ledger cannot explain.
+  text while they stayed actionable, within one session transcript (ids
+  restart per phase, so a cross-session match is a different phase, not a
+  re-aim). Each is a round the ledger cannot explain.
+- **Excluded sessions.** The harvester drops the running session's own
+  transcript — a sweep prints verdict text while it works and would
+  otherwise measure itself. Check the `Excluded sessions:` line names this
+  session.
+- **Coder evidence** (`--coder-evidence`, kind `code`): the coder's Failure
+  Analysis statements, the loop's own root-cause sensor.
 
 Name the blind spots before going further, per
 [`policies/verification-discipline.md`](../../../policies/verification-discipline.md):
@@ -138,6 +179,9 @@ carry none of the markers is kept. State the counts with the command that
 produced them.
 
 ## Stage 2 — Categorize (intelligence)
+
+*Procedure for every kind; the taxonomy table below is the `plan` one.
+`sweep-coding` substitutes its own table and follows the rest verbatim.*
 
 Read every distinct root finding — collapse the rounds: one root finding per
 `(project, id)`, with its evidence history — and every legacy `Required
@@ -166,6 +210,9 @@ gate) is a reviewer proxy that has inverted — flag it as such in Stage 3, do
 not "fix" the planner for it.
 
 ## Stage 3 — Attribute (intelligence)
+
+*Procedure for every kind; the shapes listed are the `plan` ones.
+`sweep-coding` substitutes its own shapes and follows the rest verbatim.*
 
 Every category gets one of three attributions, with the evidence for it:
 
@@ -209,13 +256,16 @@ occurrences, seen again elsewhere, is a graduation candidate — cite the slug.
 
 ## Stage 4 — Plan and approve (gate)
 
-Compose one plan in the `plain` register with these sections, and surface it
-through the harness's plan-mode approval (or free-text approval where there is
-none). Every proposed write names the surface, the exact change, and the
-finding ids that motivate it.
+Compose one document — the analysis and the improvement plan together — and
+surface it through the plan-mode approval described in §Plan mode first (or
+free-text approval where there is none). Every proposed write names the
+surface, the exact change, and the finding ids that motivate it.
 
-- **Summary** — the three or four sentences an operator needs: what the loop
-  keeps rejecting for, which side owns it, what changes.
+- **Summary** (`plain` register) — the three or four sentences an operator
+  needs: what the loop keeps rejecting for, which side owns it, what changes.
+- **Recommendations** (`plain` register) — what to change, in the order
+  that cuts the most rounds, each with its cost to the operator; no ids,
+  paths, or schema words.
 - **Coverage and blind spots** — the harvest counts with their commands.
 - **Categories** — the table from Stage 2 with counts, share, blocking share,
   and rounds survived.
@@ -230,7 +280,7 @@ finding ids that motivate it.
   (usually: the count does not justify a rule, or the proxy inverts).
 - **Settled decisions** — every judgment call the user resolved in
   conversation, verbatim.
-- **Proposed LOG.md entry** — the `SWEEP-PLANNING (<kind>)` block below,
+- **Proposed LOG.md entry** — the block below under this kind's LOG heading,
   filled in. It is an authorized `LOG.md` entry kind (the entry-kind table in
   [`policies/log-discipline.md`](../../../policies/log-discipline.md)); write
   it, do not re-decide whether a sweep earns one.
@@ -261,7 +311,10 @@ records what was actually done. It is what the next run's Stage 0 reads, so
 keep the category table and the numbers machine-findable:
 
 ```markdown
-## <YYYY-MM-DD HH:MM TZ> — SWEEP-PLANNING (<plan|code|all>)
+## <YYYY-MM-DD HH:MM TZ> — SWEEP-PLANNING (plan)   ← or SWEEP-CODING (code)
+
+<One plain-register paragraph: what the loop kept rejecting for, who owned it,
+what was changed.>
 
 Window: <from> → <to> (<N> days; set by <argument | last entry | default>).
 Harvest: `./bin/review-verdicts --since-days <N> --kind <kind> [...]` —

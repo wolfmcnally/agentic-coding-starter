@@ -422,6 +422,31 @@ row per refusal; exit 2 is a usage or I/O error. The plan may live anywhere;
 
 Behavioral coverage lives in `tests/test_check_plan_concreteness.py`.
 
+### `check-plan-delivery` — did the tree receive what the plan named
+
+Mechanistic post-implementation check `kickoff` runs after `capture-change`
+and before the code critic is dispatched (Step 5). About one code finding in
+seven over a month was the critic discovering an item the approved plan named
+and the coder never wrote; a script reads the plan's own inventory against the
+tree instead. Every `### New Files` path must exist; every identifier the
+plan's `## Definitions Read` table declares `introduced` must occur in the
+tree; every backticked `test_*` node and `path::member` cited under Testing
+Strategy, Build Gate Sequence, or Acceptance must exist. An item that is
+missing but named under the coder report's `### Notes` or `### Files to
+Delete` (`--deviations <report>`) is reported as `DEVIATION` rather than
+`ERROR`, so a declared narrowing reaches the critic without failing the
+check. Shares its parser with `check-plan-concreteness` through
+`lib/agentic_starter/plan_artifact.py`, so the two cannot disagree about what
+a plan says. Exit 0 prints `PLAN DELIVERY PASS`; exit 1 prints one
+`ERROR\t<check>\t<line>\t<message>` row per missing item; exit 2 is a
+usage or I/O error.
+
+```bash
+./bin/check-plan-delivery --plan /absolute/path/to/approved-plan.md --root . --deviations /absolute/path/to/coder-report.md
+```
+
+Behavioral coverage lives in `tests/test_check_plan_delivery.py`.
+
 ### `review-verdicts` — harvest review verdicts from harness traces
 
 The mechanistic half of the `sweep-planning` skill. Walks the machine's Claude

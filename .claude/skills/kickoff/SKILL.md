@@ -115,6 +115,8 @@ This deterministic preflight resolves the same role pins as Step 0a and makes on
 
 The preflight validates the full upstream path needed by the phase: CLI presence, usable authentication, model entitlement, network reachability, current flag compatibility, sandbox/access posture, a response within the 120-second hang guard, and an exact `KICKOFF_PREFLIGHT_OK` sentinel. A status command or credential-file check is insufficient because it does not prove a live model call under the production environment.
 
+**Coder toolchain probe.** For every write-enabled target (the coder, when pinned), the preflight additionally asks the venue to run the repository's cheapest toolchain probe (`./bin/test --help`) from the checkout and reply with `KICKOFF_TOOLCHAIN_OK` or the failure text. This one does **not** abort: a venue whose sandbox cannot reach the toolchain (a uv cache outside its allowed paths, a missing system tool) is reported as `Role venue preflight: WARNING — coder venue cannot run the toolchain: <diagnostic>`, and the orchestrator records for Step 5 that the unverified-handoff guard will run the focused sequence natively on every coder return. Without this, the coder discovers the gap mid-phase, hands off unverified, and the critic spends its round on formatting.
+
 **Any failure aborts `kickoff` immediately.** Report the failed target and the script's diagnostic, then stop. Do not fall back to native, identify or decompose the phase, change `plan/INDEX.md`, append a START/END block, or invoke an agent. After the user fixes authentication or the other upstream error, tell them to rerun `/kickoff` in Claude Code or `$kickoff` in Codex from a clean pre-phase state. If every role is native, or the recursion guard makes every role native, the script reports `N/A` / `skipped` and succeeds.
 
 ### Step 0c: Load per-role execution budgets
@@ -437,11 +439,33 @@ run:
 ```
 
 This binds the changed paths, declared risks, selected tests, selection reason,
-intentionally unchanged neighbors, and rebase reasons to the resulting
-candidate. Exit 66 is recoverable only if this validation and the report-shape
-gate both pass. Collect the file list, focused Build Status, Finding Resolution,
-and Manual Checks. The coder does not run or claim the acceptance-close
-sequence.
+intentionally unchanged neighbors, rebase reasons, falsifiers, and the coder's
+`gate_status` to the resulting candidate. Exit 66 is recoverable only if this
+validation and the report-shape gate both pass. Collect the file list, focused
+Build Status, Finding Resolution, and Manual Checks. The coder does not run or
+claim the acceptance-close sequence.
+
+**Unverified-handoff guard.** Read `gate_status` from `change.json`. When
+`focused` is `not-run` (the venue could not reach the toolchain) or `red`, run
+the approved plan's Iteration and Revision Close sequence natively, then
+`./bin/check format` and `./bin/check lint` — each command in its own block,
+its refusal read — and record each as a gate against the candidate. A red
+result goes back to the coder as a revision attempt with the diagnostics
+(reason `revision`); the critic is never dispatched on code whose focused
+gate has not run green somewhere. When a role venue was flagged at Step 0b as
+unable to run the toolchain, expect this branch on every coder return.
+
+**Delivery pre-review.** Run
+`./bin/check-plan-delivery --plan <approved plan artifact> --root . --deviations <coder artifact>`
+in its own block. `ERROR` rows — planned files, introduced identifiers, or
+named tests the tree does not hold and the report does not declare as
+deviations — go back to the coder as a revision attempt, not to the critic.
+`DEVIATION` rows are passed to the critic with the file list.
+
+**Push-back.** A Finding Resolution line of the form
+`<id> — rejected-with-evidence: <observation>` is ingested as that transition
+(`--no-review-span '<coder refutation>'`) and the refutation is quoted to the
+critic on the next round, which accepts it or reopens with counter-evidence.
 
 Before dispatching the coder, close `orchestration.planning` and open
 `orchestration.implementation`. On any later return from acceptance to
@@ -460,6 +484,10 @@ both stage attempts.
 - On revision rounds, the prior finding ledger and generated code-revision
   packet.
 - **Light lane only:** the lane declaration, with the instruction to additionally judge lane fit per [`policies/review-lanes.md`](../../../policies/review-lanes.md) — did the diff stay within mechanical scope?
+- Any `DEVIATION` rows from the delivery pre-review, any coder refutations
+  (`rejected-with-evidence`) with their evidence, and the native observation
+  for any prior finding the critic marked `SUSPECTED` (run the probe it named
+  before dispatching; attach the output verbatim).
 
 **Delegated venue** (the non-`default` model `critic` resolved to in Step 0a): run the role in that model's implied CLI per [`policies/role-models.md`](../../../policies/role-models.md). The shipped `kickoff.yaml` resolves critic to the *other* harness (cross-vendor review). Add the resolved model and effort flags and preserve them on resume; a later runtime failure despite the successful preflight falls back with a 🚨 in Step 10.
 
@@ -500,6 +528,11 @@ equal-or-worse finding reopens. When the change manifest requires rebasing,
 run a complete critique rather than a delta-only pass. Escalate on recurrence,
 oscillation, authority disagreement, or two rounds without reduced severity or
 uncertainty. The 10-cycle runaway backstop still applies.
+
+**If any code finding is `blocked-owner`** — the critic asked an owner
+question (an adversary or authorization no authority names): park it to the
+operator exactly as Step 4 does for a plan finding, and do not dispatch the
+coder on it; the remaining findings proceed in the same round.
 
 **If `REVISE` opens with `Escalate: full lane — <reason>`** (light lane only): the work exceeded mechanical scope. Run the skipped Step 4 plan review now, against the plan as-built (same venue rules), route its outcome through the normal revision loops, and finish the phase in the full lane. Record `light → full (escalated: <reason>)` for the END block. The lane escalation itself is not a stall signal and does not count toward the runaway backstop; the critic's other Required Changes do feed the convergence judgment.
 

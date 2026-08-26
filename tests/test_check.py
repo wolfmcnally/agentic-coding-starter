@@ -179,7 +179,8 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
             "../bin/check-toolchain-callers ../bin/lessons ../bin/treatise "
             "../bin/check-catalogs "
             "../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name "
-            "../bin/check-plan-concreteness ../bin/review-verdicts ../tests"
+            "../bin/check-plan-concreteness ../bin/check-plan-delivery ../bin/review-verdicts "
+            "../tests"
         ),
         (
             f"uv cwd={root / 'project'} args=run --locked --managed-python ruff format --check "
@@ -189,7 +190,8 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
             "../bin/check-toolchain-callers ../bin/lessons ../bin/treatise "
             "../bin/check-catalogs "
             "../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name "
-            "../bin/check-plan-concreteness ../bin/review-verdicts ../tests"
+            "../bin/check-plan-concreteness ../bin/check-plan-delivery ../bin/review-verdicts "
+            "../tests"
         ),
         (
             f"uv cwd={root} args=run --project {root / 'project'} --locked "

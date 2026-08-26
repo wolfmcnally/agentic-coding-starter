@@ -54,6 +54,13 @@ LINE_NUMBER_PREFIX = re.compile(r"^\s*\d+[\t:] ?", re.M)
 GREP_PREFIX = re.compile(r"\.(md|py|toml|yaml)-\d+-")
 ACTIONABLE_STATES = {"open", "addressed", "blocked-owner"}
 KINDS = ("plan", "code")
+# The coder's root-cause statement, in both places the persona puts it: the
+# `failure_analysis` field of the Change Evidence JSON and the prose section.
+FAILURE_ANALYSIS_FIELD = re.compile(r'"failure_analysis":\s*"((?:[^"\\]|\\.)*)"')
+FAILURE_ANALYSIS_SECTION = re.compile(
+    r"###? Failure Analysis[^\n]*\n(.{40,1500}?)(?:\n###|\n## |\Z)", re.S
+)
+SESSION_ENVIRONMENT = ("CLAUDE_CODE_SESSION_ID", "CODEX_SESSION_ID")
 
 
 def walk_strings(value: Any):
@@ -67,13 +74,22 @@ def walk_strings(value: Any):
             yield from walk_strings(item)
 
 
-def trace_files(root: Path, cutoff: float) -> list[Path]:
+def trace_files(root: Path, cutoff: float, excluded: set[str]) -> list[Path]:
+    """Every transcript under `root` touched since `cutoff`, minus excluded sessions.
+
+    The running session is always excluded: a sweep prints verdict text while
+    it works, and without this its own transcript joins the corpus it is
+    measuring on the next harvest.
+    """
     found: list[Path] = []
     if not root.is_dir():
         return found
     for directory, _, names in os.walk(root):
         for name in names:
             if not name.endswith(".jsonl"):
+                continue
+            stem = name[: -len(".jsonl")]
+            if stem in excluded or any(stem.endswith(f"-{item}") for item in excluded):
                 continue
             path = Path(directory) / name
             try:
@@ -149,15 +165,55 @@ def classify_kind(block: str, findings: list[dict[str, Any]], preceding: str) ->
     return "unknown"
 
 
-def harvest(claude_root: Path, codex_root: Path, since_days: int) -> list[dict[str, Any]]:
+def unescape(text: str) -> str:
+    return text.encode("utf-8", "replace").decode("unicode_escape", "ignore").strip()
+
+
+def coder_evidence_in(
+    record: dict[str, Any], *, cwd: str | None, date: str, source: Path
+) -> list[dict[str, Any]]:
+    """Failure-analysis statements in one trace line, from either surface."""
+    found: list[dict[str, Any]] = []
+    for text in walk_strings(record):
+        if "ailure" not in text:
+            continue
+        # The Change Evidence JSON is embedded in the role's report text, so
+        # it is read from the decoded string, not from the raw escaped line.
+        for match in FAILURE_ANALYSIS_FIELD.finditer(text):
+            statement = unescape(match.group(1))
+            if len(statement) >= 30:
+                found.append({"surface": "change-evidence", "text": statement})
+        for match in FAILURE_ANALYSIS_SECTION.finditer(text):
+            body = match.group(1).strip()
+            if body.startswith("[") or "Failure Analysis" in body:
+                continue  # the persona template, not a statement
+            found.append({"surface": "report", "text": body})
+    for item in found:
+        item.update(
+            {"project": Path(cwd).name if cwd else "?", "date": date, "source": str(source)}
+        )
+    return found
+
+
+def harvest(
+    claude_root: Path,
+    codex_root: Path,
+    since_days: int,
+    *,
+    excluded: set[str],
+    coder_evidence: bool = False,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     cutoff = time.time() - since_days * 86400
     verdicts: dict[str, dict[str, Any]] = {}
+    evidence: dict[str, dict[str, Any]] = {}
     for harness, root in (("claude", claude_root), ("codex", codex_root)):
-        for path in trace_files(root, cutoff):
+        for path in trace_files(root, cutoff, excluded):
             session_cwd = file_cwd(path)
             with path.open(errors="replace") as handle:
                 for line in handle:
-                    if "Verdict:" not in line:
+                    wants_verdict = "Verdict:" in line
+                    wants_evidence = coder_evidence and "ailure" in line
+                    if not (wants_verdict or wants_evidence):
                         continue
                     try:
                         record = json.loads(line)
@@ -166,6 +222,13 @@ def harvest(claude_root: Path, codex_root: Path, since_days: int) -> list[dict[s
                     timestamp = str(record.get("timestamp") or record.get("ts") or "")[:10]
                     record_cwd = record.get("cwd") if isinstance(record.get("cwd"), str) else None
                     cwd = record_cwd or session_cwd
+                    date = timestamp or time.strftime("%Y-%m-%d", time.gmtime(path.stat().st_mtime))
+                    if wants_evidence:
+                        for item in coder_evidence_in(record, cwd=cwd, date=date, source=path):
+                            key = hashlib.sha1(normalized(item["text"])[:300].encode()).hexdigest()
+                            evidence.setdefault(key, item)
+                    if not wants_verdict:
+                        continue
                     for text in walk_strings(record):
                         if "## Verdict:" not in text:
                             continue
@@ -190,15 +253,18 @@ def harvest(claude_root: Path, codex_root: Path, since_days: int) -> list[dict[s
                                 "harness": harness,
                                 "project": Path(cwd).name if cwd else "?",
                                 "cwd": cwd,
-                                "date": timestamp
-                                or time.strftime("%Y-%m-%d", time.gmtime(path.stat().st_mtime)),
+                                "date": date,
                                 "verdict": match.group(1),
                                 "kind": classify_kind(block, findings, text[: match.start()]),
                                 "block": block,
                                 "findings": findings,
                                 "source": str(path),
                             }
-    return sorted(verdicts.values(), key=lambda item: (item["date"], item["project"], item["key"]))
+    ordered = sorted(
+        verdicts.values(), key=lambda item: (item["date"], item["project"], item["key"])
+    )
+    statements = sorted(evidence.values(), key=lambda item: (item["date"], item["project"]))
+    return ordered, statements
 
 
 def week_of(date: str) -> str:
@@ -208,17 +274,23 @@ def week_of(date: str) -> str:
 
 
 def re_aimed_ids(verdicts: list[dict[str, Any]]) -> list[tuple[str, str, str, int]]:
-    """Ids that carried more than one distinct evidence text while actionable."""
-    evidence_by_id: dict[tuple[str, str, str], set[str]] = defaultdict(set)
+    """Ids that carried more than one distinct evidence text while actionable.
+
+    Finding ids restart at F001 in every phase, so the key includes the
+    session transcript the verdict came from — the closest proxy for one
+    review loop the traces offer. Two phases reusing `CODE-F001` are not a
+    re-aim; one session's `CODE-F001` with two objections is.
+    """
+    evidence_by_id: dict[tuple[str, str, str, str], set[str]] = defaultdict(set)
     for verdict in verdicts:
         for item in verdict["findings"]:
             if item.get("state") not in ACTIONABLE_STATES:
                 continue
-            key = (verdict["project"], verdict["kind"], str(item.get("id", "")))
+            key = (verdict["project"], verdict["source"], verdict["kind"], str(item.get("id", "")))
             evidence_by_id[key].add(str(item.get("evidence", "")).strip())
     return sorted(
         (project, kind, identifier, len(texts))
-        for (project, kind, identifier), texts in evidence_by_id.items()
+        for (project, _source, kind, identifier), texts in evidence_by_id.items()
         if len(texts) > 1
     )
 
@@ -258,7 +330,7 @@ def print_summary(verdicts: list[dict[str, Any]], kinds: tuple[str, ...]) -> Non
         print(f"  {label}: " + ", ".join(f"{key} {count}" for key, count in sorted(tally.items())))
     re_aimed = [row for row in re_aimed_ids(selected)]
     print()
-    print(f"Re-aimed ids (distinct evidence while actionable): {len(re_aimed)}")
+    print(f"Re-aimed ids (distinct evidence while actionable, within one session): {len(re_aimed)}")
     for project, kind, identifier, count in re_aimed:
         print(f"  {project:<24} {kind:<5} {identifier:<12} {count} objections")
 
@@ -276,16 +348,44 @@ def main() -> int:
     parser.add_argument("--claude-root", type=Path, default=Path.home() / ".claude" / "projects")
     parser.add_argument("--codex-root", type=Path, default=Path.home() / ".codex" / "sessions")
     parser.add_argument("--json", type=Path, help="write the complete dataset here")
+    parser.add_argument(
+        "--exclude-session",
+        action="append",
+        default=[],
+        help="session id whose transcript is left out (repeatable); the running "
+        "session is always excluded",
+    )
+    parser.add_argument(
+        "--coder-evidence",
+        action="store_true",
+        help="also harvest the coder's Failure Analysis statements",
+    )
     arguments = parser.parse_args()
+    excluded = {item for item in arguments.exclude_session if item}
+    for variable in SESSION_ENVIRONMENT:
+        value = os.environ.get(variable, "").strip()
+        if value:
+            excluded.add(value)
     if not arguments.claude_root.is_dir() and not arguments.codex_root.is_dir():
         print("review-verdicts: neither trace root exists", file=sys.stderr)
         return 2
-    verdicts = harvest(arguments.claude_root, arguments.codex_root, arguments.since_days)
+    verdicts, statements = harvest(
+        arguments.claude_root,
+        arguments.codex_root,
+        arguments.since_days,
+        excluded=excluded,
+        coder_evidence=arguments.coder_evidence,
+    )
     if arguments.project:
         wanted = set(arguments.project)
         verdicts = [item for item in verdicts if item["project"] in wanted]
+        statements = [item for item in statements if item["project"] in wanted]
     kinds = KINDS if arguments.kind == "all" else (arguments.kind,)
     print_summary(verdicts, kinds)
+    if excluded:
+        print(f"\nExcluded sessions: {', '.join(sorted(excluded))}")
+    if arguments.coder_evidence:
+        print(f"Coder failure-analysis statements: {len(statements)}")
     if arguments.json:
         payload = {
             "schema_version": 1,
@@ -293,6 +393,8 @@ def main() -> int:
             "kinds": list(kinds),
             "verdicts": [item for item in verdicts if item["kind"] in kinds],
             "unclassified": [item for item in verdicts if item["kind"] == "unknown"],
+            "excluded_sessions": sorted(excluded),
+            "coder_evidence": statements,
         }
         arguments.json.write_text(json.dumps(payload, indent=1), encoding="utf-8")
         print(f"\nDATASET {arguments.json}")

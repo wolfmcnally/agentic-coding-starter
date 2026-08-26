@@ -80,6 +80,14 @@ TIMEOUT_EXIT = 124
 PROTOCOL_EXIT = 65
 RECOVERABLE_PROTOCOL_EXIT = 66
 PREFLIGHT_SENTINEL = "KICKOFF_PREFLIGHT_OK"
+TOOLCHAIN_SENTINEL = "KICKOFF_TOOLCHAIN_OK"
+TOOLCHAIN_FAILURE = "KICKOFF_TOOLCHAIN_UNAVAILABLE"
+TOOLCHAIN_PROBE_COMMAND = "./bin/test --help"
+TOOLCHAIN_PROBE_PROMPT = (
+    f"From the current directory run exactly this shell command: {TOOLCHAIN_PROBE_COMMAND} . "
+    f"If it exits 0 reply with exactly {TOOLCHAIN_SENTINEL} and nothing else; otherwise reply "
+    f"with {TOOLCHAIN_FAILURE}: followed by the last lines of its output. Do not edit any file."
+)
 PREFLIGHT_TIMEOUT_SECONDS = 120
 # Shape only. `kickoff-evidence` owns candidate identity; this is the watcher
 # refusing to pass along something that is not one.
@@ -1002,6 +1010,91 @@ def run_codex_preflight(target: PreflightTarget, workdir: str) -> None:
             )
 
 
+def toolchain_probe_result(result: str) -> str | None:
+    """None when the venue reached the toolchain; otherwise the diagnostic."""
+    text = " ".join(result.split())
+    if TOOLCHAIN_SENTINEL in text and TOOLCHAIN_FAILURE not in text:
+        return None
+    return text[-1000:] or "no response"
+
+
+def run_toolchain_probe(target: PreflightTarget) -> str | None:
+    """Ask a write-enabled venue to run the repository's cheapest toolchain probe.
+
+    The sentinel preflight proves the upstream model path in an empty
+    directory; it says nothing about whether the venue's sandbox can reach
+    `uv`, its cache, and the pinned interpreter from the checkout. A coder
+    that cannot has no way to run its focused gate and hands off unverified
+    — so this asks, once, before any phase state changes. The answer never
+    aborts: the orchestrator runs the focused sequence natively when it is
+    negative.
+    """
+    workdir = str(REPO_ROOT)
+    if target.cli == "claude":
+        command = [
+            cli_program("claude"),
+            "-p",
+            TOOLCHAIN_PROBE_PROMPT,
+            "--permission-mode",
+            "dontAsk",
+            "--allowedTools",
+            claude_tools(target.role),
+            "--output-format",
+            "json",
+            "--max-turns",
+            "4",
+            *claude_routing_flags(target.model, target.effort),
+        ]
+        process = subprocess.run(
+            command,
+            cwd=workdir,
+            env=scrubbed_env("claude"),
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=PREFLIGHT_TIMEOUT_SECONDS,
+        )
+        if process.returncode:
+            return f"exit {process.returncode}: {diagnostic(process)}"
+        try:
+            envelope = json.loads(process.stdout)
+        except json.JSONDecodeError as exc:
+            return f"malformed JSON response: {exc}"
+        return toolchain_probe_result(str(envelope.get("result", "")))
+    with tempfile.TemporaryDirectory(prefix="kickoff-toolchain-probe-") as temporary:
+        message_file = os.path.join(temporary, "last-message.txt")
+        command = [
+            cli_program("codex"),
+            "exec",
+            "--json",
+            "-s",
+            "workspace-write",
+            "-c",
+            'approval_policy="never"',
+            "-C",
+            workdir,
+            "--output-last-message",
+            message_file,
+            *codex_routing_flags(target.model, target.effort),
+            TOOLCHAIN_PROBE_PROMPT,
+        ]
+        process = subprocess.run(
+            command,
+            cwd=workdir,
+            env=scrubbed_env("codex"),
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=PREFLIGHT_TIMEOUT_SECONDS,
+        )
+        if process.returncode:
+            return f"exit {process.returncode}: {diagnostic(process)}"
+        try:
+            return toolchain_probe_result(Path(message_file).read_text())
+        except FileNotFoundError:
+            return "output artifact missing"
+
+
 def preflight(section: MutableMapping[str, Any]) -> None:
     if os.environ.get("KICKOFF_DELEGATION_DEPTH"):
         print("Role venue preflight: skipped (delegated session; every role runs native)")
@@ -1030,6 +1123,23 @@ def preflight(section: MutableMapping[str, Any]) -> None:
             except (OSError, RuntimeError) as exc:
                 die(f"preflight failed for {label}: {exc}")
             print(f"Role venue preflight: OK — {label}")
+            if not target.write_enabled:
+                continue
+            print(f"Role venue preflight: probing the toolchain for {label} ...", flush=True)
+            try:
+                problem = run_toolchain_probe(target)
+            except subprocess.TimeoutExpired:
+                problem = f"timed out after {PREFLIGHT_TIMEOUT_SECONDS}s"
+            except OSError as exc:
+                problem = str(exc)
+            if problem is None:
+                print(f"Role venue preflight: toolchain OK — {label}")
+            else:
+                print(
+                    "Role venue preflight: WARNING — coder venue cannot run the toolchain "
+                    f"({TOOLCHAIN_PROBE_COMMAND}) for {label}: {problem}. The unverified-handoff "
+                    "guard will run the focused sequence natively on every coder return."
+                )
 
 
 def utc_now() -> str:

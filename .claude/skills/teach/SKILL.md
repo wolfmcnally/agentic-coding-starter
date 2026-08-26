@@ -224,11 +224,17 @@ For each proposed addition or update, ask:
   empty, which the checker reports as `EXECUTION DASHBOARDS PASS (0 phases)`.
   Partial adoption is stale and blocking.
 
+- **Review-loop sweeps.** `.claude/skills/sweep-planning/SKILL.md` and
+  `.claude/skills/sweep-coding/SKILL.md` (with their `.agents/skills`
+  symlinks) travel together: the second cites the first for its lifecycle.
 - **Deterministic-checker adoption.** Treat `bin/check-harness-parity`,
   `bin/check-toolchain-callers`, `bin/check-shell-syntax`, `bin/new-name`,
   `bin/check-plan-concreteness` (the `kickoff` pre-review over plan artifacts,
-  with `tests/test_check_plan_concreteness.py`), `bin/review-verdicts` (the
-  `sweep-planning` trace harvester, with `tests/test_review_verdicts.py`),
+  with `tests/test_check_plan_concreteness.py`), `bin/check-plan-delivery`
+  (the pre-critic delivery check, with `tests/test_check_plan_delivery.py`;
+  both import `lib/agentic_starter/plan_artifact.py`), `bin/review-verdicts`
+  (the `sweep-planning` / `sweep-coding` trace harvester, with
+  `tests/test_review_verdicts.py`),
   `bin/treatise`, and their behavioral tests
   (`tests/test_mirror_parity.py`, `tests/test_toolchain_callers.py`,
   `tests/test_shell_syntax.py`, `tests/test_new_name.py`,

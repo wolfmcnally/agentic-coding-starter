@@ -98,6 +98,11 @@ ALLOWED_TRANSITIONS = {
     "superseded": {"superseded"},
 }
 UNRESOLVED_STATES = {"open", "addressed", "verified", "blocked-owner"}
+EVIDENCE_PLACEHOLDER = re.compile(
+    r"^\s*(carried forward unchanged|text not supplied|not re-examined and not supplied)",
+    re.IGNORECASE,
+)
+SUSPECTED_PREFIX = re.compile(r"^\s*SUSPECTED\b")
 ACTIONABLE_STATES = {"open", "addressed", "blocked-owner"}
 ROLE_OPERATIONS = {
     "role.plan": "planner",
@@ -398,6 +403,60 @@ def validate_string_list(value: Any, label: str) -> list[str]:
     ):
         raise EvidenceError(f"{label} must be a string array")
     return value
+
+
+GATE_STATUSES = {"green", "red", "not-run"}
+
+
+def validate_falsifiers(value: Any) -> list[dict[str, str]]:
+    """`[{test, mutation}]` — the one change that reds each new or changed test.
+
+    A test whose falsifier the coder cannot name is a proxy for the property it
+    claims to check; the critic reads this list instead of guessing.
+    """
+    if not isinstance(value, list):
+        raise EvidenceError("change metadata falsifiers must be a list")
+    result: list[dict[str, str]] = []
+    for index, item in enumerate(value):
+        if not isinstance(item, dict) or set(item) != {"test", "mutation"}:
+            raise EvidenceError(
+                f"change metadata falsifiers[{index}] must be an object with exactly test, mutation"
+            )
+        test = item["test"]
+        mutation = item["mutation"]
+        if not isinstance(test, str) or not test.strip():
+            raise EvidenceError(f"change metadata falsifiers[{index}].test must be nonempty text")
+        if not isinstance(mutation, str) or not mutation.strip():
+            raise EvidenceError(
+                f"change metadata falsifiers[{index}].mutation must be nonempty text"
+            )
+        result.append({"test": test.strip(), "mutation": mutation.strip()})
+    return sorted(result, key=lambda item: (item["test"], item["mutation"]))
+
+
+def validate_gate_status(value: Any) -> dict[str, str]:
+    """`{focused: green|red|not-run, reason}`; `not-run` must say why.
+
+    The orchestrator reads this before dispatching the critic: code whose
+    focused gate never ran is gated natively first, never reviewed unverified.
+    """
+    if not isinstance(value, dict) or set(value) != {"focused", "reason"}:
+        raise EvidenceError(
+            "change metadata gate_status must be an object with exactly focused, reason"
+        )
+    focused = value["focused"]
+    reason = value["reason"]
+    if focused not in GATE_STATUSES:
+        raise EvidenceError(
+            "change metadata gate_status.focused must be one of " + ", ".join(sorted(GATE_STATUSES))
+        )
+    if not isinstance(reason, str):
+        raise EvidenceError("change metadata gate_status.reason must be a string")
+    if focused == "not-run" and not reason.strip():
+        raise EvidenceError(
+            "change metadata gate_status.reason must be nonempty when focused is not-run"
+        )
+    return {"focused": focused, "reason": reason.strip()}
 
 
 def validate_relative_paths(value: Any, label: str) -> list[str]:
@@ -1831,6 +1890,8 @@ def command_capture_change(arguments: argparse.Namespace) -> None:
         "intentionally_unchanged": arguments.unchanged,
         "rebase_reasons": arguments.rebase_reason,
         "failure_analysis": arguments.failure_analysis,
+        "falsifiers": [],
+        "gate_status": {"focused": arguments.gate_status, "reason": arguments.gate_reason},
     }
     if arguments.metadata or arguments.metadata_artifact:
         supplied = (
@@ -1850,6 +1911,8 @@ def command_capture_change(arguments: argparse.Namespace) -> None:
         "rebase_reasons",
     ):
         validate_string_list(metadata[field], f"change metadata {field}")
+    falsifiers = validate_falsifiers(metadata["falsifiers"])
+    gate_status = validate_gate_status(metadata["gate_status"])
     validate_relative_paths(
         metadata["intentionally_unchanged"],
         "change metadata intentionally_unchanged",
@@ -1895,6 +1958,8 @@ def command_capture_change(arguments: argparse.Namespace) -> None:
         or bool(prior_risk_tags and new_risk_tags),
         "rebase_reasons": sorted(set(metadata["rebase_reasons"])),
         "failure_analysis": metadata["failure_analysis"].strip(),
+        "falsifiers": falsifiers,
+        "gate_status": gate_status,
     }
     atomic_json(arguments.run_dir / "change.json", change)
     atomic_json(arguments.run_dir / "candidate.json", current)
@@ -2031,6 +2096,24 @@ def validate_finding(value: Any, index: int) -> dict[str, Any]:
     disposition = text_field("disposition", optional=True)
     if severity is not None and severity not in SEVERITIES:
         errors.append(("severity-invalid", f"{label} field severity is invalid: {severity}"))
+    if evidence is not None and EVIDENCE_PLACEHOLDER.search(evidence):
+        # A pass that never saw the prior ledger cannot carry its findings; the
+        # orchestrator hands the ledger to the next dispatch instead.
+        errors.append(
+            (
+                "evidence-placeholder",
+                f"{label} field evidence is a carry-forward placeholder, not evidence",
+            )
+        )
+    if evidence is not None and severity == "blocking" and SUSPECTED_PREFIX.match(evidence):
+        # A read-only reviewer's unexecuted runtime claim is capped below
+        # blocking; the orchestrator runs the probe and the next round decides.
+        errors.append(
+            (
+                "suspected-not-blocking",
+                f"{label} marks its evidence SUSPECTED and cannot be blocking",
+            )
+        )
     if state is not None and state not in STATES:
         errors.append(("state-invalid", f"{label} field state is invalid: {state}"))
     if classification is not None and classification not in CLASSIFICATIONS:
@@ -4045,6 +4128,14 @@ def command_packet(arguments: argparse.Namespace) -> None:
             f"- New risk tags: {', '.join(change['new_risk_tags']) or 'none'}",
             f"- Selected tests: {', '.join(change['selected_tests']) or 'none recorded'}",
             f"- Selection reason: {change['selection_reason']}",
+            "- Focused gate: "
+            f"{change['gate_status']['focused']}"
+            + (f" ({change['gate_status']['reason']})" if change["gate_status"]["reason"] else ""),
+            "- Falsifiers: "
+            + (
+                "; ".join(f"{item['test']} ← {item['mutation']}" for item in change["falsifiers"])
+                or "none named"
+            ),
         ]
         source_change_path = arguments.run_dir / "change.json"
     for item in authority["authorities"]:
@@ -4487,6 +4578,8 @@ def build_parser() -> argparse.ArgumentParser:
     capture.add_argument("--rebase-reason", action="append", default=[])
     capture.add_argument("--selection-reason")
     capture.add_argument("--failure-analysis", default="")
+    capture.add_argument("--gate-status", choices=sorted(GATE_STATUSES), default="not-run")
+    capture.add_argument("--gate-reason", default="gate status not supplied on the command line")
     capture_metadata = capture.add_mutually_exclusive_group()
     capture_metadata.add_argument("--metadata", type=Path)
     capture_metadata.add_argument("--metadata-artifact", type=Path)

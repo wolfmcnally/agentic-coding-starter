@@ -729,6 +729,95 @@ def test_finding_that_stays_actionable_keeps_its_evidence(repository: Path, tmp_
     assert ingest(run_dir, tmp_path, [further]).returncode == 0
 
 
+def test_change_metadata_carries_falsifiers_and_gate_status(
+    repository: Path, tmp_path: Path
+) -> None:
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    assert ingest(run_dir, tmp_path, [finding("CODE-F001", candidate)]).returncode == 0
+    (repository / "code.py").write_text("VALUE = 2\n")
+
+    def artifact(metadata: dict[str, object]) -> Path:
+        path = tmp_path / "coder.md"
+        path.write_text("### Change Evidence\n```json\n" + json.dumps(metadata) + "\n```\n")
+        return path
+
+    base: dict[str, object] = {
+        "risk_tags": ["public-api"],
+        "selected_tests": ["./bin/test focused"],
+        "selection_reason": "Exercises the public behavior",
+        "intentionally_unchanged": [],
+        "rebase_reasons": [],
+        "failure_analysis": "",
+    }
+    # The old six-field shape is refused: both new fields are required.
+    refused = run(
+        "capture-change", "--run-dir", str(run_dir), "--metadata-artifact", str(artifact(base))
+    )
+    assert refused.returncode == 2
+    assert "must contain exactly" in refused.stderr
+
+    silent = dict(base, falsifiers=[], gate_status={"focused": "not-run", "reason": ""})
+    refused = run(
+        "capture-change", "--run-dir", str(run_dir), "--metadata-artifact", str(artifact(silent))
+    )
+    assert refused.returncode == 2
+    assert "reason must be nonempty when focused is not-run" in refused.stderr
+
+    malformed = dict(
+        base,
+        falsifiers=[{"test": "tests/test_x.py::test_y"}],
+        gate_status={"focused": "green", "reason": ""},
+    )
+    refused = run(
+        "capture-change", "--run-dir", str(run_dir), "--metadata-artifact", str(artifact(malformed))
+    )
+    assert refused.returncode == 2
+    assert "falsifiers[0] must be an object with exactly test, mutation" in refused.stderr
+
+    good = dict(
+        base,
+        falsifiers=[{"test": "tests/test_x.py::test_y", "mutation": "drop the guard at :12"}],
+        gate_status={"focused": "not-run", "reason": "sandbox cannot reach the uv cache"},
+    )
+    accepted = run(
+        "capture-change", "--run-dir", str(run_dir), "--metadata-artifact", str(artifact(good))
+    )
+    assert accepted.returncode == 0, accepted.stderr
+    change = json.loads((run_dir / "change.json").read_text())
+    assert change["falsifiers"] == good["falsifiers"]
+    assert change["gate_status"] == good["gate_status"]
+
+    output = tmp_path / "packet.md"
+    packet = run("packet", "--run-dir", str(run_dir), "--kind", "code", "--output", str(output))
+    assert packet.returncode == 0, packet.stderr
+    text = output.read_text()
+    assert "Focused gate: not-run (sandbox cannot reach the uv cache)" in text
+    assert "tests/test_x.py::test_y ← drop the guard at :12" in text
+
+
+def test_placeholder_evidence_and_suspected_blocking_are_refused(
+    repository: Path, tmp_path: Path
+) -> None:
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    placeholder = finding("CODE-F001", candidate)
+    placeholder["evidence"] = "Carried forward unchanged. This pass did not re-examine it."
+    refused = ingest(run_dir, tmp_path, [placeholder])
+    assert refused.returncode == 2
+    assert "carry-forward placeholder" in refused.stderr
+
+    suspected = finding("CODE-F002", candidate)
+    suspected["severity"] = "blocking"
+    suspected["evidence"] = "SUSPECTED, NOT CONFIRMED: the symlink case needs shell access."
+    refused = ingest(run_dir, tmp_path, [suspected])
+    assert refused.returncode == 2
+    assert "SUSPECTED and cannot be blocking" in refused.stderr
+
+    suspected["severity"] = "medium"
+    assert ingest(run_dir, tmp_path, [suspected]).returncode == 0
+
+
 def test_role_artifacts_feed_findings_and_change_metadata_without_reparsing(
     repository: Path, tmp_path: Path
 ) -> None:
@@ -768,6 +857,8 @@ def test_role_artifacts_feed_findings_and_change_metadata_without_reparsing(
                 "intentionally_unchanged": ["policy.md"],
                 "rebase_reasons": [],
                 "failure_analysis": "",
+                "falsifiers": [],
+                "gate_status": {"focused": "green", "reason": ""},
             }
         )
         + "\n```\n"
@@ -1316,6 +1407,8 @@ def test_evidence_paths_cannot_escape_repository(repository: Path, tmp_path: Pat
                 "intentionally_unchanged": ["../outside"],
                 "rebase_reasons": [],
                 "failure_analysis": "",
+                "falsifiers": [],
+                "gate_status": {"focused": "green", "reason": ""},
             }
         )
     )

@@ -101,6 +101,31 @@ If a build step requires a system tool that isn't available in this environment,
 Do not hand back broken code. A focused green result is evidence for its named
 surface, not a claim that either close gate has passed.
 
+**Never hand off unverified.** If this venue cannot run `./bin/test` (a
+sandbox that cannot reach the toolchain, a missing system tool), say so in
+Change Evidence as `gate_status: {"focused": "not-run", "reason": …}` — the
+orchestrator then runs the focused sequence natively before any review. A
+report that reads as green because the gate was never run is the single most
+frequent way formatting and gate misses reached the critic.
+
+**Verify against the plan's matrix, not the implementation's shape.** Before
+reporting, walk the approved plan's Testing Strategy and File Changes as a
+checklist: every named test node, fixture, function, and file exists, or is
+declared as a deviation under Notes with its reason. Run
+`./bin/check-plan-delivery --plan <approved plan> --root . --deviations <your
+report>` when the repository ships it; its `ERROR` rows are yours to close
+before handoff. A subset delivered silently is the second most frequent
+critic finding.
+
+**Every test names its falsifier.** For each test you add or materially
+change, name the one-line mutation of the code under test that would turn it
+red, and record the pair in Change Evidence `falsifiers`. If you cannot name
+one, the test is scoring a stand-in for the property — the implementation's
+own output, a constant lifted from the code, a count preserved by any write —
+and it is rewritten or deleted before handoff, per
+`policies/acceptance-empirical.md`. This is the largest category of code
+findings and the one you can close alone.
+
 Remain sensitive to human wall-clock cost while implementing. If an operation
 materially dominates the work and a substantial, low-risk improvement is
 reasonably apparent, make one bounded assessment and use an existing safe
@@ -142,11 +167,15 @@ Use this structure:
   "selection_reason": "",
   "intentionally_unchanged": [],
   "rebase_reasons": [],
-  "failure_analysis": ""
+  "failure_analysis": "",
+  "falsifiers": [{"test": "<test node id>", "mutation": "<one-line change that reds it>"}],
+  "gate_status": {"focused": "green | red | not-run", "reason": ""}
 }
 ```
 
-Populate every field. Use only the universal risk tags from the approved plan
+Populate every field. `falsifiers` carries one row per new or materially
+changed test; `gate_status.focused` states whether the plan's focused sequence
+actually ran here (`not-run` requires a reason and is never silent). Use only the universal risk tags from the approved plan
 or `project:<name>` tags. Add a rebase reason when implementation changed
 authority, scope, architecture, a risk boundary, or an acceptance claim. On a
 revision round, `failure_analysis` states in one paragraph *why* the previous
@@ -157,6 +186,7 @@ passes this object unchanged to
 
 ### Finding Resolution
 - `<finding id>` — <implementation change and mapped verification>
+- `<finding id>` — rejected-with-evidence: <the observation that refutes it>
 
 ### Failure Analysis (revision rounds only)
 - [One paragraph: why the previous attempt produced these findings — the same
@@ -171,6 +201,9 @@ passes this object unchanged to
   the repo gets that a surface needs restructuring. If the resistance was in
   the attempt, say that plainly; it is the expected answer and a valid one.
   Either way this feeds the phase-close lessons harvest.]
+- [When a finding named one site: the class you enumerated (the grep, the
+  sibling sites) and whether you fixed the class or why the site is singular.
+  A guard patched where the critic pointed regrows at the next site.]
 
 ### Manual Checks (for the orchestrator to surface to the user)
 - [Anything the orchestrator cannot mechanically verify — perceptual judgments, console inspections, dashboard reads, hardware-attached tests.]
@@ -188,7 +221,20 @@ passes this object unchanged to
 
 ## Rules
 
-- Follow the approved plan. Implement no more and no less.
+- Follow the approved plan. Implement no more and no less. A finding you can
+  refute goes back as `rejected-with-evidence` with the refuting observation in
+  Finding Resolution; do not implement a non-requirement to make a finding go
+  away, and do not defend against an actor no phase, brief, or policy names —
+  that is an owner question, and the critic is told to route it as one.
+- A focused test that mirrors the implementation is not evidence.
+- Fix the class, not the site. When a finding names one site, enumerate the
+  siblings (grep the pattern) and fix them together or state why the site is
+  singular; three projects filed the same lesson before it became this rule.
+- On a revision round, re-run every inventory the edit touches: mutation
+  patches anchored on changed lines, prose and docstrings that name changed
+  identifiers, floors and counts, generated inventories. A revision that
+  resolves the named findings and regresses a neighbor comes back as
+  `introduced-by-revision`.
 - Idiomatic code in the project's primary language. Match existing style; do not introduce a different formatting convention.
 - Type hints / type signatures on new public APIs when the language supports them.
 - Explicit error types over generic exception types where possible.

@@ -104,7 +104,31 @@ persistent finding where there were four consecutive misses.) A finding that
 rests on a decision only the operator can make — a product, architecture,
 authorization, or custody call — enters the ledger as `blocked-owner` and
 routes to the operator; sending it back to the planner as `REVISE` loops until
-someone notices. Authority/scope drift,
+someone notices.
+
+The code loop adds four rules of the same kind, each from the month's
+code-review record:
+
+- **The threat model is an authority, not a reviewer's imagination.** A
+  critic may require the code to withstand only the actors, failures, and
+  capabilities a phase file, brief, or policy names. A defense against
+  anything else — the repository's own code forging its evidence, a same-user
+  process ignoring the protocol lock — is an owner question recorded as
+  `blocked-owner`, never `blocking`. (Five blocking findings of this shape
+  survived attempts up to nine in one derived project before the owner
+  amended the threat model and all five were superseded.)
+- **A non-finding is not a finding.** "None required", "optional", and
+  "outside this phase" belong in Process Observations or a follow-up note;
+  the batch carries only findings with a required change.
+- **The coder may refuse with evidence.** A finding the coder can refute
+  returns as `rejected-with-evidence` with the refuting observation; the
+  critic accepts it or reopens with counter-evidence. In 328 findings over a
+  month the transition was used zero times while coders implemented
+  non-requirements to make findings go away.
+- **No unverified handoff.** The coder's Change Evidence states whether the
+  plan's focused sequence ran (`gate_status`); when it did not, the
+  orchestrator runs it natively before the critic is dispatched. Code whose
+  focused gate never ran anywhere is not reviewed. Authority/scope drift,
 a new risk class, public API or persisted-state changes, security, concurrency,
 irreversible-state boundaries, broad change dispersion, an invalidated
 acceptance claim, or lost trustworthy continuity rebases to a complete review.

@@ -842,3 +842,82 @@ actionable, `blocked-owner` routing, severity tiers; `bin/kickoff-evidence` —
 over-engineering asks (count does not justify one). Open (DECIDE): none.
 Delivered as 08d0df5; the skill, harvester, and this entry follow in the next
 commit.
+
+## 2026-08-26 12:10 MDT — SWEEP-CODING (code)
+
+Over the last month the code critic sent implementations back mostly for
+things the coder could have caught alone: tests that could not fail, items
+the approved plan named that were never written, prose left describing the
+old behavior, and error paths that fall back to a reassuring answer. The
+critic was usually right; its one expensive mistake was demanding defenses
+against an adversary no authority had named, which cost five rounds before
+the owner ruled it out. The rounds that were wasted came less from wrong
+findings than from four leaks in the loop itself — code reaching the critic
+with its gate never run, partial delivery, fixes applied at one site while
+the pattern lived at three, and revisions that broke a neighbor. The coder
+had never once refused a finding with evidence. The corrections below make
+the coder name each test's falsifier and its gate status, check its own
+delivery against the plan, and push back when it can; make the critic cite
+the authority that names an adversary; and make the orchestrator run the
+focused gate itself before any review when the coder's venue could not.
+
+Window: 2026-07-26 → 2026-08-26 (31 days; set by the operator's request —
+the skill did not yet exist, this run codified it). Harvest:
+`./bin/review-verdicts --since-days 31 --kind code` (pre-fix harvester) —
+113 genuine id-bearing code verdicts (60 REVISE / 53 APPROVED) across four
+derived projects (Donor A 80, Donor B 11, Donor C 9, Donor D 2); 89
+unclassified legacy verdicts (30 REVISE with `Required Changes`, hand-read);
+328 unique `CODE-F` finding records; 129 coder Failure Analysis statements
+harvested separately. Blind spots: the running session's own transcript
+contaminated the corpus (11 spurious rows, since fixed by excluding the
+running session); re-aim detection conflated phases because ids restart per
+phase (25 reported, 9 within one session; since keyed by session); legacy
+verdicts without ids are under-counted by kind.
+
+Approval rate by week: 2026-07-w4 25%, w5 64%, 2026-08-w1 75%, w2 50%, w3
+50%, w4 34% — the w4 drop is two phases (one at attempt 9 under the
+threat-model overreach, one 17-finding phase at 3 rounds), weather not trend.
+Rounds per phase where stated: 2–4 typical, 5–9 on the outliers. State usage:
+`rejected-with-evidence` 0 of 328; `superseded` 21 (all the owner amendment);
+`introduced-by-revision` 11; `newly-exposed-by-resolution` 11.
+
+| Category | Root findings | Share | Blocking | Rounds survived | Attribution | vs. last sweep |
+|---|---|---|---|---|---|---|
+| Real correctness defect | ~80 | 25% | most | 1–3 | coder (legitimate) | new |
+| A test that cannot fail | ~80 | 25% | half | 1–3 | coder — proxies; self-diagnosed in 40% of failure analyses | new |
+| Planned item not delivered | ~50 | 15% | most | 1–2 | coder — mechanizable | new |
+| Prose out of sync with changed behavior | ~50 | 15% | rarely | 1 | coder | new |
+| Reassuring default on an error path | ~30 | 10% | most | 1–2 | coder | new |
+| Scope / style nit | ~25 | 7% | no | 1 | rides along | new |
+| Environment / orchestrator | ~10 | 3% | blocked-owner | — | structural | new |
+
+Critic-side: threat-model overreach (five blocking findings superseded by an
+owner amendment after attempts up to 9); non-findings entered as `open`
+("none required", "optional", "outside this phase" ×4); nine placeholder
+carry-forward findings ("text not supplied to this pass") from a pass
+dispatched without the ledger; one correctly marked `SUSPECTED` claim; 34%
+`blocking`; a critic re-verifying fifteen untouched findings on every delta
+round. Coder-side, in its own words: "scored a stand-in for the property",
+"verification followed the implementation's shape", "third consecutive phase
+in which full-gate coverage found a reachable regression absent from focused
+selection", "the delegated sandbox could not execute the repository wrappers".
+
+Corrections applied: `.claude/agents/phase-coder.md` — falsifiers and
+`gate_status` in Change Evidence, plan-matrix verification with
+`bin/check-plan-delivery`, class-before-site, revision re-anchoring, push-back
+with evidence; `.claude/agents/code-critic.md` — threat-model boundary
+(`blocked-owner`), non-findings excluded, `SUSPECTED` cap, falsifier check,
+delta-round scope, severity tiers; `bin/check-plan-delivery` + tests, sharing
+`lib/agentic_starter/plan_artifact.py` with `check-plan-concreteness`;
+`bin/kickoff-evidence` — `falsifiers`/`gate_status` change metadata,
+`evidence-placeholder` and `suspected-not-blocking` ingest refusals, packet
+rendering; `bin/kickoff-config` — coder toolchain probe at preflight
+(non-aborting warning); `kickoff` Step 0b/5/6 — unverified-handoff guard,
+delivery pre-review, push-back route, `SUSPECTED` probe, `blocked-owner` park;
+`bin/review-verdicts` — running-session exclusion, per-session re-aims,
+`--coder-evidence`; `policies/four-canonical-agents.md`,
+`policies/orchestration-evidence.md`, `policies/acceptance-empirical.md`,
+`policies/log-discipline.md`; the `sweep-coding` skill and the shared
+lifecycle in `sweep-planning` (plan mode first, plain-register head).
+Declined: none. Open (DECIDE): none. Delivered in the commit that carries
+this entry.
