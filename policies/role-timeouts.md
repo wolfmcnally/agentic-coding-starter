@@ -15,7 +15,7 @@ The human-editable `role_timeouts` section of [`kickoff.yaml`](../kickoff.yaml) 
 
 Every role must produce its first structured event within **120 seconds**. The turn column is deliberately named `claude_max_turns` in configuration: Claude exposes that CLI circuit breaker, while Codex and native subagents do not expose an equivalent per-invocation flag. Their enforceable guards are the three clocks. Authentication preflight has its own 120-second deadline in [`role-models.md`](role-models.md). The 10-cycle convergence backstop remains separate: it limits revision rounds, while this policy limits one round.
 
-These are hang guards, not performance targets or promises. Planning and review get enough room for repository inspection and reasoning; implementation gets a materially larger envelope; critique sits between them. There is deliberately no whole-phase timeout because phase scope and build gates vary too widely. None of these numbers is reachable through a foreground command call — see [The harness ceiling bounds every budget](#the-harness-ceiling-bounds-every-budget) below.
+These are hang guards, not performance targets or promises. Planning and review get enough room for repository inspection and reasoning; implementation gets a materially larger envelope; critique sits between them. There is deliberately no whole-phase timeout because phase scope and build gates vary too widely. Every dispatch must use an execution surface that can remain observable for the full configured budget — see [The harness ceiling bounds every budget](#the-harness-ceiling-bounds-every-budget) below.
 
 ## Enforcement
 
@@ -46,18 +46,21 @@ One max-turn rescue is allowed only for a review role that completed investigati
 
 ### The harness ceiling bounds every budget
 
-The orchestrating harness's **foreground** command tool caps execution well below
-every hard deadline in the table above, and a requested timeout above that cap is
-**accepted and silently reduced**, never refused. Nothing in the call, the result,
-or the transcript says "clamped." A foreground `bin/kickoff-config watch`
-therefore cannot complete for any role.
+The effective role budget is the smaller of the configured role budget and the
+execution surface's own hard ceiling. Some harness foreground tools accept a
+requested timeout above their ceiling and silently clamp it; others return a
+durable session handle that the orchestrator can poll past the initial yield.
+Before dispatch, prove which behavior the current harness provides. A
+foreground `bin/kickoff-config watch` is valid only when its session remains
+observable for the full configured budget.
 
-**Dispatch every role through the harness's own tracked background mechanism.**
-Not a foreground call, which the ceiling kills mid-work; and not detached
-`nohup`, which dodges the ceiling but forfeits the completion signal and leaves
-the orchestrator polling blind.
+**When a foreground call would be silently clamped or its session handle would
+be lost, dispatch through the harness's own tracked background mechanism.** Do
+not use detached `nohup`: it dodges the foreground ceiling but forfeits the
+completion signal and leaves the orchestrator polling blind.
 
-**The silent-death signature** — all four together, none of which says "timeout":
+**The silent-death signature for a clamped foreground dispatch** — all four
+together, none of which says "timeout":
 
 - exit 143 (SIGTERM to the watcher; the process group takes the child too);
 - an artifact present, zero bytes, well-formed path;

@@ -921,3 +921,27 @@ delivery pre-review, push-back route, `SUSPECTED` probe, `blocked-owner` park;
 lifecycle in `sweep-planning` (plan mode first, plain-register head).
 Declined: none. Open (DECIDE): none. Delivered in the commit that carries
 this entry.
+
+## 2026-08-26 15:40 MDT — LEARN
+
+Donor: Donor A @ <sha withheld>
+
+Items absorbed: 20, by tier T1=14/T2=6/T3=0/T4=0.
+Donor lessons harvested: 18 (1 absorbed as a rule proposal; 17 filed to
+`lessons/`). Application-found return candidates: 0 filed to `lessons/`.
+Stale-in-light-of-learning migrations: 4 AUTO; 0 DECIDE; 0 DEFER.
+Files touched: 25.
+
+Direct improvements: role dispatch now selects an execution surface that stays
+observable for the configured budget instead of assuming every harness silently
+clamps foreground work; the review-verdict fixture clears ambient Codex session
+identity; and catalog validation ignores indexed Markdown sources deleted from
+the candidate worktree while surviving inbound links remain checked.
+
+Destination proofs preceded each hardening. The review-verdict test failed
+because the live Codex session joined its expected exclusion set; the new
+catalog test failed by trying to read the deleted source; and a yielded Codex
+command returned a durable session handle that remained pollable through its
+terminal exit. The two focused regression tests then passed, followed by 241
+focused bundle tests. The seventeen new lessons preserve donor observations as
+anonymized, non-binding candidates for later human-ratified graduation.

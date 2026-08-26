@@ -164,6 +164,7 @@ def test_running_session_and_explicit_exclusions_are_skipped(tmp_path: Path, mon
     own.write_text(
         claude_record("/srv/x/proj-a", verdict_text([finding("PLAN-F009", "own noise")])) + "\n"
     )
+    monkeypatch.delenv("CODEX_SESSION_ID", raising=False)
     monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "11111111-2222-3333-4444-555555555555")
     result = run(claude_root, codex_root, "--kind", "all", "--exclude-session", "rollout")
     assert result.returncode == 0, result.stderr

@@ -1,6 +1,6 @@
 ---
 slug: banana-macaw
-title: The orchestrating harness's command ceiling is below every role budget, and the death is silent
+title: A harness command ceiling can undercut a role budget, and the death is silent
 status: codified
 scope: methodology
 proposed_surface: policy
@@ -17,10 +17,13 @@ occurrences:
     ref: "Donor A — identical signature in a sibling thread, independently diagnosed the same afternoon"
 ---
 
-The orchestrating harness's foreground command tool caps execution well below
-every per-role hard budget in `kickoff.yaml`, and a requested timeout above
-the cap is silently clamped rather than refused. A foreground
-`kickoff-config watch` therefore **cannot complete for any role**.
+The observed donor harness's foreground command tool capped execution well
+below every per-role hard budget in `kickoff.yaml`, and a requested timeout
+above the cap was silently clamped rather than refused. A foreground
+`kickoff-config watch` therefore could not complete for any role in that
+harness. Other harnesses may return a durable session handle that remains
+observable past the initial foreground yield, so the general rule is to prove
+the execution surface can carry the full budget before using it.
 
 **The silent-death signature**, all four together, none of which says
 "timeout":
@@ -34,10 +37,10 @@ Discriminator that matters: an empty artifact mid-run is *normal*, because the
 child writes its final message at the end. Empty is a death signal only
 together with a stopped stream and exit 143.
 
-**Fix:** dispatch every role through the harness's own tracked background
-mechanism, not a foreground call — and not detached `nohup`, which dodges the
-cap but forfeits the completion signal, leaving the orchestrator polling
-blind.
+**Fix:** when the current harness's foreground surface clamps the budget or
+loses the session handle, dispatch through the harness's own tracked
+background mechanism — not detached `nohup`, which forfeits the completion
+signal and leaves the orchestrator polling blind.
 
 **The durable repair shape** — the dispatch row written only at the end loses
 every death before that point — is the append-then-amend opened/terminal
@@ -54,15 +57,18 @@ Graduated 2026-08-25 into
 bounds every budget", on three occurrences.
 
 `wisteria-termite` was absorbed into this entry in the same sweep and archived
-`superseded`. Both describe one mechanism and end at one instruction — dispatch
-long-running delegated work through the harness's tracked background mechanism,
-never a foreground call. This entry carried the signature; that one carried the
-misdiagnosis cost, and its contribution is preserved in the graduated rule as a
-named diagnostic step: **before blaming a delegated venue for a child's death,
-check what actually bounded it** — the tool's limits, the harness ceiling, the
-parent's timeout, the process group. The caller is the last place anyone looks,
-because the caller is the thing doing the looking.
+`superseded`. Both describe one mechanism and end at one instruction — prove
+that the chosen execution surface can carry the configured budget, and use
+harness-tracked background work when the foreground surface cannot. This entry
+carried the signature; that one carried the misdiagnosis cost, and its
+contribution is preserved in the graduated rule as a named diagnostic step:
+**before blaming a delegated venue for a child's death, check what actually
+bounded it** — the tool's limits, the harness ceiling, the parent's timeout,
+the process group. The caller is the last place anyone looks, because the
+caller is the thing doing the looking.
 
-The graduation matters beyond the signature: this repository's own shipped-budget
-table declares 1,800 s, 7,200 s, and 2,700 s hard deadlines, none of which a
-foreground call can reach. The policy stating those numbers now says so.
+The graduation matters beyond the signature: the repository's shipped-budget
+table declares 1,800 s, 7,200 s, and 2,700 s hard deadlines. The policy now
+requires an execution surface that remains observable for the corresponding
+budget instead of assuming that every harness has the same foreground
+semantics.

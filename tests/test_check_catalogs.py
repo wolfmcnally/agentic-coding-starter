@@ -76,6 +76,18 @@ def test_clean_fixture_passes(tmp_path: Path) -> None:
     assert result.stdout == "CATALOGS OK\n"
 
 
+def test_tracked_markdown_deleted_from_worktree_is_not_read_as_a_source(
+    tmp_path: Path,
+) -> None:
+    root = fixture(tmp_path)
+    obsolete = write_tracked(root, "docs/obsolete.md", "# Obsolete\n")
+    obsolete.unlink()
+
+    result = run(root)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_repository_catalogs_are_in_sync() -> None:
     result = run(ROOT)
 

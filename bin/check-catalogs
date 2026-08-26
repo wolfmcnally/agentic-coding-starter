@@ -197,7 +197,12 @@ def tracked_markdown_files() -> list[Path]:
         message = result.stderr.decode("utf-8", errors="replace").strip()
         report("links", ".", f"git ls-files failed (exit {result.returncode}): {message}")
         return []
-    return [ROOT / item.decode("utf-8") for item in result.stdout.split(b"\0") if item]
+    tracked = [ROOT / item.decode("utf-8") for item in result.stdout.split(b"\0") if item]
+    # `git ls-files` reports index members even after their worktree path has
+    # been deleted or moved. Link validation reads the candidate worktree, so
+    # vanished sources are outside its inventory; their remaining inbound
+    # links are still checked from every source that exists.
+    return [path for path in tracked if path.is_file()]
 
 
 def markdown_prose_lines(text: str) -> Iterable[tuple[int, str]]:
