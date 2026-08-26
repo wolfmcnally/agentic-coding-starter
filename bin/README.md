@@ -395,6 +395,33 @@ prose stay fine.
 
 Behavioral coverage lives in `tests/test_check_catalogs.py`.
 
+### `check-plan-concreteness` — mechanical pre-review of a plan artifact
+
+Runs between plan capture and plan review inside `kickoff` (Step 3), over the
+planner's artifact rather than the repository, so the reviewer's round is not
+spent on what a script can refuse. It fails closed on the four defect shapes
+that a month of plan-review rejections across three projects showed to be the
+most frequent and the most mechanical: a backticked identifier that occurs
+nowhere in the tree and is not declared in the plan's `## Definitions Read`
+table (a name the planner never read — `Mode.FAST` for a member that
+is `FAST_PATH`); a `Definitions Read` row whose file or line does not
+define what it claims; a cited path that does not exist and is not a declared
+new file; a command that cannot run as written — absent repository script,
+a `--flag` no argparse definition in that script spells, a `<placeholder>`
+token, or a 64-hex candidate id pinned before the implementation that will
+change it; and a lookup deferred to the coder (`or equivalent`, `TBD`, "verify
+before coding"). Shell pass-through wrappers such as `bin/test` are not
+flag-checked, since their arguments reach another program. Exit 0 prints
+`PLAN CONCRETENESS PASS`; exit 1 prints one `ERROR\t<check>\t<line>\t<message>`
+row per refusal; exit 2 is a usage or I/O error. The plan may live anywhere;
+`--root` names the repository it describes.
+
+```bash
+./bin/check-plan-concreteness --plan /absolute/path/to/plan.md --root .
+```
+
+Behavioral coverage lives in `tests/test_check_plan_concreteness.py`.
+
 ### `check-shell-syntax` — shell-script parse gate
 
 Runs `bash -n` over every shell script (selected by shebang) under `bin/` and

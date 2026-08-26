@@ -136,7 +136,9 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
   universal `kickoff-config`, `kickoff-tree-id`, `check-receipt`,
   `kickoff-evidence`, `execution-telemetry`, `lessons`, and `treatise` managers; the
   `new-name` ledger-slug generator; deterministic dashboard, harness-parity,
-  caller-policy, shell-syntax, and catalog (`check-catalogs`) checkers; and
+  caller-policy, shell-syntax, and catalog (`check-catalogs`) checkers; the
+  `check-plan-concreteness` mechanical pre-review `kickoff` runs over every
+  plan artifact before it reaches the reviewer; and
   the starter-only `check-anonymization.sh` leak guard.
 - `lib/agentic_starter/` — shared deterministic implementation for exact execution telemetry, evidence schemas, and offline dashboard generation.
 - `reports/execution/` — committed, privacy-safe, offline phase reports and aggregate index generated from sanitized telemetry handoffs.

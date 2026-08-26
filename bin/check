@@ -78,7 +78,7 @@ run_lint() {
       ../bin/check-execution-dashboards ../bin/check-harness-parity \
       ../bin/check-toolchain-callers ../bin/lessons ../bin/treatise ../bin/check-catalogs \
       ../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name \
-      ../tests
+      ../bin/check-plan-concreteness ../tests
   )
 }
 
@@ -91,7 +91,7 @@ run_format() {
       ../bin/check-execution-dashboards ../bin/check-harness-parity \
       ../bin/check-toolchain-callers ../bin/lessons ../bin/treatise ../bin/check-catalogs \
       ../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name \
-      ../tests
+      ../bin/check-plan-concreteness ../tests
   )
 }
 

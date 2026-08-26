@@ -2234,6 +2234,26 @@ def command_ingest_findings(arguments: argparse.Namespace) -> None:
                             f"{finding['id']} changes immutable field {immutable}",
                         )
                     )
+            # A finding that stays actionable keeps the objection it was
+            # opened for. Substituting new evidence under the old id is several
+            # findings wearing one label: the ledger then cannot say which
+            # round's objection was missed, and one id becomes four rounds.
+            # Progress notes belong in `disposition`; a further defect gets a
+            # new id classified by how it surfaced.
+            if (
+                prior["state"] in ACTIONABLE_STATES
+                and finding["state"] in ACTIONABLE_STATES
+                and prior["evidence"] != finding["evidence"]
+            ):
+                relationship_errors.append(
+                    (
+                        "evidence-substituted",
+                        f"{finding['id']} substitutes evidence while it remains "
+                        "actionable; a new objection is a new finding "
+                        "(newly-exposed-by-resolution, introduced-by-revision, or "
+                        "missed-in-full-pass) and progress notes go in disposition",
+                    )
+                )
             if finding["state"] not in ALLOWED_TRANSITIONS[prior["state"]]:
                 relationship_errors.append(
                     (

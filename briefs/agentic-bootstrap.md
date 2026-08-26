@@ -51,6 +51,7 @@ A project derived from this template contains the following **portable structure
     check-harness-parity   # Canonical-vs-mirror drift, fail-closed
     check-toolchain-callers # Every caller uses the repository runtime
     check-shell-syntax     # Shell scripts parse before they are needed
+    check-plan-concreteness # kickoff's mechanical pre-review of a plan artifact
     lessons                # Validate/query the lessons ledger
     treatise               # Validate treatise editorial records
     check-catalogs         # Catalog, link, anchor, citation, ledger checks
@@ -262,8 +263,10 @@ These files encode the methodology itself, not any particular product. Copy them
   `tests/render_execution_dashboard_fixture.py`, and `tests/fixtures/`
   (universal behavioral coverage for telemetry and offline report rendering)
 - `bin/check-harness-parity`, `bin/check-toolchain-callers`,
-  `bin/check-shell-syntax`, `bin/new-name`, and `bin/treatise` (the universal
-  deterministic checkers and the ledger-slug generator), with
+  `bin/check-shell-syntax`, `bin/new-name`, `bin/check-plan-concreteness`
+  (which `kickoff` runs over every plan artifact before plan review, covered
+  by `tests/test_check_plan_concreteness.py`), and `bin/treatise` (the
+  universal deterministic checkers and the ledger-slug generator), with
   `tests/test_mirror_parity.py`, `tests/test_toolchain_callers.py`,
   `tests/test_shell_syntax.py`, `tests/test_new_name.py`, and
   `tests/test_treatise.py`

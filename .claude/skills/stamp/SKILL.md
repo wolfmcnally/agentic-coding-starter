@@ -314,6 +314,8 @@ the copy was performed. It is not exhaustive and does not need to be.
   `bin/check-toolchain-callers`, `bin/lessons`, `bin/treatise`,
   `bin/check-catalogs`, `bin/check-hooks-installed`, `bin/check-shell-syntax`,
   `bin/new-name`; plus the operator convenience `bin/serve-execution-dashboard`
+  and `bin/check-plan-concreteness`, which `kickoff` runs over every plan
+  artifact before plan review (with `tests/test_check_plan_concreteness.py`)
 - `lib/agentic_starter/` — `bin/execution-telemetry` and
   `bin/check-execution-dashboards` import it; without it both fail at startup and
   take the whole gate with them

@@ -321,6 +321,18 @@ The returned plan hash is the identity reviewed in Step 4. A malformed planner
 report or failed capture follows the planner stage's fallback rules; do not
 send unbound plan text to review.
 
+**Mechanical pre-review.** Before spending a review round, run
+`./bin/check-plan-concreteness --plan <artifact>` (its own block; read the
+refusal). It refuses a plan that cites an identifier occurring nowhere in the
+tree and undeclared in the plan's `## Definitions Read` table, names a path
+that does not exist and is not a declared new file, writes a command that
+cannot run (missing script, unknown `--flag`, `<placeholder>`, pinned candidate
+id), or defers a lookup to the coder. On refusal, re-run the planner with the
+exact `ERROR` rows as feedback — a new registered attempt with reason
+`revision`, not a review round and not a convergence signal — then re-capture
+and re-check. Two consecutive refusals on the same rows park the phase for the
+operator. Only a passing plan proceeds to Step 4.
+
 ### Step 4: Review the plan
 
 **Light lane** (per Step 1's lane resolution): skip this step entirely. Record `Plan review: skipped (light lane)` for the END block and proceed to Step 5. Everything below applies to the full lane only.
@@ -337,7 +349,7 @@ send unbound plan text to review.
 **Delegated venue** (the non-`default` model `reviewer` resolved to in Step 0a): run the role in that CLI per [`policies/role-models.md`](../../../policies/role-models.md). The shipped `kickoff.yaml` resolves reviewer to the *other* harness (cross-vendor review); a project may resolve it anywhere. Add the resolved model and effort flags to the recipe below and preserve them on resume; everything else is identical. A later runtime failure despite the successful preflight falls back to native with a 🚨 in Step 10.
 
 1. Write the full phase text and the full plan text to temp files (e.g., `/tmp/kickoff-phase-<id>.md`, `/tmp/kickoff-plan-<id>.md`). Do not include the planner's own confidence statements or open-questions commentary beyond the plan text itself.
-2. Write a prompt file instructing the external agent to: read `.claude/agents/plan-reviewer.md` and adopt that role for this review; review the plan in `<plan temp file>` against the phase text in `<phase temp file>`; use the supplied plan hash, candidate id, evidence run directory, and revision packet/ledger when present; assume the planner was careful but missed something; emit the exact `## Finding Evidence` JSON block; and end with the exact verdict header (`## Verdict: APPROVED` or `## Verdict: REVISE`). Note that `AskUserQuestion` is unavailable in this venue — an unresolved product decision becomes `REVISE` with the question stated. **Scope the reading mandate** — the reviewer has a read-only checkout and its own Read/Grep, so name the handful of load-bearing files to read (the sources the plan actually reshapes), not "read all the sources the plan touches." An unbounded "read everything" instruction on a large multi-file phase can exhaust the external reviewer's own context (and trip its internal compaction, which can fail on a network stall) before it reaches a verdict — see [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md) §4.
+2. Write a prompt file instructing the external agent to: read `.claude/agents/plan-reviewer.md` and adopt that role for this review; review the plan in `<plan temp file>` against the phase text in `<phase temp file>`; use the supplied plan hash, candidate id, evidence run directory, and revision packet/ledger when present; assume the planner was careful but missed something; emit the exact `## Finding Evidence` JSON block; and end with the exact verdict header (`## Verdict: APPROVED` or `## Verdict: REVISE`). Note that `AskUserQuestion` is unavailable in this venue — an unresolved owner decision is recorded as a `blocked-owner` finding whose `required_outcome` states the exact question and its defensible answers, and the verdict is `REVISE`; the orchestrator relays it (below). **Scope the reading mandate** — the reviewer has a read-only checkout and its own Read/Grep, so name the handful of load-bearing files to read (the sources the plan actually reshapes), not "read all the sources the plan touches." An unbounded "read everything" instruction on a large multi-file phase can exhaust the external reviewer's own context (and trip its internal compaction, which can fail on a network stall) before it reaches a verdict — see [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md) §4.
 3. Invoke the registered attempt through `$WATCHER_TOOL watch`.
    It generates the read-only venue command and schema-constrains the complete
    artifact from the same finding vocabularies the evidence validator uses.
@@ -370,13 +382,26 @@ send unbound plan text to review.
 
 **If `APPROVED`**: proceed to Step 5. Show the user a brief summary plus any Minor Corrections (do not wait for explicit approval unless the user asked to review plans themselves).
 
+**If `REVISE` and any finding is `blocked-owner`**: do not re-run the
+planner on that finding — it is a question the planner cannot answer. Open an
+operator-input park, put the finding's `required_outcome` to the operator in
+the `plain` register (natively via `AskUserQuestion`; while unattended, the
+parked artifact per the AFK rules), and on the answer record the ruling in the
+phase file or the owning brief, transition the finding `blocked-owner → open`
+with the ruling in `disposition`, and re-run the planner with it. Findings that
+are not `blocked-owner` proceed in the same round as below.
+
 **If `REVISE`**: re-run `phase-planner` with the stable finding ledger and
 reviewer's narrative feedback. Capture the updated plan, then run
 `capture-plan` and generate a `--kind plan` revision packet. Re-review in the
 same venue with the packet, full updated plan, and ledger — external session
 resume is preferred; a fresh call receives all three. Use the venue's resume
-recipe, not its initial-call flags. Continue only while at least one blocking
-finding advances and no equal-or-worse finding reopens. Rebase to a complete
+recipe, not its initial-call flags. Run the mechanical
+pre-review on every recaptured plan. Continue only while at least one blocking
+finding advances and no equal-or-worse finding reopens; an
+`evidence-substituted` ingest refusal means the reviewer re-aimed a prior
+finding — return the refusal to the reviewer for a re-emission with a new id
+before judging convergence. Rebase to a complete
 review when the packet requires it. Escalate on recurrence, oscillation,
 authority disagreement, or two rounds without lower severity or uncertainty.
 The 10-cycle runaway backstop still applies.

@@ -226,6 +226,8 @@ For each proposed addition or update, ask:
 
 - **Deterministic-checker adoption.** Treat `bin/check-harness-parity`,
   `bin/check-toolchain-callers`, `bin/check-shell-syntax`, `bin/new-name`,
+  `bin/check-plan-concreteness` (the `kickoff` pre-review over plan artifacts,
+  with `tests/test_check_plan_concreteness.py`),
   `bin/treatise`, and their behavioral tests
   (`tests/test_mirror_parity.py`, `tests/test_toolchain_callers.py`,
   `tests/test_shell_syntax.py`, `tests/test_new_name.py`,

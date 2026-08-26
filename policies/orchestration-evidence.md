@@ -343,9 +343,10 @@ The record is not a bypass:
   recorded digests, replaying the four rules the recorded base can answer —
   namespace prefix, `introduced_in` lineage, `resolved_in` currency, and the
   allowed state transitions — with only the declared class's own rule
-  suppressed. The immutable-field check is not among them and cannot be: the
-  recorded base is `{id: state}`, not the prior fields it would compare
-  against. Nothing recorded is wrong for want of it, because that rule is
+  suppressed. The immutable-field check and the evidence-substitution check
+  (a finding that stays actionable keeps its `evidence`; a new objection is a
+  new id) are not among them and cannot be: the recorded base is
+  `{id: state}`, not the prior fields they would compare against. Nothing recorded is wrong for want of it, because that rule is
   either the suppressed one or provably never fired, but the replay is those
   four rules and the policy says so rather than claiming all of them;
 - an optional corroborating artifact must itself have been ingested with

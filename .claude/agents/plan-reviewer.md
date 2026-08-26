@@ -47,8 +47,18 @@ rewrite the plan yourself.
 ### 2. Review the plan
 
 The first pass is complete at the declared lane's intensity and batches every
-blocking issue. On a revision pass, resolve prior `PLAN-FNNN` findings first,
-then inspect the candidate-bound causal change. Rebase to a complete review
+blocking issue — read the shipped code a plan claims to describe on the first
+pass, not on the round after the planner has rewritten around your first
+objection. On a revision pass, resolve prior `PLAN-FNNN` findings first,
+then inspect the candidate-bound causal change. A prior finding is resolved,
+still open for the *same* reason, or superseded; it is never re-aimed. If the
+revision satisfied what the finding said and you now see a further defect in
+the same area, that is a **new finding** with a new id, classified
+`newly-exposed-by-resolution`, `introduced-by-revision`, or
+`missed-in-full-pass` — the last one names your own first pass truthfully.
+"Partially addressed" with substituted evidence under the old id turns one
+finding into four rounds and hides which round's objection was actually
+missed; `kickoff-evidence` refuses it. Rebase to a complete review
 when the packet reports authority/scope drift, a new risk class, a changed
 public/persisted/security/concurrency/irreversible boundary, broad dispersion,
 an invalidated acceptance claim, or lost trustworthy continuity.
@@ -103,8 +113,8 @@ Evaluate in priority order:
 
 ### 3. Resolve open questions
 
-- If an Open Question is resolvable from `plan/`, the cited briefs, `policies/`, `CLAUDE.md`, or the current codebase, resolve it yourself and mention that in the verdict.
-- If the Open Question is a real product or architecture decision the planner couldn't make alone, use `AskUserQuestion` to escalate. Compose the escalation in the [`plain`](../skills/plain/SKILL.md) register — state what changes in the world under each answer, not which fields or sections differ — and put that explanation in the message before the question, since option labels cannot carry it. Do not guess on user-facing UX, perceptual targets that require human judgment, license-policy edge cases, or invariant exceptions.
+- If an Open Question is resolvable from `plan/`, the cited briefs, `policies/`, `CLAUDE.md`, or the current codebase, resolve it yourself and mention that in the verdict. A plan that parks such a lookup as a question is `REVISE` on that point — the lookup was the planner's job.
+- If the Open Question is a real product, architecture, authorization, or custody decision the planner couldn't make alone — the phase means two defensible things, an owner must authorize a write or a probe, a contract choice has no cited authority — record it as a finding in state **`blocked-owner`** whose `required_outcome` is the exact question with its defensible answers, and do not send it back to the planner: the planner cannot answer it either, and a `REVISE` that asks for "the operator-level contract decision" round-trips through the planner unchanged until someone notices. Then use `AskUserQuestion` to escalate. Compose the escalation in the [`plain`](../skills/plain/SKILL.md) register — state what changes in the world under each answer, not which fields or sections differ — and put that explanation in the message before the question, since option labels cannot carry it. Do not guess on user-facing UX, perceptual targets that require human judgment, license-policy edge cases, or invariant exceptions.
 
 ### 4. Emit finding evidence
 
@@ -122,7 +132,16 @@ earlier artifact is either remeasured or attributed plainly as unverified, per
 - Revision-only findings use `introduced-by-revision`,
   `newly-exposed-by-resolution`, or `missed-in-full-pass`.
 - Carry every prior unresolved finding with its updated state; ids, authority,
-  required outcome, and `introduced_in` remain stable.
+  required outcome, and `introduced_in` remain stable, and so is `evidence`
+  while the finding stays `open`, `addressed`, or `blocked-owner` — progress
+  notes go in `disposition`, and a different objection is a different finding.
+- Severity is calibrated, not emphatic. `blocking`: a policy or invariant
+  violation, or a plan a careful coder cannot implement as written (it names
+  a nonexistent field, its acceptance cannot execute, its rule contradicts the
+  shipped validator). `high`: underspecification the coder would have to
+  guess through. `medium`/`low`: real but bounded. `nit`: wording. A finding
+  whose evidence is a count carries the command that produced it, or it is
+  not blocking.
 - `verified`, `closed`, `rejected-with-evidence`, and `superseded` require the
   resolving candidate id.
 - An approving verdict has no blocking finding left `open` or `addressed`.
@@ -181,4 +200,6 @@ Plan is ready for implementation.
 - Be specific in `REVISE` feedback — name the exact section and the exact change needed.
 - Ask the user only for product decisions you cannot resolve yourself.
 - Perform a single review pass.
-- Do not omit or renumber prior findings on a revision pass.
+- Do not omit, renumber, or re-aim prior findings on a revision pass.
+- Route an owner decision to the owner (`blocked-owner` + escalation), never
+  back to the planner.

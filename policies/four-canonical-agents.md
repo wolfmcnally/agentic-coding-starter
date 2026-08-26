@@ -93,7 +93,18 @@ After the first full pass, a revision reviewer receives the prior ledger, the
 candidate-bound revision packet, mapped verification, and the new candidate
 id. It resolves prior findings first and then checks the causal change surface.
 New findings are classified `introduced-by-revision`,
-`newly-exposed-by-resolution`, or `missed-in-full-pass`. Authority/scope drift,
+`newly-exposed-by-resolution`, or `missed-in-full-pass`. A prior finding that
+remains actionable keeps the evidence it was opened with; a reviewer that sees
+a further defect once the stated one is repaired opens a new id under one of
+those three classifications rather than re-aiming the old one, and
+`bin/kickoff-evidence` refuses the substitution. (Observed across three
+projects in one month: a stable id carrying a different objection in each of
+four rounds, every round classified `initial`, so the ledger showed one
+persistent finding where there were four consecutive misses.) A finding that
+rests on a decision only the operator can make — a product, architecture,
+authorization, or custody call — enters the ledger as `blocked-owner` and
+routes to the operator; sending it back to the planner as `REVISE` loops until
+someone notices. Authority/scope drift,
 a new risk class, public API or persisted-state changes, security, concurrency,
 irreversible-state boundaries, broad change dispersion, an invalidated
 acceptance claim, or lost trustworthy continuity rebases to a complete review.

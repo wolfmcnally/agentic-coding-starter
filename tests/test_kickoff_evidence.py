@@ -697,6 +697,38 @@ def test_finding_rejects_invalid_transition_and_identity_change(
     assert "immutable field" in identity.stderr
 
 
+def test_finding_that_stays_actionable_keeps_its_evidence(repository: Path, tmp_path: Path) -> None:
+    """One id carrying a new objection each round is several findings wearing one label."""
+    run_dir = tmp_path / "run"
+    candidate = initialize(repository, run_dir)
+    assert ingest(run_dir, tmp_path, [finding("CODE-F001", candidate)]).returncode == 0
+
+    re_aimed = finding("CODE-F001", candidate)
+    re_aimed["evidence"] = "A different defect in the same area"
+    re_aimed["disposition"] = "Partially addressed"
+    refused = ingest(run_dir, tmp_path, [re_aimed])
+    assert refused.returncode == 2
+    assert "substitutes evidence while it remains actionable" in refused.stderr
+    journal = json.loads((run_dir / "ingest-log.jsonl").read_text().splitlines()[-1])
+    assert journal["refusal_codes"] == ["evidence-substituted"]
+
+    # Progress notes belong in `disposition`; the objection itself is stable.
+    noted = finding("CODE-F001", candidate)
+    noted["disposition"] = "Partially addressed: the wrapper exists, its failure contract does not"
+    assert ingest(run_dir, tmp_path, [noted]).returncode == 0
+
+    # Resolving it may restate what was verified: the finding is no longer actionable.
+    resolved = finding("CODE-F001", candidate, state="addressed")
+    assert ingest(run_dir, tmp_path, [resolved]).returncode == 0
+    verified = finding("CODE-F001", candidate, state="verified", resolved_in=candidate)
+    verified["evidence"] = "Verified resolved: the guard now precedes the mutation"
+    assert ingest(run_dir, tmp_path, [verified]).returncode == 0, verified
+
+    # A further defect gets its own id, classified by how it surfaced.
+    further = finding("CODE-F002", candidate, classification="newly-exposed-by-resolution")
+    assert ingest(run_dir, tmp_path, [further]).returncode == 0
+
+
 def test_role_artifacts_feed_findings_and_change_metadata_without_reparsing(
     repository: Path, tmp_path: Path
 ) -> None:
