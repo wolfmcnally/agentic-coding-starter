@@ -227,7 +227,7 @@ The rule, therefore:
   can tell whether it agrees with it.
 
 The repository-owned toolchain wrappers are tested like product code. See
-[`build-gates.md`](build-gates.md): cwd independence, runtime selection,
+[`build-gates.md`](build-gates.md): cwd and symlink independence, runtime selection,
 locked setup, authoritative-override refusal without fallback, a real
 project-and-tool dependency-chain probe, full/focused test routing,
 missing-bundle behavior, command ordering, delegation, and exact status

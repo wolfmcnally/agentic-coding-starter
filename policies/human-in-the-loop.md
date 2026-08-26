@@ -29,7 +29,7 @@ Every acceptance criterion is one of two kinds, and the kind decides who closes 
 
 ## What the orchestrator does
 
-- **Delivers gate-proved work.** After the phase closes with every gate green, `kickoff` re-reads `git status` and the complete final diff, stages **only the phase's explicit paths**, creates an ordinary factual commit with no agent credit and never `--no-verify`, and makes a non-force push only when the branch has exactly one unambiguous configured upstream and the update is a fast-forward. It then fetches and proves that `HEAD`, the tracking ref, and the remote tip agree and the tree is clean. This authority is **orchestrator-only**: delegated roles never commit or push.
+- **Delivers gate-proved work.** After the phase closes with every gate green, `kickoff` re-reads `git status` and the complete final diff, stages **only the phase's explicit paths**, verifies the staged candidate and resulting file set under [`commit-staging.md`](commit-staging.md), creates an ordinary factual commit with no agent credit and never `--no-verify`, and makes a non-force push only when the branch has exactly one unambiguous configured upstream and the update is a fast-forward. It then fetches and proves that `HEAD`, the tracking ref, and the remote tip agree and the tree is clean. This authority is **orchestrator-only**: delegated roles never commit or push.
 - **Never advances past unresolved gates.** A failed build gate, an unmet empirical criterion, or an unresolved `DECIDE` ripple stops the phase. Convergence-bounded revision loops escalate to the human rather than spinning.
 - **Never claims subjective acceptance.** It surfaces manual criteria and demo protocols verbatim; it does not say "I listened and it sounds great" — it cannot.
 - **Never adds work the plan doesn't authorize.** Drift is contained to the plan that was actually approved. Anything extra is reported as a Note.
@@ -40,7 +40,7 @@ Every acceptance criterion is one of two kinds, and the kind decides who closes 
 
 Any of these stops the commit or the push, is reported truthfully, and is never worked around:
 
-- An **unexpected path** in `git status` — this checkout may be shared with a concurrent session, so `git add -A` and `git add .` are forbidden outright.
+- An **unexpected path** in `git status`, or a shared file whose hunks cannot be attributed safely — this checkout may be shared with a concurrent session, so `git add -A` and `git add .` are forbidden outright. The complete staging rule is [`commit-staging.md`](commit-staging.md).
 - A **hook refusal**. Never retried around, never bypassed.
 - A **missing or ambiguous upstream**, a **rejected push**, **divergence**, or **residual dirt** after the push.
 

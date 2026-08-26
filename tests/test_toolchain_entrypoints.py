@@ -9,6 +9,11 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ENTRYPOINTS = ("setup", "test", "python")
+SYMLINK_INVOCATIONS = (
+    ("setup", ()),
+    ("test", ("tests/test_check.py", "-q")),
+    ("python", ("--version",)),
+)
 PROBE = (
     "import example.cli, pytest, subprocess; "
     "subprocess.run(['ruff','--version'], check=True, stdout=subprocess.DEVNULL)"
@@ -66,6 +71,22 @@ fi
     return root, environment
 
 
+def _run_path(
+    executable: Path,
+    environment: dict[str, str],
+    *arguments: str,
+    cwd: Path,
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [str(executable), *arguments],
+        cwd=cwd,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
 def _run(
     root: Path,
     environment: dict[str, str],
@@ -73,14 +94,7 @@ def _run(
     *arguments: str,
     cwd: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [str(root / "bin" / entrypoint), *arguments],
-        cwd=cwd or root,
-        env=environment,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    return _run_path(root / "bin" / entrypoint, environment, *arguments, cwd=cwd or root)
 
 
 def _calls(environment: dict[str, str]) -> list[str]:
@@ -172,6 +186,55 @@ def test_python_forwards_to_the_repository_selected_interpreter(
             "--managed-python python -c print('ok')"
         ),
     ]
+
+
+def _assert_selected_repository(
+    root: Path, environment: dict[str, str], result: subprocess.CompletedProcess[str]
+) -> None:
+    assert result.returncode == 0, result.stderr
+    calls = _calls(environment)
+    assert calls, "the entry point dispatched no command"
+    assert all(call.startswith(f"uv cwd={root} args=") for call in calls), calls
+    assert all(f"--project {root / 'project'} --locked" in call for call in calls), calls
+
+
+@pytest.mark.parametrize(("entrypoint", "arguments"), SYMLINK_INVOCATIONS)
+def test_installed_symlink_selects_the_owning_repository(
+    toolchain_repo: tuple[Path, dict[str, str]],
+    tmp_path: Path,
+    entrypoint: str,
+    arguments: tuple[str, ...],
+) -> None:
+    root, environment = toolchain_repo
+    launcher_dir = tmp_path / "installed-bin"
+    launcher_dir.mkdir()
+    launcher = launcher_dir / entrypoint
+    launcher.symlink_to(Path("..") / "repo" / "bin" / entrypoint)
+
+    result = _run_path(launcher, environment, *arguments, cwd=tmp_path)
+
+    _assert_selected_repository(root, environment, result)
+
+
+@pytest.mark.parametrize(("entrypoint", "arguments"), SYMLINK_INVOCATIONS)
+def test_installed_symlink_chain_selects_the_owning_repository(
+    toolchain_repo: tuple[Path, dict[str, str]],
+    tmp_path: Path,
+    entrypoint: str,
+    arguments: tuple[str, ...],
+) -> None:
+    root, environment = toolchain_repo
+    first_dir = tmp_path / "first-bin"
+    second_dir = tmp_path / "second-bin"
+    first_dir.mkdir()
+    second_dir.mkdir()
+    (first_dir / entrypoint).symlink_to(root / "bin" / entrypoint)
+    launcher = second_dir / entrypoint
+    launcher.symlink_to(Path("..") / "first-bin" / entrypoint)
+
+    result = _run_path(launcher, environment, *arguments, cwd=tmp_path)
+
+    _assert_selected_repository(root, environment, result)
 
 
 @pytest.mark.parametrize(

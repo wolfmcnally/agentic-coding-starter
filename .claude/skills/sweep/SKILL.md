@@ -44,7 +44,7 @@ The Stage 3 plan stays the canonical plan body in both paths. Plan mode is a har
 
 Run the mechanical checks first — they are deterministic and their output anchors the rest:
 
-1. `./bin/check-catalogs` — catalog/file sync, tracked internal-link integrity
+1. `./bin/check-catalogs` — catalog/file sync, current-candidate internal-link integrity
    (paths *and* `#fragment` anchors), the one-way brief → policy/plan citation
    direction, and the lifecycle-aware phase-ledger state machine.
 2. `./bin/lessons validate` — ledger schema health.
@@ -172,7 +172,7 @@ On approval:
 2. For each graduated lesson: make the ratified edit to the target surface, then archive the lesson (`status: codified`, `closed:`, `graduated_to:`) into `lessons-archived/`. For each rejected lesson: archive with `status: rejected`. Run `./bin/lessons validate`.
 3. Update `last-reviewed:` to today's date on every skill the sweep actually re-read — including ones with no findings.
 4. Re-run the mechanical checks (`./bin/check-catalogs`, `./bin/lessons validate`) and finish with `./bin/check all`.
-5. After the unchanged approved sweep passes `./bin/check all`, stage only its explicit paths, create an ordinary factual commit, and make a non-force push to one unambiguous configured upstream, then verify clean aligned tips ([`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md)). Park delivery on any unexpected path, unresolved gate, missing or ambiguous upstream, divergence, or destructive Git need. Then report: findings by area, what was applied, what was declined, what remains open, and delivery status.
+5. After the unchanged approved sweep passes `./bin/check all`, re-check the live tree, stage only its explicit paths, inspect the staged diff, create an ordinary factual commit, verify the resulting commit's file set, and make a non-force push to one unambiguous configured upstream, then verify clean aligned tips ([`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md); [`policies/commit-staging.md`](../../../policies/commit-staging.md)). Park delivery on any unexpected path, unresolved shared-file ownership, unresolved gate, missing or ambiguous upstream, divergence, or destructive Git need. Then report: findings by area, what was applied, what was declined, what remains open, and delivery status.
 
 ## Rules
 

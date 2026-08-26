@@ -945,3 +945,36 @@ command returned a durable session handle that remained pollable through its
 terminal exit. The two focused regression tests then passed, followed by 241
 focused bundle tests. The seventeen new lessons preserve donor observations as
 anonymized, non-binding candidates for later human-ratified graduation.
+
+## 2026-08-26 16:17 MDT — LEARN
+
+Donor: Donor A @ <sha withheld>
+
+Items absorbed: 27, by tier T1=26/T2=1/T3=0/T4=0.
+Donor lessons harvested: 27 (3 absorbed directly into approved rule or
+mechanism changes; 21 filed as new candidates; 3 appended as recurrences).
+Application-found return candidates: 1 recurrence appended to an existing
+methodology lesson. Stale-in-light-of-learning migrations: 21 AUTO; 0 DECIDE;
+3 DEFER. Files touched: 52.
+
+Direct improvements: commit delivery now treats every staging list as
+live-tree assertions and verifies both staged and committed file sets;
+Markdown-link validation checks the complete current candidate, including
+nonignored untracked files; every canonical transfer inventory names all
+eleven universal skills; user demos begin after gate-proved delivery rather
+than implying prior acceptance; and the four shell toolchain entry points
+resolve launch-symlink chains before selecting their repository.
+
+Destination proofs preceded both executable changes. New single-hop and
+chained-symlink tests failed because the launcher's directory was mistaken for
+the repository, and an untracked Markdown fixture with a dead link passed
+because only indexed files were scanned. After repair, the focused contract
+battery passed 150 tests. The application itself exposed one further
+wrong-repository probe: an absolute manager path selected the executable but
+not the cwd-rooted tree it measured. That recurrence was returned to the
+lessons ledger rather than promoted directly into another rule.
+
+Deferred from the donor: domain-specific briefs, product and data policies,
+local runtime stores, and project-only lessons; older categorical wording for
+role dispatch; and hardening whose named defects did not reproduce against
+Starter's newer evidence and configuration managers.

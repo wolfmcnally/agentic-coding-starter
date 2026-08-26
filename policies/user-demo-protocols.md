@@ -137,7 +137,7 @@ The rule is: address the policy explicitly, but only write a real protocol when 
 
 ## Relationship to the close-time test protocol
 
-This policy governs the **plan-time** declaration: what to demo, decided when Acceptance is drafted. Its close-time sibling is `kickoff`'s Step 10a, which ships a structured user testing protocol (surfaces introduced, hot-state checks, manual checks, end-to-end behavior, uncovered acceptance items, destructive checks, deferrals) in the phase report after the work is accepted. The two are complementary, not redundant: the demo block says what the human should judge; the test protocol says how to satisfy themselves the deployed state works.
+This policy governs the **plan-time** declaration: what to demo, decided when Acceptance is drafted. Its close-time sibling is `kickoff`'s Step 10a, which ships a structured user testing protocol (surfaces introduced, hot-state checks, manual checks, end-to-end behavior, uncovered acceptance items, destructive checks, deferrals) in the phase report after gate-proved work is delivered. The two are complementary, not redundant: the demo block says what the human should judge; the test protocol says how to satisfy themselves the deployed state works.
 
 ## Why "interactive, not deterministic"
 

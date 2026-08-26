@@ -9,6 +9,10 @@ source: learn
 occurrences:
   - date: 2026-08-11
     ref: "Donor A — a coder attempt's 10.7 KB handoff report destroyed at turn completion by the venue's last-message write; recovered by a resume dispatch to a distinct output path"
+  - date: 2026-08-24
+    ref: "Donor A — a managed coder reexecution wrote its complete report to the required-output path, then the venue overwrote it with the short terminal summary"
+  - date: 2026-08-25
+    ref: "Donor A — another coder revision's complete report artifact was overwritten by the venue's terminal notification and reconstructed from durable evidence"
 ---
 
 The watcher passes the role's artifact path to the external venue as its

@@ -11,6 +11,7 @@ def _normalized(path: Path) -> str:
 
 
 POLICY = _normalized(REPO_ROOT / "policies" / "build-gates.md")
+COMMIT_STAGING_POLICY = _normalized(REPO_ROOT / "policies" / "commit-staging.md")
 MECHANISTIC_POLICY = _normalized(REPO_ROOT / "policies" / "mechanistic-vs-intelligence.md")
 ORCHESTRATION_POLICY = _normalized(REPO_ROOT / "policies" / "orchestration-evidence.md")
 ANONYMIZATION_POLICY = _normalized(REPO_ROOT / "policies" / "anonymize-log-references.md")
@@ -41,6 +42,13 @@ def test_atomic_contract_pins_behavioral_coverage_floor() -> None:
     for skill in (LEARN, TEACH, STAMP):
         assert "source-text" in skill
         assert "controlled" in skill
+
+
+def test_atomic_contract_requires_symlink_independence() -> None:
+    for document in (POLICY, LEARN, TEACH, STAMP, BOOTSTRAP_BRIEF):
+        assert "symlink" in document
+    for document in (LEARN, STAMP):
+        assert "symlink chain" in document
 
 
 def test_atomic_contract_covers_all_operational_callers() -> None:
@@ -170,6 +178,37 @@ def test_every_universal_skill_propagates_with_its_codex_mirror() -> None:
             assert canonical in document, f"{skill} missing from a transfer document"
             assert mirror in document, f"{skill} mirror missing from a transfer document"
         assert skill in TEACH
+
+
+def test_transfer_inventories_name_all_eleven_universal_skills() -> None:
+    universal = (
+        "kickoff",
+        "methodology",
+        "learn",
+        "teach",
+        "roles",
+        "sweep",
+        "sweep-planning",
+        "sweep-coding",
+        "demo",
+        "treatise",
+        "plain",
+    )
+    for skill in universal:
+        assert f"`{skill}`" in LEARN
+        assert f"`{skill}`" in TEACH
+        assert f".claude/skills/{skill}/SKILL.md" in STAMP
+        assert f".agents/skills/{skill}" in STAMP
+    assert "eleven universal skills" in TEACH
+    assert "eleven universal skills" in STAMP
+
+
+def test_commit_staging_contract_propagates_with_delivery_authority() -> None:
+    assert "live tree" in COMMIT_STAGING_POLICY
+    assert "staged diff" in COMMIT_STAGING_POLICY
+    assert "resulting commit" in COMMIT_STAGING_POLICY
+    for document in (CLAUDE, KICKOFF, LEARN, TEACH, STAMP, BOOTSTRAP_BRIEF):
+        assert "commit-staging.md" in document
 
 
 def test_every_gate_required_executable_propagates() -> None:

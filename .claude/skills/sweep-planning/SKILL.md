@@ -297,8 +297,10 @@ change; register a new script in `bin/README.md`, `bin/check`'s lint and
 format lists, and the transfer documents; run `./bin/check all` in its own
 block and read the refusal; run `bin/check-anonymization.sh` where the repo
 carries it — the categories' examples must not name another project's
-identifiers. Deliver per Hard rule 1: stage explicit paths, commit, push;
-park on anything unexpected.
+identifiers. Deliver per Hard rule 1 and `policies/commit-staging.md`: re-check
+the live tree, stage explicit paths, inspect the staged diff, commit, verify the
+resulting file set, and push; park on anything unexpected or on unresolved
+shared-file ownership.
 
 In derived-project mode, Stage 5 writes `lessons/` entries via `bin/new-name`
 slugs and `./bin/lessons validate`, and nothing else — plus the `LOG.md`

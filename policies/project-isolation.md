@@ -112,7 +112,8 @@ When the artifact is ready to be reused outside this repo:
 
 1. `cd project`
 2. `git init` (if not already a repo)
-3. `git add . && git commit -m "initial: extracted from <parent-repo>"`
+3. Stage the explicit extracted paths and commit them with a factual message,
+   following [`commit-staging.md`](commit-staging.md).
 4. Push to a new remote.
 5. In the parent repo: `git rm -rf project` (or back it up first), then `git submodule add <new-remote> project`.
 6. Commit the submodule pointer.

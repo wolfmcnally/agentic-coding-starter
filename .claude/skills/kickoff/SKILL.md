@@ -570,7 +570,7 @@ numeric thresholds, collect purposeless timing data, or weaken correctness,
 coverage, determinism, review independence, diagnostics, failure propagation,
 candidate binding, or either close gate.
 
-Every methodology-following repository owns the cwd-independent atomic
+Every methodology-following repository owns the cwd- and symlink-independent atomic
 interface defined by
 [`policies/build-gates.md`](../../../policies/build-gates.md). For the
 **Agentic Coding Starter Template itself**, the authoritative final command is:
@@ -911,17 +911,24 @@ any implementation-candidate change.
 
 Runs after the handoff gate is green. Parked acceptance criteria do not hold it
 up — they stay open for the user and are reported. Governed by
-[`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md).
+[`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md) and
+[`policies/commit-staging.md`](../../../policies/commit-staging.md).
 
 1. **Re-read the tree.** Run `git status` and read the complete final diff.
    Every path must be one this phase touched. An unexpected path means a
    concurrent session shares this checkout — park and report it; never sweep it
    in.
-2. **Stage explicitly.** `git add <exact paths>` or `git commit -- <paths>`.
-   **Never `git add -A` or `git add .`.**
-3. **Commit.** An ordinary factual message describing the change. No agent
+2. **Stage explicitly and verify the staging assertions.** `git add <exact
+   paths>` or `git commit -- <paths>`. **Never `git add -A` or `git add .`.**
+   Re-read `git status --porcelain` immediately before staging. Partition any
+   shared-file hunks, stage moved destinations rather than vanished sources,
+   and read the staged diff before committing. If ownership cannot be
+   established safely, park delivery.
+3. **Commit and verify its file set.** Use an ordinary factual message
+   describing the change. No agent
    credit, no `--no-verify`. A pre-commit hook refusal parks the commit and is
-   reported truthfully — never retried around.
+   reported truthfully — never retried around. Compare `git show --stat
+   --oneline HEAD` with the intended file list before pushing.
 4. **Push**, only when the current branch has exactly one unambiguous
    configured upstream and the update is a fast-forward. Never force. Never
    create an upstream, select a remote, tag, rebase, or repair history — those

@@ -4,7 +4,10 @@
 
 ## Convention
 
-- **Invoke repo-relative:** `./bin/<name>`. Scripts `cd` to the repo root themselves where they need to, so they work from any working directory.
+- **Invoke repo-relative:** `./bin/<name>`. Shell entry points resolve their own
+  symlink chains before deriving the repository root, then `cd` there where
+  needed, so they work from any working directory and through single-hop or
+  chained launch symlinks.
 - **One concern per script.** A script does one mechanical job and exits with a meaningful status code (0 = clean/done, non-zero = findings/failure).
 - **Document every script here** — what it does, when to run it, and its exit/refusal behavior — so this README is the operator-facing index for the directory. Derived projects extend this list as they add their own mechanistic scripts.
 - **Reach for `bin/` deliberately.** When a phase needs a repeatable check, a mechanical sweep, a generator, or a reconciler, that is `bin/` work, not agent work. When it needs judgment, it is not. The triage rule is [`policies/mechanistic-vs-intelligence.md`](../policies/mechanistic-vs-intelligence.md).
@@ -371,7 +374,8 @@ entry points.
 Verifies the durable-document catalogs stay closed under sync: every
 `policies/*.md` and `briefs/*.md` file is indexed in `CLAUDE.md` and every
 indexed entry resolves to a file (no orphans either way). It also validates
-tracked repository-internal Markdown links — both the path *and* the
+current-candidate repository-internal Markdown links — both tracked and
+nonignored untracked files, path *and* the
 `#fragment`, resolved against the target document's own headings, so a link
 cannot be green and dead at once; a fragment into a non-Markdown target has no
 derivable anchor set and is skipped rather than guessed at. It enforces the

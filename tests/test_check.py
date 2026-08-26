@@ -158,6 +158,57 @@ def _run(
     )
 
 
+def test_installed_symlink_selects_the_owning_repository(
+    check_repo: tuple[Path, dict[str, str]], tmp_path: Path
+) -> None:
+    root, environment = check_repo
+    launcher_dir = tmp_path / "installed-bin"
+    launcher_dir.mkdir()
+    launcher = launcher_dir / "check"
+    launcher.symlink_to(Path("..") / "repo" / "bin" / "check")
+
+    result = subprocess.run(
+        [str(launcher), "test"],
+        cwd=tmp_path,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    calls = Path(environment["CHECK_TEST_LOG"]).read_text().splitlines()
+    assert calls
+    assert all(f"cwd={root}" in call for call in calls), calls
+
+
+def test_installed_symlink_chain_selects_the_owning_repository(
+    check_repo: tuple[Path, dict[str, str]], tmp_path: Path
+) -> None:
+    root, environment = check_repo
+    first_dir = tmp_path / "first-bin"
+    second_dir = tmp_path / "second-bin"
+    first_dir.mkdir()
+    second_dir.mkdir()
+    (first_dir / "check").symlink_to(root / "bin" / "check")
+    launcher = second_dir / "check"
+    launcher.symlink_to(Path("..") / "first-bin" / "check")
+
+    result = subprocess.run(
+        [str(launcher), "test"],
+        cwd=tmp_path,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    calls = Path(environment["CHECK_TEST_LOG"]).read_text().splitlines()
+    assert calls
+    assert all(f"cwd={root}" in call for call in calls), calls
+
+
 def test_all_is_default_locked_ordered_and_cwd_independent(
     check_repo: tuple[Path, dict[str, str]], tmp_path: Path
 ) -> None:

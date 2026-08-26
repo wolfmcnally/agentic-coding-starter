@@ -88,6 +88,19 @@ def test_tracked_markdown_deleted_from_worktree_is_not_read_as_a_source(
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_link_scan_uses_current_candidate_not_only_the_index(tmp_path: Path) -> None:
+    root = fixture(tmp_path)
+    old = write_tracked(root, "docs/old.md", "[old](missing-old.md)\n")
+    old.unlink()
+    (root / "docs" / "new.md").write_text("[new](missing-new.md)\n", encoding="utf-8")
+
+    result = run(root)
+
+    assert result.returncode == 1
+    assert "links\tdocs/new.md\tline 1: missing target docs/missing-new.md" in result.stdout
+    assert "docs/old.md" not in result.stdout
+
+
 def test_repository_catalogs_are_in_sync() -> None:
     result = run(ROOT)
 

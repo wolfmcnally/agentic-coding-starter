@@ -15,6 +15,8 @@ occurrences:
     ref: "LEARN from Donor A — adding check-hooks-installed to bin/check's required-executable preflight and policy lane broke ten test_check.py cases across three independent inventories in that one file (the fixture stub loop, the exact expected-call lists for two modes, and the missing-executable parametrize); caught by the authoritative gate, exactly the costly backstop path this lesson names"
   - date: 2026-08-17
     ref: "LEARN apply — the relaxation direction of the same shape (absorbed from `fractal-beetle`). This repo's review-lanes policy demotes light-lane review metrics to the omission ledger, but both enforcement call sites of the metrics check (timing-summary and the pre-close validation) ran unguarded; a light-lane run with a recorded omission would have been refused at close, in exactly the demoted mode's rare path. Found only because the donor's diff carried the guards and the hunk-by-hunk direction check asked why the destination lacked them"
+  - date: 2026-08-23
+    ref: "Donor A — adopting two required gate executables updated the shared fixture but missed an independent format-candidate fixture inventory, which failed at preflight instead of exercising formatting"
   - date: 2026-08-25
     ref: "Adding bin/treatise to the same preflight and policy lane broke fourteen test_check.py cases across the same four inventories, in a session where this very lesson had been re-filed hours earlier. Two further traps surfaced on the repair: the eight-space expected-call string is a substring of the twelve-space one, so a naive text replacement double-applied, and four nearby integers that look like lane counts are sentinel exit codes the fixture propagates — changing them broke four passing tests. Both were caught by running the suite, neither by reading the file"
 ---
@@ -45,6 +47,8 @@ routinely.
 Graduated 2026-08-25 into
 [`policies/verification-discipline.md`](../policies/verification-discipline.md)
 § "Sweep every embodiment of a changed contract", on four occurrences.
+The fifth occurrence, learned afterward from Donor A, corroborates the already
+graduated rule without changing its ratification date or disposition.
 
 `fractal-beetle` was absorbed into this entry in the same sweep and archived
 `superseded`: it recorded the *relaxation* direction of the identical move — a

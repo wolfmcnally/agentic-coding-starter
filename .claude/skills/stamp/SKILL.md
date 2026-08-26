@@ -384,9 +384,9 @@ never copied at all.
 
 Verify each `readlink <dest>/.agents/skills/<name>` returns the expected target and `test -L <dest>/.agents/skills/<name> && test -d <dest>/.agents/skills/<name>` passes before moving on.
 
-The nine universal skills are all carried over, including cross-repo `learn` and
-`teach`, interactive `demo`, publication-gated `treatise`, and the operator
-register `plain`.
+The eleven universal skills are all carried over, including cross-repo `learn`
+and `teach`, the two longitudinal review-loop sweeps, interactive `demo`,
+publication-gated `treatise`, and the operator register `plain`.
 
 Seed both config sections by running `<dest>/bin/kickoff-config reset all`; this
 preserves data under `extensions` if the destination already has it. The managers
@@ -567,8 +567,9 @@ Adapt the complete atomic bundle defined by `policies/build-gates.md`:
 - hot loops, mutation gates, generated multi-command workflows, and detached
   processes resolve the underlying repository interpreter once and reuse it.
 
-Preserve cwd independence, strict argument handling, fail-closed prerequisite,
-bundle-member, and authoritative-override checks, exact child-status
+Preserve cwd and symlink independence: every shell entry point resolves its own
+symlink chain before deriving the repository root. Preserve strict argument
+handling, fail-closed prerequisite, bundle-member, and authoritative-override checks, exact child-status
 propagation, and stable PASS/FAIL lines. Apply identical runtime-selection
 arguments to synchronization, probing, and execution, and reject an override
 inside an environment the package manager may replace. Replace Starter's
@@ -648,9 +649,10 @@ Adapt `<dest>/tests/test_toolchain_entrypoints.py` and
 `<dest>/tests/test_check.py` in the same step, and carry
 `<dest>/tests/test_check_receipt.py`, so their controlled fixtures expect
 the target's exact setup, dependency probe, full/focused test, runtime, and
-locked-gate commands. Prove valid override selection, invalid override refusal,
+locked-gate commands. Prove single-hop and chained launch-symlink routing,
+valid override selection, invalid override refusal,
 unsupported and self-referential override refusal, probe-failure status
-propagation, exact gate ordering/delegation, cwd independence, child-status
+propagation, exact gate ordering/delegation, cwd and symlink independence, child-status
 propagation, and no fallback. These tests must execute the entrypoints with
 controlled stubs; source-text assertions alone do not meet the behavioral
 coverage floor. Prove format failures in staged, unstaged, and nonignored
@@ -694,13 +696,23 @@ git init
 ```
 
 ```
-git add .
+git add <exact generated paths>
 ```
 
 Skip `git init` when the seed already carried a `.git/` directory; stage and
 commit onto the existing repository instead.
 
-Then make the new repo's initial commit ([`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md)) — an ordinary factual message such as `Stamp project scaffold from the agentic starter template`, with no agent credit. Do **not** push: a freshly initialized repo has no configured upstream, and selecting or creating a remote belongs to the user. If `git init` fails, or the destination was already a repo with content the stamp did not write, leave the tree staged and report it instead of committing.
+Then re-check the live tree, stage only the explicit generated paths, inspect the
+staged diff, and make the new repo's initial commit
+([`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md);
+[`policies/commit-staging.md`](../../../policies/commit-staging.md)) — an
+ordinary factual message such as `Stamp project scaffold from the agentic
+starter template`, with no agent credit. Verify the resulting commit's file set.
+Do **not** push: a freshly initialized repo has no configured upstream, and
+selecting or creating a remote belongs to the user. If `git init` fails, the
+destination was already a repo with content the stamp did not write, or a shared
+file's hunks cannot be attributed safely, leave the explicit paths staged and
+report it instead of committing.
 
 ### Step 7 — Sanity-check
 

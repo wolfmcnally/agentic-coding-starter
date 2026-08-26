@@ -115,6 +115,7 @@ A project derived from this template contains the following **portable structure
     log-discipline.md
     lessons.md
     human-in-the-loop.md
+    commit-staging.md
     repo-relative-paths.md
     <project-specific>.md  # Add per-project as they appear
 
@@ -401,7 +402,7 @@ Then create the empty directory shape:
 .claude/skills/plain/
 .claude/agents/
 .codex/agents/
-.agents/skills/        # (the eight skill entries here are directory symlinks
+.agents/skills/        # (the eleven skill entries here are directory symlinks
                        #  to ../../.claude/skills/<name>, created in Step 5)
 briefs/
 lessons/
@@ -575,8 +576,8 @@ Lay down (paths assume `project_isolation` enabled — prefix with `project/`; d
 The repository owns setup, focused/full testing, runtime selection,
 authoritative gates, and durable full-gate receipts as one bundle. Generate
 `bin/setup`, `bin/test`, `bin/check`, and `bin/check-receipt` with the universal
-interface — cwd-independent, atomic, and never inferring a runtime from the
-host `PATH`; add a runtime wrapper such as `bin/python` when appropriate. Back them with the target's
+interface — cwd- and symlink-independent, atomic, and never inferring a runtime
+from the host `PATH`; add a runtime wrapper such as `bin/python` when appropriate. Back them with the target's
 version declaration, committed manifest, lockfile, and behavioral tests. A
 profile that permits an explicit runtime override treats it as authoritative:
 the override either passes a target-adapted dependency-chain load/run probe or
@@ -630,7 +631,7 @@ Before declaring the bootstrap complete, verify:
 
 - `readlink AGENTS.md` returns `CLAUDE.md`.
 - `bin/check-catalogs` accepts the initial idle ledger with exactly one `⬅️`
-  and resolves every tracked internal Markdown link.
+  and resolves every current-candidate internal Markdown link.
 - `head -1 LOG.md` is `# Activity Log`.
 - `ls .claude/agents/` lists exactly the four canonical role files.
 - Each of `.claude/skills/{kickoff,methodology,learn,teach,roles,sweep,sweep-planning,sweep-coding,demo,treatise,plain}/`
@@ -699,7 +700,7 @@ These bite every bootstrap; flag them before they happen.
 
 - **Status markers in two places.** The status of a phase lives in `plan/INDEX.md`'s phase table and **nowhere else**. Per-phase frontmatter is `id / title / depends_on / informs` — no `status` field.
 - **Document drift.** `CLAUDE.md`'s catalogs must be bidirectionally complete,
-  and tracked internal Markdown links must resolve. Catalog membership alone
+  and current-candidate internal Markdown links must resolve. Catalog membership alone
   does not prove that links inside transferred documents survived adaptation.
 - **`AGENTS.md` as a real file instead of a symlink.** A duplicate file drifts. Make it a symlink and verify with `readlink`.
 - **Reusing template-specific invariants.** "The example Python project must lint clean" is a template rule. Don't carry it into a project that has no Python.
@@ -791,7 +792,9 @@ Bootstrap is complete when **all** of the following hold:
     installation remains explicit and opt-in, with the opt-in-aware liveness
     witness in the check policy lane
 [ ] Runtime version metadata, package manifest, and lockfile form a complete
-    language profile; no workflow assumes a versioned runtime binary on PATH
+    language profile; no workflow assumes a versioned runtime binary on PATH;
+    setup, test, check, and the runtime wrapper route correctly through both
+    single-hop and chained launch symlinks
 [ ] For a non-Python deliverable: tooling/ carries a committed governance
     environment; bin/setup provisions and probes both runtimes; bin/test routes
     by path prefix and refuses an invocation spanning both suites; bin/check

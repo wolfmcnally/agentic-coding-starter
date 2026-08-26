@@ -62,7 +62,7 @@ When several derived projects exist, "is this spoke running the current methodol
 - A phase close in any derived repo cannot complete without answering the lessons question: the END block's `Lessons:` field is part of the log's minimum contract, and omitting it is not a valid close.
 - `./bin/lessons validate` and `./bin/check-catalogs` pass in this repo and
   in a freshly stamped project, covering ledger schema, catalog membership,
-  tracked internal links, and phase-lifecycle state.
+  current-candidate internal links, and phase-lifecycle state.
 - A `scope: methodology` lesson filed in a derived repo is visible to `learn` Stage 1 without bespoke exploration.
 - A `learn` application that exposes a new methodology defect records it as a
   distinct return-path candidate and reports it separately from donor-ledger

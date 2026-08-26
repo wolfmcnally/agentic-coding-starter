@@ -38,8 +38,8 @@ Adaptation may change syntax and fixtures to fit the target, but it may not
 weaken coverage. Behavioral execution is the minimum test floor: source-text
 assertions may supplement it, but do not replace tests that invoke the
 entrypoints with controlled toolchain stubs and prove routing, ordering,
-working-directory independence, child-status propagation, and fail-closed
-selection.
+working-directory independence, single-hop and chained-symlink independence,
+child-status propagation, and fail-closed selection.
 
 ## Ownership boundary
 
@@ -71,7 +71,7 @@ runtime-selection arguments.
 ### `bin/setup`
 
 `./bin/setup` provisions or synchronizes the committed environment in
-lock-preserving mode. It is cwd-independent, idempotent, rejects unexpected
+lock-preserving mode. It is cwd- and symlink-independent, idempotent, rejects unexpected
 arguments, and fails if required metadata, the runtime pin, or the lockfile is
 missing or stale. After synchronization, it runs the dependency-chain probe;
 `SETUP PASS` means both provisioning and the probe succeeded.
