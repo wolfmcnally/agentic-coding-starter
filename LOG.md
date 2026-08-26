@@ -792,3 +792,53 @@ to develop the checker against.
 the one-command-per-block convention's scope is genuinely ambiguous. The
 user-actions queue has no frontmatter validator. The demo example's entry point
 bypasses `./bin/`.
+
+## 2026-08-26 11:26 MDT — SWEEP-PLANNING (plan)
+
+Window: 2026-07-26 → 2026-08-26 (31 days; set by the operator's request —
+the skill did not yet exist, this run codified it). Harvest: an ad-hoc
+predecessor of `bin/review-verdicts` over `~/.claude/projects` (1,507 traces)
+and `~/.codex/sessions` (3,840 traces) — 82 genuine plan verdicts (53 REVISE /
+29 APPROVED) across four derived projects (Donor A 64, Donor B 8, Donor C 7,
+Donor D 3); 112 `PLAN-F` finding records collapsing to ~50 root findings.
+Re-run with the shipped harvester at close for the next run's baseline:
+`./bin/review-verdicts --since-days 31 --kind plan` — 32 id-bearing plan
+verdicts (19 REVISE / 13 APPROVED), 112 unclassified legacy verdicts (no
+finding ids; pre-evidence-plane narratives, not hand-sorted this run), 122
+finding records, 17 re-aimed ids. Blind spots: verdicts before the finding
+schema carry no ids and are under-counted by kind; the genuine-filter is a
+proxy; only traces on this machine are visible.
+
+Approval rate by week (hand harvest): 2026-07-w4 20%, w5 6%, 2026-08-w1 60%,
+w2 80%, w3 50%, w4 37%. Rounds per phase where stated in END blocks: 2–5, not
+falling over the window — the mix moved, the round count did not.
+
+| Category | Root findings | Share | Blocking | Rounds survived | Attribution | vs. last sweep |
+|---|---|---|---|---|---|---|
+| Cites what it never read | ~18 | 35% | most | 1–3 | planner | new |
+| Underspecified / self-contradictory design | ~12 | 25% | mixed | 1–4 | planner | new |
+| Acceptance that cannot run | ~10 | 20% | most | 1–3 | planner (mechanizable) | new |
+| Scope, authority, inventory | ~5 | 10% | some | 1 | planner | new |
+| Owner decision | ~5 | 10% | all | every round | structural | new |
+| Verification-discipline nit | ~5 | — | none | 1 | reviewer (non-blocking) | new |
+
+Reviewer-side findings: a stable id carrying a different objection in each of
+four rounds, every round classified `initial` (Donor A, three ids × four
+rounds); one refuted premise (a manifest count asserted without its command);
+owner decisions returned to the planner as `REVISE`; 44% of finding records
+`blocking` where the tier is reserved for policy/invariant violations. Genuine
+over-engineering asks: two, both `low`, neither drove a round; the reviewer
+struck redundant state more often than it demanded mechanism.
+
+Corrections applied: `.claude/agents/phase-planner.md` — required
+`## Definitions Read` table, no deferral to the coder, surgical revision,
+owner-decision marking; `bin/check-plan-concreteness` + tests — mechanical
+pre-review wired into `kickoff` Step 3; `.claude/agents/plan-reviewer.md` —
+complete first pass, never re-aim a finding, `evidence` immutable while
+actionable, `blocked-owner` routing, severity tiers; `bin/kickoff-evidence` —
+`evidence-substituted` ingest refusal + test; `kickoff` Step 4 —
+`blocked-owner` park and re-emission on refusal; `policies/four-canonical-agents.md`,
+`policies/orchestration-evidence.md`. Declined: a rule for the two
+over-engineering asks (count does not justify one). Open (DECIDE): none.
+Delivered as 08d0df5; the skill, harvester, and this entry follow in the next
+commit.

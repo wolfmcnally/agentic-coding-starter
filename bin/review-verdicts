@@ -1,0 +1,303 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Harvest review verdicts and their finding ledgers from harness traces.
+
+The mechanistic half of the `sweep-planning` skill. Claude Code writes one
+JSONL transcript per session under `~/.claude/projects/<cwd-slug>/`; Codex
+writes one per session under `~/.codex/sessions/<yyyy>/<mm>/<dd>/`. Both record
+every role's output verbatim, so every `plan-reviewer` and `code-critic`
+verdict of the last N days is recoverable without any per-repo bookkeeping —
+including reviews dispatched cross-harness, which appear in both corpora and
+are deduplicated here by normalized text.
+
+The traces also echo the verdict *template* every time an agent reads a
+persona file, quotes a policy, or greps for the header, and those echoes
+outnumber real verdicts roughly ten to one. A verdict counts only when the
+header opens the block, the block carries no template placeholder, no `##
+Rules` tail, no line-number or grep prefixes, and no shell `=== marker ===`.
+
+Output is a summary on stdout — verdicts by project, harness, kind, and week;
+findings by severity and classification; the ids that carried more than one
+objection while they stayed actionable — plus, with `--json`, the complete
+deduplicated dataset for the skill's intelligence half to read.
+
+    ./bin/review-verdicts --since-days 31 --kind plan --json /tmp/verdicts.json
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import re
+import sys
+import time
+from collections import Counter, defaultdict
+from pathlib import Path
+from typing import Any
+
+VERDICT_PATTERN = re.compile(r"## Verdict: (APPROVED|REVISE)")
+HEADER_AT_START = re.compile(r"^## Verdict: (APPROVED|REVISE)\s*\n")
+FENCED_JSON_PATTERN = re.compile(r"```json\s*\n(.*?)\n\s*```", re.S)
+CWD_PATTERN = re.compile(r'"cwd":\s*"([^"]+)"')
+TEMPLATE_MARKERS = (
+    "[Specific issue]",
+    "[One or two sentences",
+    "\n## Rules",
+    "Followed in the `REVISE` case",
+    "=== ",
+)
+LINE_NUMBER_PREFIX = re.compile(r"^\s*\d+[\t:] ?", re.M)
+GREP_PREFIX = re.compile(r"\.(md|py|toml|yaml)-\d+-")
+ACTIONABLE_STATES = {"open", "addressed", "blocked-owner"}
+KINDS = ("plan", "code")
+
+
+def walk_strings(value: Any):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from walk_strings(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from walk_strings(item)
+
+
+def trace_files(root: Path, cutoff: float) -> list[Path]:
+    found: list[Path] = []
+    if not root.is_dir():
+        return found
+    for directory, _, names in os.walk(root):
+        for name in names:
+            if not name.endswith(".jsonl"):
+                continue
+            path = Path(directory) / name
+            try:
+                if path.stat().st_mtime >= cutoff:
+                    found.append(path)
+            except OSError:
+                continue
+    return sorted(found)
+
+
+def file_cwd(path: Path) -> str | None:
+    """Codex names the session's cwd in its first lines; Claude Code per record."""
+    try:
+        with path.open(errors="replace") as handle:
+            for index, line in enumerate(handle):
+                match = CWD_PATTERN.search(line)
+                if match:
+                    return match.group(1)
+                if index > 5:
+                    break
+    except OSError:
+        return None
+    return None
+
+
+def normalized(block: str) -> str:
+    text = block.replace("\\n", "\n").replace('\\"', '"')
+    return re.sub(r"\s+", " ", text)[:1500]
+
+
+def genuine(block: str) -> bool:
+    if not HEADER_AT_START.match(block):
+        return False
+    if any(marker in block for marker in TEMPLATE_MARKERS):
+        return False
+    # A quoted file carries a line number on (nearly) every line; a real
+    # verdict may cite `path:123` inline but never opens three lines that way.
+    if len(LINE_NUMBER_PREFIX.findall(block)) >= 3 or GREP_PREFIX.search(block):
+        return False
+    return True
+
+
+def findings_before(text: str, position: int) -> list[dict[str, Any]]:
+    """The `## Finding Evidence` batch that precedes the verdict header."""
+    last: str | None = None
+    for match in FENCED_JSON_PATTERN.finditer(text, 0, position):
+        last = match.group(1)
+    if last is None:
+        return []
+    try:
+        document = json.loads(last)
+    except json.JSONDecodeError:
+        return []
+    items = document.get("findings") if isinstance(document, dict) else None
+    return [item for item in items if isinstance(item, dict)] if isinstance(items, list) else []
+
+
+def classify_kind(block: str, findings: list[dict[str, Any]], preceding: str) -> str:
+    """Plan or code review, from the finding ids first and the narrative second."""
+    for item in findings:
+        identifier = str(item.get("id", ""))
+        if identifier.startswith("PLAN-F"):
+            return "plan"
+        if identifier.startswith("CODE-F"):
+            return "code"
+    for text in (block, preceding[-4000:]):
+        plan_mentioned = "PLAN-F" in text
+        code_mentioned = "CODE-F" in text
+        if plan_mentioned and not code_mentioned:
+            return "plan"
+        if code_mentioned and not plan_mentioned:
+            return "code"
+    return "unknown"
+
+
+def harvest(claude_root: Path, codex_root: Path, since_days: int) -> list[dict[str, Any]]:
+    cutoff = time.time() - since_days * 86400
+    verdicts: dict[str, dict[str, Any]] = {}
+    for harness, root in (("claude", claude_root), ("codex", codex_root)):
+        for path in trace_files(root, cutoff):
+            session_cwd = file_cwd(path)
+            with path.open(errors="replace") as handle:
+                for line in handle:
+                    if "Verdict:" not in line:
+                        continue
+                    try:
+                        record = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    timestamp = str(record.get("timestamp") or record.get("ts") or "")[:10]
+                    record_cwd = record.get("cwd") if isinstance(record.get("cwd"), str) else None
+                    cwd = record_cwd or session_cwd
+                    for text in walk_strings(record):
+                        if "## Verdict:" not in text:
+                            continue
+                        for match in VERDICT_PATTERN.finditer(text):
+                            block = text[match.start() :]
+                            following = VERDICT_PATTERN.search(block, 1)
+                            if following:
+                                block = block[: following.start()]
+                            block = block.strip()
+                            if not genuine(block):
+                                continue
+                            findings = findings_before(text, match.start())
+                            # Two rounds can share a terse verdict body; the
+                            # finding batch is part of the identity.
+                            key = hashlib.sha1(
+                                normalized(json.dumps(findings, sort_keys=True) + block).encode()
+                            ).hexdigest()
+                            if key in verdicts:
+                                continue
+                            verdicts[key] = {
+                                "key": key,
+                                "harness": harness,
+                                "project": Path(cwd).name if cwd else "?",
+                                "cwd": cwd,
+                                "date": timestamp
+                                or time.strftime("%Y-%m-%d", time.gmtime(path.stat().st_mtime)),
+                                "verdict": match.group(1),
+                                "kind": classify_kind(block, findings, text[: match.start()]),
+                                "block": block,
+                                "findings": findings,
+                                "source": str(path),
+                            }
+    return sorted(verdicts.values(), key=lambda item: (item["date"], item["project"], item["key"]))
+
+
+def week_of(date: str) -> str:
+    if len(date) < 10:
+        return "?"
+    return f"{date[:7]}-w{(int(date[8:10]) - 1) // 7 + 1}"
+
+
+def re_aimed_ids(verdicts: list[dict[str, Any]]) -> list[tuple[str, str, str, int]]:
+    """Ids that carried more than one distinct evidence text while actionable."""
+    evidence_by_id: dict[tuple[str, str, str], set[str]] = defaultdict(set)
+    for verdict in verdicts:
+        for item in verdict["findings"]:
+            if item.get("state") not in ACTIONABLE_STATES:
+                continue
+            key = (verdict["project"], verdict["kind"], str(item.get("id", "")))
+            evidence_by_id[key].add(str(item.get("evidence", "")).strip())
+    return sorted(
+        (project, kind, identifier, len(texts))
+        for (project, kind, identifier), texts in evidence_by_id.items()
+        if len(texts) > 1
+    )
+
+
+def print_summary(verdicts: list[dict[str, Any]], kinds: tuple[str, ...]) -> None:
+    selected = [item for item in verdicts if item["kind"] in kinds]
+    unclassified = sum(1 for item in verdicts if item["kind"] == "unknown")
+    print(
+        f"REVIEW VERDICTS {len(selected)} genuine ({len(verdicts)} across all kinds; "
+        f"{unclassified} carry no finding ids and are unclassified)"
+    )
+    print()
+    print("By project / harness / kind / verdict")
+    counts = Counter(
+        (item["project"], item["harness"], item["kind"], item["verdict"]) for item in selected
+    )
+    for (project, harness, kind, verdict), count in sorted(counts.items()):
+        print(f"  {project:<24} {harness:<7} {kind:<5} {verdict:<9} {count}")
+    print()
+    print("By week")
+    weeks = Counter((week_of(item["date"]), item["verdict"]) for item in selected)
+    for week in sorted({week for week, _ in weeks}):
+        approved = weeks[(week, "APPROVED")]
+        revised = weeks[(week, "REVISE")]
+        total = approved + revised
+        rate = f"{100 * approved / total:.0f}%" if total else "-"
+        print(f"  {week}  APPROVED {approved:<3} REVISE {revised:<3} approve-rate {rate}")
+    findings = [item for verdict in selected for item in verdict["findings"]]
+    print()
+    print(f"Findings {len(findings)} records")
+    for label, field in (
+        ("severity", "severity"),
+        ("classification", "classification"),
+        ("state", "state"),
+    ):
+        tally = Counter(str(item.get(field)) for item in findings)
+        print(f"  {label}: " + ", ".join(f"{key} {count}" for key, count in sorted(tally.items())))
+    re_aimed = [row for row in re_aimed_ids(selected)]
+    print()
+    print(f"Re-aimed ids (distinct evidence while actionable): {len(re_aimed)}")
+    for project, kind, identifier, count in re_aimed:
+        print(f"  {project:<24} {kind:<5} {identifier:<12} {count} objections")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--since-days", type=int, default=31)
+    parser.add_argument("--kind", choices=("plan", "code", "all"), default="plan")
+    parser.add_argument(
+        "--project",
+        action="append",
+        default=[],
+        help="keep only sessions whose cwd basename matches (repeatable)",
+    )
+    parser.add_argument("--claude-root", type=Path, default=Path.home() / ".claude" / "projects")
+    parser.add_argument("--codex-root", type=Path, default=Path.home() / ".codex" / "sessions")
+    parser.add_argument("--json", type=Path, help="write the complete dataset here")
+    arguments = parser.parse_args()
+    if not arguments.claude_root.is_dir() and not arguments.codex_root.is_dir():
+        print("review-verdicts: neither trace root exists", file=sys.stderr)
+        return 2
+    verdicts = harvest(arguments.claude_root, arguments.codex_root, arguments.since_days)
+    if arguments.project:
+        wanted = set(arguments.project)
+        verdicts = [item for item in verdicts if item["project"] in wanted]
+    kinds = KINDS if arguments.kind == "all" else (arguments.kind,)
+    print_summary(verdicts, kinds)
+    if arguments.json:
+        payload = {
+            "schema_version": 1,
+            "since_days": arguments.since_days,
+            "kinds": list(kinds),
+            "verdicts": [item for item in verdicts if item["kind"] in kinds],
+            "unclassified": [item for item in verdicts if item["kind"] == "unknown"],
+        }
+        arguments.json.write_text(json.dumps(payload, indent=1), encoding="utf-8")
+        print(f"\nDATASET {arguments.json}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

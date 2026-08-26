@@ -18,6 +18,7 @@
 | `LEARN` | `learn` | Patterns absorbed from a donor repository. |
 | `TAUGHT FROM TEMPLATE` / `TAUGHT FROM DONOR` | `teach` | Patterns exported to a target repository. |
 | `SWEEP (<focus>)` | `sweep` | A maintenance pass over the rule surfaces: what was retired, graduated, and left open. |
+| `SWEEP-PLANNING (<kind>)` | `sweep-planning` | A longitudinal pass over harvested review verdicts: window, coverage, reason categories with counts, attributions, and the corrections applied or filed. The next run reads the latest entry to set its window and compute deltas. |
 
 The `Only finalized evidence may claim exact timing` rule and the START/END formats below govern phase entries. A repository-operation entry has no fixed schema beyond a `## <YYYY-MM-DD HH:MM> — <HEADING>` line and the same append-only, no-back-dating, no-fabrication rules; each owning skill defines its own body.
 

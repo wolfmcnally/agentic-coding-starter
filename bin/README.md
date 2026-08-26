@@ -422,6 +422,32 @@ row per refusal; exit 2 is a usage or I/O error. The plan may live anywhere;
 
 Behavioral coverage lives in `tests/test_check_plan_concreteness.py`.
 
+### `review-verdicts` — harvest review verdicts from harness traces
+
+The mechanistic half of the `sweep-planning` skill. Walks the machine's Claude
+Code (`~/.claude/projects/`) and Codex (`~/.codex/sessions/`) session
+transcripts for the last `--since-days` (default 31), extracts every
+`## Verdict: APPROVED|REVISE` block with the `## Finding Evidence` batch that
+precedes it, drops the template echoes that outnumber real verdicts (a header
+inside a quoted persona file, a grep hit, a line-numbered read), and
+deduplicates cross-harness copies of one review by normalized text. Prints
+verdicts by project, harness, kind, and week; findings by severity,
+classification, and state; and the **re-aimed ids** — finding ids that carried
+more than one distinct evidence text while they stayed actionable, each of
+which is a review round the ledger cannot explain. `--kind plan|code|all`
+selects the review loop, `--project <basename>` (repeatable) narrows to one
+repository, `--json <path>` writes the complete dataset for the skill's
+judgment half; verdicts with no finding ids (pre-evidence-plane narratives)
+are reported as unclassified and carried in the JSON. Reads the trace roots
+only; never writes under `~/.claude` or `~/.codex`. Exit 2 when neither root
+exists.
+
+```bash
+./bin/review-verdicts --since-days 31 --kind plan --json "$SCRATCH/verdicts.json"
+```
+
+Behavioral coverage lives in `tests/test_review_verdicts.py`.
+
 ### `check-shell-syntax` — shell-script parse gate
 
 Runs `bash -n` over every shell script (selected by shebang) under `bin/` and
