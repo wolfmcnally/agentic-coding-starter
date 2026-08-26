@@ -23,6 +23,37 @@ If the rule under review discusses `TODO`, a grep for `TODO` will select the
 rule along with unfinished code. If a safety document discusses a prohibited
 term, matching the term does not establish the prohibited act.
 
+## A name you did not read is not a name
+
+An identifier that follows the naming conventions of a real one is evidence of
+nothing. Convention-consistency is the mechanism that generates a plausible
+wrong name, not a defense against it: the model that infers `--recursive` from
+every other CLI it has seen is using exactly the machinery that would have
+produced the flag had it existed.
+
+Before citing any function, method, class, flag, environment variable,
+configuration key, endpoint, package, schema field, or command in code, a plan,
+a brief, a report, or a message, either read it from the authority that defines
+it — the source file, `--help`, the schema, the documentation page — or mark it
+unverified and say which. "I inferred this from naming conventions" is a
+complete and acceptable answer; presenting it as read is not.
+
+The check is cheap and the failure is not. One grep, one `--help`, one open
+documentation tab settles it, while an unread name reaches a reviewer wearing
+the same confidence as a verified one and is indistinguishable until it runs.
+Reach for this hardest exactly where the surrounding work looks most finished:
+a fluent, correctly-structured, idiomatically-named artifact is where a
+fabricated reference is least visible.
+
+Two corollaries:
+
+- **The authority is the definition, not another mention.** A name recovered
+  from your own earlier summary, a sibling file's usage, or a plausible
+  neighbor's docs is still unread. Read where it is defined.
+- **Absence of a match is a finding, not a formatting problem.** When the grep
+  comes back empty or `--help` does not list the flag, that is the answer.
+  Do not widen the pattern until something matches.
+
 ## Never reason over output you truncated yourself
 
 A view you narrowed is not the thing you narrowed it from. When output is passed

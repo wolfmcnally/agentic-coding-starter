@@ -202,7 +202,7 @@ two-gate close, or expand the phase to pursue an optimization tangent.
 - Name every type, function, class, module, CLI subcommand, or schema field you expect to introduce.
 - Match `plan/phase-<id>.md` exactly. Do not re-scope the phase.
 - Uphold invariants explicitly in the Invariant Checks section.
-- Prefer simplicity over new abstractions. A new helper module is premature unless two existing call sites already need it.
+- Prefer simplicity over new abstractions, per `policies/simplicity-and-consolidation.md`. Do not plan an abstraction, interface, parameter, or mode flag whose second concrete present-tense use you cannot name in the plan body. When the plan's own change would put the same rule, constant, or procedure in a third place, plan its one home and cite it from the others instead.
 - Flag ambiguities in Open Questions instead of guessing.
 - Plan in the language and toolchain the project actually uses. Prefer its
   repository-owned `bin/test` for focused tests and `bin/check` for the full

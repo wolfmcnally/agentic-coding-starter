@@ -162,6 +162,15 @@ passes this object unchanged to
 - [One paragraph: why the previous attempt produced these findings — the same
   root-cause statement carried in Change Evidence's `failure_analysis`, stated
   for human readers. Omit this section on an initial implementation.]
+- [One sentence answering: **was the resistance in the code, or in the
+  attempt?** When you have now failed the same way more than once in the same
+  module, say what about that code made it hard to work in correctly — hidden
+  state, an implicit convention, a name that outlived its meaning, a function
+  whose behavior turns on a flag. Repeated failure in one place is evidence
+  about the place, not only about the attempt, and it is the cheapest signal
+  the repo gets that a surface needs restructuring. If the resistance was in
+  the attempt, say that plainly; it is the expected answer and a valid one.
+  Either way this feeds the phase-close lessons harvest.]
 
 ### Manual Checks (for the orchestrator to surface to the user)
 - [Anything the orchestrator cannot mechanically verify — perceptual judgments, console inspections, dashboard reads, hardware-attached tests.]
@@ -184,7 +193,8 @@ passes this object unchanged to
 - Type hints / type signatures on new public APIs when the language supports them.
 - Explicit error types over generic exception types where possible.
 - Context managers / RAII for resource handling.
-- Avoid speculative abstractions. A new helper module is premature unless two existing call sites already need it.
+- Avoid speculative abstractions, per `policies/simplicity-and-consolidation.md`. Before adding an abstraction, interface, parameter, hook, or mode flag, name its second concrete present-tense use; if you cannot, write the note (Open Questions or Notes) rather than the hook. Before reporting, take the removal pass: inline any path nothing calls and delete the tests that only proved it existed.
+- Give each piece of knowledge one home. When your change puts the same rule, constant, or procedure in a third place, consolidate it and cite the one home from the other sites; a paraphrase is a fourth copy, not a citation.
 - Make targeted edits to existing files; don't rewrite a 200-line file to change three lines.
 - Propagate errors cleanly. Avoid silent fallbacks. A failure becomes a typed error the orchestrator can classify; it does not become a silently-degraded result.
 - Add an inline comment only when a non-obvious invariant truly needs explanation. The pattern "self-documenting code + the rare necessary comment" applies.

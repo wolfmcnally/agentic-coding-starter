@@ -65,6 +65,7 @@ Evaluate in priority order:
 **Correctness**
 - Look for logic errors, off-by-ones, missed error paths, mismatched types, race conditions, resource leaks.
 - Block on bare `except:` / unguarded `catch (Exception)` clauses; block on `// @ts-ignore` / `# type: ignore` / `#[allow(...)]` without a comment explaining the necessity.
+- Block on **shallow error handling**: a handler that catches and re-raises unchanged, logs and continues, or returns a default that cannot be correct for the caller. The test is whether the handler tells you *which* error was anticipated and *how* the system recovers. A handler that names no expected failure and performs no recovery is suppression wearing a handler's shape, and it converts a real failure into a plausible success — the mode `policies/acceptance-empirical.md` rejects in gates, appearing here in the deliverable.
 - Confirm the phase Acceptance criteria are actually satisfied by the code (not just promised by the plan).
 - For protocol or schema code: confirm field names, types, and required/optional status match the cited brief.
 - For algorithmic code: confirm the algorithm matches the cited reference and that edge cases (empty input, single element, overflow, underflow) are handled.
@@ -82,6 +83,7 @@ Evaluate in priority order:
   - `status:` fields in per-phase frontmatter.
   - Hand-edited historical entries in `LOG.md`.
   - Subjective claims in END blocks ("the audio sounds great", "the page looks clean") that the orchestrator cannot honestly assert.
+  - **Unread names**, per `policies/verification-discipline.md`: any function, method, flag, environment variable, config key, endpoint, package, or schema field the code or its docs cites that does not resolve. Resolve each one against its definition — grep the symbol, read the schema, check `--help` — not against another mention of it. Convention-consistent naming is what produces a plausible wrong name, so a fluent, idiomatic, correctly-structured artifact is where this hides best. An unresolved name is blocking.
 - Block on any match.
 - **User demo protocol**, per `policies/user-demo-protocols.md`: if the approved plan carries a `User Demo:` block, verify against the merged code that the entry point exists, the suggested inputs are valid, and the observable outcomes are reachable. A stale or broken demo is blocking. If the plan declared `User Demo: N/A`, sanity-check that the phase really has no user-facing change worth demoing. Since the demo is the user's acceptance surface for work that will be delivered without waiting, a padded or unreachable demo is blocking, not a note.
 - **The acceptance split**, per `policies/human-in-the-loop.md`: check every acceptance criterion's *type*, not just its result. A criterion is objective only if it is executable, independently reviewed, gate-proved, and candidate-bound; anything manual, perceptual, product-shaped, or custody-bearing must park for the user. **A subjective criterion typed as objective is blocking** — it is the one defect that would let the phase deliver itself on evidence that does not exist. You are the last independent reviewer before delivery; this check is yours.
@@ -103,6 +105,7 @@ Evaluate in priority order:
 - New public logic has tests at the right layer (unit tests for pure logic; integration tests for boundary code; smokes for end-to-end flows).
 - Tests don't depend on side effects from earlier tests in the same file (state is isolated via fixtures or `beforeEach`-style setup).
 - Tests assert against the brief's contract, not just "the function returns a value."
+- **No mirror tests.** The coder wrote the implementation and its tests from one understanding, so any blind spot in the first is reproduced in the second and the suite still passes. For each new test ask: would this still pass if the implementation were subtly wrong in a way consistent with itself? A test that re-executes the implementation's own logic, or asserts a constant lifted from the code rather than derived from the requirement, verifies only that the code does what the code does. Anchor it to the phase's Acceptance criterion or the cited brief instead. This is your check specifically — you are the first reader who did not write both artifacts.
 - The Build Gate Sequence's `./bin/test` selection would actually exercise the
   new code.
 - When the repo owns the toolchain contract, focused tests use `bin/test`, the
@@ -112,9 +115,10 @@ Evaluate in priority order:
   agree with the runtime pin, committed metadata, and lockfile while
   preserving child statuses.
 
-**Simplicity**
-- No new abstractions, generics, base classes, or helpers introduced without need.
-- No speculative future-facing structure (e.g., a `BackendBase` abstract class with one concrete subclass and no second use-case in sight).
+**Simplicity and consolidation** (per `policies/simplicity-and-consolidation.md`)
+- No abstraction, generic, base class, helper, interface, parameter, hook, or mode flag whose **second concrete present-tense use** the code or plan cannot name. A one-implementation interface, a parameter every caller passes identically, and a flag with one reachable value are all blocking; so are tests that exist only to exercise machinery production code never calls. Name the concrete cost in the finding — what a future reader must model that cannot happen.
+- No third copy. When the change puts the same rule, constant, or procedure in a third site, the finding is that it needs one home with the others citing it. A paraphrase that agrees is a fourth copy, not a citation.
+- Do not invert this into a demand for more structure. A fix layered as a special case onto shared infrastructure is the same policy's other half — flag it as wrong-depth, not as admirable smallness.
 - Flag a conspicuous avoidable wall-clock regression—such as genuinely
   independent mechanics forced serially or invariant setup repeated—only when
   a substantial, low-risk local correction is reasonably apparent. Do not
