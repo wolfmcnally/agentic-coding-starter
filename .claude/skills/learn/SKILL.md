@@ -358,4 +358,20 @@ Once approved, apply the approved items. Before importing any donor remedy for a
   interpreter once and reuse it. Behavioral entrypoint tests are the minimum
   coverage floor; source-text checks may supplement but never replace them.
   Partial adoption is stale and blocking.
+- **Test-governance learning is atomic and recipient-owned.** When a donor has
+  proof-estate value governance, assess
+  `briefs/test-suite-value-governance.md`,
+  `policies/test-suite-governance.md`, `tests/proof-estate.yaml`,
+  `bin/test-governance`, `lib/agentic_starter/test_governance.py`,
+  `tests/test_test_governance.py`, `tests/test_pre_commit.py`, and
+  `reports/test-governance/README.md` with the lane/gate/hook callers,
+  deterministic inventory/validation/selection/report manager, lane and gate
+  integration, hook check, behavioral fixtures, effectiveness-evidence shape,
+  catalogs, transfer rules, and lessons together. Adopt the generalized
+  machinery or none of it. Never copy donor family choices, selectors, risk
+  labels, timing values, thresholds, defect corpus, mutation corpus, reports,
+  or audit judgments. Inventory this repository's own estate, retain every
+  current proof on initial adoption, and admit a fast lane only after local
+  historical-defect and holdout-mutant assays demonstrate complete recall.
+  Invalid or unmapped selection widens to full; both close gates remain full.
 - **Skill-exclusion list.** `stamp` and the starter template's `example/` Python project are starter-only and never transferred. `learn` and `teach` themselves are universal — if the donor has a more evolved version, treat it like any other candidate; if this repo lacks them and the donor has them, propose adding them (the bootstrap procedure expects them in every methodology-following project).

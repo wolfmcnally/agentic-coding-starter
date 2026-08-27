@@ -252,6 +252,9 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.agents/skills/plain` (directory symlink → `../../.claude/skills/plain`)
 - `AGENTS.md` symlink → `CLAUDE.md`
 - Every file under `policies/` (these are universal by design)
+- `policies/test-suite-governance.md` and
+  `briefs/test-suite-value-governance.md` (the universal proof-estate contract;
+  recipient-local values are generated later)
 - `bin/kickoff-config` (universal Python/uv round-trip config manager, fail-closed venue preflight, execution watchdog, research-budget authority, and telemetry calibrator), plus human-editable `kickoff.yaml` seeded via `bin/kickoff-config reset all`
 - `tests/test_kickoff_config.py` (universal manager/watchdog behavioral coverage; run independently of the deliverable's language)
 - `bin/kickoff-tree-id` and `bin/kickoff-evidence` (universal candidate
@@ -260,6 +263,11 @@ These files encode the methodology itself, not any particular product. Copy them
   (universal behavioral coverage for candidate/evidence mechanics)
 - `bin/check-receipt` and `tests/test_check_receipt.py` (universal durable
   full-gate records and exact, fail-closed pre-push reuse)
+- `bin/test-governance`, `lib/agentic_starter/test_governance.py`,
+  `tests/test_test_governance.py`, `tests/test_pre_commit.py`, and
+  `reports/test-governance/README.md` (universal proof-estate mechanics and
+  behavioral contract; the destination supplies its own manifest, assay
+  cases, and report bodies)
 - `bin/lessons` and `bin/check-catalogs` (universal lessons-ledger,
   document-link, and phase-ledger fitness managers)
 - `tests/test_lessons.py` and `tests/test_check_catalogs.py` (universal
@@ -301,6 +309,8 @@ These files encode the methodology itself, not any particular product. Copy them
   rule-surface pruning, and cross-repo propagation)
 - `briefs/session-context-compaction.md` (managing harness context compaction
   during long orchestration runs)
+- `briefs/test-suite-value-governance.md` (proof attribution, recipient-local
+  assays, and governed fast-feedback lanes)
 - The skeletal headings/structure of `plan/INDEX.md`
 - The skeletal frontmatter shape for `plan/phase-*.md` (`id`, `title`, `depends_on`, `informs`, optional `review_lane` per `policies/review-lanes.md`)
 - The START/END block format for `LOG.md`
@@ -318,6 +328,10 @@ These files have a stable shape and a project-specific body. Mirror the shape; w
   In both shapes the catalog itself lives in `CLAUDE.md`, not here.
 - `briefs/<topic>.md` — written from the new project's spec, when the project is using the multi-file shape.
 - `plan/INDEX.md` body — phase graph and table reflect the new project's phasing.
+- `tests/proof-estate.yaml`, `tests/fixtures/test_governance/`, and
+  `reports/test-governance/` bodies — preserve the universal schema and README,
+  but generate every family, selector, tier, timing, assay case, and judgment
+  from the new project's own proof inventory.
 - `plan/phase-1.md` — fresh, project-specific. (Do not pre-build phases 2+. Decompose them when they become the next phase.)
 
 ### 2c. Do not transfer (template-specific)
@@ -328,6 +342,9 @@ These files have a stable shape and a project-specific body. Mirror the shape; w
 - The starter template's `example/` Python package and `tests/test_cli.py` — replace with the new project's surface, in whatever language(s) the project uses.
 - `policies/anonymize-log-references.md`, `bin/check-anonymization.sh`, and `bin/anonymization-denylist.local.example` — starter-only: the rule exists because *this* template is public, not because of any methodology principle. Also drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`, delete the `### check-anonymization.sh` entry from `bin/README.md`, remove its call from `bin/check`, and delete the "External / private-repo references" bullet from the copied `.claude/agents/code-critic.md`, which names both.
 - `tests/test_methodology_toolchain_contract.py` — asserts on the `stamp` skill and the anonymization policy, neither of which the new project has.
+- Starter's `tests/proof-estate.yaml`, `tests/fixtures/test_governance/*.json`,
+  and `reports/test-governance/starter-*` — these are local inventory,
+  effectiveness, timing, and audit state, not methodology content.
 - `briefs/eacp-pattern-map.md` and `briefs/methodology-treatise.md` — both are *about this repository*: one maps its structures onto a named pattern corpus, the other is its outward explanation. A derived project writes its own if it wants them.
 - `LICENSE` and `.vscode/` — the new repository's licensing and editor settings belong to whoever owns it.
 - This repository's `lessons/`, `lessons-archived/`, `user-actions/`, and `user-actions-archived/` entries — every ledger starts empty, with only a `.gitkeep` in each of the four so the directories survive the first commit.
@@ -603,6 +620,19 @@ separate and does not absorb a venv or external runtime tree. The pre-push hook
 reuses the receipt only for a clean current `HEAD`, and fails closed by running
 the full gate on every miss, descriptor failure, or query error.
 
+Generate the recipient's proof estate only after its real tests, gates, and
+hooks exist. `bin/test-governance inventory` supplies the local baseline;
+`tests/proof-estate.yaml` then assigns every local proof to exactly one family
+and declares the gate/hook surfaces. Initial adoption retains every proof. A
+full-only estate with an empty effectiveness ledger is valid. Do not copy the
+template's families, selectors, tiers, risk labels, timings, assay cases,
+reports, or audit judgments. Activate `vital` only after local
+historical-defect and holdout-mutant cases are all detected; `changed` selects
+the union of applicable local mappings and widens to full for any unmapped
+path. Policy and pre-commit run structural validation, while both close gates
+and pre-push remain full. The pinned governance environment includes the YAML
+parser used by the manager.
+
 **A non-Python deliverable makes this a two-runtime contract, not a one-line
 substitution.** The universal managers under `bin/` and the whole root `tests/`
 suite are Python, so a TypeScript, Rust, or Go project carries a second,
@@ -646,6 +676,9 @@ Before declaring the bootstrap complete, verify:
   dependency-chain probe.
 - `bin/test` runs deliverable and universal tooling tests; a focused
   repo-relative selection runs only that selection.
+- `bin/test-governance validate` passes against a recipient-local baseline and
+  retains every seeded proof. An unassayed project stays full-only; if a vital
+  lane is admitted, all of its local historical and holdout cases are detected.
 - `bin/check test` delegates to `bin/test` before any live venue probe.
 - A valid explicit runtime override drives setup, probing, testing, gates, and
   the runtime wrapper; an invalid or probe-failing override exits nonzero
@@ -771,12 +804,12 @@ Bootstrap is complete when **all** of the following hold:
 [ ] Every executable bin/check requires is present and executable:
     kickoff-tree-id, kickoff-evidence, kickoff-config, check-receipt,
     execution-telemetry, check-execution-dashboards, check-harness-parity,
-    check-toolchain-callers, lessons, treatise, check-catalogs,
+    check-toolchain-callers, test-governance, lessons, treatise, check-catalogs,
     check-hooks-installed, check-shell-syntax, new-name. bin/check fails closed
     on the first one missing, before any gate runs — this is the fastest way to
     catch an incomplete transfer
-[ ] lib/agentic_starter/ exists (bin/execution-telemetry and
-    bin/check-execution-dashboards import it); reports/execution/ carries
+[ ] lib/agentic_starter/ exists (the telemetry, dashboard, plan-artifact, and
+    test-governance managers import it); reports/execution/ carries
     index.html, index-data.js, and assets/, and
     bin/check-execution-dashboards reports 0 phases against the fresh archive
 [ ] bin/check-harness-parity passes: one .agents/skills mirror per canonical
@@ -785,8 +818,8 @@ Bootstrap is complete when **all** of the following hold:
     tests/test_methodology_toolchain_contract.py do NOT exist, and no file in
     the new repo links or names them — including CLAUDE.md's Hard rules
     (rule 3 is gone) and its Policies catalog
-[ ] bin/setup, bin/test, bin/check, bin/check-receipt, bin/install-hooks, and
-    bin/check-hooks-installed are executable;
+[ ] bin/setup, bin/test, bin/check, bin/check-receipt, bin/test-governance,
+    bin/install-hooks, and bin/check-hooks-installed are executable;
     the language runtime wrapper exists when applicable; .githooks/pre-push
     reuses only an exact verified receipt and otherwise calls bin/check; hook
     installation remains explicit and opt-in, with the opt-in-aware liveness
@@ -810,7 +843,12 @@ Bootstrap is complete when **all** of the following hold:
     tests/test_treatise.py, tests/test_new_name.py, tests/test_shell_syntax.py,
     tests/test_toolchain_callers.py, tests/test_mirror_parity.py,
     tests/test_research_authority.py, tests/test_execution_telemetry.py, and
-    tests/test_execution_dashboard.py pass through bin/test
+    tests/test_execution_dashboard.py, tests/test_test_governance.py, and
+    tests/test_pre_commit.py pass through bin/test
+[ ] tests/proof-estate.yaml and reports/test-governance/ contain only this
+    project's inventory and evidence; bin/test-governance validate passes;
+    every seeded proof is retained, and a full-only project needs no borrowed
+    effectiveness corpus
 [ ] Every file in policies/ from the template exists, with project-name
     references updated
 [ ] No template-specific skills, briefs, or example code remain in the new

@@ -35,7 +35,14 @@ are stable from any caller directory.
 ```bash
 ./bin/test
 ./bin/test tests/test_check.py -q
+./bin/test --vital
+./bin/test --changed-from HEAD~1
 ```
+
+The governed lanes use the recipient-local `tests/proof-estate.yaml`. Vital
+runs every locally admitted fast family; changed runs the union of every family
+mapped to the live diff. Invalid governance, an unresolved ref, or an unmapped
+path widens to the full suite. Both phase-close gates remain `bin/check all`.
 
 ### `python` — repository-selected Python
 
@@ -90,12 +97,37 @@ bound to the exact candidate, environment fingerprint, and log digest.
 ./bin/check test
 ```
 
+```bash
+./bin/check vital
+./bin/check changed HEAD~1
+```
+
 Universal contract: [`policies/build-gates.md`](../policies/build-gates.md).
 `stamp`, `learn`, and `teach` preserve the atomic interface while adapting its
 implementation to the destination's language, runtime policy, metadata, and
 lockfile. Behavioral coverage lives in
 `tests/test_toolchain_entrypoints.py`, `tests/test_check.py`, and
 `tests/test_check_receipt.py`.
+
+### `test-governance` — proof-estate inventory and safe selection
+
+Inventories test definitions plus declared gate/hook surfaces, validates their
+single-family ownership and local effectiveness bindings, selects governed
+vital/changed lanes, and reports the live estate. It runs through the
+repository-selected locked Python environment.
+
+```bash
+./bin/test-governance inventory
+./bin/test-governance validate
+./bin/test-governance select --tier vital
+./bin/test-governance select --changed-from HEAD~1
+./bin/test-governance report
+```
+
+Universal contract:
+[`policies/test-suite-governance.md`](../policies/test-suite-governance.md).
+Behavioral coverage lives in `tests/test_test_governance.py` and
+`tests/test_pre_commit.py`; the manifest and reports are recipient-local state.
 
 ### `check-receipt` — durable full-gate record and exact reuse
 

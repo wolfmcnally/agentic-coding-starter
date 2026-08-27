@@ -1,0 +1,20 @@
+{
+  "candidate_sha256": "65b7937953759b8bff6eb43d7fff040c0155d62542e931bdc3d8365b2681e685",
+  "families": [
+    "atomic-check",
+    "full-gate-receipt",
+    "test-governance-manager",
+    "toolchain-entrypoints"
+  ],
+  "inventory_sha256": "01807dfafcd8c29ed9ed17d413982a67d4976842d01e4dc61fd48e9b173700e7",
+  "lane": "vital",
+  "manifest_sha256": "d44160666de8de959c59dd489cfae93c375d384c9a766426fb087771b020b7f5",
+  "reason": "all locally admitted vital families",
+  "record_type": "selection",
+  "selectors": [
+    "tests/test_check.py",
+    "tests/test_check_receipt.py",
+    "tests/test_test_governance.py",
+    "tests/test_toolchain_entrypoints.py"
+  ]
+}

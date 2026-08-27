@@ -40,14 +40,17 @@ Before changing anything, verify:
    - `.claude/settings.json` exists and sets `worktree.bgIsolation` to `none`.
    - `bin/kickoff-config` exists and is executable.
    - `bin/kickoff-tree-id` and `bin/kickoff-evidence` exist and are executable.
-   - `bin/setup`, `bin/test`, `bin/check`, and `bin/check-receipt` exist and are
-     executable; `tests/test_check_receipt.py` exists; the Python profile also
-     has executable `bin/python`.
+   - `bin/setup`, `bin/test`, `bin/check`, `bin/check-receipt`, and
+     `bin/test-governance` exist and are executable;
+     `tests/test_check_receipt.py`, `tests/test_test_governance.py`, and
+     `tests/proof-estate.yaml` exist; the Python profile also has executable
+     `bin/python`.
    - `kickoff.yaml` exists and `./bin/kickoff-config show` validates role models, role timeouts, and research budgets.
    - `.codex/agents/*.toml` has one TOML file per canonical agent.
    - `briefs/BRIEF.md`, `briefs/methodology.md`,
      `briefs/agentic-bootstrap.md`, and
-     `briefs/incremental-orchestration.md` exist.
+     `briefs/incremental-orchestration.md`, and
+     `briefs/test-suite-value-governance.md` exist.
    - `plan/INDEX.md` and `plan/phase-1.md` exist.
    - Every file under `policies/` is non-empty.
    If any check fails, refuse with a specific error naming the missing file and exit.
@@ -252,6 +255,8 @@ extra file, which the adaptation pass or the next `sweep` catches.
 - `lib/` — the shared deterministic library the universal `bin/` scripts import
 - `tests/`, including `tests/fixtures/`
 - `reports/execution/`, including its vendored `assets/`
+- `reports/test-governance/README.md` — the report contract only; every report
+  body is generated from the destination's local estate
 - `.githooks/`
 - `.gitignore`, `.gitattributes`, `kickoff.yaml`
 
@@ -263,6 +268,7 @@ extra file, which the adaptation pass or the next `sweep` catches.
 | `policies/anonymize-log-references.md` | starter-only: the rule exists because *this* template is public, not because of any methodology principle |
 | `bin/check-anonymization.sh` and `bin/anonymization-denylist.local.example` | that policy's enforcement (also drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`) |
 | `tests/test_methodology_toolchain_contract.py` | asserts on `stamp` and the anonymization policy, neither of which the destination has |
+| `tests/proof-estate.yaml`, `tests/fixtures/test_governance/*.json`, and `reports/test-governance/starter-*` | Starter-local families, assay cases, timings, reports, and judgments; regenerate from the destination's own inventory |
 | `briefs/BRIEF.md`, `briefs/eacp-pattern-map.md`, `briefs/methodology-treatise.md` | about *this* repository; `BRIEF.md` is authored fresh in Step 3 |
 | `LICENSE` and `.vscode/` | the operator's choices, not the template's |
 | `plan/`, `LOG.md`, `README.md`, `CLAUDE.md`, `project/` | authored or adapted fresh in Steps 3–5 |
@@ -298,14 +304,16 @@ the copy was performed. It is not exhaustive and does not need to be.
   `briefs/deterministic-orchestration.md` (draft: decision criteria for a
   deterministic kickoff loop once every supported harness has a parity workflow
   primitive), `briefs/harness-self-improvement.md` (the two-tier improvement
-  flywheel the lessons ledger, `sweep`, and the transfer skills implement), and
+  flywheel the lessons ledger, `sweep`, and the transfer skills implement),
   `briefs/session-context-compaction.md` (managing harness compaction during long
-  orchestration runs)
+  orchestration runs), and `briefs/test-suite-value-governance.md` (the
+  universal proof-estate and fast-feedback design)
 - `.githooks/pre-push` (optional hook; it reuses only an exact verified full-gate
   receipt and otherwise delegates to the canonical gate; inert until explicitly
   installed)
-- The toolchain entry points `bin/setup`, `bin/test`, `bin/check`, and
-  `bin/check-receipt` (adapted together in Step 5), plus `bin/install-hooks` and
+- The toolchain entry points `bin/setup`, `bin/test`, `bin/check`,
+  `bin/check-receipt`, and `bin/test-governance` (adapted together in Step 5),
+  plus `bin/install-hooks` and
   `bin/check-hooks-installed` (verbatim)
 - `bin/_python-toolchain` and `bin/python` for a Python target (adapted in Step 5;
   omit both when Python is not a deliverable runtime)
@@ -313,7 +321,7 @@ the copy was performed. It is not exhaustive and does not need to be.
   before it will run a single gate: `bin/kickoff-config`, `bin/kickoff-tree-id`,
   `bin/kickoff-evidence`, `bin/check-receipt`, `bin/execution-telemetry`,
   `bin/check-execution-dashboards`, `bin/check-harness-parity`,
-  `bin/check-toolchain-callers`, `bin/lessons`, `bin/treatise`,
+  `bin/check-toolchain-callers`, `bin/test-governance`, `bin/lessons`, `bin/treatise`,
   `bin/check-catalogs`, `bin/check-hooks-installed`, `bin/check-shell-syntax`,
   `bin/new-name`; plus the operator convenience `bin/serve-execution-dashboard`
   and `bin/check-plan-concreteness`, which `kickoff` runs over every plan
@@ -323,9 +331,9 @@ the copy was performed. It is not exhaustive and does not need to be.
   `lib/agentic_starter/plan_artifact.py`), and `bin/review-verdicts`, the
   `sweep-planning` / `sweep-coding` trace harvester (with
   `tests/test_review_verdicts.py`)
-- `lib/agentic_starter/` — `bin/execution-telemetry` and
-  `bin/check-execution-dashboards` import it; without it both fail at startup and
-  take the whole gate with them
+- `lib/agentic_starter/` — the telemetry, dashboard, plan-artifact, and
+  test-governance managers import it; omitting it makes their gates fail at
+  startup
 - `reports/execution/` with `index.html`, `index-data.js`, and `assets/` —
   `bin/check-execution-dashboards` reads the archive and validates the vendored
   offline renderer. A fresh destination's archive holds zero phases, which the
@@ -339,8 +347,13 @@ the copy was performed. It is not exhaustive and does not need to be.
   `tests/test_new_name.py`, `tests/test_shell_syntax.py`,
   `tests/test_toolchain_callers.py`, `tests/test_mirror_parity.py`,
   `tests/test_research_authority.py`, `tests/test_execution_telemetry.py`,
-  `tests/test_execution_dashboard.py`,
-  `tests/render_execution_dashboard_fixture.py`, and `tests/fixtures/`
+  `tests/test_execution_dashboard.py`, `tests/test_test_governance.py`,
+  `tests/test_pre_commit.py`, `tests/render_execution_dashboard_fixture.py`,
+  and `tests/fixtures/` except the Starter-local test-governance assay cases
+  named above
+- `reports/test-governance/README.md`; the destination creates its own
+  `tests/proof-estate.yaml`, local assay fixtures, and governance reports in
+  Step 5
 - `.gitattributes` — the line-ending normalization that keeps cross-harness
   mirrors byte-identical across platforms
 
@@ -353,6 +366,14 @@ So is the self-improvement bundle (`.claude/skills/sweep/SKILL.md`,
 `briefs/harness-self-improvement.md`, `policies/lessons.md`, `bin/lessons`,
 `bin/check-catalogs`, `tests/test_lessons.py`, `tests/test_check_catalogs.py`,
 and the empty `lessons/` + `lessons-archived` ledger).
+
+The proof-estate contract is atomic too:
+`briefs/test-suite-value-governance.md`,
+`policies/test-suite-governance.md`, `bin/test-governance`,
+`lib/agentic_starter/test_governance.py`, `tests/test_test_governance.py`,
+`tests/test_pre_commit.py`, and `reports/test-governance/README.md` travel with
+the lane/gate/hook callers. `tests/proof-estate.yaml`, local assay fixtures,
+and report bodies are generated from the destination rather than copied.
 
 The denylist, this floor, the manual bootstrap brief, `teach`'s atomic transfer
 list, acceptance checklists, role contracts, and methodology narrative are one
@@ -567,6 +588,18 @@ Adapt the complete atomic bundle defined by `policies/build-gates.md`:
 - hot loops, mutation gates, generated multi-command workflows, and detached
   processes resolve the underlying repository interpreter once and reuse it.
 
+Generate the destination's proof estate after its real tests and gates exist.
+Do not copy Starter's `tests/proof-estate.yaml`, assay cases, reports, family
+tiers, selectors, risk labels, timings, or judgments. Use
+`bin/test-governance inventory` to establish the local baseline; declare every
+local proof family and gate/hook surface. The first manifest retains every
+proof. A full-only estate with an empty effectiveness ledger is valid. Create
+`reports/test-governance/` from the report README, and activate `vital` only
+after destination-local historical-defect and holdout-mutant cases are detected
+by every admitted fast lane. `changed` selects the union of all applicable
+mappings and widens to full for any unmapped path. Wire structural validation
+into policy and pre-commit; both close gates and pre-push remain full.
+
 Preserve cwd and symlink independence: every shell entry point resolves its own
 symlink chain before deriving the repository root. Preserve strict argument
 handling, fail-closed prerequisite, bundle-member, and authoritative-override checks, exact child-status
@@ -737,6 +770,11 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
   executable and base-executable identities, while dirty, changed-runtime,
   corrupt, non-`HEAD`, descriptor-error, and query-error pushes fail closed to
   the full gate.
+- `<dest>/bin/test-governance validate` passes against a destination-local
+  `tests/proof-estate.yaml`; the baseline equals the destination inventory,
+  every current proof is retained, local reports contain no Starter values,
+  and an unassayed destination remains full-only. If a vital lane was admitted,
+  its destination-local historical and holdout cases are all detected.
 - `<dest>/bin/lessons validate` and `<dest>/bin/check-catalogs` are executable
   and pass against the fresh destination (empty ledger, synced catalogs, one
   `⬅️`); a `.gitkeep` exists in each of `lessons/`, `lessons-archived/`,

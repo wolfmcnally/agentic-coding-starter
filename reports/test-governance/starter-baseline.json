@@ -1,0 +1,13 @@
+{
+  "candidate_sha256": "65b7937953759b8bff6eb43d7fff040c0155d62542e931bdc3d8365b2681e685",
+  "counts": {
+    "check_gates": 16,
+    "hook_commands": 3,
+    "test_definitions": 522,
+    "test_files": 26
+  },
+  "inventory_sha256": "01807dfafcd8c29ed9ed17d413982a67d4976842d01e4dc61fd48e9b173700e7",
+  "manifest_sha256": "d44160666de8de959c59dd489cfae93c375d384c9a766426fb087771b020b7f5",
+  "record_type": "proof-estate-baseline",
+  "schema_version": 1
+}

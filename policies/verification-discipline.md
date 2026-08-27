@@ -142,6 +142,23 @@ lane broke fourteen `test_check.py` cases across four independent inventories
 **inside one file** — in a session where the same lesson had been re-filed hours
 earlier.
 
+## Govern the proof estate, not a test-count proxy
+
+A file count, test-name count, duration, age, or coverage percentage is a proxy
+for proof value. Name that proxy and test its false positives before using it:
+it can invert the sign by identifying a slow or overlapping proof as waste when
+that proof is the only red witness for a distinct contract or produces an
+artifact another proof consumes.
+
+When a repository carries a proof-estate manifest, use its deterministic
+inventory to account for every executable test definition and gate/hook proof
+surface. Before consolidating anything, trace test-to-test dependencies and
+producer-to-consumer proof flow. A proposed replacement must retain the same
+contract, oracle, red witness, downstream artifacts, and local effectiveness
+recall. Initial adoption retains the current estate; deletion is a separate,
+reviewed local judgment. See
+[`test-suite-governance.md`](test-suite-governance.md).
+
 ## Relationship to acceptance
 
 [`acceptance-empirical.md`](acceptance-empirical.md) defines what makes a gate

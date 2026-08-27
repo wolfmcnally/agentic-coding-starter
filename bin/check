@@ -14,20 +14,33 @@ project_root="$repo_root/project"
 
 usage() {
   cat <<'EOF'
-Usage: ./bin/check [all|lint|format|test|policy]
+Usage: ./bin/check [all|lint|format|test|policy|vital|changed <ref>]
 
-Run the repository's authoritative build gates. The default mode is "all".
+Run the repository's build gates. The default and authoritative mode is "all".
+Vital and changed are governed iteration lanes and never produce a full-gate
+receipt.
 EOF
 }
 
-if [[ $# -gt 1 ]]; then
+if [[ $# -gt 2 ]]; then
   usage >&2
   exit 2
 fi
 
 gate_mode="${1:-all}"
 case "$gate_mode" in
-  all|lint|format|test|policy) ;;
+  all|lint|format|test|policy|vital)
+    if [[ $# -gt 1 ]]; then
+      usage >&2
+      exit 2
+    fi
+    ;;
+  changed)
+    if [[ $# -ne 2 || -z "${2:-}" ]]; then
+      usage >&2
+      exit 2
+    fi
+    ;;
   --help|-h)
     usage
     exit 0
@@ -55,7 +68,8 @@ fi
 for evidence_executable in \
   kickoff-tree-id kickoff-evidence kickoff-config check-receipt execution-telemetry \
   check-execution-dashboards check-harness-parity check-toolchain-callers \
-  lessons treatise check-catalogs check-hooks-installed check-shell-syntax new-name; do
+  lessons treatise check-catalogs check-hooks-installed check-shell-syntax new-name \
+  test-governance; do
   if [[ ! -x "$repo_root/bin/$evidence_executable" ]]; then
     echo "CHECK ERROR missing required executable: bin/$evidence_executable" >&2
     exit 1
@@ -105,6 +119,14 @@ run_test() {
   run_gate test "$repo_root/bin/test"
 }
 
+run_vital() {
+  run_gate vital "$repo_root/bin/test" --vital
+}
+
+run_changed() {
+  run_gate changed "$repo_root/bin/test" --changed-from "$1"
+}
+
 run_policy() {
   (
     cd "$repo_root"
@@ -117,6 +139,7 @@ run_policy() {
     run_gate policy-treatise ./bin/treatise validate || return $?
     run_gate policy-hooks-installed ./bin/check-hooks-installed || return $?
     run_gate policy-shell-syntax ./bin/check-shell-syntax || return $?
+    run_gate policy-test-governance ./bin/test-governance validate || return $?
     run_gate policy-anonymization ./bin/check-anonymization.sh || return $?
     echo "CHECK policy PASS"
   )
@@ -204,5 +227,7 @@ case "$gate_mode" in
   format) run_format ;;
   test) run_test ;;
   policy) run_policy ;;
+  vital) run_vital ;;
+  changed) run_changed "$2" ;;
   all) run_all_with_receipt ;;
 esac

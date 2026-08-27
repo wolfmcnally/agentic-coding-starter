@@ -34,6 +34,8 @@ RESEARCH_POLICY = _normalized(REPO_ROOT / "policies" / "research-authority.md")
 VERIFICATION_POLICY = _normalized(REPO_ROOT / "policies" / "verification-discipline.md")
 TREATISE_POLICY = _normalized(REPO_ROOT / "policies" / "treatise.md")
 USER_DEMO_POLICY = _normalized(REPO_ROOT / "policies" / "user-demo-protocols.md")
+TEST_GOVERNANCE_POLICY = _normalized(REPO_ROOT / "policies" / "test-suite-governance.md")
+TEST_GOVERNANCE_BRIEF = _normalized(REPO_ROOT / "briefs" / "test-suite-value-governance.md")
 
 
 def test_atomic_contract_pins_behavioral_coverage_floor() -> None:
@@ -92,6 +94,34 @@ def test_full_gate_receipt_contract_propagates_atomically() -> None:
     for document in (TEACH, STAMP, BOOTSTRAP_BRIEF):
         assert "bin/check-receipt" in document
         assert "tests/test_check_receipt.py" in document
+
+
+def test_proof_estate_governance_propagates_without_local_judgments() -> None:
+    required = (
+        "briefs/test-suite-value-governance.md",
+        "policies/test-suite-governance.md",
+        "bin/test-governance",
+        "lib/agentic_starter/test_governance.py",
+        "tests/test_test_governance.py",
+        "tests/test_pre_commit.py",
+        "reports/test-governance/README.md",
+    )
+    for phrase in required:
+        for document in (LEARN, TEACH, STAMP, BOOTSTRAP_BRIEF):
+            assert phrase in document, f"{phrase} missing from a transfer authority"
+    for document in (
+        TEST_GOVERNANCE_POLICY,
+        TEST_GOVERNANCE_BRIEF,
+        LEARN,
+        TEACH,
+        STAMP,
+        BOOTSTRAP_BRIEF,
+    ):
+        assert "local" in document or "recipient" in document
+        assert "full" in document
+    assert "Never copy donor family choices" in LEARN
+    assert "Never seed the target" in TEACH
+    assert "generated from the destination rather than copied" in STAMP
 
 
 def test_anonymization_boundary_follows_write_destination() -> None:

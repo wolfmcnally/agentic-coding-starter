@@ -12,6 +12,10 @@ distinct functions. Efficiency comes from making their evidence incremental,
 not from removing independent judgment: first reviews are complete, revision
 reviews are bound to the causal delta, local verification is focused, and one
 complete prescribed gate sequence proves the unchanged approved candidate.
+Where a repository has adopted proof-estate governance, the deterministic
+`vital` and `changed` lanes make that focus attributable: each selected family
+names its contract and oracle, overlapping mappings form a union, and uncertain
+impact widens to the full suite. The complete gate still closes the candidate.
 
 This design complements
 [`deterministic-orchestration.md`](deterministic-orchestration.md). The current

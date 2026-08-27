@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Repository-runtime entry point for deterministic proof-estate governance.
+
+set -euo pipefail
+
+entrypoint_path="${BASH_SOURCE[0]}"
+while [[ -L "$entrypoint_path" ]]; do
+  entrypoint_dir="$(cd "$(dirname "$entrypoint_path")" && pwd)"
+  entrypoint_path="$(readlink "$entrypoint_path")"
+  [[ "$entrypoint_path" == /* ]] || entrypoint_path="$entrypoint_dir/$entrypoint_path"
+done
+repo_root="$(cd "$(dirname "$entrypoint_path")/.." && pwd)"
+project_root="$repo_root/project"
+
+toolchain_helper="$repo_root/bin/_python-toolchain"
+if [[ ! -r "$toolchain_helper" ]]; then
+  echo "TEST GOVERNANCE ERROR missing required file: bin/_python-toolchain" >&2
+  exit 1
+fi
+source "$toolchain_helper"
+python_toolchain_init "TEST GOVERNANCE"
+
+cd "$repo_root"
+python_toolchain_probe
+exec uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" python "$repo_root/lib/agentic_starter/test_governance.py" --root "$repo_root" "$@"

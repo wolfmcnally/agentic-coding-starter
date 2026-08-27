@@ -5,8 +5,8 @@ for provisioning and verifying itself:
 
 ```bash
 ./bin/setup
-./bin/test [focused test arguments...]
-./bin/check [all|lint|format|test|policy]
+./bin/test [--vital | --changed-from <ref> | focused test arguments...]
+./bin/check [all|lint|format|test|policy|vital|changed <ref>]
 ```
 
 A language profile may add a repository-selected runtime entry point such as
@@ -17,7 +17,8 @@ machine-global environment—defines what these commands mean.
 
 The contract is one unit:
 
-- `bin/setup`, `bin/test`, `bin/check`, and the full-gate receipt manager;
+- `bin/setup`, `bin/test`, `bin/check`, the full-gate receipt manager, and the
+  proof-estate governance manager when governed fast lanes are present;
 - any runtime entry point such as `bin/python`;
 - any shared runtime resolver or dependency-chain probe used by those entry
   points;
@@ -84,6 +85,15 @@ the underlying test runner for focused iteration, with paths interpreted
 relative to the repository root. It uses the same locked environment as the
 full gate and preserves the test runner's exit status.
 
+When the repository carries the universal proof-estate bundle,
+`--vital` selects every locally admitted vital family and
+`--changed-from <ref>` selects the union of every family mapped to the live
+candidate's changed paths. Both selections are produced by the deterministic
+manager. Invalid governance, an unsupported runner, an unresolved ref, or any
+unmapped changed path widens to the complete suite. The manifest's family
+choices, mappings, risk labels, timings, and effectiveness cases are local
+state; they are never inherited from another repository.
+
 ### `bin/check`
 
 `./bin/check` with no arguments is identical to `./bin/check all`. Universal
@@ -95,6 +105,10 @@ named modes are:
 - `test` — delegates to `./bin/test`;
 - `policy` — deterministic repository-policy checks that are not language
   lint or tests.
+
+A repository with governed proof lanes also exposes `vital` and
+`changed <ref>` as iteration-only modes that delegate to the matching
+`bin/test` selection. They do not write or satisfy a full-gate receipt.
 
 A project may add named modes but does not remove or weaken `all`. Unknown
 modes and extra arguments are usage errors. Every entry point preserves child
@@ -167,7 +181,9 @@ The planner's Build Gate Sequence has three explicit parts:
 
 1. **Iteration and revision-close gates** — focused invocations through
    `./bin/test` or another repository-owned focused mode, plus affected
-   static/structural checks. The plan states why the selection exercises the
+   static/structural checks. When a validated proof estate exists, prefer its
+   `--vital` or `--changed-from` selection; explicit selectors remain available
+   for a named falsifier. The plan states why the selection exercises the
    changed surface.
 2. **Implementation-candidate gate** — after code-critic approval, the phase's
    complete prescribed checks ending with `./bin/check all`, recorded against
@@ -196,6 +212,11 @@ candidate change invalidates prior evidence; a gate that mutates the candidate
 fails. The handoff gate writes only ignored receipt state. When the affected
 surface is indeterminate, select a broader suite rather than defaulting to a
 reassuring narrow one.
+
+Governed fast lanes are subject to
+[`test-suite-governance.md`](test-suite-governance.md). They optimize feedback
+only: neither lane can replace the implementation-candidate gate, the handoff
+gate, a phase-prescribed acceptance command, or pre-push full-gate custody.
 
 If the handoff gate fails, the phase is not complete. Reopen the current
 uncommitted close, correct or regenerate the close artifact, and rerun the bare
@@ -279,6 +300,9 @@ Behavioral tests prove:
 
 - invocation from outside the repository root;
 - exact setup, full-test, focused-test, runtime, and gate mappings;
+- proof-estate inventory, ownership, surface drift, selection-union, widening,
+  unsupported-runner, and stale-effectiveness behavior when governed lanes are
+  present;
 - pinned runtime and locked/frozen toolchain invocation;
 - a real dependency-chain load/run probe before success;
 - authoritative override selection, invalid-override refusal, and no fallback
@@ -305,9 +329,10 @@ operational caller instructions and remain governed by their own platform
 contracts.
 
 The policy gate runs the repository-owned caller inventory, harness-parity
-check, and execution-dashboard validator. These checkers and their behavioral
-tests are part of the atomic bundle: a transfer that adds a policy without its
-enforcement, or a checker without its callers and fixtures, is incomplete.
+check, execution-dashboard validator, and proof-estate validator when present.
+These checkers and their behavioral tests are part of the atomic bundle: a
+transfer that adds a policy without its enforcement, or a checker without its
+callers and fixtures, is incomplete.
 
 After changing any bundle member or caller, run `./bin/test` for focused
 wrapper coverage, run `./bin/check all`, and search for stale raw setup or test

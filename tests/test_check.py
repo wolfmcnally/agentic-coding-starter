@@ -92,6 +92,15 @@ printf 'treatise cwd=%s args=%s\\n' "$PWD" "$*" >> "$CHECK_TEST_LOG"
 """,
     )
     _write_executable(
+        root / "bin" / "test-governance",
+        """#!/usr/bin/env bash
+printf 'governance cwd=%s args=%s\n' "$PWD" "$*" >> "$CHECK_TEST_LOG"
+if [[ "${1:-}" == "select" ]]; then
+  printf '%s\n' 'FOCUSED' 'fixture selection' 'tests/test_check.py'
+fi
+""",
+    )
+    _write_executable(
         root / "bin" / "check-receipt",
         """#!/usr/bin/env bash
 set -euo pipefail
@@ -261,6 +270,7 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
         f"treatise cwd={root} args=validate",
         f"hooksinstalled cwd={root}",
         f"shellsyntax cwd={root}",
+        f"governance cwd={root} args=validate",
         f"policy cwd={root}",
     ]
     assert "CHECK ALL PASS" in result.stdout
@@ -298,6 +308,7 @@ def test_named_mode_runs_only_selected_gate(
             f"treatise cwd={root} args=validate",
             f"hooksinstalled cwd={root}",
             f"shellsyntax cwd={root}",
+            f"governance cwd={root} args=validate",
             f"policy cwd={root}",
         ]
     elif mode == "test":
@@ -406,6 +417,7 @@ def test_missing_project_contract_fails_clearly(
         "check-hooks-installed",
         "check-shell-syntax",
         "new-name",
+        "test-governance",
     ],
 )
 def test_missing_required_executable_fails_clearly(
@@ -420,7 +432,10 @@ def test_missing_required_executable_fails_clearly(
     assert f"CHECK ERROR missing required executable: bin/{executable}" in result.stderr
 
 
-@pytest.mark.parametrize("arguments", [("bogus",), ("all", "extra")])
+@pytest.mark.parametrize(
+    "arguments",
+    [("bogus",), ("all", "extra"), ("changed",), ("changed", "HEAD", "extra")],
+)
 def test_invalid_invocation_is_usage_error(
     check_repo: tuple[Path, dict[str, str]], arguments: tuple[str, ...]
 ) -> None:
@@ -430,6 +445,29 @@ def test_invalid_invocation_is_usage_error(
 
     assert result.returncode == 2
     assert "Usage: ./bin/check" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("arguments", "selection_arguments"),
+    [
+        (("vital",), "--tier vital --format lines"),
+        (("changed", "HEAD~1"), "--changed-from HEAD~1 --format lines"),
+    ],
+)
+def test_governed_iteration_lanes_dispatch_selected_tests_without_receipt(
+    check_repo: tuple[Path, dict[str, str]],
+    arguments: tuple[str, ...],
+    selection_arguments: str,
+) -> None:
+    root, environment = check_repo
+
+    result = _run(root, environment, *arguments)
+
+    assert result.returncode == 0, result.stderr
+    calls = Path(environment["CHECK_TEST_LOG"]).read_text().splitlines()
+    assert f"governance cwd={root} args=select {selection_arguments}" in calls
+    assert any("python -m pytest -q tests/test_check.py" in call for call in calls)
+    assert not any("check-receipt" in call for call in calls)
 
 
 def test_help_does_not_require_toolchain(

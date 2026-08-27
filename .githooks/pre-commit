@@ -7,4 +7,4 @@ repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 ./bin/check-harness-parity
 ./bin/check-toolchain-callers
-
+./bin/test-governance validate

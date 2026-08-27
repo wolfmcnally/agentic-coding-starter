@@ -585,9 +585,15 @@ manifest, and lockfile form this repository's atomic toolchain contract.
 methodology tests and policy checks and preserves failing child statuses. A
 project derived via `stamp` keeps the universal setup/test/check interface
 while adapting it to that project's real language and version choices. The
-planner may add project-specific focused checks or smokes before the full gate;
-it must not bypass an existing repository test entry point or replace the full
-gate with a copied raw command list.
+planner may add project-specific focused checks or smokes before the full gate.
+When `bin/test-governance` and `tests/proof-estate.yaml` exist and validate,
+prefer `./bin/test --vital` for the standing fast set or
+`./bin/test --changed-from <ref>` for candidate impact; preserve the manager's
+selection reason in evidence. A full fallback is the correct result for
+invalid or unmapped selection. These lanes are iteration aids only and never
+replace either `./bin/check all` close gate. The planner must not bypass an
+existing repository test entry point or replace the full gate with a copied raw
+command list.
 
 If any implementation gate fails:
 

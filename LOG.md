@@ -978,3 +978,40 @@ Deferred from the donor: domain-specific briefs, product and data policies,
 local runtime stores, and project-only lessons; older categorical wording for
 role dispatch; and hardening whose named defects did not reproduce against
 Starter's newer evidence and configuration managers.
+
+## 2026-08-27 06:05 MDT — LEARN
+
+Donor: Donor A @ <sha withheld>
+
+Items absorbed: 6, by tier T1=5/T2=1/T3=0/T4=0.
+Donor lessons harvested: 1 (0 absorbed directly; 1 filed to `lessons/`).
+Application-found return candidates: 1 filed to `lessons/`.
+Stale-in-light-of-learning migrations: 21 AUTO; 0 DECIDE; 2 DEFER.
+Files touched: 39.
+
+Starter now governs its tests as a local proof estate. A deterministic manager
+inventories 522 test definitions plus the named check and pre-commit surfaces,
+requires one owning family per proof, binds reports and effectiveness evidence
+to the live estate, unions legitimate changed-path mappings, and widens any
+invalid or unmapped selection to full. Four locally admitted families form the
+vital lane; a local historical-defect case and an out-of-routine holdout mutant
+were both detected before activation. All 522 pre-existing and newly added
+proof definitions were retained.
+
+The repository exposes `bin/test` and `bin/check` vital/changed lanes for
+iteration while preserving both candidate-bound `bin/check all` close gates and
+pre-push custody. Structural estate validation joins the policy gate and
+pre-commit hook. The brief, policy, catalogs, kickoff instructions, bootstrap,
+and learn/teach/stamp transfer rules carry the generalized machinery while
+explicitly withholding every donor family, selector, timing, threshold, defect
+or mutation corpus, report, and audit judgment. The recipient-local YAML parser
+is pinned in the project lockfile.
+
+Focused evidence: both explicit effectiveness assays passed; the 109-test
+vital selection passed with one deliberately dormant holdout; the changed-path
+union selected 19 families and passed 432 tests with that same holdout dormant.
+The application also exposed and corrected one argument-parser regression: the
+new two-argument mode initially relaxed old one-argument modes, so a new
+methodology lesson records mode-local arity validation. Deferred: any future
+proof consolidation or deletion requires a separate reviewed local audit; any
+derived-project adoption requires an explicit future `teach` run.

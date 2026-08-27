@@ -90,6 +90,11 @@ These are the universals the template ships with. A project derived from this te
   full/focused testing, runtime selection, metadata, locking, tests, and callers
   move atomically. Focused tests use `./bin/test`; every final claim ends with
   `./bin/check all`.
+- **Proof-estate governance** (see
+  [`../briefs/test-suite-value-governance.md`](../briefs/test-suite-value-governance.md)
+  and [`../policies/test-suite-governance.md`](../policies/test-suite-governance.md)).
+  Vital and changed lanes are recipient-local, assay-backed iteration aids;
+  invalid or unmapped selection widens to full and both close gates stay full.
 - **Repo-relative paths only** in any file committed to this repo (see [`../policies/repo-relative-paths.md`](../policies/repo-relative-paths.md)). Bash invocations may use absolute paths.
 - **Cross-harness parity** (see [`../policies/cross-harness-parity.md`](../policies/cross-harness-parity.md)). The same canonical files drive Claude Code, Codex CLI, and any other harness. Mirrors do not get hand-edited.
 - **Autonomous delivery, human judgment** (see [`../policies/human-in-the-loop.md`](../policies/human-in-the-loop.md)). `kickoff` commits and fast-forward-pushes work whose gates are all green; it never advances past an unresolved gate, never claims subjective acceptance, and never touches the destructive git surface.
@@ -112,6 +117,7 @@ Shipped files are linked. A file a future phase will create may also appear, as 
 | Activity log                         | [`../LOG.md`](../LOG.md)                                  |
 | Lessons and maintenance flywheel     | [`../briefs/harness-self-improvement.md`](../briefs/harness-self-improvement.md), [`../policies/lessons.md`](../policies/lessons.md), [`../bin/lessons`](../bin/lessons), [`../bin/check-catalogs`](../bin/check-catalogs), [`../.claude/skills/sweep/SKILL.md`](../.claude/skills/sweep/SKILL.md) |
 | Toolchain contract                  | [`../bin/setup`](../bin/setup), [`../bin/test`](../bin/test), [`../bin/check`](../bin/check), [`../bin/check-receipt`](../bin/check-receipt), [`../bin/python`](../bin/python), [`../policies/build-gates.md`](../policies/build-gates.md) |
+| Proof-estate governance             | [`../briefs/test-suite-value-governance.md`](../briefs/test-suite-value-governance.md), [`../policies/test-suite-governance.md`](../policies/test-suite-governance.md), [`../tests/proof-estate.yaml`](../tests/proof-estate.yaml), [`../bin/test-governance`](../bin/test-governance) |
 | Optional tracked hooks              | [`../.githooks/pre-push`](../.githooks/pre-push), [`../bin/install-hooks`](../bin/install-hooks) |
 | Phase orchestrator                   | [`../.claude/skills/kickoff/SKILL.md`](../.claude/skills/kickoff/SKILL.md) |
 | Candidate and evidence managers      | [`../bin/kickoff-tree-id`](../bin/kickoff-tree-id), [`../bin/kickoff-evidence`](../bin/kickoff-evidence) |

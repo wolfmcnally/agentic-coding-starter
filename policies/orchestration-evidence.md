@@ -173,9 +173,13 @@ explicitly non-final. After close bookkeeping changes the tree, the separate
 handoff gate proves that actual tree. Only the discovery of cheap failures
 moves earlier.
 
-Record every candidate-bound implementation gate and its selection reason. Focused selection may be
-agent-judged or supplied by a project-specific dependency tool, but uncertain
-impact fails closed to broader verification. A relevant candidate change
+Record every candidate-bound implementation gate and its selection reason.
+When the repository exposes governed `vital` or `changed` lanes, use their
+deterministic selection for iteration and retain the manager's family/reason
+record; legitimate overlapping mappings select their union. Explicit
+agent-judged selectors remain valid for a named falsifier. Invalid governance,
+unmapped impact, or unsupported execution widens to full. Fast lanes never
+replace levels 3 or 4 above. A relevant candidate change
 invalidates prior gate evidence. Verify candidate identity before and after
 the implementation sequence; mutation by a read-only gate fails the phase.
 `./bin/python bin/kickoff-evidence validate --require-final --required-final-command

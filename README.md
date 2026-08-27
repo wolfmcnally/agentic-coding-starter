@@ -121,6 +121,8 @@ contract:
 ./bin/setup                 # provision the pinned, locked environment
 ./bin/test                  # run every test
 ./bin/test tests/test_check.py -q  # focused repo-relative selection
+./bin/test --vital          # locally admitted fast proof families
+./bin/test --changed-from HEAD~1   # union of families mapped to changed paths
 ./bin/check all             # authoritative lint/format/test/policy suite
 ./bin/python --version      # Python profile: selected project interpreter
 ```
@@ -188,7 +190,8 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── cross-agent-invocation.md   ←   cross-CLI invocation BCPs
 │   ├── incremental-orchestration.md ← candidate-bound incremental assurance
 │   ├── deterministic-orchestration.md ← draft: deterministic kickoff loop
-│   └── harness-self-improvement.md ← lessons, sweep, and cross-repo flywheel
+│   ├── harness-self-improvement.md ← lessons, sweep, and cross-repo flywheel
+│   └── test-suite-value-governance.md ← attributable proof estate + fast lanes
 ├── policies/                       ← non-negotiable rules every phase honors
 │   ├── README.md
 │   ├── briefs-and-policies.md
@@ -205,6 +208,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── review-lanes.md             ← review intensity + proportional follow-ups
 │   ├── lessons.md                  ← candidate process-lessons lifecycle
 │   ├── build-gates.md              ← atomic repository toolchain contract
+│   ├── test-suite-governance.md    ← local proof inventory, assay, and lanes
 │   ├── project-isolation.md        ← isolate deliverable under project/
 │   └── greenfield-until-released.md ← no backward-compat shims pre-release
 ├── bin/                            ← deterministic methodology executables
@@ -212,6 +216,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── test                        ← full/focused canonical test runner
 │   ├── check                       ← authoritative lint/format/test/policy gate
 │   ├── check-receipt               ← durable exact-candidate gate receipts
+│   ├── test-governance              ← proof inventory/validation/selection
 │   ├── python                      ← selected managed Python interpreter
 │   ├── install-hooks               ← opt in to tracked lifecycle hooks
 │   ├── kickoff-config              ← round-trip config, preflight, watchdog

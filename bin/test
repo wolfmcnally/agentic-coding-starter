@@ -14,16 +14,26 @@ project_root="$repo_root/project"
 
 usage() {
   cat <<'EOF'
-Usage: ./bin/test [pytest arguments...]
+Usage: ./bin/test [--vital | --changed-from <ref> | pytest arguments...]
 
-Run the full repository test suite. When arguments are supplied, forward them
-to pytest for focused testing; paths are interpreted relative to the repo root.
+Run the full repository test suite by default. The governed --vital and
+--changed-from lanes select admitted proof families and widen to full when
+selection cannot be proved safe. Other arguments are forwarded to pytest for
+explicit focused testing; paths are interpreted relative to the repo root.
 EOF
 }
 
 if [[ $# -eq 1 && ( "$1" == "--help" || "$1" == "-h" ) ]]; then
   usage
   exit 0
+fi
+if [[ $# -ge 1 && "$1" == "--vital" && $# -ne 1 ]]; then
+  usage >&2
+  exit 2
+fi
+if [[ $# -ge 1 && "$1" == "--changed-from" && ( $# -ne 2 || -z "${2:-}" ) ]]; then
+  usage >&2
+  exit 2
 fi
 
 toolchain_helper="$repo_root/bin/_python-toolchain"
@@ -39,6 +49,45 @@ python_toolchain_probe
 if [[ $# -eq 0 ]]; then
   exec uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" \
     python -m pytest -q project/tests tests
+fi
+
+run_governed_lane() {
+  local -a selection
+  local selection_mode
+  local selection_reason
+  local -a selectors
+
+  if [[ ! -x "$repo_root/bin/test-governance" ]]; then
+    echo "TEST ERROR missing required executable: bin/test-governance" >&2
+    return 1
+  fi
+  mapfile -t selection < <("$repo_root/bin/test-governance" select "$@" --format lines)
+  if [[ ${#selection[@]} -lt 2 ]]; then
+    echo "TEST ERROR governance selection returned an incomplete response" >&2
+    return 1
+  fi
+  selection_mode="${selection[0]}"
+  selection_reason="${selection[1]}"
+  echo "TEST GOVERNED $selection_mode: $selection_reason"
+  if [[ "$selection_mode" == "FULL" ]]; then
+    exec uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" \
+      python -m pytest -q project/tests tests
+  fi
+  if [[ "$selection_mode" != "FOCUSED" || ${#selection[@]} -lt 3 ]]; then
+    echo "TEST ERROR governance selection did not provide runnable selectors" >&2
+    return 1
+  fi
+  selectors=("${selection[@]:2}")
+  exec uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" \
+    python -m pytest -q "${selectors[@]}"
+}
+
+if [[ $# -eq 1 && "$1" == "--vital" ]]; then
+  run_governed_lane --tier vital
+fi
+
+if [[ $# -ge 1 && "$1" == "--changed-from" ]]; then
+  run_governed_lane --changed-from "$2"
 fi
 
 exec uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" \

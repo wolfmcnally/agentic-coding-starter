@@ -42,6 +42,12 @@ def toolchain_repo(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     shutil.copy2(REPO_ROOT / "bin" / "_python-toolchain", root / "bin" / "_python-toolchain")
     for entrypoint in ENTRYPOINTS:
         shutil.copy2(REPO_ROOT / "bin" / entrypoint, root / "bin" / entrypoint)
+    _write_executable(
+        root / "bin" / "test-governance",
+        """#!/usr/bin/env bash
+printf '%s\n' 'FOCUSED' 'fixture selection' 'tests/test_check.py'
+""",
+    )
     (root / "project" / ".python-version").write_text("3.11\n")
     (root / "project" / "pyproject.toml").write_text("[project]\nname='fixture'\n")
     (root / "project" / "uv.lock").write_text("version = 1\n")
@@ -166,6 +172,47 @@ def test_test_forwards_focused_arguments_relative_to_repository_root(
             "--managed-python python -m pytest tests/test_check.py -k failure -q"
         ),
     ]
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [("--vital",), ("--changed-from", "HEAD~1")],
+)
+def test_test_governed_lanes_run_selected_proofs(
+    toolchain_repo: tuple[Path, dict[str, str]], arguments: tuple[str, ...]
+) -> None:
+    root, environment = toolchain_repo
+
+    result = _run(root, environment, "test", *arguments)
+
+    assert result.returncode == 0, result.stderr
+    assert "TEST GOVERNED FOCUSED: fixture selection" in result.stdout
+    assert _calls(environment) == [
+        (
+            f"uv cwd={root} args=run --project {root / 'project'} --locked "
+            f"--managed-python python -c {PROBE}"
+        ),
+        (
+            f"uv cwd={root} args=run --project {root / 'project'} --locked "
+            "--managed-python python -m pytest -q tests/test_check.py"
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [("--vital", "extra"), ("--changed-from",), ("--changed-from", "")],
+)
+def test_test_rejects_malformed_governed_lane_arguments_before_toolchain(
+    toolchain_repo: tuple[Path, dict[str, str]], arguments: tuple[str, ...]
+) -> None:
+    root, environment = toolchain_repo
+
+    result = _run(root, environment, "test", *arguments)
+
+    assert result.returncode == 2
+    assert "Usage: ./bin/test" in result.stderr
+    assert _calls(environment) == []
 
 
 def test_python_forwards_to_the_repository_selected_interpreter(

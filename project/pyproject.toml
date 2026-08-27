@@ -19,6 +19,7 @@ packages = ["example"]
 
 [dependency-groups]
 dev = [
+    "pyyaml>=6.0,<7",
     "pytest>=8.0",
     "ruff>=0.6",
 ]

@@ -495,6 +495,20 @@ Once approved, apply the approved items to the target. Order:
   format covers staged, unstaged, and nonignored untracked candidates; hot
   loops, mutation gates, and detached processes resolve the selected
   interpreter once and reuse it.
+- **Test-governance transfer is atomic and target-owned.** Transfer or update
+  `briefs/test-suite-value-governance.md`,
+  `policies/test-suite-governance.md`, `tests/proof-estate.yaml`,
+  `bin/test-governance`, `lib/agentic_starter/test_governance.py`,
+  `tests/test_test_governance.py`, `tests/test_pre_commit.py`, and
+  `reports/test-governance/README.md` with their lane/gate/hook integration,
+  behavioral fixtures, catalogs, and transfer rules together.
+  Never seed the target with this repository's families, selectors, risk
+  labels, timings, thresholds, defect or mutation cases, reports, or audit
+  decisions. Preserve an existing target estate and its evidence as target
+  state. A target adopting the machinery for the first time inventories and
+  assays its own tests, retains every current proof, and activates no fast lane
+  until its local historical-defect and holdout-mutant set is fully detected.
+  Invalid or unmapped selection widens to full; both close gates remain full.
 - **Lessons-ledger transfer is atomic, and ledger content is target state.** Port the whole lessons bundle or none of it (per the stale-sweep bullet); ship an empty ledger to a target that lacks one; never seed it with Starter's lessons, never resolve or transfer the target's `scope: local` entries, and surface — never harvest — its `scope: methodology` candidates (harvest belongs to a `learn` run against the target).
 - **Mechanical parity heals always run, independent of `<desc>` scope.** Every `teach` invocation scans the target's parity surfaces and surfaces known-broken shapes (per the catalog in Stage 1 step 10) for repair. Even a narrow `teach` pass — "just bring policies up to date" — heals an `AGENTS.md`-as-file, a file-level `.agents/skills/<name>/SKILL.md`, or a stray `.agents/skills/stamp` it finds along the way. This is what closes the gap where broken parity shapes lingered because the teach pass didn't otherwise touch them.
 - **This repo is read-only.** Never write to this repository during `teach`. The starter learns via `learn`, not as a side effect of `teach`.
