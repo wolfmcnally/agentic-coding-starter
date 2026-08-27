@@ -1,0 +1,11 @@
+--- a/lib/agentic_starter/test_governance.py
++++ b/lib/agentic_starter/test_governance.py
+@@ -415,7 +415,7 @@
+     if not isinstance(budget, dict):
+         errors.append("test_budget_delta must be a mapping")
+         budget = {"families": 0, "leaves": 0}
+-    for dimension in ("families", "leaves"):
++    for dimension in ("families",):
+         baseline_count = baseline.get("counts", {}).get(dimension)
+         current_count = current["counts"][dimension]
+         ratio_limit = limits.get(f"max_{dimension}_ratio")

@@ -151,12 +151,13 @@ that proof is the only red witness for a distinct contract or produces an
 artifact another proof consumes.
 
 When a repository carries a proof-estate manifest, use its deterministic
-inventory to account for every executable test definition and gate/hook proof
-surface. Before consolidating anything, trace test-to-test dependencies and
-producer-to-consumer proof flow. A proposed replacement must retain the same
-contract, oracle, red witness, downstream artifacts, and local effectiveness
-recall. Initial adoption retains the current estate; deletion is a separate,
-reviewed local judgment. See
+inventory to account for every collapsed family, expanded executable leaf, and
+gate/hook proof. Initial adoption freezes that denominator and performs the
+reviewed local deletion/consolidation rather than deferring it. Trace
+test-to-test dependencies and producer-to-consumer proof flow. A replacement
+must retain the contract, oracle, red witness, downstream artifacts, local
+effectiveness floors, and direct critical-risk proof. Hidden or deselected code
+is still present, and a changed denominator is not evidence of shrinkage. See
 [`test-suite-governance.md`](test-suite-governance.md).
 
 ## Relationship to acceptance

@@ -1,6 +1,6 @@
 ---
 slug: pastoral-tarantula
-title: Trace test-to-test dependencies before consolidating structural proofs
+title: Make initial proof governance produce a measured physical reset
 status: candidate
 scope: methodology
 proposed_surface: policy
@@ -9,6 +9,8 @@ source: learn
 occurrences:
   - date: 2026-08-27
     ref: "Donor A — a proof-estate audit found that apparent test overlap did not reveal which tests produced fixtures or assumptions consumed by other tests"
+  - date: 2026-08-27
+    ref: "Learn correction — inventory and fast-lane selection left the complete estate untouched, so permission to shrink became indefinite retention"
 ---
 
 Two tests can look redundant when their names, target code, or assertions
@@ -18,8 +20,11 @@ that another test consumes. Deleting it on surface similarity can therefore
 remove the producer while leaving the consumer in place, producing either a
 misleading pass or an unrelated failure.
 
-Before consolidating structural tests, trace test-to-test dependencies as well
-as source-to-test coverage. Name each produced artifact or assumption and each
-consumer, then prove that the retained replacement preserves the same contract,
-oracle, and red witness. Test counts, runtime, age, and lexical similarity are
-only proxies for that value and may invert the judgment.
+Initial governance must freeze the whole estate, trace test-to-test dependencies
+and producer-to-consumer proof flow, then produce a real local disposition and
+physical reset. Name each artifact or assumption and its consumers; prove that
+every retained replacement preserves the contract, oracle, red witness, direct
+critical-risk proof, and measured effectiveness. A small fast lane over an
+untouched full suite is not shrinkage. Test counts, runtime, age, and lexical
+similarity remain proxies that can invert the judgment, so the reset binds both
+family and expanded-leaf ceilings to historical and held-out recall.

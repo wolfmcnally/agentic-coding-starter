@@ -90,7 +90,9 @@ When the repository carries the universal proof-estate bundle,
 `--changed-from <ref>` selects the union of every family mapped to the live
 candidate's changed paths. Both selections are produced by the deterministic
 manager. Invalid governance, an unsupported runner, an unresolved ref, or any
-unmapped changed path widens to the complete suite. The manifest's family
+unmapped or indeterminate changed path widens to the full retained suite. The
+manager also enforces the frozen reset, recall floors, direct-risk proofs,
+zero-net-growth budget, and periodic reassessment. The manifest's family
 choices, mappings, risk labels, timings, and effectiveness cases are local
 state; they are never inherited from another repository.
 

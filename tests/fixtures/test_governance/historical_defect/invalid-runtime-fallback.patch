@@ -1,0 +1,9 @@
+--- a/bin/_python-toolchain
++++ b/bin/_python-toolchain
+@@ -111,5 +111,5 @@
+   if [[ -n "${TOOLCHAIN_PYTHON:-}" ]]; then
+     echo "$python_toolchain_prefix ERROR no runtime fallback was attempted" >&2
+   fi
+-  return "$command_exit"
++  return 0
+ }

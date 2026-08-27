@@ -1,0 +1,11 @@
+--- a/bin/check
++++ b/bin/check
+@@ -148,7 +148,7 @@
+ run_all() {
+   run_lint || return $?
+   run_format || return $?
+-  run_test || return $?
++  run_vital || return $?
+   run_policy || return $?
+ }
+ 

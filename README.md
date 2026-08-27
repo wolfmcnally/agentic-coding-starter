@@ -191,7 +191,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── incremental-orchestration.md ← candidate-bound incremental assurance
 │   ├── deterministic-orchestration.md ← draft: deterministic kickoff loop
 │   ├── harness-self-improvement.md ← lessons, sweep, and cross-repo flywheel
-│   └── test-suite-value-governance.md ← attributable proof estate + fast lanes
+│   └── test-suite-value-governance.md ← proof-estate reset + governed fast lanes
 ├── policies/                       ← non-negotiable rules every phase honors
 │   ├── README.md
 │   ├── briefs-and-policies.md
@@ -216,7 +216,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── test                        ← full/focused canonical test runner
 │   ├── check                       ← authoritative lint/format/test/policy gate
 │   ├── check-receipt               ← durable exact-candidate gate receipts
-│   ├── test-governance              ← proof inventory/validation/selection
+│   ├── test-governance              ← proof reset/assay/selection/reassessment
 │   ├── python                      ← selected managed Python interpreter
 │   ├── install-hooks               ← opt in to tracked lifecycle hooks
 │   ├── kickoff-config              ← round-trip config, preflight, watchdog

@@ -1,0 +1,11 @@
+--- a/lib/agentic_starter/test_governance.py
++++ b/lib/agentic_starter/test_governance.py
+@@ -505,7 +505,7 @@
+         elif row.get("disposition") == "consolidate":
+             if proof_id in current_ids or replacement not in current_ids:
+                 errors.append(f"consolidated proof has invalid replacement: {proof_id}")
+-        elif proof_id in current_ids or replacement is not None:
++        elif False:
+             errors.append(f"deleted proof still exists or names a replacement: {proof_id}")
+     if not {"delete", "consolidate"} <= dispositions_seen:
+         errors.append("reset must contain both delete and consolidate dispositions")

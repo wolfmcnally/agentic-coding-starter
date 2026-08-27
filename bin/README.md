@@ -109,19 +109,24 @@ lockfile. Behavioral coverage lives in
 `tests/test_toolchain_entrypoints.py`, `tests/test_check.py`, and
 `tests/test_check_receipt.py`.
 
-### `test-governance` — proof-estate inventory and safe selection
+### `test-governance` — proof-estate reset, assay, and safe selection
 
-Inventories test definitions plus declared gate/hook surfaces, validates their
-single-family ownership and local effectiveness bindings, selects governed
-vital/changed lanes, and reports the live estate. It runs through the
-repository-selected locked Python environment.
+Inventories collapsed families, expanded leaves, gate members, and hook
+commands. It validates the frozen reset, complete disposition/admission ledger,
+20% ceilings, 80% effectiveness floors, digest-bound corpus patches, direct
+critical risks, and zero-growth budget; runs the local mutation assay; selects
+vital/changed lanes; and reports or reassesses the estate. It runs through the
+repository-selected environment.
 
 ```bash
 ./bin/test-governance inventory
 ./bin/test-governance validate
-./bin/test-governance select --tier vital
-./bin/test-governance select --changed-from HEAD~1
+./bin/test-governance select --tier vital --format lines
+./bin/test-governance select --changed-from HEAD~1 --format lines
 ./bin/test-governance report
+./bin/test-governance assay --class historical_defect
+./bin/test-governance assay --class holdout_mutant
+./bin/test-governance reassess
 ```
 
 Universal contract:

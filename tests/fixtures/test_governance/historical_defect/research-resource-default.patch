@@ -1,0 +1,11 @@
+--- a/policies/research-authority.md
++++ b/policies/research-authority.md
+@@ -24,7 +24,7 @@
+ authority-insufficiency advisory to the orchestrator. It does not silently turn
+ that gap into originating research.
+ 
+-## Installed resources are allow-by-default
++## Installed resources are deny-by-default
+ 
+ Available MCP servers, plugins, local reference stores, and equivalent
+ retrieval venues are usable by default within the role matrix above. Projects

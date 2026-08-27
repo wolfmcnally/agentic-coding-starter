@@ -1,74 +1,69 @@
 # Test-suite governance policy
 
 Every executable proof belongs to the repository's declared proof estate. The
-estate and its deterministic manager travel with the methodology; its family
-contents, selectors, tiers, timings, effectiveness cases, and audit judgments do
-not. A newly stamped or taught project must inventory and assay its own suite.
-The design rationale is
-[`test-suite-value-governance.md`](../briefs/test-suite-value-governance.md).
+manager, schema, reset procedure, lane integration, gates, hooks, transfer rules,
+and reassessment obligation travel together. Family identities, selectors,
+timings, corpora, risk judgments, dispositions, and survivors do not.
 
-## Required estate
+## Initial adoption
 
-The repository MUST maintain:
+Initial adoption MUST:
 
-1. A machine-readable manifest covering every inventoried test definition and
-   each structural proof surface declared by the authoritative gate and tracked
-   hooks.
-2. For each proof family: a stable id, kind, selectors, source-path mappings,
-   contract, risk class, oracle, tier, runner, and admission record. Fast-lane
-   families additionally require a red witness and nearest-overlap account.
-3. A reproducible baseline bound to the manifest and inventory digests.
-4. An append-only audit ledger for any proposed consolidation or disposition.
-5. Local effectiveness evidence for admitted historical defects and holdout
-   mutants, kept outside routine test execution.
+1. Freeze a reproducible whole-estate baseline of parameter-collapsed families
+   and expanded executable leaves, including authoritative gate and hook proofs.
+2. Run a local Pareto assay and physically consolidate or delete dominated
+   proofs. Retaining the estate for a later audit is forbidden.
+3. Disposition every baseline proof exactly once as `retain`, `consolidate`, or
+   `delete` in an append-only ledger. Each row MUST carry its contract, oracle,
+   red witness, nearest overlap, replacement evidence, and standalone rationale.
+4. Keep current families and leaves at or below 20% of the frozen denominators.
+5. Demonstrate at least 80% recall over a frozen local historical-defect corpus
+   and at least 80% kill recall over a held-out local mutant corpus.
+6. Retain direct executable proof for every applicable custody, security,
+   authority, concurrency, atomicity, corruption, recovery, public-contract,
+   schema, deploy, and core-success risk. An inapplicable class requires a
+   rationale and an activation trigger.
 
-Every current proof is retained during initial adoption. Removing or merging a
-proof is a later reviewed change and MUST trace test-to-test dependencies and
-producer-to-consumer artifacts before judging redundancy.
+The historical corpus may guide selection. Selection MUST be frozen before the
+holdout runs. Every case's command and mutation-patch digest MUST bind the
+observed report to the exact frozen corpus, and holdout misses MUST remain
+recorded. When the caps, recall floors, and direct-risk obligations cannot
+coexist, work parks for the owner. The denominator never changes to make a
+result pass.
 
-## Deterministic manager
+## Removal and growth
 
-The repository manager MUST inventory, validate, select, and report without
-model judgment. Validation fails closed on malformed schemas, duplicate ids,
-missing or multiply claimed proofs, nonexistent selectors or paths, unsupported
-runners, undeclared gate or hook surfaces, stale digest bindings, invalid audit
-records, or incomplete effectiveness evidence.
+Deleted and consolidated proofs MUST leave the executable estate completely.
+Their dead fixtures, helpers, mutation rows, and caller wiring leave with them.
+Skipping, deselecting, renaming, quarantining, or hiding a proof is not removal.
+A consolidated proof names a retained executable replacement; a deleted proof
+explains why it has no independent contract.
 
-Selection has only two safe results: a validated focused set or the complete
-suite. Vital selects all families admitted to that tier. Changed selects the
-union of every family matching each changed path. If the manifest is invalid, a
-selected family cannot run, the comparison ref cannot be resolved, or any
-changed path is unmapped, the manager MUST choose full and state why.
+The default post-reset family and leaf budgets are zero. A new proof requires a
+named active contract or risk, independent oracle, red witness, non-subsumption
+account, and either a named approved positive budget or a compensating retirement.
+Validation fails closed when any admission or budget evidence is absent.
 
-## Lane authority
+## Deterministic manager and lanes
 
-`./bin/test` with no arguments and `./bin/check all` remain full. Repositories
-may expose `./bin/test --vital`, `./bin/test --changed-from <ref>`,
-`./bin/check vital`, and `./bin/check changed <ref>` only through the validated
-manager selection.
+The repository manager MUST inventory expanded pytest leaves, collapsed families,
+gate members, and hook commands; validate the frozen baseline, complete ledger,
+caps, budgets, direct risks, corpus, and effectiveness report; select vital and
+changed lanes; execute assays; and report or reassess the current estate.
 
-Vital and changed are iteration aids. They NEVER replace either candidate-bound
-phase-close gate, the handoff-tree gate, a pre-push full-gate receipt, or a phase's
-explicit acceptance command. Pre-commit may run structural estate validation;
-it must not imply full acceptance.
+Vital and changed are iteration aids. Invalid or indeterminate selection widens
+to full. `./bin/test` without lane arguments, both candidate-bound close gates,
+pre-push custody, and durable receipts always use the full retained estate.
+Pre-commit runs structural validation only and never claims full acceptance.
 
-## Local effectiveness gate
+## Reassessment and transfer
 
-Before activating a fast lane, the repository MUST admit a local set of
-historical-defect and holdout-mutant cases and demonstrate that the lane detects
-all of them. Each case records its class, stable id, candidate identity,
-manifest and inventory digests, exact command, expected and observed result,
-detecting families, output digest, and denominator. Holdouts remain outside the
-routine suite. A missing case, digest mismatch, or non-detection invalidates the
-fast lane and widens selection to full.
+Every governed sweep MUST run `./bin/test-governance reassess`. It MUST rerun the
+local assay when proof code, selection, corpus, or critical-risk applicability
+changed, and propose further consolidation when a proof is dominated. This is an
+executable shrinkage obligation.
 
-No universal numerical reduction target, duration budget, risk taxonomy, or
-minimum corpus size exists. Those values are recipient-local decisions and must
-be justified by the recipient's own inventory and assay.
-
-## Evidence and reporting
-
-Governance reports MUST be deterministic, privacy-safe, and derived from the
-manifest, inventory, audit ledger, and assay records. Generated counts identify
-their denominator. Historical reports are evidence, not executable authority;
-the live manifest and manager decide whether a lane may run.
+`learn`, `teach`, `stamp`, and bootstrap transfer this policy and procedure as an
+atomic bundle. Every recipient freezes and assays its own estate. No transfer may
+seed another repository's survivors, selectors, timings, corpora, risk judgments,
+dispositions, or effectiveness results.

@@ -1,0 +1,11 @@
+--- a/bin/check-catalogs
++++ b/bin/check-catalogs
+@@ -195,7 +195,7 @@
+             str(ROOT),
+             "ls-files",
+             "-z",
+-            "--cached",
++            "--others",
+             "--others",
+             "--exclude-standard",
+             "--",

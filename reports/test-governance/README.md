@@ -1,11 +1,25 @@
 # Test-governance reports
 
-This directory holds privacy-safe, deterministic snapshots of the recipient's
-own proof estate: its baseline, audit ledger, latest selection example, and
-timing observations. The universal methodology defines their schema; each
-project regenerates their contents from its own inventory and effectiveness
-assay. These reports never travel as another project's judgments.
+This directory records the recipient's own proof-estate reset. The frozen
+pre-reset baseline is immutable. The append-only reset ledger dispositions every
+baseline proof and records compensated admissions. The effectiveness report is
+the observed result of the frozen historical and held-out corpora; misses remain
+visible, and each observation binds the exact mutation-patch digest. The current
+inventory and reset summary make both 20% ceilings and both 80% floors
+reproducible.
 
-The live authority is `tests/proof-estate.yaml` validated by
-`./bin/test-governance validate`. Historical reports are evidence, not a way to
-override a failed live validation.
+These files are evidence, not portable judgments. A stamped, taught, or learning
+recipient regenerates them from its own estate and never copies survivors,
+selectors, corpora, timings, risk applicability, or dispositions.
+
+The executable authority is:
+
+```bash
+./bin/test-governance validate
+./bin/test-governance report
+./bin/test-governance reassess
+```
+
+`assay` reruns corpus patches in disposable copies. Run it whenever proof code,
+selection, corpus, or critical-risk applicability changes. Routine vital and
+changed lanes never replace the full retained close gate.

@@ -81,43 +81,6 @@ def test_tracked_staged_unstaged_and_untracked_changes_affect_identity(
     assert untracked != staged
 
 
-def test_ignored_runtime_state_does_not_affect_identity(repository: Path) -> None:
-    original = candidate_id(repository)
-
-    (repository / "ignored.txt").write_text("ignored\n")
-    (repository / ".cache").mkdir()
-    (repository / ".cache" / "state").write_text("runtime\n")
-
-    assert candidate_id(repository) == original
-
-
-def test_deletion_mode_and_symlink_target_affect_identity(repository: Path) -> None:
-    original = candidate_id(repository)
-
-    (repository / "tracked.txt").unlink()
-    deleted = candidate_id(repository)
-    (repository / "tracked.txt").write_text("tracked\n")
-    (repository / "script").chmod(0o755)
-    executable = candidate_id(repository)
-    (repository / "link").symlink_to("tracked.txt")
-    linked = candidate_id(repository)
-    (repository / "link").unlink()
-    (repository / "link").symlink_to("script")
-    retargeted = candidate_id(repository)
-
-    assert len({original, deleted, executable, linked, retargeted}) == 5
-
-
-def test_manifest_never_contains_file_contents(repository: Path) -> None:
-    secret = "not-for-manifest"
-    (repository / "new.txt").write_text(secret)
-
-    result = run("--root", str(repository), "--json")
-
-    assert result.returncode == 0, result.stderr
-    assert secret not in result.stdout
-
-
 def test_symlink_escape_fails_closed(repository: Path) -> None:
     (repository / "escape").symlink_to("../outside")
 
@@ -125,65 +88,3 @@ def test_symlink_escape_fails_closed(repository: Path) -> None:
 
     assert result.returncode == 2
     assert "escapes repository" in result.stderr
-
-
-def test_submodule_checkout_affects_identity_and_dirty_submodule_fails_closed(
-    repository: Path, tmp_path: Path
-) -> None:
-    source = tmp_path / "submodule-source"
-    source.mkdir()
-    subprocess.run(["git", "init", "-b", "master"], cwd=source, check=True, capture_output=True)
-    subprocess.run(
-        ["git", "config", "user.email", "fixture@example.invalid"],
-        cwd=source,
-        check=True,
-    )
-    subprocess.run(["git", "config", "user.name", "Fixture"], cwd=source, check=True)
-    (source / "value.txt").write_text("one\n")
-    subprocess.run(["git", "add", "."], cwd=source, check=True)
-    subprocess.run(["git", "commit", "-m", "one"], cwd=source, check=True, capture_output=True)
-    subprocess.run(
-        [
-            "git",
-            "-c",
-            "protocol.file.allow=always",
-            "submodule",
-            "add",
-            str(source),
-            "dependency",
-        ],
-        cwd=repository,
-        check=True,
-        capture_output=True,
-    )
-    original = candidate_id(repository)
-
-    (source / "value.txt").write_text("two\n")
-    subprocess.run(["git", "add", "."], cwd=source, check=True)
-    subprocess.run(["git", "commit", "-m", "two"], cwd=source, check=True, capture_output=True)
-    new_head = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        cwd=source,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-    subprocess.run(
-        ["git", "-c", "protocol.file.allow=always", "fetch", "origin"],
-        cwd=repository / "dependency",
-        check=True,
-        capture_output=True,
-    )
-    subprocess.run(
-        ["git", "checkout", new_head],
-        cwd=repository / "dependency",
-        check=True,
-        capture_output=True,
-    )
-
-    assert candidate_id(repository) != original
-
-    (repository / "dependency" / "value.txt").write_text("dirty\n")
-    dirty = run("--root", str(repository))
-    assert dirty.returncode == 2
-    assert "dirty submodule" in dirty.stderr

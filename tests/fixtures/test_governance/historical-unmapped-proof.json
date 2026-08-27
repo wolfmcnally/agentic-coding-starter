@@ -1,4 +1,0 @@
-{
-  "mutation": "omit-proof-claim",
-  "expected_error": "proof ownership invalid"
-}

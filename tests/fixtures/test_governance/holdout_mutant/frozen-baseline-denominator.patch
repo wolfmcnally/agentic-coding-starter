@@ -1,0 +1,9 @@
+--- a/tests/proof-estate.yaml
++++ b/tests/proof-estate.yaml
+@@ -1,5 +1,5 @@
+ schema: agentic.proof_estate.v2
+-baseline_report: reports/test-governance/starter-pre-reset-baseline.json
++baseline_report: reports/test-governance/starter-current.json
+ audit_ledger: reports/test-governance/starter-reset.jsonl
+ effectiveness_corpus: tests/fixtures/test_governance/corpus.yaml
+ effectiveness_report: reports/test-governance/starter-effectiveness.jsonl

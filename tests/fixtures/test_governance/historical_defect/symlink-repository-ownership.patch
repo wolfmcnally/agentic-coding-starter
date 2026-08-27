@@ -1,0 +1,16 @@
+--- a/bin/test
++++ b/bin/test
+@@ -4,11 +4,11 @@
+ set -euo pipefail
+ 
+ entrypoint_path="${BASH_SOURCE[0]}"
+-while [[ -L "$entrypoint_path" ]]; do
++if [[ -L "$entrypoint_path" ]]; then
+   entrypoint_dir="$(cd "$(dirname "$entrypoint_path")" && pwd)"
+   entrypoint_path="$(readlink "$entrypoint_path")"
+   [[ "$entrypoint_path" == /* ]] || entrypoint_path="$entrypoint_dir/$entrypoint_path"
+-done
++fi
+ repo_root="$(cd "$(dirname "$entrypoint_path")/.." && pwd)"
+ project_root="$repo_root/project"
+ 

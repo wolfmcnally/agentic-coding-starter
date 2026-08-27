@@ -1,0 +1,11 @@
+--- a/bin/kickoff-evidence
++++ b/bin/kickoff-evidence
+@@ -4375,7 +4375,7 @@
+         raise EvidenceError("recorded repository root no longer resolves to itself")
+     if arguments.require_final:
+         validate_preclose_telemetry(run, arguments.run_dir, root)
+-        blocking_states = {"open", "addressed", "blocked-owner"}
++        blocking_states = {"addressed", "blocked-owner"}
+         blocking_findings = [
+             item["id"] for item in findings["findings"] if item["state"] in blocking_states
+         ]

@@ -1,0 +1,29 @@
+{
+  "baseline": {
+    "families": 541,
+    "leaves": 690
+  },
+  "ceilings": {
+    "families": 108,
+    "leaves": 138
+  },
+  "current": {
+    "families": 108,
+    "leaves": 126
+  },
+  "admissions": 11,
+  "dispositions": {
+    "consolidate": 476,
+    "delete": 99,
+    "retain": 115
+  },
+  "ratios": {
+    "families": 0.19963031423290203,
+    "leaves": 0.1826086956521739
+  },
+  "recall": {
+    "historical_defect": 0.8333333333333334,
+    "holdout_mutant": 0.9166666666666666
+  },
+  "record_type": "proof-estate-reset"
+}

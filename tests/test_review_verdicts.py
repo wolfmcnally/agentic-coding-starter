@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
-import re
 import subprocess
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 HARVESTER = ROOT / "bin" / "review-verdicts"
@@ -138,28 +139,10 @@ def test_dedupes_across_harnesses_and_drops_template_echoes(tmp_path: Path) -> N
     assert "REVIEW VERDICTS 4 genuine" in result.stdout
 
 
-def test_kind_filter_and_re_aimed_ids(tmp_path: Path) -> None:
+def test_running_session_and_explicit_exclusions_are_skipped(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     claude_root, codex_root = corpus(tmp_path)
-    result = run(claude_root, codex_root, "--kind", "plan")
-    assert result.returncode == 0, result.stderr
-    assert "REVIEW VERDICTS 3 genuine (4 across all kinds; 0 carry" in result.stdout
-    assert "proj-b" not in result.stdout.split("By week")[0]
-    assert "within one session): 1" in result.stdout
-    assert re.search(r"PLAN-F001 +2 objections", result.stdout)
-    assert "2026-08-w3  APPROVED 1   REVISE 2   approve-rate 33%" in result.stdout
-
-
-def test_project_filter(tmp_path: Path) -> None:
-    claude_root, codex_root = corpus(tmp_path)
-    result = run(claude_root, codex_root, "--kind", "all", "--project", "proj-b")
-    assert result.returncode == 0, result.stderr
-    assert "REVIEW VERDICTS 1 genuine" in result.stdout
-    assert "proj-a" not in result.stdout
-
-
-def test_running_session_and_explicit_exclusions_are_skipped(tmp_path: Path, monkeypatch) -> None:
-    claude_root, codex_root = corpus(tmp_path)
-    # A second Claude session that is "this" session: its transcript must not count.
     own = claude_root / "-Users-x-proj-a" / "11111111-2222-3333-4444-555555555555.jsonl"
     own.write_text(
         claude_record("/srv/x/proj-a", verdict_text([finding("PLAN-F009", "own noise")])) + "\n"
@@ -171,53 +154,3 @@ def test_running_session_and_explicit_exclusions_are_skipped(tmp_path: Path, mon
     assert "REVIEW VERDICTS 4 genuine" in result.stdout
     assert "Excluded sessions: 11111111-2222-3333-4444-555555555555, rollout" in result.stdout
     assert "PLAN-F009" not in result.stdout
-
-
-def test_re_aims_are_keyed_by_session_not_project(tmp_path: Path) -> None:
-    claude_root, codex_root = corpus(tmp_path)
-    # Another phase in the same project reuses CODE-F001 with different evidence:
-    # a fresh id namespace, not a re-aim.
-    other = claude_root / "-Users-x-proj-b" / "s2.jsonl"
-    other.parent.mkdir()
-    other.write_text(
-        claude_record("/srv/x/proj-b", verdict_text([finding("CODE-F001", "A different phase")]))
-        + "\n"
-    )
-    result = run(claude_root, codex_root, "--kind", "code")
-    assert result.returncode == 0, result.stderr
-    assert "within one session): 0" in result.stdout
-
-
-def test_coder_evidence_is_harvested_from_both_surfaces(tmp_path: Path) -> None:
-    claude_root, codex_root = corpus(tmp_path)
-    report = (
-        "## Phase Implementation Complete\n\n### Change Evidence\n```json\n"
-        + json.dumps(
-            {
-                "risk_tags": [],
-                "failure_analysis": "The previous attempt scored a stand-in for the property.",
-            }
-        )
-        + "\n```\n\n### Failure Analysis (revision rounds only)\n"
-        "- The prior selection followed the implementation's shape rather than the plan's "
-        "matrix.\n\n"
-        "### Notes\n- none\n"
-    )
-    session = claude_root / "-Users-x-proj-a" / "coder.jsonl"
-    session.write_text(claude_record("/srv/x/proj-a", report) + "\n")
-    output = tmp_path / "out.json"
-    result = run(
-        claude_root, codex_root, "--kind", "code", "--coder-evidence", "--json", str(output)
-    )
-    assert result.returncode == 0, result.stderr
-    assert "Coder failure-analysis statements: 2" in result.stdout
-    payload = json.loads(output.read_text())
-    surfaces = sorted(item["surface"] for item in payload["coder_evidence"])
-    assert surfaces == ["change-evidence", "report"]
-    assert all(item["project"] == "proj-a" for item in payload["coder_evidence"])
-
-
-def test_missing_roots_are_a_usage_error(tmp_path: Path) -> None:
-    result = run(tmp_path / "nope", tmp_path / "nope2")
-    assert result.returncode == 2
-    assert "neither trace root exists" in result.stderr

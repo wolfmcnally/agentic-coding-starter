@@ -1,0 +1,11 @@
+--- a/lib/agentic_starter/execution_telemetry.py
++++ b/lib/agentic_starter/execution_telemetry.py
+@@ -1771,7 +1771,7 @@
+         else:
+             total += end - start
+             start, end = next_start, next_end
+-    return total + end - start
++    return sum(right - left for left, right in intervals)
+ 
+ 
+ def _peak_concurrency(intervals: Sequence[tuple[int, int]]) -> int:

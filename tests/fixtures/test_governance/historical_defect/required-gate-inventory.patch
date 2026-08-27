@@ -1,0 +1,11 @@
+--- a/.claude/skills/stamp/SKILL.md
++++ b/.claude/skills/stamp/SKILL.md
+@@ -41,7 +41,7 @@
+    - `bin/kickoff-config` exists and is executable.
+    - `bin/kickoff-tree-id` and `bin/kickoff-evidence` exist and are executable.
+    - `bin/setup`, `bin/test`, `bin/check`, `bin/check-receipt`, and
+-     `bin/test-governance` exist and are executable;
++     `bin/proof-manager` exist and are executable;
+      `tests/test_check_receipt.py`, `tests/test_test_governance.py`, and
+      `tests/proof-estate.yaml` exist; the Python profile also has executable
+      `bin/python`.

@@ -590,8 +590,10 @@ When `bin/test-governance` and `tests/proof-estate.yaml` exist and validate,
 prefer `./bin/test --vital` for the standing fast set or
 `./bin/test --changed-from <ref>` for candidate impact; preserve the manager's
 selection reason in evidence. A full fallback is the correct result for
-invalid or unmapped selection. These lanes are iteration aids only and never
-replace either `./bin/check all` close gate. The planner must not bypass an
+invalid or indeterminate selection. The retained estate is valid only while
+`./bin/test-governance validate` proves its frozen reset, zero-growth budget,
+effectiveness floors, and direct-risk witnesses. These lanes are iteration aids
+only and never replace either `./bin/check all` close gate. The planner must not bypass an
 existing repository test entry point or replace the full gate with a copied raw
 command list.
 

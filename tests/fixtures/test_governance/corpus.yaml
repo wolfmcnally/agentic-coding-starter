@@ -1,0 +1,195 @@
+schema: agentic.effectiveness_corpus.v1
+selection_frozen: true
+cases:
+- id: check-mode-arity
+  class: historical_defect
+  patch: tests/fixtures/test_governance/historical_defect/check-mode-arity.patch
+  patch_sha256: 9907c809192a07df6afdda3ca447b82d78ba25c7f4636c6d74641b5bf66ab965
+  command: ./bin/test tests/test_check.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: atomic-check
+- id: required-gate-inventory
+  class: historical_defect
+  patch: tests/fixtures/test_governance/historical_defect/required-gate-inventory.patch
+  patch_sha256: b93ca0de7414074aa7647410a917c86d6bc6e8d4ff8a648479a05e69171d6f76
+  command: ./bin/test tests/test_methodology_toolchain_contract.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: methodology-transfer
+- id: symlink-repository-ownership
+  class: historical_defect
+  patch: tests/fixtures/test_governance/historical_defect/symlink-repository-ownership.patch
+  patch_sha256: 72fe761c9069f33e5cff2a037570f6994485f453c141dc5d5cdeca732998de8d
+  command: ./bin/test tests/test_toolchain_entrypoints.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: toolchain-entrypoints
+- id: manager-caller-root
+  class: historical_defect
+  patch: tests/fixtures/test_governance/historical_defect/manager-caller-root.patch
+  patch_sha256: 7a50c41d733663fff89fb2d490f2a72d635fb66e2178c6613ca1c1d339aea6db
+  command: ../bin/test-governance validate
+  cwd: project
+  expected: The retained estate rejects the seeded defect.
+  owner: test-governance-manager
+- id: yielded-session-exit
+  class: historical_defect
+  patch: tests/fixtures/test_governance/historical_defect/yielded-session-exit.patch
+  patch_sha256: 2151bbe5d68064b365beca3bd09676c3a9489615d8aefc3667fccb0cb29c29cb
+  command: ./bin/test tests/test_kickoff_config.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: kickoff-configuration
+- id: deleted-catalog-source
+  class: historical_defect
+  patch: tests/fixtures/test_governance/historical_defect/deleted-catalog-source.patch
+  patch_sha256: b3121bed65da74e02011e3c772eb75d2d66a3c41c62fc16a00350558afafc71a
+  command: ./bin/test tests/test_check_catalogs.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: catalog-integrity
+- id: active-review-session
+  class: historical_defect
+  patch: tests/fixtures/test_governance/historical_defect/active-review-session.patch
+  patch_sha256: 3a1c03c014e9e77312e3bb4cbd2024254878c5d4c42b1c9cd6a7db1e4fbcd2e6
+  command: ./bin/test tests/test_review_verdicts.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: review-verdict-harvest
+- id: receipt-candidate-drift
+  class: historical_defect
+  patch: tests/fixtures/test_governance/historical_defect/receipt-candidate-drift.patch
+  patch_sha256: 106ba54b63a86272e65624cb9ebb901798b03c4848c36ea08e0a4d5af0e6dbfa
+  command: ./bin/test tests/test_check_receipt.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: full-gate-receipt
+- id: blocking-finding-finalization
+  class: historical_defect
+  patch: tests/fixtures/test_governance/historical_defect/blocking-finding-finalization.patch
+  patch_sha256: 7e60c1a3e28d72e08137819ad655fe8b12a17903981f84df98a7f41ce05c0177
+  command: ./bin/test tests/test_kickoff_evidence.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: orchestration-evidence
+- id: operator-park-union
+  class: historical_defect
+  patch: tests/fixtures/test_governance/historical_defect/operator-park-union.patch
+  patch_sha256: cba1a12f58322e4c609a03f4961da5b3faeb40105b31d2a69bef528ba8f7de86
+  command: ./bin/test tests/test_execution_telemetry.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: execution-telemetry
+- id: invalid-runtime-fallback
+  class: historical_defect
+  patch: tests/fixtures/test_governance/historical_defect/invalid-runtime-fallback.patch
+  patch_sha256: 6171c2fb14fd3efcd1361f718bfd1321c809c79c66cafd21b9cb7a92034b72e9
+  command: ./bin/test tests/test_check.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: atomic-check
+- id: research-resource-default
+  class: historical_defect
+  patch: tests/fixtures/test_governance/historical_defect/research-resource-default.patch
+  patch_sha256: e176420e9d8d3ada851a085eb43eac571be5659aec4c16104f54b7e60921115c
+  command: ./bin/test tests/test_research_authority.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: research-authority
+- id: expanded-leaf-inventory
+  class: holdout_mutant
+  patch: tests/fixtures/test_governance/holdout_mutant/expanded-leaf-inventory.patch
+  patch_sha256: 1aa4efb56d64ddea33906426d04c393c6117b7b87f11592f207c4b4c830dd805
+  command: ./bin/test tests/test_test_governance.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: test-governance-manager
+- id: frozen-baseline-denominator
+  class: holdout_mutant
+  patch: tests/fixtures/test_governance/holdout_mutant/frozen-baseline-denominator.patch
+  patch_sha256: ef83ade7238fa1404cb606827d4eea4c023d94733de31764ec31e8b87d9f38cd
+  command: ./bin/test tests/test_test_governance.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: test-governance-manager
+- id: aggregate-disposition
+  class: holdout_mutant
+  patch: tests/fixtures/test_governance/holdout_mutant/aggregate-disposition.patch
+  patch_sha256: b8b023764aede8f3f478c0fcf5ca9330ad6e922d61aa4e564ec62768ccda89d2
+  command: ./bin/test tests/test_test_governance.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: test-governance-manager
+- id: optional-disposition-evidence
+  class: holdout_mutant
+  patch: tests/fixtures/test_governance/holdout_mutant/optional-disposition-evidence.patch
+  patch_sha256: 1bc648b42f3a7773dc4b2b19a34c11222823f939febc1a9f01e678699b487dbb
+  command: ./bin/test tests/test_test_governance.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: test-governance-manager
+- id: family-only-cap
+  class: holdout_mutant
+  patch: tests/fixtures/test_governance/holdout_mutant/family-only-cap.patch
+  patch_sha256: 0b1de721b88aee9e3831ebb4ba646570e55e36b0b60a3672d72a7b623224fbad
+  command: ./bin/test tests/test_test_governance.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: test-governance-manager
+- id: critical-risk-averaging
+  class: holdout_mutant
+  patch: tests/fixtures/test_governance/holdout_mutant/critical-risk-averaging.patch
+  patch_sha256: 01cd5349dd401b810c70c11bed385eff2bbfd4a3ca6587430f77ef7a75e6b8ea
+  command: ./bin/test tests/test_test_governance.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: test-governance-manager
+- id: unauthorized-positive-growth
+  class: holdout_mutant
+  patch: tests/fixtures/test_governance/holdout_mutant/unauthorized-positive-growth.patch
+  patch_sha256: e63745edce520d1f41065a63117edbbb683b4858051f4cedec30a79586a9f863
+  command: ./bin/test tests/test_test_governance.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: test-governance-manager
+- id: shadow-proof-removal
+  class: holdout_mutant
+  patch: tests/fixtures/test_governance/holdout_mutant/shadow-proof-removal.patch
+  patch_sha256: 4b93e94a37f1f76066a2baf41dedb6e98882cfb8143e9f123a8b1c4cb275eafc
+  command: ./bin/test tests/test_test_governance.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: test-governance-manager
+- id: indeterminate-changed-selection
+  class: holdout_mutant
+  patch: tests/fixtures/test_governance/holdout_mutant/indeterminate-changed-selection.patch
+  patch_sha256: 190232035714bb8c232ee43ffa5f70cc9d0309a116fb5df3f7abdae35783b60b
+  command: ./bin/test tests/test_test_governance.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: test-governance-manager
+- id: vital-substitutes-for-full
+  class: holdout_mutant
+  patch: tests/fixtures/test_governance/holdout_mutant/vital-substitutes-for-full.patch
+  patch_sha256: 932fb5dbdcbbad2df977becf04789b9dead14bf9751677381e88482af2a31786
+  command: ./bin/test tests/test_test_governance.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: test-governance-manager
+- id: post-holdout-selection-change
+  class: holdout_mutant
+  patch: tests/fixtures/test_governance/holdout_mutant/post-holdout-selection-change.patch
+  patch_sha256: 0c3c10f7e1f756b394c68799eb170d08378a62a6b7c00fc2c8dcdb7cf4ca8a94
+  command: ./bin/test tests/test_test_governance.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: test-governance-manager
+- id: absent-consolidation-replacement
+  class: holdout_mutant
+  patch: tests/fixtures/test_governance/holdout_mutant/absent-consolidation-replacement.patch
+  patch_sha256: 724708cbf19d7b8fc3eab3bc9ae9efd643e57ef8226abb0c4b8c92fe446947d4
+  command: ./bin/test tests/test_test_governance.py -q
+  cwd: .
+  expected: The retained estate rejects the seeded defect.
+  owner: test-governance-manager

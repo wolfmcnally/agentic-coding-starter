@@ -268,7 +268,7 @@ extra file, which the adaptation pass or the next `sweep` catches.
 | `policies/anonymize-log-references.md` | starter-only: the rule exists because *this* template is public, not because of any methodology principle |
 | `bin/check-anonymization.sh` and `bin/anonymization-denylist.local.example` | that policy's enforcement (also drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`) |
 | `tests/test_methodology_toolchain_contract.py` | asserts on `stamp` and the anonymization policy, neither of which the destination has |
-| `tests/proof-estate.yaml`, `tests/fixtures/test_governance/*.json`, and `reports/test-governance/starter-*` | Starter-local families, assay cases, timings, reports, and judgments; regenerate from the destination's own inventory |
+| `tests/proof-estate.yaml`, `tests/fixtures/test_governance/corpus.yaml`, `tests/fixtures/test_governance/{historical_defect,holdout_mutant}/`, and generated files under `reports/test-governance/` | Starter-local families, assay cases, reset evidence, reports, and judgments; regenerate from the destination's own inventory |
 | `briefs/BRIEF.md`, `briefs/eacp-pattern-map.md`, `briefs/methodology-treatise.md` | about *this* repository; `BRIEF.md` is authored fresh in Step 3 |
 | `LICENSE` and `.vscode/` | the operator's choices, not the template's |
 | `plan/`, `LOG.md`, `README.md`, `CLAUDE.md`, `project/` | authored or adapted fresh in Steps 3–5 |
@@ -590,15 +590,16 @@ Adapt the complete atomic bundle defined by `policies/build-gates.md`:
 
 Generate the destination's proof estate after its real tests and gates exist.
 Do not copy Starter's `tests/proof-estate.yaml`, assay cases, reports, family
-tiers, selectors, risk labels, timings, or judgments. Use
-`bin/test-governance inventory` to establish the local baseline; declare every
-local proof family and gate/hook surface. The first manifest retains every
-proof. A full-only estate with an empty effectiveness ledger is valid. Create
-`reports/test-governance/` from the report README, and activate `vital` only
-after destination-local historical-defect and holdout-mutant cases are detected
-by every admitted fast lane. `changed` selects the union of all applicable
-mappings and widens to full for any unmapped path. Wire structural validation
-into policy and pre-commit; both close gates and pre-push remain full.
+tiers, selectors, risk labels, timings, survivors, or judgments. Use
+`bin/test-governance inventory` to freeze the local whole-estate baseline, then
+run the destination's own Pareto assay. Physically remove dominated proofs and
+disposition every baseline proof before the stamp is complete. The retained
+estate targets at most 20% of both frozen family and leaf counts, at least 80%
+historical and held-out recall, and direct proof for every applicable critical
+risk. A conflict among those requirements parks for the owner. Default later
+growth to zero, wire `reassess` into sweeps, and widen indeterminate changed
+selection to full. Both close gates and pre-push remain full over the retained
+estate.
 
 Preserve cwd and symlink independence: every shell entry point resolves its own
 symlink chain before deriving the repository root. Preserve strict argument
@@ -771,10 +772,12 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
   corrupt, non-`HEAD`, descriptor-error, and query-error pushes fail closed to
   the full gate.
 - `<dest>/bin/test-governance validate` passes against a destination-local
-  `tests/proof-estate.yaml`; the baseline equals the destination inventory,
-  every current proof is retained, local reports contain no Starter values,
-  and an unassayed destination remains full-only. If a vital lane was admitted,
-  its destination-local historical and holdout cases are all detected.
+  `tests/proof-estate.yaml`; its frozen pre-reset baseline, disposition ledger,
+  current inventory, effectiveness evidence, and reset summary all agree; local
+  reports contain no Starter values; the retained estate stays within both 20%
+  reset ceilings; both destination-local recall floors are at least 80%; and
+  every applicable critical risk retains direct proof. An unassayed destination
+  remains full-only.
 - `<dest>/bin/lessons validate` and `<dest>/bin/check-catalogs` are executable
   and pass against the fresh destination (empty ledger, synced catalogs, one
   `⬅️`); a `.gitkeep` exists in each of `lessons/`, `lessons-archived/`,

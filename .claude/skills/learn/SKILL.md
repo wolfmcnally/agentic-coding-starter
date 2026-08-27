@@ -369,9 +369,13 @@ Once approved, apply the approved items. Before importing any donor remedy for a
   integration, hook check, behavioral fixtures, effectiveness-evidence shape,
   catalogs, transfer rules, and lessons together. Adopt the generalized
   machinery or none of it. Never copy donor family choices, selectors, risk
-  labels, timing values, thresholds, defect corpus, mutation corpus, reports,
-  or audit judgments. Inventory this repository's own estate, retain every
-  current proof on initial adoption, and admit a fast lane only after local
-  historical-defect and holdout-mutant assays demonstrate complete recall.
+  labels, timing values, thresholds, defect corpus, mutation corpus, survivors,
+  reports, or audit judgments. Initial adoption freezes this repository's whole
+  estate, performs its own Pareto assay, physically removes dominated proofs,
+  and dispositions every baseline proof. The recipient targets at most 20% of
+  both frozen family and leaf counts while preserving at least 80% historical
+  and held-out recall plus direct proof for every applicable critical risk; an
+  unsatisfied conjunction parks for the owner. Zero-net-growth, complete
+  removal, and executable periodic reassessment transfer with the machinery.
   Invalid or unmapped selection widens to full; both close gates remain full.
 - **Skill-exclusion list.** `stamp` and the starter template's `example/` Python project are starter-only and never transferred. `learn` and `teach` themselves are universal — if the donor has a more evolved version, treat it like any other candidate; if this repo lacks them and the donor has them, propose adding them (the bootstrap procedure expects them in every methodology-following project).

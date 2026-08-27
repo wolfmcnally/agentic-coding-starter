@@ -465,7 +465,7 @@ Once approved, apply the approved items to the target. Order:
     its current package metadata and flag every missing contract member.
 11. Independently search the target for stale operational caller commands and
     prove that staged, unstaged, and nonignored untracked format failures are
-    all detected.
+    meet the target's 80% historical-defect and held-out-mutant recall floors.
 12. Append the TAUGHT FROM TEMPLATE entry to the target's `LOG.md` (create the file with the standard header if it doesn't exist). The entry lists the transferred items, the **parity heals applied** (separately from transferred items), the stale items migrated, the parity-heal and stale-sweep items surfaced for user decision, and the patterns to feed back via `learn`. Follow the target's LOG/provenance policy and the approved teaching-plan template. Starter's starter-only anonymization policy governs writes to Starter, not writes to the target.
 
 **Follow the target's delivery policy.** After the unchanged target candidate passes its full gate and every approved manual step is closed, use the target's standing commit/push authority if it has one; a target that still requires its owner to commit gets the file list and nothing more. Re-check the live tree, stage explicit target paths, inspect the staged diff, verify the resulting commit's file set, never force or select an ambiguous remote, and verify clean aligned tips after any push (`policies/commit-staging.md`). Report the file list, build-gate status, and any unresolved manual steps regardless.
@@ -503,12 +503,15 @@ Once approved, apply the approved items to the target. Order:
   `reports/test-governance/README.md` with their lane/gate/hook integration,
   behavioral fixtures, catalogs, and transfer rules together.
   Never seed the target with this repository's families, selectors, risk
-  labels, timings, thresholds, defect or mutation cases, reports, or audit
-  decisions. Preserve an existing target estate and its evidence as target
-  state. A target adopting the machinery for the first time inventories and
-  assays its own tests, retains every current proof, and activates no fast lane
-  until its local historical-defect and holdout-mutant set is fully detected.
-  Invalid or unmapped selection widens to full; both close gates remain full.
+  labels, timings, thresholds, defect or mutation cases, survivors, reports, or
+  audit decisions. Preserve an existing target estate only when it already
+  satisfies the reset contract. First adoption freezes and assays the target's
+  whole estate, physically removes dominated proofs, and dispositions every
+  baseline proof. The target owns the 20% family/leaf reset, 80% historical and
+  held-out floors, direct critical-risk inventory, zero-net-growth budget, and
+  periodic reassessment. If those conditions cannot coexist, park for the
+  owner. Invalid or unmapped selection widens to full; both close gates remain
+  full over the retained estate.
 - **Lessons-ledger transfer is atomic, and ledger content is target state.** Port the whole lessons bundle or none of it (per the stale-sweep bullet); ship an empty ledger to a target that lacks one; never seed it with Starter's lessons, never resolve or transfer the target's `scope: local` entries, and surface — never harvest — its `scope: methodology` candidates (harvest belongs to a `learn` run against the target).
 - **Mechanical parity heals always run, independent of `<desc>` scope.** Every `teach` invocation scans the target's parity surfaces and surfaces known-broken shapes (per the catalog in Stage 1 step 10) for repair. Even a narrow `teach` pass — "just bring policies up to date" — heals an `AGENTS.md`-as-file, a file-level `.agents/skills/<name>/SKILL.md`, or a stray `.agents/skills/stamp` it finds along the way. This is what closes the gap where broken parity shapes lingered because the teach pass didn't otherwise touch them.
 - **This repo is read-only.** Never write to this repository during `teach`. The starter learns via `learn`, not as a side effect of `teach`.

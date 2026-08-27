@@ -42,29 +42,13 @@ def run(*arguments: str, root: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_default_is_two_filler_free_words(tmp_path: Path) -> None:
-    result = run(root=tmp_path)
-    assert result.returncode == 0, result.stderr
-    slug = result.stdout.strip()
-    tokens = slug.split("-")
-    assert len(tokens) == 2
-    assert not any(token in FILLERS for token in tokens)
-
-
-def test_word_count_argument(tmp_path: Path) -> None:
-    result = run("3", root=tmp_path)
-    assert result.returncode == 0, result.stderr
-    assert len(result.stdout.strip().split("-")) == 3
-
-
-def test_rejects_word_count_below_two(tmp_path: Path) -> None:
-    result = run("1", root=tmp_path)
-    assert result.returncode == 2
-    assert "at least 2" in result.stderr
-
-
 def test_avoids_collisions_across_all_ledger_dirs(tmp_path: Path) -> None:
-    for dir_name in ("lessons", "lessons-archived", "user-actions", "user-actions-archived"):
+    for dir_name in (
+        "lessons",
+        "lessons-archived",
+        "user-actions",
+        "user-actions-archived",
+    ):
         (tmp_path / dir_name).mkdir()
     # Seed a collision in each directory, then confirm generated slugs never
     # match any seeded basename over repeated runs.

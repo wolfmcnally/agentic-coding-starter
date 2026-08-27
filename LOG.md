@@ -1015,3 +1015,49 @@ new two-argument mode initially relaxed old one-argument modes, so a new
 methodology lesson records mode-local arity validation. Deferred: any future
 proof consolidation or deletion requires a separate reviewed local audit; any
 derived-project adoption requires an explicit future `teach` run.
+
+## 2026-08-27 08:26 MDT — LEARN
+
+Donor: Donor A @ <sha withheld>
+
+Items absorbed: 5, by tier T1=4/T2=1/T3=0/T4=0.
+Donor lessons harvested: 2 (1 absorbed directly into the corrective bundle;
+1 already represented in Starter's methodology). Application-found return
+candidates: 1 recurrence appended to an existing methodology lesson.
+Stale-in-light-of-learning migrations: 10 AUTO; 0 DECIDE; 0 DEFER. Files
+touched: 83.
+
+The corrective adoption replaces the earlier retain-all result with a measured
+whole-estate reset. Starter froze a baseline of 541 proof families and 690
+expanded leaves, then dispositioned every proof with contract, oracle,
+red-witness, overlap, replacement, and rationale evidence. Dominated proofs
+and their dead support were physically removed. The retained estate contains
+108 families and 126 leaves: 19.96% and 18.26% of the frozen baseline,
+respectively. Eleven post-baseline admissions each carry a compensating
+retirement, and the default forward budget is zero net growth.
+
+The effectiveness corpora are local to Starter. A frozen twelve-case
+historical-defect assay detected ten cases for 83.33% recall. Only after that
+selection was frozen, a twelve-case held-out mutant assay ran once and detected
+eleven cases for 91.67% kill recall. Every applicable critical-risk class keeps
+direct proof; deploy is explicitly inapplicable until Starter acquires a deploy
+surface. The three surviving assay misses remain recorded rather than being
+hidden by post-holdout tuning.
+
+A pre-delivery assay result was superseded before delivery when staged-diff
+preflight exposed that corpus-byte binding and six manager-mutant hunk contexts
+were not yet final. The retained inventory and selection did not change. The
+same six semantic mutations were mechanically rebased, all twenty-four patch
+digests were frozen, and both corpora reran against the final manager. The final
+run reproduced the same ten-of-twelve and eleven-of-twelve recalls; only that
+digest-bound result is authoritative.
+
+The manager now validates the frozen denominator, append-only dispositions,
+complete physical removal, replacement evidence, both reset ceilings, both
+recall floors, digest-bound corpus patches, direct critical-risk coverage,
+compensated admissions, and the selection freeze. Governed vital and changed
+lanes operate only over that validated retained estate; the full close gate
+still exercises the entire retained estate. `sweep` carries an executable
+reassessment and shrinkage obligation, and learn, teach, stamp, and bootstrap
+require every recipient to perform its own reset without inheriting Starter's
+survivors or judgments.

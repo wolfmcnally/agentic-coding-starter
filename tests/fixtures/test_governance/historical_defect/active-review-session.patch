@@ -1,0 +1,11 @@
+--- a/bin/review-verdicts
++++ b/bin/review-verdicts
+@@ -362,7 +362,7 @@
+     )
+     arguments = parser.parse_args()
+     excluded = {item for item in arguments.exclude_session if item}
+-    for variable in SESSION_ENVIRONMENT:
++    for variable in ():
+         value = os.environ.get(variable, "").strip()
+         if value:
+             excluded.add(value)

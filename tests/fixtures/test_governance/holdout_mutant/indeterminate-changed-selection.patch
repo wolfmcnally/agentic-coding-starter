@@ -1,0 +1,11 @@
+--- a/lib/agentic_starter/test_governance.py
++++ b/lib/agentic_starter/test_governance.py
+@@ -728,7 +728,7 @@
+             return families, f"ambiguous-change-map:{path}"
+         for family in matches:
+             selected[family["id"]] = family
+-    if unmapped:
++    if False and unmapped:
+         return families, "unmapped-changes:" + ",".join(sorted(unmapped))
+     return list(selected.values()), None
+ 

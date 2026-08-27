@@ -1,0 +1,11 @@
+--- a/bin/test-governance
++++ b/bin/test-governance
+@@ -9,7 +9,7 @@
+   entrypoint_path="$(readlink "$entrypoint_path")"
+   [[ "$entrypoint_path" == /* ]] || entrypoint_path="$entrypoint_dir/$entrypoint_path"
+ done
+-repo_root="$(cd "$(dirname "$entrypoint_path")/.." && pwd)"
++repo_root="$PWD"
+ project_root="$repo_root/project"
+ 
+ toolchain_helper="$repo_root/bin/_python-toolchain"

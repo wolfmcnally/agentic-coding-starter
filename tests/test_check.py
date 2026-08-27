@@ -167,57 +167,6 @@ def _run(
     )
 
 
-def test_installed_symlink_selects_the_owning_repository(
-    check_repo: tuple[Path, dict[str, str]], tmp_path: Path
-) -> None:
-    root, environment = check_repo
-    launcher_dir = tmp_path / "installed-bin"
-    launcher_dir.mkdir()
-    launcher = launcher_dir / "check"
-    launcher.symlink_to(Path("..") / "repo" / "bin" / "check")
-
-    result = subprocess.run(
-        [str(launcher), "test"],
-        cwd=tmp_path,
-        env=environment,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert result.returncode == 0, result.stderr
-    calls = Path(environment["CHECK_TEST_LOG"]).read_text().splitlines()
-    assert calls
-    assert all(f"cwd={root}" in call for call in calls), calls
-
-
-def test_installed_symlink_chain_selects_the_owning_repository(
-    check_repo: tuple[Path, dict[str, str]], tmp_path: Path
-) -> None:
-    root, environment = check_repo
-    first_dir = tmp_path / "first-bin"
-    second_dir = tmp_path / "second-bin"
-    first_dir.mkdir()
-    second_dir.mkdir()
-    (first_dir / "check").symlink_to(root / "bin" / "check")
-    launcher = second_dir / "check"
-    launcher.symlink_to(Path("..") / "first-bin" / "check")
-
-    result = subprocess.run(
-        [str(launcher), "test"],
-        cwd=tmp_path,
-        env=environment,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert result.returncode == 0, result.stderr
-    calls = Path(environment["CHECK_TEST_LOG"]).read_text().splitlines()
-    assert calls
-    assert all(f"cwd={root}" in call for call in calls), calls
-
-
 def test_all_is_default_locked_ordered_and_cwd_independent(
     check_repo: tuple[Path, dict[str, str]], tmp_path: Path
 ) -> None:
@@ -276,83 +225,6 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
     assert "CHECK ALL PASS" in result.stdout
 
 
-@pytest.mark.parametrize(
-    ("mode", "expected"),
-    [
-        ("lint", "ruff check"),
-        ("format", "ruff format --check"),
-        ("test", "pytest -q"),
-        ("policy", "policy cwd="),
-    ],
-)
-def test_named_mode_runs_only_selected_gate(
-    check_repo: tuple[Path, dict[str, str]], mode: str, expected: str
-) -> None:
-    root, environment = check_repo
-    result = _run(root, environment, mode)
-
-    assert result.returncode == 0, result.stderr
-    calls = Path(environment["CHECK_TEST_LOG"]).read_text().splitlines()
-    if mode == "policy":
-        assert calls == [
-            (
-                f"uv cwd={root} args=run --project {root / 'project'} --locked "
-                f"--managed-python python -c {PROBE}"
-            ),
-            f"parity cwd={root}",
-            f"callers cwd={root}",
-            f"dashboards cwd={root}",
-            f"config cwd={root} args=show",
-            f"catalogs cwd={root}",
-            f"lessons cwd={root} args=validate",
-            f"treatise cwd={root} args=validate",
-            f"hooksinstalled cwd={root}",
-            f"shellsyntax cwd={root}",
-            f"governance cwd={root} args=validate",
-            f"policy cwd={root}",
-        ]
-    elif mode == "test":
-        assert len(calls) == 3
-        assert calls[0].endswith(f"python -c {PROBE}")
-        assert calls[1].endswith(f"python -c {PROBE}")
-        assert expected in calls[2]
-    else:
-        assert len(calls) == 2
-        assert calls[0].endswith(f"python -c {PROBE}")
-        assert expected in calls[1]
-    assert f"CHECK {mode} PASS" in result.stdout
-
-
-def test_failure_status_is_preserved(
-    check_repo: tuple[Path, dict[str, str]],
-) -> None:
-    root, environment = check_repo
-    environment["CHECK_TEST_FAIL_MATCH"] = "ruff format"
-    environment["CHECK_TEST_FAIL_CODE"] = "37"
-
-    result = _run(root, environment, "format")
-
-    assert result.returncode == 37
-    assert "CHECK format FAIL (exit 37)" in result.stderr
-    assert "CHECK format PASS" not in result.stdout
-
-
-def test_all_failure_status_survives_durable_log_pipeline(
-    check_repo: tuple[Path, dict[str, str]],
-) -> None:
-    root, environment = check_repo
-    environment["CHECK_TEST_FAIL_MATCH"] = "ruff format"
-    environment["CHECK_TEST_FAIL_CODE"] = "37"
-
-    result = _run(root, environment, "all")
-
-    assert result.returncode == 37
-    assert "CHECK lint PASS" in result.stdout
-    assert "CHECK format FAIL (exit 37)" in result.stdout
-    assert "CHECK test START" not in result.stdout
-    assert "CHECK ALL PASS" not in result.stdout
-
-
 def test_all_policy_failure_cannot_be_masked_by_later_policy_output(
     check_repo: tuple[Path, dict[str, str]],
 ) -> None:
@@ -365,71 +237,6 @@ def test_all_policy_failure_cannot_be_masked_by_later_policy_output(
     assert "CHECK policy-anonymization FAIL (exit 41)" in result.stdout
     assert "CHECK policy PASS" not in result.stdout
     assert "CHECK ALL PASS" not in result.stdout
-
-
-def test_missing_uv_fails_clearly(
-    check_repo: tuple[Path, dict[str, str]],
-) -> None:
-    root, environment = check_repo
-    environment["PATH"] = "/usr/bin:/bin"
-
-    result = _run(root, environment)
-
-    assert result.returncode == 1
-    assert "CHECK ERROR missing prerequisite: uv" in result.stderr
-
-
-@pytest.mark.parametrize(
-    "missing", [".python-version", "pyproject.toml", "uv.lock", "_python-toolchain"]
-)
-def test_missing_project_contract_fails_clearly(
-    check_repo: tuple[Path, dict[str, str]], missing: str
-) -> None:
-    root, environment = check_repo
-    if missing == "_python-toolchain":
-        (root / "bin" / missing).unlink()
-        expected_path = f"bin/{missing}"
-    else:
-        (root / "project" / missing).unlink()
-        expected_path = f"project/{missing}"
-
-    result = _run(root, environment)
-
-    assert result.returncode == 1
-    assert f"CHECK ERROR missing required file: {expected_path}" in result.stderr
-
-
-@pytest.mark.parametrize(
-    "executable",
-    [
-        "test",
-        "kickoff-tree-id",
-        "kickoff-evidence",
-        "kickoff-config",
-        "check-receipt",
-        "execution-telemetry",
-        "check-execution-dashboards",
-        "check-harness-parity",
-        "check-toolchain-callers",
-        "lessons",
-        "treatise",
-        "check-catalogs",
-        "check-hooks-installed",
-        "check-shell-syntax",
-        "new-name",
-        "test-governance",
-    ],
-)
-def test_missing_required_executable_fails_clearly(
-    check_repo: tuple[Path, dict[str, str]], executable: str
-) -> None:
-    root, environment = check_repo
-    (root / "bin" / executable).unlink()
-
-    result = _run(root, environment)
-
-    assert result.returncode == 1
-    assert f"CHECK ERROR missing required executable: bin/{executable}" in result.stderr
 
 
 @pytest.mark.parametrize(
@@ -468,37 +275,6 @@ def test_governed_iteration_lanes_dispatch_selected_tests_without_receipt(
     assert f"governance cwd={root} args=select {selection_arguments}" in calls
     assert any("python -m pytest -q tests/test_check.py" in call for call in calls)
     assert not any("check-receipt" in call for call in calls)
-
-
-def test_help_does_not_require_toolchain(
-    check_repo: tuple[Path, dict[str, str]],
-) -> None:
-    root, environment = check_repo
-    environment["PATH"] = "/usr/bin:/bin"
-
-    result = _run(root, environment, "--help")
-
-    assert result.returncode == 0
-    assert "Usage: ./bin/check" in result.stdout
-
-
-def test_authoritative_runtime_override_applies_to_probe_and_gate(
-    check_repo: tuple[Path, dict[str, str]],
-    tmp_path: Path,
-) -> None:
-    root, environment = check_repo
-    runtime = tmp_path / "candidate-python"
-    _write_python_stub(runtime)
-    environment["TOOLCHAIN_PYTHON"] = str(runtime)
-
-    result = _run(root, environment, "lint")
-
-    assert result.returncode == 0, result.stderr
-    calls = Path(environment["CHECK_TEST_LOG"]).read_text().splitlines()
-    assert len(calls) == 4
-    assert calls[0] == f"uv cwd={root} args=python find --no-project {runtime}"
-    assert calls[1] == f"uv cwd={root} args=python dir"
-    assert all(f"--python {runtime} --no-managed-python" in call for call in calls[2:])
 
 
 def test_authoritative_runtime_probe_failure_stops_before_gate_without_fallback(

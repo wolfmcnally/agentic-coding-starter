@@ -2,64 +2,59 @@
 title: Test-Suite Value Governance
 date: 2026-08-27
 status: methodology
-scope: Universal design for keeping every proof attributable, selecting fast feedback without weakening the full gate, and requiring local evidence before consolidation.
+scope: Universal design for resetting and governing an attributable proof estate without allowing test accumulation to become permanent.
 ---
 
 # Test-Suite Value Governance
 
-A test suite is a proof estate, not an accumulating file count. Every proof must
-have an owner, a contract, an oracle, and an explanation of the distinct failure
-it detects. That attribution makes two otherwise-conflicting goals compatible:
-the complete suite remains the authoritative close gate, while smaller lanes can
-return fast feedback when the repository has proved that their selection is safe.
+A test suite is a proof estate, not an accumulating file count. Every executable
+proof needs a contract, an independent oracle, a red witness, and a reason it is
+not subsumed by a cheaper proof. The estate stays useful only when those claims
+are tested against failures that matter and dominated proofs are physically
+removed.
 
-The repository owns a machine-readable proof estate. A deterministic manager
-inventories executable test definitions and the structural proof surfaces in the
-gate and hooks, validates their declared families, selects admitted fast lanes,
-and reports the evidence used to govern them. An invalid declaration, an
-unsupported runner, an unmapped changed path, or stale evidence widens to the
-full suite. Selection failure therefore costs time; it never silently removes
-coverage.
+## Adoption begins with a reset
 
-## Three lanes, two jobs
+A repository adopting this method freezes its whole pre-reset estate, inventories
+both parameter-collapsed families and expanded executable leaves, and dispositions
+every proof as retain, consolidate, or delete. Retaining everything for a later
+audit is not adoption. The reset removes dominated test bodies together with dead
+fixtures, helpers, mutation rows, and caller wiring; skipped, deselected, renamed,
+or hidden proofs still count as present.
 
-- **Vital** is a project-selected, continuously valuable feedback set. A family
-  enters it only after the project records its contract, oracle, red witness,
-  nearest overlap, and local effectiveness evidence.
-- **Changed** maps the live candidate's changed paths to every applicable proof
-  family. Legitimate overlaps select the union. Any changed path without a safe
-  mapping widens the run to full.
-- **Full** runs the complete repository suite and remains authoritative for both
-  phase-close gates, pre-push custody, and the durable full-gate receipt.
+The one-time reset targets no more than 20% of both frozen family and leaf counts.
+That pressure is subordinate to effectiveness: the retained estate must recall at
+least 80% of a frozen local historical-defect corpus, kill at least 80% of a held-
+out local mutant corpus, and keep direct proof for every applicable critical-risk
+class. If the cap and those floors cannot coexist, the repository parks for its
+owner instead of changing the denominator or silently retaining the estate.
+Corpus case metadata and mutation-patch bytes are digest-bound to the observed
+effectiveness report so a nominally frozen holdout cannot drift after execution.
 
-Fast lanes optimize iteration, not acceptance. They may be used for focused
-coder checks and revision loops, but neither one can replace the unchanged
-approved-candidate gate or the final handoff-tree gate.
+## Evidence makes removal reviewable
 
-## Admission is local and empirical
+The frozen baseline records every proof identity. Its append-only ledger gives
+each one a disposition, contract, oracle, red witness, nearest overlap,
+replacement evidence, and rationale. Consolidation names a retained executable
+replacement. Deletion states why no replacement is needed. A new post-baseline
+proof names its active contract and risk, supplies the same evidence, and spends
+an explicit positive budget or names a compensating retirement.
 
-The template standardizes the machinery and the evidence shape, not the answer.
-Each recipient inventories its own tests, declares its own proof families, and
-runs its own assay. It must not inherit another project's selectors, family
-choices, timings, risk classes, defect corpus, mutation corpus, thresholds, or
-audit judgments.
+Historical cases may guide the retained selection. The holdout selection is
+frozen before its mutants run, then the result is recorded without tuning. The
+corpora, selectors, survivor identities, risk applicability, timings, and audit
+judgments are always recipient-local; transfer carries the machinery and the
+obligation to perform a new assay, never another repository's answer.
 
-Before activating a fast lane, the recipient records locally admitted historical
-defects and holdout mutants outside ordinary routine execution. Each evidence row
-binds the candidate and proof-estate digest to the exact command, expected and
-observed outcome, detecting family, output digest, and assay denominator. The
-fast lane must detect every admitted case. A repository may choose no fast lane
-at all; full-only is a valid governed state.
+## Fast feedback does not narrow acceptance
 
-## Consolidation follows proof flow
+Vital and changed lanes select retained proofs for iteration. Invalid inventory,
+an unavailable comparison, an empty or ambiguous mapping, or an unrunnable
+selector widens to the full retained estate. The full retained estate remains the
+authoritative close and pre-push gate.
 
-Deletion is never inferred from age, duration, line count, or apparent overlap.
-An audit traces test-to-test dependencies and every producer-to-consumer proof
-flow first. A proof may be consolidated only when another retained proof owns the
-same contract and oracle, its red witness still fails, downstream consumers keep
-their required artifact, and the local effectiveness assay stays whole. Initial
-adoption of this methodology retains the existing estate; reduction is a later,
-separately reviewed local decision.
-
-The repository's policy layer carries the operational obligations for this
-design; this brief remains the rationale and recipient-neutral model.
+Periodic reassessment repeats the inventory, cap, ledger, risk, and corpus checks.
+Every governed maintenance sweep runs the deterministic reassessment and reruns
+the local assay when proof code, selection, corpus, or critical-risk applicability
+changes. Shrinkage is therefore an executable obligation rather than permission
+that can be deferred indefinitely.

@@ -1,0 +1,11 @@
+--- a/lib/agentic_starter/test_governance.py
++++ b/lib/agentic_starter/test_governance.py
+@@ -108,7 +108,7 @@
+ 
+ 
+ def _pytest_family(node_id: str) -> str:
+-    return re.sub(r"\[[^\n]*\]$", "", node_id)
++    return node_id
+ 
+ 
+ def collect_pytest(root: Path) -> list[Proof]:

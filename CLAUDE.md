@@ -86,7 +86,7 @@ In addition to the universal `kickoff`, `methodology`, `learn`, `teach`, `roles`
 - [`deterministic-orchestration.md`](briefs/deterministic-orchestration.md) — **draft.** Design and decision criteria for encoding `kickoff`'s delegate → verdict → route-back loop as a deterministic workflow program. Deferred until every supported harness ships a parity workflow primitive; the prose loop in `kickoff/SKILL.md` remains canonical until then.
 - [`harness-self-improvement.md`](briefs/harness-self-improvement.md) — the two-tier improvement flywheel: phase-scale lessons capture (roles emit Process Observations; `kickoff` harvests into the `lessons/` ledger; recurring lessons graduate under human ratification), the `sweep` maintenance pass, and repo-scale propagation (`stamp` ships the machinery, `teach` retrofits it, `learn` harvests `scope: methodology` lessons back). Records the declined patterns and the deferred contract-versioning DECIDE.
 - [`session-context-compaction.md`](briefs/session-context-compaction.md) — managing harness context compaction during long orchestration runs: verified harness facts (the model can neither invoke `/compact` nor see its own fill level), why mid-arc compaction severs evidence bindings, measured per-arc token economics, the safe-boundary pause protocol (a capacity pause must show its arithmetic), and an unimplemented hook-based automation option.
-- [`test-suite-value-governance.md`](briefs/test-suite-value-governance.md) — treats the test suite as an attributable proof estate: deterministic inventory and selection, recipient-local family/admission decisions and effectiveness assays, governed vital/changed feedback lanes, full close gates, and dependency-aware consolidation.
+- [`test-suite-value-governance.md`](briefs/test-suite-value-governance.md) — treats the test suite as an attributable proof estate: a recipient-local whole-estate reset with physical consolidation/deletion, 20% family/leaf ceilings, 80% historical and held-out effectiveness floors, direct critical-risk proofs, zero-net-growth, governed fast lanes, and full retained close gates.
 
 ## Policies catalog
 
@@ -110,7 +110,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
   candidate-bound full-gate receipts; language values remain repo-specific,
   failures stay visible, receipt misses fail closed, and hook installation is
   opt-in.
-- [`test-suite-governance.md`](policies/test-suite-governance.md) — requires a recipient-local proof estate, deterministic inventory/validation/selection/reporting, fail-closed vital/changed lanes, local historical-defect and holdout-mutant recall before fast-lane admission, and full authoritative close gates.
+- [`test-suite-governance.md`](policies/test-suite-governance.md) — requires a recipient-local frozen baseline, complete proof dispositions, physical reset, family/leaf caps, effectiveness floors, direct critical-risk proof, zero-net-growth, executable reassessment, fail-closed fast lanes, and full retained close gates.
 - [`fail-closed-resume.md`](policies/fail-closed-resume.md) — mechanizes the doctrine's park/resume rules: fail closed first, five-part failure signatures with an append-only novelty ledger, the seven-condition diagnosed self-resume against `kickoff.yaml`'s `run_budgets.self_resume` budget, prelaunch-correction-is-not-a-resume, mechanistic substitution, sealing as a close-time act, instrument qualification, and the required park/resume record.
 - [`review-lanes.md`](policies/review-lanes.md) — risk-adaptive review intensity and proportional follow-up routing. A phase declares `review_lane: full` (default; all four roles) or `light` (mechanical initial work; plan review skipped); the invocation-only `one-shot` lane (coder → critic) runs well-specified isolated phases at the human's explicit token. The orthogonal `evidence_lane: full|light` axis scales candidate-bound ceremony, fail-closed against authority/irreversible/deploy triggers, with the close seal always mandatory. Every initial implementation gets a code critic; later test- or user-driven corrections use direct, coder-only, or full-cycle routing according to risk and size.
 - [`phase-status.md`](policies/phase-status.md) — status markers live only in `plan/INDEX.md`; no `status:` field in per-phase frontmatter; `kickoff` owns transitions.
@@ -149,7 +149,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
   the starter-only `check-anonymization.sh` leak guard.
 - `lib/agentic_starter/` — shared deterministic implementation for exact execution telemetry, evidence schemas, offline dashboard generation, and proof-estate governance.
 - `reports/execution/` — committed, privacy-safe, offline phase reports and aggregate index generated from sanitized telemetry handoffs.
-- `reports/test-governance/` — the local proof-estate baseline, audit, selection, effectiveness, and timing evidence; each recipient regenerates its own contents.
+- `reports/test-governance/` — the local frozen baseline, complete reset ledger, compensated admissions, effectiveness results, current inventory, and reset summary; each recipient regenerates its own contents.
 - `tests/` — tests for universal methodology machinery outside the isolated deliverable: gate/hook contracts, orchestration evidence, execution telemetry and reports, candidate identity, and `kickoff-config`. These are carried into derived projects and run in addition to the deliverable's own gates.
 - `.githooks/` — tracked optional lifecycle hooks. `bin/install-hooks` opts a checkout in; cloning or stamping never changes Git configuration silently; `bin/check-hooks-installed` is the opt-in-aware liveness witness (a set-but-wrong hooks path fails; an unset one passes as not opted in).
 - `plan/` — phased execution plan. Entry point [`plan/INDEX.md`](plan/INDEX.md) (dependency graph, status table, cross-cutting concerns, critical-files map). Each `plan/phase-*.md` holds Goal / Deliverables / Acceptance / brief refs. **When `plan/` and a brief disagree, `plan/` wins.**
@@ -325,11 +325,12 @@ Terms used consistently across briefs, skills, policies, and code. Mismatched us
   lockfile, tests, and caller bundle.
   The authoritative full sequence is `./bin/check all`; focused tests use
   `./bin/test`.
-- **Proof estate.** The recipient-local manifest of executable test definitions
-  and gate/hook proof surfaces, with one owning family, contract, oracle,
-  runner, source mapping, and admission state for each proof. The deterministic
-  `bin/test-governance` manager validates it and selects vital/changed feedback;
-  any uncertainty widens to full, and close gates remain full.
+- **Proof estate.** The recipient-local frozen inventory of collapsed families,
+  expanded leaves, and gate/hook proofs, with complete dispositions, compensated
+  admissions, direct critical-risk witnesses, and local effectiveness evidence.
+  `bin/test-governance` validates the reset and zero-growth budget, runs assays,
+  and selects vital/changed feedback; uncertainty widens to the full retained
+  estate, which remains authoritative for close gates.
 - **Full-gate receipt.** The gitignored durable log, terminal run metadata, and
   success record managed by `bin/check-receipt`, bound to one exact candidate
   and environment. The environment fingerprint comes through the

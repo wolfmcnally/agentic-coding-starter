@@ -1,0 +1,11 @@
+--- a/bin/check
++++ b/bin/check
+@@ -30,7 +30,7 @@
+ gate_mode="${1:-all}"
+ case "$gate_mode" in
+   all|lint|format|test|policy|vital)
+-    if [[ $# -gt 1 ]]; then
++    if [[ $# -gt 2 ]]; then
+       usage >&2
+       exit 2
+     fi

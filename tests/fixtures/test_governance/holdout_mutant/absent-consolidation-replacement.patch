@@ -1,0 +1,11 @@
+--- a/lib/agentic_starter/test_governance.py
++++ b/lib/agentic_starter/test_governance.py
+@@ -503,7 +503,7 @@
+             if proof_id not in current_ids or replacement != proof_id:
+                 errors.append(f"retained proof is absent or self-binding is wrong: {proof_id}")
+         elif row.get("disposition") == "consolidate":
+-            if proof_id in current_ids or replacement not in current_ids:
++            if False:
+                 errors.append(f"consolidated proof has invalid replacement: {proof_id}")
+         elif proof_id in current_ids or replacement is not None:
+             errors.append(f"deleted proof still exists or names a replacement: {proof_id}")

@@ -13,3 +13,6 @@
 *.json text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+
+# Unified-diff fixtures require space-only context markers on blank lines.
+*.patch text eol=lf whitespace=-blank-at-eol,-blank-at-eof

@@ -74,58 +74,6 @@ def write(tmp_path: Path, name: str, text: str) -> Path:
     return path
 
 
-def test_complete_delivery_passes(tmp_path: Path) -> None:
-    root = repository(tmp_path, delivered=True)
-    result = run(root, write(tmp_path, "plan.md", PLAN))
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert result.stdout.strip() == "PLAN DELIVERY PASS"
-
-
-def test_subset_delivery_names_every_missing_item(tmp_path: Path) -> None:
-    root = repository(tmp_path, delivered=False)
-    result = run(root, write(tmp_path, "plan.md", PLAN))
-    assert result.returncode == 1
-    rows = [line.split("\t") for line in result.stdout.splitlines()]
-    checks = sorted(row[1] for row in rows)
-    assert checks == [
-        "introduced-missing",
-        "introduced-missing",
-        "new-file-missing",
-        "new-file-missing",
-        "test-file-missing",
-        "test-missing",
-    ], result.stdout
-    assert all(row[0] == "ERROR" for row in rows)
-    assert any("frobnicate_widget" in row[3] for row in rows)
-    assert any("Frobnicator.spin" in row[3] for row in rows)
-    assert any("test_spin_is_idempotent" in row[3] for row in rows)
-
-
-def test_member_missing_from_delivered_test_file(tmp_path: Path) -> None:
-    root = repository(tmp_path, delivered=True)
-    (root / "tests" / "test_frob.py").write_text("def test_frobnicates():\n    assert True\n")
-    subprocess.run(["git", "-C", str(root), "add", "."], check=True)
-    result = run(root, write(tmp_path, "plan.md", PLAN))
-    assert result.returncode == 1
-    assert "test-missing\t" in result.stdout and "test_spin_is_idempotent" in result.stdout
-
-
-def test_declared_deviation_is_reported_without_failing(tmp_path: Path) -> None:
-    root = repository(tmp_path, delivered=True)
-    (root / "lib" / "frob.py").write_text("def frobnicate_widget():\n    return 2\n")
-    subprocess.run(["git", "-C", str(root), "add", "."], check=True)
-    report = write(
-        tmp_path,
-        "coder.md",
-        "## Phase Implementation Complete\n\n### Notes\n"
-        "- `Frobnicator.spin` dropped: the plan's second use never materialized.\n",
-    )
-    result = run(root, write(tmp_path, "plan.md", PLAN), "--deviations", str(report))
-    assert result.returncode == 0, result.stdout
-    assert "DEVIATION\tintroduced-missing" in result.stdout
-    assert "PLAN DELIVERY PASS (1 declared deviations)" in result.stdout
-
-
 def test_undeclared_narrowing_still_fails_with_a_report(tmp_path: Path) -> None:
     root = repository(tmp_path, delivered=True)
     (root / "lib" / "frob.py").write_text("def frobnicate_widget():\n    return 2\n")
@@ -134,10 +82,3 @@ def test_undeclared_narrowing_still_fails_with_a_report(tmp_path: Path) -> None:
     result = run(root, write(tmp_path, "plan.md", PLAN), "--deviations", str(report))
     assert result.returncode == 1
     assert "ERROR\tintroduced-missing" in result.stdout
-
-
-def test_missing_plan_is_a_usage_error(tmp_path: Path) -> None:
-    root = repository(tmp_path, delivered=True)
-    result = run(root, tmp_path / "nope.md")
-    assert result.returncode == 2
-    assert "cannot read plan" in result.stderr

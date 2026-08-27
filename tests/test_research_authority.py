@@ -75,27 +75,6 @@ def test_generated_commands_enforce_the_role_authority_matrix(tmp_path: Path) ->
             assert "same-host structural neighbors" in prompt
 
 
-def test_research_budgets_accept_a_phase_project_zero_pin(tmp_path: Path) -> None:
-    config = tmp_path / "kickoff.yaml"
-    config.write_text(
-        SEED.read_text(encoding="utf-8").replace("  planner: 12", "  planner: 0"),
-        encoding="utf-8",
-    )
-    environment = os.environ.copy()
-    environment["KICKOFF_CONFIG_FILE"] = str(config)
-    result = subprocess.run(
-        [str(MANAGER), "show", "research"],
-        cwd=ROOT,
-        env=environment,
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=60,
-    )
-    assert result.returncode == 0, result.stderr
-    assert "planner" in result.stdout and "0" in result.stdout
-
-
 def test_retrieval_only_roles_reject_originating_search_budget(tmp_path: Path) -> None:
     config = tmp_path / "kickoff.yaml"
     config.write_text(
@@ -115,35 +94,6 @@ def test_retrieval_only_roles_reject_originating_search_budget(tmp_path: Path) -
     )
     assert result.returncode == 2
     assert "coder is retrieval-only" in result.stderr
-
-
-def test_scoped_research_reset_preserves_other_configuration(tmp_path: Path) -> None:
-    config = tmp_path / "kickoff.yaml"
-    original = (
-        SEED.read_text(encoding="utf-8")
-        .replace("extensions: {}", 'extensions:\n  marker: "preserve"')
-        .replace("  planner: 12", "  planner: 0")
-    )
-    config.write_text(original, encoding="utf-8")
-    environment = os.environ.copy()
-    environment["KICKOFF_CONFIG_FILE"] = str(config)
-    result = subprocess.run(
-        [str(MANAGER), "reset", "research"],
-        cwd=ROOT,
-        env=environment,
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=60,
-    )
-    assert result.returncode == 0, result.stderr
-    updated = config.read_text(encoding="utf-8")
-    assert 'marker: "preserve"' in updated
-    assert "  planner: 12" in updated
-    assert (
-        original.split("role_models:", 1)[1].split("research_budgets:", 1)[0]
-        == (updated.split("role_models:", 1)[1].split("research_budgets:", 1)[0])
-    )
 
 
 def test_policy_is_allow_by_default_without_assuming_any_named_server() -> None:

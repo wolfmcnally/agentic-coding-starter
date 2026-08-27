@@ -342,9 +342,10 @@ These files have a stable shape and a project-specific body. Mirror the shape; w
 - The starter template's `example/` Python package and `tests/test_cli.py` — replace with the new project's surface, in whatever language(s) the project uses.
 - `policies/anonymize-log-references.md`, `bin/check-anonymization.sh`, and `bin/anonymization-denylist.local.example` — starter-only: the rule exists because *this* template is public, not because of any methodology principle. Also drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`, delete the `### check-anonymization.sh` entry from `bin/README.md`, remove its call from `bin/check`, and delete the "External / private-repo references" bullet from the copied `.claude/agents/code-critic.md`, which names both.
 - `tests/test_methodology_toolchain_contract.py` — asserts on the `stamp` skill and the anonymization policy, neither of which the new project has.
-- Starter's `tests/proof-estate.yaml`, `tests/fixtures/test_governance/*.json`,
-  and `reports/test-governance/starter-*` — these are local inventory,
-  effectiveness, timing, and audit state, not methodology content.
+- Starter's `tests/proof-estate.yaml`, `tests/fixtures/test_governance/corpus.yaml`,
+  `tests/fixtures/test_governance/{historical_defect,holdout_mutant}/`, and
+  generated files under `reports/test-governance/` — these are local inventory,
+  effectiveness, reset, and assay state, not methodology content.
 - `briefs/eacp-pattern-map.md` and `briefs/methodology-treatise.md` — both are *about this repository*: one maps its structures onto a named pattern corpus, the other is its outward explanation. A derived project writes its own if it wants them.
 - `LICENSE` and `.vscode/` — the new repository's licensing and editor settings belong to whoever owns it.
 - This repository's `lessons/`, `lessons-archived/`, `user-actions/`, and `user-actions-archived/` entries — every ledger starts empty, with only a `.gitkeep` in each of the four so the directories survive the first commit.
@@ -622,16 +623,17 @@ the full gate on every miss, descriptor failure, or query error.
 
 Generate the recipient's proof estate only after its real tests, gates, and
 hooks exist. `bin/test-governance inventory` supplies the local baseline;
-`tests/proof-estate.yaml` then assigns every local proof to exactly one family
-and declares the gate/hook surfaces. Initial adoption retains every proof. A
-full-only estate with an empty effectiveness ledger is valid. Do not copy the
-template's families, selectors, tiers, risk labels, timings, assay cases,
-reports, or audit judgments. Activate `vital` only after local
-historical-defect and holdout-mutant cases are all detected; `changed` selects
-the union of applicable local mappings and widens to full for any unmapped
-path. Policy and pre-commit run structural validation, while both close gates
-and pre-push remain full. The pinned governance environment includes the YAML
-parser used by the manager.
+`tests/proof-estate.yaml` then declares the recipient-local families and
+gate/hook surfaces. Freeze the whole baseline, run the local Pareto assay,
+physically remove dominated proofs, and disposition every baseline proof before
+adoption completes. Target no more than 20% of both frozen family and leaf
+counts while retaining at least 80% historical and held-out recall and direct
+proof for every applicable critical risk. Park when those requirements cannot
+coexist. Do not copy the template's survivors, selectors, tiers, risk judgments,
+timings, assay cases, reports, or dispositions. Default later growth to zero,
+run `reassess` during sweeps, and widen indeterminate changed selection to full.
+Policy and pre-commit validate structure; both close gates and pre-push remain
+full over the retained estate. The pinned environment includes the YAML parser.
 
 **A non-Python deliverable makes this a two-runtime contract, not a one-line
 substitution.** The universal managers under `bin/` and the whole root `tests/`
@@ -676,9 +678,9 @@ Before declaring the bootstrap complete, verify:
   dependency-chain probe.
 - `bin/test` runs deliverable and universal tooling tests; a focused
   repo-relative selection runs only that selection.
-- `bin/test-governance validate` passes against a recipient-local baseline and
-  retains every seeded proof. An unassayed project stays full-only; if a vital
-  lane is admitted, all of its local historical and holdout cases are detected.
+- `bin/test-governance validate` and `bin/test-governance reassess` pass against
+  a recipient-local frozen baseline, complete disposition ledger, both 20%
+  ceilings, both 80% effectiveness floors, and direct applicable-risk proofs.
 - `bin/check test` delegates to `bin/test` before any live venue probe.
 - A valid explicit runtime override drives setup, probing, testing, gates, and
   the runtime wrapper; an invalid or probe-failing override exits nonzero
