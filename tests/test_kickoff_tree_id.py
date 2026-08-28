@@ -36,6 +36,21 @@ def repository(tmp_path: Path) -> Path:
     )
     subprocess.run(["git", "config", "user.name", "Fixture"], cwd=root, check=True)
     (root / ".gitignore").write_text("ignored.txt\n.cache/\n")
+    (root / "policies").mkdir()
+    (root / "policies" / "orchestration-evidence.md").write_text(
+        "```yaml\n"
+        "# kickoff-evidence drift partitions\n"
+        "inert:\n"
+        "  - LOG*.md\n"
+        "  - EXECUTION_LOG.jsonl\n"
+        "  - plan/INDEX.md\n"
+        "  - lessons/\n"
+        "  - lessons-archived/\n"
+        "  - user-actions/\n"
+        "  - user-actions-archived/\n"
+        "```\n"
+    )
+    (root / "LOG.md").write_text("# Log\n")
     (root / "tracked.txt").write_text("tracked\n")
     (root / "script").write_text("#!/bin/sh\n")
     subprocess.run(["git", "add", "."], cwd=root, check=True)
@@ -62,11 +77,6 @@ def test_identity_is_cwd_independent_and_manifest_is_ordered(
     assert first == second
     paths = [entry["path"] for entry in first["entries"]]
     assert paths == sorted(paths, key=os.fsencode)
-
-
-def test_tracked_staged_unstaged_and_untracked_changes_affect_identity(
-    repository: Path,
-) -> None:
     original = candidate_id(repository)
 
     (repository / "tracked.txt").write_text("unstaged\n")
@@ -80,8 +90,17 @@ def test_tracked_staged_unstaged_and_untracked_changes_affect_identity(
     assert staged == unstaged
     assert untracked != staged
 
+    product_before = run("--root", str(repository), "--product", "--json")
+    assert product_before.returncode == 0, product_before.stderr
+    (repository / "LOG.md").write_text("# Log\n\nappend\n")
+    assert candidate_id(repository) != untracked
+    product_after = run("--root", str(repository), "--product", "--json")
+    assert product_after.returncode == 0, product_after.stderr
+    assert (
+        json.loads(product_before.stdout)["candidate_id"]
+        == json.loads(product_after.stdout)["candidate_id"]
+    )
 
-def test_symlink_escape_fails_closed(repository: Path) -> None:
     (repository / "escape").symlink_to("../outside")
 
     result = run("--root", str(repository))

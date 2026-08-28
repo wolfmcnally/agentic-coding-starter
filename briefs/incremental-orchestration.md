@@ -59,6 +59,12 @@ path, normalized mode, and content digest. It contains no file contents and
 does not include ignored runtime state. Every review snapshot, finding
 transition, context packet, and gate record names a candidate identifier.
 
+The control plane derives two candidates from the same manifest. The full-tree
+candidate binds review, gates, delivery, and commit custody. The product
+candidate excludes only policy-declared inert bookkeeping, so one bounded
+mechanical repair can prove that it did not alter the implementation without
+concealing movement in the actual handoff tree.
+
 ## 3. Thin evidence plane
 
 Each phase run owns four run-scoped records:
@@ -74,6 +80,12 @@ Each phase run owns four run-scoped records:
    candidates, state, classification, and disposition.
 4. **Gate ledger.** Command, candidate identifier, selection rationale, exit
    status, warning count, final-gate flag, and optional artifact digest.
+
+Each managed gate is also admitted by an immutable, content-addressed command
+manifest. Exact argv, operation, attempt, and finality are authority; a later
+manifest can replace the active one only by naming its digest. The venue
+preflight receipt is configuration-bound and proves a real read of
+unpredictable local bytes rather than repetition of a known sentinel.
 
 These are deliberately thinner than a general event-sourcing platform. Their
 job is to support exact revision handoffs and gate invalidation. Narrative
@@ -163,6 +175,12 @@ review/evidence as required, and repeat both gates. Optional, paid, stochastic,
 or human-only diagnostics remain governed by phase acceptance.
 
 ## 7. Execution protocol
+
+Before expensive acceptance, command zero validates the active manifest,
+venue receipt, and stage topology; dry-runs every selector; then checks format,
+the exact committed-log prefix, and effective log chronology. It stops on the
+first failure. This fixed cheap ordering turns malformed orchestration state
+into a seconds-cost refusal instead of a late full-gate failure.
 
 Delegated execution has three independent signals:
 

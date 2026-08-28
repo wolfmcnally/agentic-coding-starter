@@ -1,0 +1,60 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Validate effective append chronology for Starter's root activity log."""
+
+from __future__ import annotations
+
+import argparse
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+
+from agentic_starter import log_blocks  # noqa: E402
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--staged", action="store_true")
+    parser.add_argument("--quiet", action="store_true")
+    args = parser.parse_args()
+    try:
+        root = Path(
+            subprocess.check_output(
+                ["git", "-C", str(args.root.resolve()), "rev-parse", "--show-toplevel"],
+                text=True,
+                stderr=subprocess.PIPE,
+            ).strip()
+        ).resolve()
+        if args.staged:
+            result = subprocess.run(
+                ["git", "-C", str(root), "show", ":LOG.md"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode:
+                raise ValueError("LOG.md has no staged blob")
+            text = result.stdout
+        else:
+            text = (root / "LOG.md").read_text(encoding="utf-8")
+        errors = log_blocks.chronology_errors(log_blocks.parse(text))
+        if errors:
+            for error in errors:
+                print(f"LOG-CHRONOLOGY REFUSED {error}", file=sys.stderr)
+            return 1
+        if not args.quiet:
+            print("LOG-CHRONOLOGY OK")
+        return 0
+    except (OSError, UnicodeError, ValueError, subprocess.CalledProcessError) as exc:
+        print(f"LOG-CHRONOLOGY ERROR {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

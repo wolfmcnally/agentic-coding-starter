@@ -44,6 +44,14 @@ same generator novel.
 A recurring signature always returns to the operator. It may not consume a
 self-resume budget, be renamed to appear novel, or be routed to another venue.
 
+One narrow exception is not a resume: the first novel, purely mechanical
+bookkeeping failure may receive the single bounded repair defined by
+[`orchestration-control-plane.md`](orchestration-control-plane.md). The repair
+must be fully derivable, product-identity preserving, atomically written, and
+byte-verified. It grants neither a second attempt nor authority over substantive
+work. Any ambiguity, recurrence, or failed verification follows the ordinary
+park path above.
+
 ## Diagnosed self-resume
 
 A fresh corrective trace may open without another operator relay only when all

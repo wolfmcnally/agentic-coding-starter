@@ -1,0 +1,82 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Run cheap fail-closed kickoff preflight before expensive acceptance."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+SCRIPT = Path(__file__).resolve()
+TOOL_ROOT = SCRIPT.parent
+if (TOOL_ROOT / "lib" / "agentic_starter" / "kickoff_runbook.py").is_file():
+    LIB = TOOL_ROOT / "lib"
+else:
+    LIB = TOOL_ROOT.parent / "lib"
+sys.path.insert(0, str(LIB))
+
+from agentic_starter import kickoff_runbook  # noqa: E402
+
+
+class CommandZeroError(RuntimeError):
+    pass
+
+
+def run_checked(argv: list[str], cwd: Path, label: str) -> None:
+    result = subprocess.run(argv, cwd=cwd, check=False)
+    if result.returncode:
+        raise CommandZeroError(f"{label} failed with exit {result.returncode}")
+
+
+def active_manifest(run_dir: Path) -> dict[str, object]:
+    journal = run_dir / "gate-manifests.jsonl"
+    try:
+        rows = [json.loads(line) for line in journal.read_text().splitlines() if line]
+    except (OSError, json.JSONDecodeError) as exc:
+        raise CommandZeroError(f"gate-manifest journal is unreadable: {exc}") from exc
+    if not rows:
+        raise CommandZeroError("gate-manifest journal is empty")
+    digest = rows[-1].get("manifest_sha256")
+    try:
+        kickoff_runbook.validate_digest(digest)
+        document, _, observed = kickoff_runbook.load(run_dir / "gate-manifests" / f"{digest}.json")
+    except (OSError, kickoff_runbook.RunbookError) as exc:
+        raise CommandZeroError(f"active gate manifest is invalid: {exc}") from exc
+    if observed != digest:
+        raise CommandZeroError("active gate-manifest digest does not match bytes")
+    return document
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--run-dir", type=Path, required=True)
+    args = parser.parse_args()
+    try:
+        run_dir = args.run_dir.resolve()
+        run = json.loads((run_dir / "run.json").read_text())
+        root = Path(run["repository_root"]).resolve()
+        evidence = run_dir / "tools" / "kickoff-evidence"
+        run_checked(
+            [str(evidence), "validate-preflight", "--run-dir", str(run_dir)],
+            root,
+            "evidence, topology, and venue preflight",
+        )
+        manifest = active_manifest(run_dir)
+        for index, row in enumerate(manifest["preflight_commands"], 1):
+            run_checked(list(row["argv"]), root, f"manifest selector dry-run {index}")
+        run_checked(["./bin/check", "format"], root, "format")
+        run_checked(["./bin/check-log"], root, "log policy")
+        print("COMMAND ZERO PASS")
+        return 0
+    except (CommandZeroError, KeyError, OSError, TypeError, ValueError) as exc:
+        print(f"kickoff-command-zero: {exc}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

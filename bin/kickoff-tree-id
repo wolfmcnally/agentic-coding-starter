@@ -12,11 +12,24 @@ import json
 import os
 import stat
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
 NAMESPACE = b"agentic-kickoff-candidate-v1\0"
 SCRIPT_PATH = Path(__file__).resolve()
+TOOL_ROOT = SCRIPT_PATH.parent
+if (TOOL_ROOT / "lib" / "agentic_starter" / "candidate_boundaries.py").is_file():
+    LIB_ROOT = TOOL_ROOT / "lib"
+else:
+    LIB_ROOT = TOOL_ROOT.parent / "lib"
+sys.path.insert(0, str(LIB_ROOT))
+
+from agentic_starter.candidate_boundaries import (  # noqa: E402
+    BoundaryError,
+    load_inert_paths,
+    path_is_inert,
+)
 
 
 def default_root() -> Path:
@@ -52,10 +65,13 @@ def repository_root(start: Path) -> Path:
     return Path(os.fsdecode(output).strip()).resolve()
 
 
-def candidate_paths(root: Path) -> list[Path]:
+def candidate_paths(root: Path, *, product: bool = False) -> list[Path]:
     tracked = git(root, "ls-files", "--cached", "-z").split(b"\0")
     untracked = git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
     paths = {Path(os.fsdecode(raw)) for raw in (*tracked, *untracked) if raw}
+    if product:
+        inert = load_inert_paths(root)
+        paths = {path for path in paths if not path_is_inert(path.as_posix(), inert)}
     return sorted(paths, key=lambda item: os.fsencode(item.as_posix()))
 
 
@@ -87,10 +103,10 @@ def mode_and_content(path: Path, root: Path) -> tuple[str, bytes]:
     raise ValueError(f"unsupported candidate entry type: {path.relative_to(root)}")
 
 
-def candidate_manifest(root: Path) -> dict[str, Any]:
+def candidate_manifest(root: Path, *, product: bool = False) -> dict[str, Any]:
     digest = hashlib.sha256(NAMESPACE)
     entries: list[dict[str, str]] = []
-    for relative in candidate_paths(root):
+    for relative in candidate_paths(root, product=product):
         mode, content = mode_and_content(root / relative, root)
         path_bytes = os.fsencode(relative.as_posix())
         content_hash = hashlib.sha256(content).hexdigest()
@@ -128,6 +144,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="emit the candidate manifest instead of only its identifier",
     )
+    parser.add_argument(
+        "--product",
+        action="store_true",
+        help="exclude only the policy-owned orchestration-bookkeeping boundary",
+    )
     return parser
 
 
@@ -135,8 +156,8 @@ def main() -> int:
     arguments = build_parser().parse_args()
     try:
         root = repository_root(arguments.root.resolve())
-        manifest = candidate_manifest(root)
-    except (OSError, ValueError) as exc:
+        manifest = candidate_manifest(root, product=arguments.product)
+    except (BoundaryError, OSError, ValueError) as exc:
         detail = str(exc)
         if "not a git repository" in detail:
             detail = f"{arguments.root} is not a git repository; pass --root explicitly"

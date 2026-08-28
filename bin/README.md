@@ -134,6 +134,35 @@ Universal contract:
 Behavioral coverage lives in `tests/test_test_governance.py` and
 `tests/test_pre_commit.py`; the manifest and reports are recipient-local state.
 
+Post-reset evolution is replayed from the append-only audit ledger. A
+`proof_retirement` removes one currently active proof and creates one budget;
+one later `proof_admission` may consume that budget exactly once. Reset-era
+retirements cannot fund proofs appended after the post-reset lifecycle begins.
+
+### `kickoff-command-zero` — cheap ordered acceptance preflight
+
+Validates the active immutable command manifest, real-read venue receipt, and
+stage topology; runs every manifest-declared selector dry-run; then checks
+format and log policy. It stops on the first failure.
+
+```bash
+./bin/kickoff-command-zero --run-dir "$RUN_DIR"
+```
+
+### `check-log` and bounded log repair tools
+
+`check-log` composes the exact committed-prefix and effective-chronology
+validators. `log-append` is the true-EOF writer. `log-relocate` moves one
+uncommitted block only by unique content digest. `normalize-final-newline` is
+closed to the three admitted bookkeeping files.
+
+```bash
+./bin/check-log
+./bin/check-log --staged
+./bin/log-relocate --block <sha256> --after <sha256> --dry-run
+./bin/normalize-final-newline --path plan/INDEX.md --check
+```
+
 ### `check-receipt` — durable full-gate record and exact reuse
 
 Internal manager used by `bin/check all` and the pre-push hook. It identifies
@@ -196,7 +225,7 @@ Validates and safely edits repo-root `kickoff.yaml`, whose `role_models`,
 model/effort fields, execution budgets, per-role originating-search budgets,
 and the per-phase self-resume budget. Round-trip YAML
 handling preserves human comments and extension data. The manager also owns
-fail-closed venue preflight, generated cross-harness commands, strict
+fail-closed real-read venue preflight and its config-bound receipt, generated cross-harness commands, strict
 review-output schemas, immutable role-attempt registration, progress-aware
 supervision, fresh-artifact enforcement, exact execution spans, and
 evidence-based timeout recommendations. A Python script run via `uv` with
@@ -228,7 +257,8 @@ PEP 723 `ruamel.yaml`. Governed by
 ```
 
 ```bash
-./bin/kickoff-config preflight
+./bin/kickoff-config preflight --receipt "$RUN_DIR/role-preflight.json"
+./bin/kickoff-config verify-preflight-receipt --receipt "$RUN_DIR/role-preflight.json"
 ```
 
 ```bash

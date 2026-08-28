@@ -11,7 +11,9 @@
     "families": 108,
     "leaves": 126
   },
-  "admissions": 11,
+  "admissions": 15,
+  "post_reset_retirements": 4,
+  "unspent_retirements": 0,
   "dispositions": {
     "consolidate": 476,
     "delete": 99,
@@ -22,8 +24,8 @@
     "leaves": 0.1826086956521739
   },
   "recall": {
-    "historical_defect": 0.8333333333333334,
-    "holdout_mutant": 0.9166666666666666
+    "historical_defect": 0.9166666666666666,
+    "holdout_mutant": 1.0
   },
   "record_type": "proof-estate-reset"
 }

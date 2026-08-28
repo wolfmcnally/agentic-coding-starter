@@ -301,6 +301,9 @@ the copy was performed. It is not exhaustive and does not need to be.
   that `policies/role-models.md` cites),
   `briefs/incremental-orchestration.md` (candidate-bound review, revision,
   verification, and protocol-recovery design),
+  `briefs/deterministic-orchestration-control-plane.md` (implemented command
+  authority, real-read venue qualification, dual identity, append-only log
+  custody, and bounded deterministic repair),
   `briefs/deterministic-orchestration.md` (draft: decision criteria for a
   deterministic kickoff loop once every supported harness has a parity workflow
   primitive), `briefs/harness-self-improvement.md` (the two-tier improvement
@@ -323,7 +326,9 @@ the copy was performed. It is not exhaustive and does not need to be.
   `bin/check-execution-dashboards`, `bin/check-harness-parity`,
   `bin/check-toolchain-callers`, `bin/test-governance`, `bin/lessons`, `bin/treatise`,
   `bin/check-catalogs`, `bin/check-hooks-installed`, `bin/check-shell-syntax`,
-  `bin/new-name`; plus the operator convenience `bin/serve-execution-dashboard`
+  `bin/new-name`, `bin/check-log`, `bin/check-log-prefix`,
+  `bin/check-log-monotonic`, `bin/kickoff-command-zero`, `bin/log-append`,
+  `bin/log-relocate`, `bin/normalize-final-newline`; plus the operator convenience `bin/serve-execution-dashboard`
   and `bin/check-plan-concreteness`, which `kickoff` runs over every plan
   artifact before plan review (with `tests/test_check_plan_concreteness.py`),
   `bin/check-plan-delivery`, which `kickoff` runs over every implementation
@@ -343,6 +348,7 @@ the copy was performed. It is not exhaustive and does not need to be.
   `tests/test_install_hooks.py`, `tests/test_check_hooks_installed.py`,
   `tests/test_kickoff_config.py`, `tests/test_kickoff_tree_id.py`,
   `tests/test_kickoff_evidence.py`, `tests/test_lessons.py`,
+  `tests/test_kickoff_control_plane.py`, `tests/test_log_control_plane.py`,
   `tests/test_check_catalogs.py`, `tests/test_treatise.py`,
   `tests/test_new_name.py`, `tests/test_shell_syntax.py`,
   `tests/test_toolchain_callers.py`, `tests/test_mirror_parity.py`,
@@ -362,6 +368,18 @@ The candidate-identity and orchestration-evidence contract
 `tests/test_kickoff_evidence.py`, governed by
 `policies/orchestration-evidence.md` and designed in
 `briefs/incremental-orchestration.md`) is atomic: transfer every member or none.
+The deterministic control plane is atomic too:
+`briefs/deterministic-orchestration-control-plane.md`,
+`policies/orchestration-control-plane.md`, `bin/kickoff-command-zero`,
+`bin/check-log`, `bin/check-log-prefix`, `bin/check-log-monotonic`,
+`bin/log-append`, `bin/log-relocate`, `bin/normalize-final-newline`,
+`lib/agentic_starter/candidate_boundaries.py`,
+`lib/agentic_starter/kickoff_runbook.py`,
+`lib/agentic_starter/log_blocks.py`, `tests/test_kickoff_control_plane.py`,
+`tests/test_log_control_plane.py`, and their config/evidence/tree-id, gate,
+hook, skill, catalog, and proof-estate integrations travel together. The
+destination generates its own command rows, selector dry-runs, venue set,
+inert-path vocabulary, manifests, receipts, and proof exchanges.
 So is the self-improvement bundle (`.claude/skills/sweep/SKILL.md`,
 `briefs/harness-self-improvement.md`, `policies/lessons.md`, `bin/lessons`,
 `bin/check-catalogs`, `tests/test_lessons.py`, `tests/test_check_catalogs.py`,

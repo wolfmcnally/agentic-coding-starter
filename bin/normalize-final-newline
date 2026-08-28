@@ -1,0 +1,82 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Normalize one admitted uncommitted bookkeeping file to one final LF."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import os
+import stat
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+ALLOWED = {Path("LOG.md"), Path("EXECUTION_LOG.jsonl"), Path("plan/INDEX.md")}
+
+
+def digest(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def atomic_replace(path: Path, content: bytes) -> None:
+    mode = stat.S_IMODE(path.stat().st_mode)
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(temporary, mode)
+        os.replace(temporary, path)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--path", type=Path, required=True)
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args()
+    try:
+        if args.path not in ALLOWED:
+            raise ValueError("path is outside the admitted bookkeeping repair set")
+        root = args.root.resolve()
+        target = (root / args.path).resolve()
+        if not target.is_relative_to(root) or not target.is_file():
+            raise ValueError("target is absent or escapes repository root")
+        before = target.read_bytes()
+        after = before.rstrip(b"\n") + b"\n"
+        if before == after:
+            print(f"FINAL-NEWLINE OK {args.path} sha256={digest(before)}")
+            return 0
+        committed = subprocess.run(
+            ["git", "-C", str(root), "show", f"HEAD:{args.path.as_posix()}"],
+            capture_output=True,
+            check=False,
+        )
+        if committed.returncode == 0 and committed.stdout == before:
+            raise ValueError("refusing to rewrite unchanged committed bytes")
+        if args.check:
+            print(f"FINAL-NEWLINE NEEDED {args.path}", file=sys.stderr)
+            return 1
+        atomic_replace(target, after)
+        if target.read_bytes() != after:
+            raise ValueError("post-write bytes differ from validated candidate")
+        print(f"FINAL-NEWLINE APPLIED {args.path} before={digest(before)} after={digest(after)}")
+        return 0
+    except (OSError, ValueError) as exc:
+        print(f"FINAL-NEWLINE REFUSED {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

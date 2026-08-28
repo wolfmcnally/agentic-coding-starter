@@ -1,0 +1,102 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Relocate one uncommitted LOG.md block by authenticated identity."""
+
+from __future__ import annotations
+
+import argparse
+import collections
+import os
+import stat
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+
+from agentic_starter import log_blocks  # noqa: E402
+
+
+def atomic_replace(path: Path, content: bytes) -> None:
+    mode = stat.S_IMODE(path.stat().st_mode)
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(temporary, mode)
+        os.replace(temporary, path)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+
+
+def unique(values: list[str], wanted: str, label: str) -> int:
+    matches = [index for index, value in enumerate(values) if value == wanted]
+    if len(matches) != 1:
+        raise ValueError(f"{label} must identify exactly one block; found {len(matches)}")
+    return matches[0]
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--block", required=True)
+    parser.add_argument("--after", required=True)
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+    try:
+        if (
+            log_blocks.SHA256_RE.fullmatch(args.block) is None
+            or log_blocks.SHA256_RE.fullmatch(args.after) is None
+        ):
+            raise ValueError("block identities must be lowercase SHA-256")
+        root = args.root.resolve()
+        target = root / "LOG.md"
+        original = target.read_bytes()
+        committed = subprocess.check_output(["git", "-C", str(root), "show", "HEAD:LOG.md"])
+        if not original.startswith(committed):
+            raise ValueError("working LOG.md already rewrites committed bytes")
+        parsed = log_blocks.parse(original.decode("utf-8"))
+        before = [block.sha256 for block in parsed.blocks]
+        source_index = unique(before, args.block, "source")
+        after_index = unique(before, args.after, "destination")
+        if source_index == after_index:
+            raise ValueError("source and destination are the same block")
+        blocks = list(parsed.blocks)
+        source = blocks.pop(source_index)
+        if source_index < after_index:
+            after_index -= 1
+        blocks.insert(after_index + 1, source)
+        candidate_text = log_blocks.ParsedLog(parsed.preamble, tuple(blocks)).render()
+        candidate = candidate_text.encode("utf-8")
+        after = [block.sha256 for block in log_blocks.parse(candidate_text).blocks]
+        if collections.Counter(before) != collections.Counter(after):
+            raise ValueError("candidate changes authenticated block identities")
+        if not candidate.startswith(committed):
+            raise ValueError("relocation would rewrite committed bytes")
+        errors = log_blocks.chronology_errors(log_blocks.parse(candidate_text))
+        if errors:
+            raise ValueError(errors[0])
+        if candidate == original:
+            raise ValueError("relocation is a no-op")
+        if not args.dry_run:
+            atomic_replace(target, candidate)
+            if target.read_bytes() != candidate:
+                raise ValueError("post-write bytes differ from validated candidate")
+        print(f"LOG-RELOCATE {'DRY-RUN' if args.dry_run else 'APPLIED'} block={args.block}")
+        return 0
+    except (OSError, UnicodeError, ValueError, subprocess.CalledProcessError) as exc:
+        print(f"LOG-RELOCATE REFUSED {exc}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -324,6 +324,54 @@ families:
   duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
+- id: kickoff-control-plane
+  kind: pytest
+  selectors:
+  - tests/test_kickoff_control_plane.py
+  source_paths: &id-kickoff-control
+  - lib/agentic_starter/kickoff_runbook.py
+  - lib/agentic_starter/candidate_boundaries.py
+  - bin/kickoff-command-zero
+  - tests/test_kickoff_control_plane.py
+  covers: *id-kickoff-control
+  contract: Expensive kickoff gates run only after an immutable manifest admits their exact command and cheap preflight succeeds.
+  risk_class: orchestration-custody
+  oracle: Synthetic manifests and commands prove exact admission, ordered preflight, and first-failure stopping.
+  admission: A post-reset retirement funds this direct executable oracle for the new control plane.
+  nearest_overlap: Orchestration-evidence tests bind review artifacts, but did not own executable command authority.
+  historical_evidence: []
+  mutation_evidence: []
+  tier: changed
+  duration_seconds: 0.0
+  flake_rate: 0.0
+  replacement_lineage:
+  - pytest:tests/test_kickoff_tree_id.py::test_tracked_staged_unstaged_and_untracked_changes_affect_identity
+- id: log-control-plane
+  kind: pytest
+  selectors:
+  - tests/test_log_control_plane.py
+  source_paths: &id-log-control
+  - lib/agentic_starter/log_blocks.py
+  - bin/check-log
+  - bin/check-log-prefix
+  - bin/check-log-monotonic
+  - bin/log-append
+  - bin/log-relocate
+  - bin/normalize-final-newline
+  - tests/test_log_control_plane.py
+  covers: *id-log-control
+  contract: Starter's activity log extends committed bytes, remains effectively chronological, and accepts only bounded authenticated repairs.
+  risk_class: chronology-custody
+  oracle: A temporary repository exercises append, prefix refusal, chronology repair, identity preservation, and closed newline normalization.
+  admission: A post-reset retirement funds this direct executable oracle for append-only construction evidence.
+  nearest_overlap: Log policy prose described ownership but did not prove exact bytes or repair boundaries.
+  historical_evidence: []
+  mutation_evidence: []
+  tier: changed
+  duration_seconds: 0.0
+  flake_rate: 0.0
+  replacement_lineage:
+  - pytest:tests/test_kickoff_tree_id.py::test_symlink_escape_fails_closed
 - id: candidate-identity
   kind: pytest
   selectors:
@@ -804,6 +852,26 @@ families:
   duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
+- id: gate-policy-log
+  kind: gate
+  selectors:
+  - policy-log
+  source_paths:
+  - bin/check
+  covers:
+  - bin/check
+  contract: The authoritative policy lane refuses historical log rewrites and chronology regressions.
+  risk_class: lifecycle-custody
+  oracle: The named gate remains wired into bin/check and propagates the log validator's exit status.
+  admission: A post-reset retirement funds the new lifecycle wiring.
+  nearest_overlap: The log-control-plane family proves behavior but not authoritative gate composition.
+  historical_evidence: []
+  mutation_evidence: []
+  tier: full
+  duration_seconds: 0.0
+  flake_rate: 0.0
+  replacement_lineage:
+  - pytest:tests/test_pre_commit.py::test_pre_commit_preserves_governance_failure
 - id: gate-policy-lessons
   kind: gate
   selectors:
@@ -975,6 +1043,26 @@ families:
   duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
+- id: hook-githooks-pre-commit-bin-check-log-staged
+  kind: hook
+  selectors:
+  - hook:.githooks/pre-commit:./bin/check-log --staged
+  source_paths:
+  - .githooks/pre-commit
+  covers:
+  - .githooks/pre-commit
+  contract: A staged historical log rewrite is refused before a commit can record it.
+  risk_class: lifecycle-custody
+  oracle: The tracked pre-commit hook calls the staged-byte and chronology wrapper directly.
+  admission: A post-reset retirement funds the new lifecycle wiring.
+  nearest_overlap: The policy gate checks working bytes; this proof uniquely covers staged custody.
+  historical_evidence: []
+  mutation_evidence: []
+  tier: full
+  duration_seconds: 0.0
+  flake_rate: 0.0
+  replacement_lineage:
+  - pytest:tests/test_kickoff_evidence.py::test_gate_record_rejects_stale_candidate_and_hashes_artifact
 - id: hook-githooks-pre-commit-bin-test-governance-validate
   kind: hook
   selectors:

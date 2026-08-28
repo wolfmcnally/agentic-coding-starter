@@ -22,7 +22,7 @@ def test_parameterized_leaves_collapse_to_one_family() -> None:
 def test_inventory_counts_executable_families_and_expanded_leaves() -> None:
     observed = governance.inventory(REPO_ROOT)
     assert observed["counts"] == {"families": 108, "leaves": 126}
-    assert observed["by_kind"]["pytest"] == {"families": 89, "leaves": 107}
+    assert observed["by_kind"]["pytest"] == {"families": 87, "leaves": 105}
 
 
 def test_live_reset_validates() -> None:
@@ -160,6 +160,35 @@ def test_positive_growth_requires_named_approval(
         governance.validate(REPO_ROOT)
     mode[0] = "selection"
     with pytest.raises(governance.GovernanceError, match="selection must be frozen"):
+        governance.validate(REPO_ROOT)
+
+    monkeypatch.setattr(governance, "load_yaml", original)
+    original_ledger = governance.load_ledger
+    lifecycle_mode = ["missing"]
+
+    def broken_lifecycle(path: Path):
+        rows = original_ledger(path)
+        if path.name != "starter-reset.jsonl":
+            return rows
+        retirements = [row for row in rows if row.get("record_type") == "proof_retirement"]
+        admissions = [row for row in rows if row.get("record_type") == "proof_admission"]
+        if lifecycle_mode[0] == "missing":
+            target = retirements[-1]["proof_id"]
+            return [
+                row
+                for row in rows
+                if not (
+                    row.get("record_type") == "proof_retirement" and row.get("proof_id") == target
+                )
+            ]
+        admissions[-1]["compensating_retirement"] = retirements[0]["proof_id"]
+        return rows
+
+    monkeypatch.setattr(governance, "load_ledger", broken_lifecycle)
+    with pytest.raises(governance.GovernanceError, match="lacks an available retirement"):
+        governance.validate(REPO_ROOT)
+    lifecycle_mode[0] = "reuse"
+    with pytest.raises(governance.GovernanceError, match="retirement budget is reused"):
         governance.validate(REPO_ROOT)
 
 

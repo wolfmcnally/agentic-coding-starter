@@ -1,7 +1,7 @@
 --- a/lib/agentic_starter/test_governance.py
 +++ b/lib/agentic_starter/test_governance.py
-@@ -478,7 +478,7 @@
-         errors.append("audit ledger does not admit every post-baseline proof exactly once")
+@@ -491,7 +491,7 @@
+         errors.append("audit ledger does not admit every active post-baseline proof")
      dispositions_seen: set[str] = set()
      for row in disposition_rows:
 -        if set(row) != DISPOSITION_FIELDS:
@@ -9,7 +9,7 @@
              errors.append(f"wrong disposition fields for {row.get('proof_id')}")
              continue
          if row.get("disposition") not in {"retain", "delete", "consolidate"}:
-@@ -493,7 +493,7 @@
+@@ -506,7 +506,7 @@
              "replacement_evidence",
              "rationale",
          ):

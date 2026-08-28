@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import difflib
-import fnmatch
 import hashlib
 import json
 import os
@@ -31,6 +30,7 @@ sys.path.insert(0, str(LIB_ROOT))
 # Sourced, not restated. `bin/kickoff-config` constrains generation from the
 # same definitions, so a second copy of the closed sets here would be exactly
 # the drift this arrangement exists to remove.
+from agentic_starter import candidate_boundaries, kickoff_runbook  # noqa: E402
 from agentic_starter.execution_telemetry import (  # noqa: E402
     TelemetryError,
     attach_review_metrics,
@@ -391,6 +391,21 @@ def tree_manifest(root: Path) -> dict[str, Any]:
     return value
 
 
+def product_manifest(root: Path) -> dict[str, Any]:
+    executable = TOOL_ROOT / "kickoff-tree-id"
+    process = subprocess.run(
+        [str(executable), "--root", str(root), "--product", "--json"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if process.returncode != 0:
+        raise EvidenceError(process.stderr.strip() or "product identification failed")
+    value = json.loads(process.stdout)
+    validate_candidate_manifest(value)
+    return value
+
+
 def validate_candidate_id(value: Any, label: str) -> str:
     if not isinstance(value, str) or not CANDIDATE_ID.fullmatch(value):
         raise EvidenceError(f"{label} must be a lowercase SHA-256 identifier")
@@ -512,12 +527,14 @@ def validate_run_dir(run_dir: Path) -> dict[str, Any]:
     if not root.is_absolute() or not (root / ".git").exists():
         raise EvidenceError("run metadata has no valid repository root")
     validate_candidate_id(run.get("initial_candidate_id"), "initial_candidate_id")
+    validate_candidate_id(run.get("initial_product_candidate_id"), "initial_product_candidate_id")
     required = {
         "schema_version",
         "phase",
         "repository_root",
         "created_at",
         "initial_candidate_id",
+        "initial_product_candidate_id",
         "telemetry_trace_id",
         "telemetry_root_span_id",
         "review_lane",
@@ -588,6 +605,13 @@ def install_tool_bundle(run_dir: Path) -> dict[str, Any]:
         "lib/agentic_starter/execution_dashboard.py": (
             REPO_ROOT / "lib" / "agentic_starter" / "execution_dashboard.py"
         ),
+        "lib/agentic_starter/candidate_boundaries.py": (
+            REPO_ROOT / "lib" / "agentic_starter" / "candidate_boundaries.py"
+        ),
+        "lib/agentic_starter/kickoff_runbook.py": (
+            REPO_ROOT / "lib" / "agentic_starter" / "kickoff_runbook.py"
+        ),
+        "kickoff-command-zero": REPO_ROOT / "bin" / "kickoff-command-zero",
     }
     manifest: list[dict[str, str]] = []
     for relative, source in sources.items():
@@ -610,6 +634,120 @@ def install_tool_bundle(run_dir: Path) -> dict[str, Any]:
         "schema_version": 1,
         "manifest_sha256": hashlib.sha256((bundle / "manifest.json").read_bytes()).hexdigest(),
     }
+
+
+GATE_MANIFEST_ACTIVATION_FIELDS = {
+    "schema_version",
+    "activated_at",
+    "manifest_sha256",
+    "supersedes",
+}
+
+
+def active_gate_manifest(run_dir: Path) -> tuple[dict[str, Any], str] | None:
+    journal = run_dir / "gate-manifests.jsonl"
+    if not journal.exists() or not journal.read_text(encoding="utf-8").strip():
+        return None
+    previous: str | None = None
+    active: tuple[dict[str, Any], str] | None = None
+    for line_number, row in enumerate(load_jsonl(journal), 1):
+        if (
+            set(row) != GATE_MANIFEST_ACTIVATION_FIELDS
+            or row.get("schema_version") != SCHEMA_VERSION
+        ):
+            raise EvidenceError(f"invalid gate-manifests.jsonl line {line_number} schema")
+        try:
+            digest = kickoff_runbook.validate_digest(
+                row.get("manifest_sha256"),
+                f"gate-manifests.jsonl line {line_number} digest",
+            )
+        except kickoff_runbook.RunbookError as exc:
+            raise EvidenceError(str(exc)) from exc
+        if row.get("supersedes") != previous:
+            raise EvidenceError(
+                f"gate-manifests.jsonl line {line_number} does not supersede the active manifest"
+            )
+        artifact = run_dir / "gate-manifests" / f"{digest}.json"
+        try:
+            document, _, observed = kickoff_runbook.load(artifact)
+        except (OSError, kickoff_runbook.RunbookError) as exc:
+            raise EvidenceError(f"invalid activated gate manifest: {exc}") from exc
+        if observed != digest:
+            raise EvidenceError("activated gate-manifest bytes changed")
+        previous = digest
+        active = (document, digest)
+    return active
+
+
+def command_activate_gate_manifest(arguments: argparse.Namespace) -> None:
+    validate_run_dir(arguments.run_dir)
+    try:
+        document, raw, digest = kickoff_runbook.load(arguments.manifest)
+    except (OSError, kickoff_runbook.RunbookError) as exc:
+        raise EvidenceError(f"cannot activate gate manifest: {exc}") from exc
+    current = active_gate_manifest(arguments.run_dir)
+    predecessor = current[1] if current else None
+    if arguments.supersedes != predecessor:
+        if predecessor is None:
+            raise EvidenceError("first gate-manifest activation must omit --supersedes")
+        raise EvidenceError(f"successor gate manifest must pass --supersedes {predecessor}")
+    destination = arguments.run_dir / "gate-manifests" / f"{digest}.json"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        if destination.read_bytes() != raw:
+            raise EvidenceError("gate-manifest digest collision or changed artifact")
+    else:
+        descriptor = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+    loaded, _, observed = kickoff_runbook.load(destination)
+    if loaded != document or observed != digest:
+        raise EvidenceError("stored gate manifest failed post-write validation")
+    append_jsonl(
+        arguments.run_dir / "gate-manifests.jsonl",
+        {
+            "schema_version": SCHEMA_VERSION,
+            "activated_at": now(),
+            "manifest_sha256": digest,
+            "supersedes": predecessor,
+        },
+    )
+    active = active_gate_manifest(arguments.run_dir)
+    if active is None or active[1] != digest:
+        raise EvidenceError("gate-manifest activation did not become current")
+    print(digest)
+
+
+def validate_role_preflight_receipt(run_dir: Path, root: Path) -> None:
+    receipt = run_dir / "role-preflight.json"
+    if not receipt.is_file():
+        raise EvidenceError("run has no role-venue preflight receipt")
+    process = subprocess.run(
+        [
+            str(run_dir / "tools" / "kickoff-config"),
+            "verify-preflight-receipt",
+            "--receipt",
+            str(receipt),
+        ],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if process.returncode:
+        raise EvidenceError(process.stderr.strip() or "role-venue preflight receipt is invalid")
+
+
+def command_validate_preflight(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    root = Path(run["repository_root"])
+    if run["evidence_lane"] == "full" and active_gate_manifest(arguments.run_dir) is None:
+        raise EvidenceError("full evidence lane requires an active gate manifest")
+    validate_role_preflight_receipt(arguments.run_dir, root)
+    validate_preacceptance_topology(run, arguments.run_dir, root)
+    print("PREFLIGHT VALID")
 
 
 def required_initial_roles(review_lane: str, route: str) -> list[str]:
@@ -688,9 +826,29 @@ def command_init(arguments: argparse.Namespace) -> None:
     run_dir = arguments.run_dir.resolve()
     if run_dir.exists() and any(run_dir.iterdir()):
         raise EvidenceError(f"run directory is not empty: {run_dir}")
+    if not arguments.preflight_receipt.is_file():
+        raise EvidenceError("init requires a role-venue preflight receipt")
+    receipt_check = subprocess.run(
+        [
+            str(TOOL_ROOT / "kickoff-config"),
+            "verify-preflight-receipt",
+            "--receipt",
+            str(arguments.preflight_receipt),
+        ],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if receipt_check.returncode:
+        raise EvidenceError(
+            receipt_check.stderr.strip() or "role-venue preflight receipt is invalid"
+        )
     run_dir.mkdir(parents=True, exist_ok=True)
     tool_bundle = install_tool_bundle(run_dir)
     candidate = tree_manifest(root)
+    product = product_manifest(root)
+    shutil.copy2(arguments.preflight_receipt, run_dir / "role-preflight.json")
     authorities = [
         parse_authority_spec(specification, root, priority)
         for priority, specification in enumerate(arguments.authority, 1)
@@ -730,6 +888,7 @@ def command_init(arguments: argparse.Namespace) -> None:
             "repository_root": str(root),
             "created_at": created_at,
             "initial_candidate_id": candidate["candidate_id"],
+            "initial_product_candidate_id": product["candidate_id"],
             "telemetry_trace_id": arguments.telemetry_trace_id,
             "telemetry_root_span_id": arguments.telemetry_root_span_id,
             "review_lane": arguments.review_lane,
@@ -754,6 +913,7 @@ def command_init(arguments: argparse.Namespace) -> None:
         },
     )
     atomic_json(run_dir / "reviewed-candidate.json", candidate)
+    atomic_json(run_dir / "reviewed-product-candidate.json", product)
     atomic_json(
         run_dir / "findings.json",
         {
@@ -768,6 +928,7 @@ def command_init(arguments: argparse.Namespace) -> None:
     (run_dir / "role-dispatch.jsonl").touch()
     (run_dir / "dispatch-open-omitted.jsonl").touch()
     (run_dir / "packets.jsonl").touch()
+    (run_dir / "gate-manifests.jsonl").touch()
     (run_dir / "lineage.jsonl").touch()
     record_lineage(run_dir, candidate, "init")
     print(candidate["candidate_id"])
@@ -1535,79 +1696,15 @@ def changed_entries(reviewed: dict[str, Any], current: dict[str, Any]) -> list[d
 
 
 def load_drift_partitions(root: Path) -> tuple[str, ...]:
-    """The inert-set vocabulary, parsed from the policy that owns it.
-
-    Sourced rather than restated: the fenced block in
-    `policies/orchestration-evidence.md` is the single source of truth, and it
-    is deliberately read live — a record is never accepted, or re-accepted at
-    `validate`, on a vocabulary that has since been withdrawn.
-    """
-    contract = root / "policies" / "orchestration-evidence.md"
+    """Read the shared policy-owned inert-set vocabulary."""
     try:
-        text = contract.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError) as exc:
-        # `UnicodeDecodeError` is a `ValueError`, not an `OSError`, so it would
-        # escape `main`'s exception tuple as a traceback rather than a
-        # diagnostic if it were not named here.
-        raise EvidenceError(
-            "cannot read the drift partition vocabulary from "
-            f"policies/orchestration-evidence.md: {exc}"
-        ) from exc
-    matches = list(DRIFT_PARTITION_BLOCK.finditer(text))
-    if len(matches) != 1:
-        # Exactly one, as `extract_json_block` demands of its own fences. A
-        # policy document that documents its own block format is a plausible
-        # place for a second copy to appear, and silently taking the first would
-        # make which one governs depend on document order.
-        raise EvidenceError(
-            f"policies/orchestration-evidence.md carries {len(matches)} "
-            "'# kickoff-evidence drift partitions' yaml blocks; exactly one is "
-            "the vocabulary"
-        )
-    match = matches[0]
-    entries: list[str] = []
-    inside = False
-    for raw in match.group(1).splitlines():
-        line = raw.split("#", 1)[0].rstrip()
-        if not line.strip():
-            continue
-        head = line.strip()
-        if head == "inert:":
-            inside = True
-        elif head.startswith("- ") and inside:
-            entries.append(head[2:].strip())
-        else:
-            raise EvidenceError(f"unparseable drift partition line: {raw!r}")
-    if not entries:
-        raise EvidenceError("the declared drift partition inert set is empty")
-    if len(set(entries)) != len(entries):
-        raise EvidenceError("the declared drift partition inert set repeats an entry")
-    for entry in entries:
-        body = entry[:-1] if entry.endswith("/") else entry
-        if not body or Path(body).is_absolute() or ".." in Path(body).parts:
-            raise EvidenceError(f"invalid drift partition entry: {entry!r}")
-    return tuple(entries)
+        return candidate_boundaries.load_inert_paths(root)
+    except candidate_boundaries.BoundaryError as exc:
+        raise EvidenceError(str(exc)) from exc
 
 
 def path_is_inert(path: str, entries: tuple[str, ...]) -> bool:
-    """Whether one repository-relative path lies inside the declared inert set.
-
-    A trailing `/` is a directory prefix. Anything else matches component by
-    component, so `*` never crosses a `/`: a root-level glob entry names only
-    root-level files and can never reach a nested path with the same basename.
-    """
-    components = path.split("/")
-    for entry in entries:
-        if entry.endswith("/"):
-            if path.startswith(entry):
-                return True
-            continue
-        pattern = entry.split("/")
-        if len(pattern) == len(components) and all(
-            fnmatch.fnmatchcase(component, glob) for component, glob in zip(components, pattern)
-        ):
-            return True
-    return False
+    return candidate_boundaries.path_is_inert(path, entries)
 
 
 def classify_candidate_drift(
@@ -1881,6 +1978,9 @@ def command_capture_change(arguments: argparse.Namespace) -> None:
     reviewed = load_json(arguments.run_dir / "reviewed-candidate.json")
     validate_candidate_manifest(reviewed)
     current = tree_manifest(root)
+    reviewed_product = load_json(arguments.run_dir / "reviewed-product-candidate.json")
+    validate_candidate_manifest(reviewed_product)
+    current_product = product_manifest(root)
     record_lineage(arguments.run_dir, current, "capture-change")
     drift = authority_drift(arguments.run_dir, root)
     metadata = {
@@ -1891,7 +1991,10 @@ def command_capture_change(arguments: argparse.Namespace) -> None:
         "rebase_reasons": arguments.rebase_reason,
         "failure_analysis": arguments.failure_analysis,
         "falsifiers": [],
-        "gate_status": {"focused": arguments.gate_status, "reason": arguments.gate_reason},
+        "gate_status": {
+            "focused": arguments.gate_status,
+            "reason": arguments.gate_reason,
+        },
     }
     if arguments.metadata or arguments.metadata_artifact:
         supplied = (
@@ -1944,6 +2047,8 @@ def command_capture_change(arguments: argparse.Namespace) -> None:
         "captured_at": now(),
         "reviewed_candidate_id": reviewed["candidate_id"],
         "candidate_id": current["candidate_id"],
+        "reviewed_product_candidate_id": reviewed_product["candidate_id"],
+        "product_candidate_id": current_product["candidate_id"],
         "changed_files": changed_entries(reviewed, current),
         "risk_tags": risk_tags,
         "new_risk_tags": new_risk_tags,
@@ -1963,6 +2068,7 @@ def command_capture_change(arguments: argparse.Namespace) -> None:
     }
     atomic_json(arguments.run_dir / "change.json", change)
     atomic_json(arguments.run_dir / "candidate.json", current)
+    atomic_json(arguments.run_dir / "product-candidate.json", current_product)
     print(current["candidate_id"])
 
 
@@ -1970,6 +2076,7 @@ def command_mark_reviewed(arguments: argparse.Namespace) -> None:
     run = validate_run_dir(arguments.run_dir)
     root = Path(run["repository_root"])
     current = tree_manifest(root)
+    current_product = product_manifest(root)
     record_lineage(arguments.run_dir, current, "mark-reviewed")
     if arguments.expected_candidate:
         expected = validate_candidate_id(arguments.expected_candidate, "expected candidate")
@@ -1978,6 +2085,7 @@ def command_mark_reviewed(arguments: argparse.Namespace) -> None:
                 f"candidate mismatch: expected {expected}, found {current['candidate_id']}"
             )
     atomic_json(arguments.run_dir / "reviewed-candidate.json", current)
+    atomic_json(arguments.run_dir / "reviewed-product-candidate.json", current_product)
     change_path = arguments.run_dir / "change.json"
     if change_path.exists():
         atomic_json(
@@ -2008,11 +2116,13 @@ def command_capture_plan(arguments: argparse.Namespace) -> None:
     delta_path = arguments.run_dir / "plan-change.patch"
     delta_path.write_text(delta)
     candidate = tree_manifest(root)
+    product = product_manifest(root)
     drift = authority_drift(arguments.run_dir, root)
     manifest = {
         "schema_version": SCHEMA_VERSION,
         "captured_at": now(),
         "candidate_id": candidate["candidate_id"],
+        "product_candidate_id": product["candidate_id"],
         "reviewed_plan_sha256": hashlib.sha256(reviewed_text.encode()).hexdigest(),
         "plan_sha256": hashlib.sha256(current_text.encode()).hexdigest(),
         "changed": reviewed_text != current_text,
@@ -2024,6 +2134,7 @@ def command_capture_plan(arguments: argparse.Namespace) -> None:
     }
     atomic_json(arguments.run_dir / "plan-change.json", manifest)
     atomic_json(arguments.run_dir / "candidate.json", candidate)
+    atomic_json(arguments.run_dir / "product-candidate.json", product)
     print(manifest["plan_sha256"])
 
 
@@ -2491,6 +2602,7 @@ def command_record_gate(arguments: argparse.Namespace) -> None:
     run = validate_run_dir(arguments.run_dir)
     root = Path(run["repository_root"])
     current = tree_manifest(root)
+    product = product_manifest(root)
     expected = validate_candidate_id(arguments.candidate, "gate candidate")
     if current["candidate_id"] != expected:
         raise EvidenceError(
@@ -2517,6 +2629,9 @@ def command_record_gate(arguments: argparse.Namespace) -> None:
         "recorded_at": now(),
         "candidate_id": expected,
         "candidate_after_id": expected,
+        "product_candidate_id": product["candidate_id"],
+        "product_candidate_after_id": product["candidate_id"],
+        "command_manifest_sha256": None,
         "argv": argv,
         "command": shlex.join(argv),
         "operation": "gate.imported",
@@ -2541,6 +2656,7 @@ def command_run_gate(arguments: argparse.Namespace) -> None:
     root = Path(run["repository_root"])
     expected = validate_candidate_id(arguments.candidate, "gate candidate")
     before = tree_manifest(root)
+    product_before = product_manifest(root)
     if before["candidate_id"] != expected:
         raise EvidenceError(
             f"candidate mismatch: expected {expected}, found {before['candidate_id']}"
@@ -2552,6 +2668,23 @@ def command_run_gate(arguments: argparse.Namespace) -> None:
         argv = argv[1:]
     if not argv or any(not isinstance(item, str) or not item for item in argv):
         raise EvidenceError("run-gate requires exact argv after --")
+    active_manifest = active_gate_manifest(arguments.run_dir)
+    if run["evidence_lane"] == "full" and active_manifest is None:
+        raise EvidenceError("full evidence lane requires an active gate manifest before run-gate")
+    manifest_digest: str | None = None
+    if active_manifest is not None:
+        manifest, manifest_digest = active_manifest
+        if not kickoff_runbook.admitted(
+            manifest,
+            operation=arguments.operation,
+            attempt=arguments.attempt,
+            final=arguments.final,
+            argv=argv,
+        ):
+            raise EvidenceError("gate command is absent from the active immutable manifest")
+    if arguments.final and run["evidence_lane"] == "full":
+        validate_role_preflight_receipt(arguments.run_dir, root)
+        validate_preacceptance_topology(run, arguments.run_dir, root)
     # Artifact preconditions are checked BEFORE the command runs. Everything
     # after `run_observed` has opened a span must be recoverable, because a
     # closed span is immutable and a root-parented gate span with no evidence
@@ -2579,6 +2712,7 @@ def command_run_gate(arguments: argparse.Namespace) -> None:
     finally:
         os.chdir(original_directory)
     after = tree_manifest(root)
+    product_after = product_manifest(root)
     artifact_digest = None
     if arguments.artifact:
         if arguments.artifact.is_file():
@@ -2608,6 +2742,9 @@ def command_run_gate(arguments: argparse.Namespace) -> None:
         "recorded_at": now(),
         "candidate_id": expected,
         "candidate_after_id": after["candidate_id"],
+        "product_candidate_id": product_before["candidate_id"],
+        "product_candidate_after_id": product_after["candidate_id"],
+        "command_manifest_sha256": manifest_digest,
         "argv": argv,
         "command": shlex.join(argv),
         "operation": arguments.operation,
@@ -2626,6 +2763,9 @@ def command_run_gate(arguments: argparse.Namespace) -> None:
     append_jsonl(arguments.run_dir / "gates.jsonl", record)
     if after["candidate_id"] != expected:
         print("kickoff-evidence: gate changed the candidate", file=sys.stderr)
+        raise SystemExit(2)
+    if product_after["candidate_id"] != product_before["candidate_id"]:
+        print("kickoff-evidence: gate changed the product candidate", file=sys.stderr)
         raise SystemExit(2)
     if not telemetry_complete:
         print("kickoff-evidence: gate telemetry is incomplete", file=sys.stderr)
@@ -3712,7 +3852,10 @@ def command_attach_derived_metrics(arguments: argparse.Namespace) -> None:
     )
 
 
-def validate_preclose_telemetry(run: dict[str, Any], run_dir: Path, root: Path) -> None:
+def validate_preacceptance_topology(
+    run: dict[str, Any], run_dir: Path, root: Path
+) -> list[dict[str, Any]]:
+    """Refuse malformed stage composition while the run is still repairable."""
     try:
         spans = closed_spans(
             engine_root=root,
@@ -3753,6 +3896,11 @@ def validate_preclose_telemetry(run: dict[str, Any], run_dir: Path, root: Path) 
     for previous, current in zip(ordered, ordered[1:]):
         if current["start_offset_ns"] < previous["end_offset_ns"]:
             raise EvidenceError("orchestration stage spans must not overlap")
+    return spans
+
+
+def validate_preclose_telemetry(run: dict[str, Any], run_dir: Path, root: Path) -> None:
+    spans = validate_preacceptance_topology(run, run_dir, root)
     # Light-lane review metrics ride the omission ledger instead of the span
     # (`review-metrics-omitted.jsonl`); the join requirement is full-lane only.
     if run.get("evidence_lane") != "light":
@@ -3771,6 +3919,9 @@ def validate_gate_record(
         "recorded_at",
         "candidate_id",
         "candidate_after_id",
+        "product_candidate_id",
+        "product_candidate_after_id",
+        "command_manifest_sha256",
         "argv",
         "command",
         "operation",
@@ -3790,6 +3941,14 @@ def validate_gate_record(
         raise EvidenceError(f"invalid {label} schema")
     validate_candidate_id(gate.get("candidate_id"), "gate candidate")
     validate_candidate_id(gate.get("candidate_after_id"), "gate candidate after")
+    validate_candidate_id(gate.get("product_candidate_id"), "gate product candidate")
+    validate_candidate_id(gate.get("product_candidate_after_id"), "gate product candidate after")
+    manifest_digest = gate.get("command_manifest_sha256")
+    if manifest_digest is not None:
+        try:
+            kickoff_runbook.validate_digest(manifest_digest, "gate manifest digest")
+        except kickoff_runbook.RunbookError as exc:
+            raise EvidenceError(str(exc)) from exc
     argv = validate_string_list(gate.get("argv"), "gate argv")
     if gate.get("command") != shlex.join(argv):
         legacy_detail = (
@@ -4205,6 +4364,11 @@ def command_packet(arguments: argparse.Namespace) -> None:
         "created_at": now(),
         "kind": arguments.kind,
         "candidate_id": candidate_id,
+        "product_candidate_id": (
+            plan_change["product_candidate_id"]
+            if arguments.kind == "plan"
+            else change["product_candidate_id"]
+        ),
         "bytes": len(text.encode()),
         "sha256": hashlib.sha256(text.encode()).hexdigest(),
         "source_sha256": {
@@ -4242,6 +4406,7 @@ def command_validate(arguments: argparse.Namespace) -> None:
             raise EvidenceError("authority path must be repository-relative")
         validate_candidate_id(item.get("content_sha256"), f"authority hash for {authority_path}")
     validate_candidate_manifest(load_json(arguments.run_dir / "reviewed-candidate.json"))
+    validate_candidate_manifest(load_json(arguments.run_dir / "reviewed-product-candidate.json"))
     findings = load_json(arguments.run_dir / "findings.json")
     if (
         not isinstance(findings, dict)
@@ -4298,6 +4463,10 @@ def command_validate(arguments: argparse.Namespace) -> None:
             raise EvidenceError("invalid change manifest schema")
         validate_candidate_id(change.get("reviewed_candidate_id"), "reviewed candidate")
         validate_candidate_id(change.get("candidate_id"), "candidate")
+        validate_candidate_id(
+            change.get("reviewed_product_candidate_id"), "reviewed product candidate"
+        )
+        validate_candidate_id(change.get("product_candidate_id"), "product candidate")
         validate_string_list(change.get("risk_tags"), "change risk_tags")
         validate_string_list(change.get("new_risk_tags"), "change new_risk_tags")
         validate_string_list(change.get("selected_tests"), "change selected_tests")
@@ -4327,6 +4496,7 @@ def command_validate(arguments: argparse.Namespace) -> None:
         if plan_change.get("schema_version") != SCHEMA_VERSION:
             raise EvidenceError("invalid plan-change schema")
         validate_candidate_id(plan_change.get("candidate_id"), "plan candidate")
+        validate_candidate_id(plan_change.get("product_candidate_id"), "plan product candidate")
         validate_candidate_id(plan_change.get("reviewed_plan_sha256"), "reviewed plan hash")
         validate_candidate_id(plan_change.get("plan_sha256"), "plan hash")
         validate_candidate_id(plan_change.get("delta_sha256"), "plan delta hash")
@@ -4348,6 +4518,11 @@ def command_validate(arguments: argparse.Namespace) -> None:
                 record.get("candidate_id"),
                 f"candidate in {ledger_name} line {line_number}",
             )
+            if ledger_name == "packets.jsonl":
+                validate_candidate_id(
+                    record.get("product_candidate_id"),
+                    f"product candidate in {ledger_name} line {line_number}",
+                )
             records.append(record)
         ledgers[ledger_name] = records
     for line_number, gate in enumerate(ledgers["gates.jsonl"], 1):
@@ -4356,6 +4531,11 @@ def command_validate(arguments: argparse.Namespace) -> None:
         if artifact_hash is not None:
             validate_candidate_id(artifact_hash, f"artifact hash in gates.jsonl line {line_number}")
     validate_gate_span_join(ledgers["gates.jsonl"], run, root)
+    active_manifest = active_gate_manifest(arguments.run_dir)
+    if run["evidence_lane"] == "full":
+        for gate in ledgers["gates.jsonl"]:
+            if gate["operation"] != "gate.imported" and gate["command_manifest_sha256"] is None:
+                raise EvidenceError("managed full-lane gate lacks an admitting command manifest")
     for line_number, packet in enumerate(ledgers["packets.jsonl"], 1):
         if (
             packet.get("kind") not in {"plan", "code"}
@@ -4374,6 +4554,9 @@ def command_validate(arguments: argparse.Namespace) -> None:
     if root != git_root(root):
         raise EvidenceError("recorded repository root no longer resolves to itself")
     if arguments.require_final:
+        if run["evidence_lane"] == "full" and active_manifest is None:
+            raise EvidenceError("full-lane final validation requires a gate manifest")
+        validate_role_preflight_receipt(arguments.run_dir, root)
         validate_preclose_telemetry(run, arguments.run_dir, root)
         blocking_states = {"open", "addressed", "blocked-owner"}
         blocking_findings = [
@@ -4391,6 +4574,7 @@ def command_validate(arguments: argparse.Namespace) -> None:
             and gate["telemetry_complete"]
             and gate["candidate_id"] == current_id
             and gate["candidate_after_id"] == current_id
+            and gate["product_candidate_id"] == gate["product_candidate_after_id"]
             and gate["exit_code"] == 0
             and gate["outcome"] == "success"
         ]
@@ -4401,6 +4585,12 @@ def command_validate(arguments: argparse.Namespace) -> None:
         ):
             raise EvidenceError(
                 "required final command is not recorded successfully for the current candidate"
+            )
+        if active_manifest is not None and not any(
+            gate["command_manifest_sha256"] == active_manifest[1] for gate in successful_final
+        ):
+            raise EvidenceError(
+                "current successful final gate is not bound to the active command manifest"
             )
     print("EVIDENCE VALID")
 
@@ -4421,6 +4611,7 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--telemetry-trace-id", required=True)
     init.add_argument("--telemetry-root-span-id", required=True)
     init.add_argument("--initial-orchestration-span-id", required=True)
+    init.add_argument("--preflight-receipt", type=Path, required=True)
     init.add_argument("--review-lane", choices=sorted(REVIEW_LANES), required=True)
     init.add_argument("--evidence-lane", choices=sorted(EVIDENCE_LANES), required=True)
     init.add_argument("--follow-up-route", choices=sorted(FOLLOW_UP_ROUTES), required=True)
@@ -4670,6 +4861,22 @@ def build_parser() -> argparse.ArgumentParser:
     run_gate.add_argument("--final", action="store_true")
     run_gate.add_argument("argv", nargs=argparse.REMAINDER)
     run_gate.set_defaults(handler=command_run_gate)
+
+    activate_manifest = subparsers.add_parser(
+        "activate-gate-manifest",
+        description="Validate and activate one immutable hash-bound command manifest.",
+    )
+    add_run_dir(activate_manifest)
+    activate_manifest.add_argument("--manifest", type=Path, required=True)
+    activate_manifest.add_argument("--supersedes")
+    activate_manifest.set_defaults(handler=command_activate_gate_manifest)
+
+    validate_preflight = subparsers.add_parser(
+        "validate-preflight",
+        description="Validate manifest, venue receipt, and pre-acceptance topology.",
+    )
+    add_run_dir(validate_preflight)
+    validate_preflight.set_defaults(handler=command_validate_preflight)
 
     packet = subparsers.add_parser("packet")
     add_run_dir(packet)

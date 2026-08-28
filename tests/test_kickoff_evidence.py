@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -69,6 +70,19 @@ def repository(tmp_path: Path) -> Path:
     (root / "CLAUDE.md").write_text("# Synthetic engine\n")
     (root / "phase.md").write_text("# Phase\n")
     (root / "policy.md").write_text("# Policy\n")
+    (root / "policies" / "orchestration-evidence.md").write_text(
+        "```yaml\n"
+        "# kickoff-evidence drift partitions\n"
+        "inert:\n"
+        "  - LOG*.md\n"
+        "  - EXECUTION_LOG.jsonl\n"
+        "  - plan/INDEX.md\n"
+        "  - lessons/\n"
+        "  - lessons-archived/\n"
+        "  - user-actions/\n"
+        "  - user-actions-archived/\n"
+        "```\n"
+    )
     (root / "code.py").write_text("VALUE = 1\n")
     (root / "bin").mkdir()
     (root / "bin" / "check").write_text("#!/bin/sh\nexit 0\n")
@@ -132,6 +146,20 @@ def initialize(
     follow_up_route: str = "direct-fix",
     authorities: tuple[str, ...] = ("phase.md::Acceptance", "policy.md"),
 ) -> str:
+    receipt = run_dir.parent / f"{run_dir.name}-preflight.json"
+    receipt.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "created_at": "2026-01-01T00:00:00+00:00",
+                "config_sha256": hashlib.sha256((ROOT / "kickoff.yaml").read_bytes()).hexdigest(),
+                "harness": "default",
+                "targets": [],
+            },
+            sort_keys=True,
+        )
+        + "\n"
+    )
     handle = start_trace(
         engine_root=repository,
         scope_root=repository,
@@ -162,6 +190,8 @@ def initialize(
         handle.span_id,
         "--initial-orchestration-span-id",
         setup.span_id,
+        "--preflight-receipt",
+        str(receipt),
         "--review-lane",
         review_lane,
         "--evidence-lane",
@@ -170,6 +200,45 @@ def initialize(
         follow_up_route,
     )
     assert result.returncode == 0, result.stderr
+    manifest = run_dir.parent / f"{run_dir.name}-commands.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "commands": [
+                    {
+                        "operation": "gate.check-all",
+                        "attempt": 1,
+                        "final": True,
+                        "argv": ["./bin/check", "all"],
+                    },
+                    {
+                        "operation": "gate.focused",
+                        "attempt": 1,
+                        "final": False,
+                        "argv": ["/usr/bin/true"],
+                    },
+                    {
+                        "operation": "gate.check-all",
+                        "attempt": 1,
+                        "final": True,
+                        "argv": ["/usr/bin/true"],
+                    },
+                ],
+                "preflight_commands": [],
+            },
+            sort_keys=True,
+        )
+        + "\n"
+    )
+    activated = run(
+        "activate-gate-manifest",
+        "--run-dir",
+        str(run_dir),
+        "--manifest",
+        str(manifest),
+    )
+    assert activated.returncode == 0, activated.stderr
     return result.stdout.strip()
 
 
@@ -315,6 +384,8 @@ def tree_manifest_for_test(repository: Path) -> str:
 
 
 def run_final_gate(run_dir: Path, candidate: str, artifact: Path | None = None):
+    repository = Path(json.loads((run_dir / "run.json").read_text())["repository_root"])
+    complete_orchestration(repository, run_dir)
     arguments = [
         "run-gate",
         "--run-dir",
@@ -335,7 +406,7 @@ def run_final_gate(run_dir: Path, candidate: str, artifact: Path | None = None):
     arguments.extend(["--final", "--", "./bin/check", "all"])
     return run(
         *arguments,
-        cwd=Path(json.loads((run_dir / "run.json").read_text())["repository_root"]),
+        cwd=repository,
     )
 
 
@@ -360,6 +431,39 @@ def test_change_manifest_is_candidate_bound_and_detects_authority_drift(
 ) -> None:
     run_dir = tmp_path / "run"
     reviewed = initialize(repository, run_dir)
+    active_digest = json.loads((run_dir / "gate-manifests.jsonl").read_text())["manifest_sha256"]
+    original_manifest = json.loads((tmp_path / "run-commands.json").read_text())
+    successor = tmp_path / "successor-commands.json"
+    successor_document = dict(original_manifest)
+    successor_document["commands"] = [
+        {
+            "operation": "gate.check-all",
+            "attempt": 2,
+            "final": True,
+            "argv": ["./bin/check", "all"],
+        }
+    ]
+    successor.write_text(json.dumps(successor_document, sort_keys=True) + "\n")
+    refused = run(
+        "activate-gate-manifest",
+        "--run-dir",
+        str(run_dir),
+        "--manifest",
+        str(successor),
+    )
+    assert refused.returncode != 0
+    assert f"must pass --supersedes {active_digest}" in refused.stderr
+    replaced = run(
+        "activate-gate-manifest",
+        "--run-dir",
+        str(run_dir),
+        "--manifest",
+        str(successor),
+        "--supersedes",
+        active_digest,
+    )
+    assert replaced.returncode == 0, replaced.stderr
+
     (repository / "code.py").write_text("VALUE = 2\n")
     (repository / "new.py").write_text("NEW = True\n")
     candidate = capture(repository, run_dir)
@@ -555,41 +659,6 @@ def test_revision_round_requires_and_carries_failure_analysis(
     assert analysis in text
 
 
-def test_gate_record_rejects_stale_candidate_and_hashes_artifact(
-    repository: Path, tmp_path: Path
-) -> None:
-    run_dir = tmp_path / "run"
-    candidate = initialize(repository, run_dir)
-    artifact = tmp_path / "gate.txt"
-    artifact.write_text("PASS\n")
-
-    recorded = run_final_gate(run_dir, candidate, artifact)
-    assert recorded.returncode == 0, recorded.stderr
-    gate = json.loads((run_dir / "gates.jsonl").read_text())
-    assert gate["artifact_sha256"]
-    assert gate["final"]
-
-    (repository / "code.py").write_text("VALUE = 2\n")
-    stale = run(
-        "record-gate",
-        "--run-dir",
-        str(run_dir),
-        "--candidate",
-        candidate,
-        "--selection-reason",
-        "Final authoritative gate",
-        "--exit-code",
-        "0",
-        "--warning-count",
-        "0",
-        "--",
-        "./bin/check",
-        "all",
-    )
-    assert stale.returncode == 2
-    assert "candidate mismatch" in stale.stderr
-
-
 @pytest.mark.parametrize("state", ["open", "addressed", "blocked-owner"])
 def test_final_validation_rejects_blocking_findings(
     repository: Path,
@@ -648,6 +717,20 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
         operation="orchestration.setup",
     )
     run_dir = tmp_path / "run"
+    receipt = tmp_path / "preflight.json"
+    receipt.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "created_at": "2026-01-01T00:00:00+00:00",
+                "config_sha256": hashlib.sha256((ROOT / "kickoff.yaml").read_bytes()).hexdigest(),
+                "harness": "default",
+                "targets": [],
+            },
+            sort_keys=True,
+        )
+        + "\n"
+    )
     initialized = run(
         "init",
         "--run-dir",
@@ -664,6 +747,8 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
         root.span_id,
         "--initial-orchestration-span-id",
         setup.span_id,
+        "--preflight-receipt",
+        str(receipt),
         "--review-lane",
         "full",
         "--evidence-lane",
@@ -672,6 +757,45 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
         "initial",
     )
     assert initialized.returncode == 0, initialized.stderr
+    gate_manifest = tmp_path / "gate-manifest.json"
+    gate_manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "commands": [
+                    {
+                        "operation": "gate.check-all",
+                        "attempt": 1,
+                        "final": True,
+                        "argv": ["./bin/check", "all"],
+                    },
+                    {
+                        "operation": "gate.focused",
+                        "attempt": 1,
+                        "final": False,
+                        "argv": ["/usr/bin/true"],
+                    },
+                    {
+                        "operation": "gate.check-all",
+                        "attempt": 1,
+                        "final": True,
+                        "argv": ["/usr/bin/true"],
+                    },
+                ],
+                "preflight_commands": [],
+            },
+            sort_keys=True,
+        )
+        + "\n"
+    )
+    activated = run(
+        "activate-gate-manifest",
+        "--run-dir",
+        str(run_dir),
+        "--manifest",
+        str(gate_manifest),
+    )
+    assert activated.returncode == 0, activated.stderr
 
     def role_attempt(
         operation: str,
@@ -897,6 +1021,9 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
         cwd=repository,
     )
     assert focused.returncode == 0, focused.stderr
+    complete_orchestration(repository, run_dir)
+    artifact = tmp_path / "gate.txt"
+    artifact.write_text("PASS\n")
     final = run(
         "run-gate",
         "--run-dir",
@@ -909,13 +1036,17 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
         "final proof",
         "--warning-count",
         "0",
+        "--artifact",
+        str(artifact),
         "--final",
         "--",
         "/usr/bin/true",
         cwd=repository,
     )
     assert final.returncode == 0, final.stderr
-    complete_orchestration(repository, run_dir)
+    gates = [json.loads(line) for line in (run_dir / "gates.jsonl").read_text().splitlines()]
+    assert gates[-1]["artifact_sha256"] == hashlib.sha256(artifact.read_bytes()).hexdigest()
+    assert gates[-1]["final"]
     validated = run(
         "validate",
         "--run-dir",
@@ -940,6 +1071,26 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
     assert projection["failed_ns"] > 0
     for slow in projection["slowest_spans"]:
         assert slow["operation"] in markdown.stdout
+
+    (repository / "code.py").write_text("VALUE = 2\n")
+    stale = run(
+        "record-gate",
+        "--run-dir",
+        str(run_dir),
+        "--candidate",
+        candidate,
+        "--selection-reason",
+        "Final authoritative gate",
+        "--exit-code",
+        "0",
+        "--warning-count",
+        "0",
+        "--",
+        "./bin/check",
+        "all",
+    )
+    assert stale.returncode == 2
+    assert "candidate mismatch" in stale.stderr
 
 
 REVIEWER_PERSONAS = (

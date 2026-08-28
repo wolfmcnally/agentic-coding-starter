@@ -37,6 +37,10 @@ The template ships with:
   approved candidate; after evidence and tracked close bookkeeping, a second
   bare handoff gate proves the actual tree delivered to the user. See
   [`briefs/incremental-orchestration.md`](briefs/incremental-orchestration.md).
+- **Deterministic executable authority.** Immutable exact-command manifests,
+  a real-read venue receipt, ordered command-zero preflight, dual product and
+  full-tree identities, and exact-byte append-only log checks prevent expensive
+  acceptance from running on an invalid candidate.
 - **Exact operator-wait telemetry.** Execution traces measure active work;
   a separate phase ledger records every interval parked for user input and an
   overlap-safe total. Same-boot spans are exact; cross-boot calendar spans are
@@ -189,6 +193,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── agentic-bootstrap.md        ←   how to stand up a new project
 │   ├── cross-agent-invocation.md   ←   cross-CLI invocation BCPs
 │   ├── incremental-orchestration.md ← candidate-bound incremental assurance
+│   ├── deterministic-orchestration-control-plane.md ← executable command/log custody
 │   ├── deterministic-orchestration.md ← draft: deterministic kickoff loop
 │   ├── harness-self-improvement.md ← lessons, sweep, and cross-repo flywheel
 │   └── test-suite-value-governance.md ← proof-estate reset + governed fast lanes
@@ -205,6 +210,7 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── role-models.md              ← role routing and fail-closed preflight
 │   ├── role-timeouts.md            ← first-event/idle/hard execution budgets
 │   ├── orchestration-evidence.md   ← candidate/revision/gate evidence
+│   ├── orchestration-control-plane.md ← manifests, command zero, dual identity
 │   ├── review-lanes.md             ← review intensity + proportional follow-ups
 │   ├── lessons.md                  ← candidate process-lessons lifecycle
 │   ├── build-gates.md              ← atomic repository toolchain contract
@@ -220,8 +226,10 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── python                      ← selected managed Python interpreter
 │   ├── install-hooks               ← opt in to tracked lifecycle hooks
 │   ├── kickoff-config              ← round-trip config, preflight, watchdog
+│   ├── kickoff-command-zero        ← cheap ordered pre-acceptance refusal
 │   ├── kickoff-tree-id             ← complete review candidate identity
 │   ├── kickoff-evidence            ← authority/change/finding/gate records
+│   ├── check-log                    ← exact-prefix + chronology policy gate
 │   ├── lessons                     ← validate and query the lessons ledger
 │   ├── check-catalogs              ← catalogs, links, citations, phase ledger
 │   └── check-anonymization.sh      ← starter-only public-repo leak guard

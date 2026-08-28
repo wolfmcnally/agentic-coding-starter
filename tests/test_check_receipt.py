@@ -28,9 +28,18 @@ def repository(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
     (root / "bin").mkdir(parents=True)
     (root / ".githooks").mkdir()
+    (root / "lib" / "agentic_starter").mkdir(parents=True)
     shutil.copy2(SCRIPT_SOURCE, root / "bin" / "check-receipt")
     shutil.copy2(TREE_SOURCE, root / "bin" / "kickoff-tree-id")
     shutil.copy2(HOOK_SOURCE, root / ".githooks" / "pre-push")
+    shutil.copy2(
+        REPO_ROOT / "lib" / "agentic_starter" / "__init__.py",
+        root / "lib" / "agentic_starter" / "__init__.py",
+    )
+    shutil.copy2(
+        REPO_ROOT / "lib" / "agentic_starter" / "candidate_boundaries.py",
+        root / "lib" / "agentic_starter" / "candidate_boundaries.py",
+    )
     write_executable(
         root / "bin" / "python",
         "\n".join(
@@ -66,7 +75,7 @@ def repository(tmp_path: Path) -> Path:
         'mkdir -p "$PWD/.kickoff"\n'
         "printf 'called\\n' >> \"$PWD/.kickoff/hook-called\"\n",
     )
-    (root / ".gitignore").write_text(".kickoff/\n", encoding="utf-8")
+    (root / ".gitignore").write_text(".kickoff/\n__pycache__/\n*.pyc\n", encoding="utf-8")
     (root / "tracked.txt").write_text("fixture\n", encoding="utf-8")
     subprocess.run(["git", "init", "-q", "-b", "master"], cwd=root, check=True)
     subprocess.run(["git", "config", "user.email", "fixture@example.invalid"], cwd=root, check=True)

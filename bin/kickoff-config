@@ -8,7 +8,8 @@
   bin/kickoff-config show [all|models|research|timeouts|budgets]
   bin/kickoff-config set-models [<harness>] <role>.model=<model> [<role>.effort=<effort>] ...
   bin/kickoff-config reset models|research|timeouts|budgets|all
-  bin/kickoff-config preflight
+  bin/kickoff-config preflight --receipt <path>
+  bin/kickoff-config verify-preflight-receipt --receipt <path>
   bin/kickoff-config watch [routing/telemetry options] --prompt-file <path>
   bin/kickoff-config render-command [routing options] --prompt-file <path>
   bin/kickoff-config recommend-timeouts
@@ -32,6 +33,7 @@ recipe stays inspectable without being re-typed.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -677,6 +679,22 @@ def preflight_targets(
     return targets
 
 
+def preflight_target_descriptors(
+    section: MutableMapping[str, Any], harness: str
+) -> list[dict[str, Any]]:
+    rows = [
+        {
+            "cli": target.cli,
+            "model": target.model,
+            "effort": target.effort,
+            "write_enabled": target.write_enabled,
+            "roles": sorted(roles),
+        }
+        for target, roles in preflight_targets(section, harness).items()
+    ]
+    return sorted(rows, key=lambda row: json.dumps(row, sort_keys=True))
+
+
 def role_access(role: str) -> str:
     """The access mode a role runs under. Derived, never passed in.
 
@@ -928,11 +946,25 @@ def diagnostic(process: subprocess.CompletedProcess[str]) -> str:
     return " ".join(raw.split())[-1000:]
 
 
-def run_claude_preflight(target: PreflightTarget, workdir: str) -> None:
+def preflight_prompt(probe_name: str) -> str:
+    return (
+        f"Read the local file {probe_name}, compute the SHA-256 digest of its exact "
+        f"bytes, and reply with exactly: {PREFLIGHT_SENTINEL} <sha256>"
+    )
+
+
+def validate_preflight_answer(answer: str, expected_digest: str) -> None:
+    if answer.strip() != f"{PREFLIGHT_SENTINEL} {expected_digest}":
+        raise RuntimeError("capability response did not contain the local probe digest")
+
+
+def run_claude_preflight(
+    target: PreflightTarget, workdir: str, probe_name: str, expected_digest: str
+) -> None:
     command = [
         cli_program("claude"),
         "-p",
-        f"Reply with exactly: {PREFLIGHT_SENTINEL}",
+        preflight_prompt(probe_name),
         "--permission-mode",
         "dontAsk",
         "--allowedTools",
@@ -961,12 +993,15 @@ def run_claude_preflight(target: PreflightTarget, workdir: str) -> None:
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"malformed JSON response: {exc}") from exc
     result = str(envelope.get("result", "")).strip()
-    if envelope.get("is_error") or result != PREFLIGHT_SENTINEL:
+    if envelope.get("is_error"):
         detail = envelope.get("result") or envelope.get("error") or "sentinel missing"
         raise RuntimeError(f"unsuccessful response: {' '.join(str(detail).split())[-1000:]}")
+    validate_preflight_answer(result, expected_digest)
 
 
-def run_codex_preflight(target: PreflightTarget, workdir: str) -> None:
+def run_codex_preflight(
+    target: PreflightTarget, workdir: str, probe_name: str, expected_digest: str
+) -> None:
     with tempfile.TemporaryDirectory(prefix="kickoff-preflight-") as temporary:
         message_file = os.path.join(temporary, "last-message.txt")
         command = [
@@ -987,7 +1022,7 @@ def run_codex_preflight(target: PreflightTarget, workdir: str) -> None:
             "--output-last-message",
             message_file,
             *codex_routing_flags(target.model, target.effort),
-            f"Reply with exactly: {PREFLIGHT_SENTINEL}",
+            preflight_prompt(probe_name),
         ]
         process = subprocess.run(
             command,
@@ -1004,10 +1039,7 @@ def run_codex_preflight(target: PreflightTarget, workdir: str) -> None:
             result = Path(message_file).read_text().strip()
         except FileNotFoundError as exc:
             raise RuntimeError("output artifact missing") from exc
-        if result != PREFLIGHT_SENTINEL:
-            raise RuntimeError(
-                f"unsuccessful response: {' '.join(result.split())[-1000:] or 'sentinel missing'}"
-            )
+        validate_preflight_answer(result, expected_digest)
 
 
 def toolchain_probe_result(result: str) -> str | None:
@@ -1095,16 +1127,20 @@ def run_toolchain_probe(target: PreflightTarget) -> str | None:
             return "output artifact missing"
 
 
-def preflight(section: MutableMapping[str, Any]) -> None:
+def preflight(section: MutableMapping[str, Any], *, receipt: Path | None = None) -> dict[str, Any]:
     if os.environ.get("KICKOFF_DELEGATION_DEPTH"):
         print("Role venue preflight: skipped (delegated session; every role runs native)")
-        return
+        raise SystemExit("preflight receipts cannot be created from a delegated session")
     harness = detect_harness()
     targets = preflight_targets(section, harness)
-    if not targets:
-        print("Role venue preflight: N/A (every role runs native)")
-        return
+    results: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(prefix="kickoff-preflight-workdir-") as workdir:
+        probe_name = ".kickoff-capability-probe"
+        probe_bytes = os.urandom(64)
+        Path(workdir, probe_name).write_bytes(probe_bytes)
+        expected_digest = hashlib.sha256(probe_bytes).hexdigest()
+        if not targets:
+            print("Role venue preflight: N/A (every role runs native)")
         for target, roles in targets.items():
             model = f" --model {target.model}" if target.model else " (default model)"
             effort = f", effort {target.effort}" if target.effort else ""
@@ -1115,17 +1151,30 @@ def preflight(section: MutableMapping[str, Any]) -> None:
             print(f"Role venue preflight: validating {label} ...", flush=True)
             try:
                 if target.cli == "claude":
-                    run_claude_preflight(target, workdir)
+                    run_claude_preflight(target, workdir, probe_name, expected_digest)
                 else:
-                    run_codex_preflight(target, workdir)
+                    run_codex_preflight(target, workdir, probe_name, expected_digest)
             except subprocess.TimeoutExpired:
                 die(f"preflight failed for {label}: timed out after {PREFLIGHT_TIMEOUT_SECONDS}s")
             except (OSError, RuntimeError) as exc:
                 die(f"preflight failed for {label}: {exc}")
             print(f"Role venue preflight: OK — {label}")
+            results.append(
+                {
+                    "cli": target.cli,
+                    "model": target.model,
+                    "effort": target.effort,
+                    "write_enabled": target.write_enabled,
+                    "roles": sorted(roles),
+                    "probe_sha256": expected_digest,
+                }
+            )
             if not target.write_enabled:
                 continue
-            print(f"Role venue preflight: probing the toolchain for {label} ...", flush=True)
+            print(
+                f"Role venue preflight: probing the toolchain for {label} ...",
+                flush=True,
+            )
             try:
                 problem = run_toolchain_probe(target)
             except subprocess.TimeoutExpired:
@@ -1140,6 +1189,64 @@ def preflight(section: MutableMapping[str, Any]) -> None:
                     f"({TOOLCHAIN_PROBE_COMMAND}) for {label}: {problem}. The unverified-handoff "
                     "guard will run the focused sequence natively on every coder return."
                 )
+    document = {
+        "schema_version": 1,
+        "created_at": utc_now(),
+        "config_sha256": hashlib.sha256(CONFIG.read_bytes()).hexdigest(),
+        "harness": harness,
+        "targets": results,
+    }
+    if receipt is not None:
+        receipt.parent.mkdir(parents=True, exist_ok=True)
+        temporary = receipt.with_name(f".{receipt.name}.{os.getpid()}.tmp")
+        temporary.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n")
+        os.replace(temporary, receipt)
+        print(f"Role venue preflight receipt: {receipt}")
+    return document
+
+
+def verify_preflight_receipt(path: Path) -> dict[str, Any]:
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        die(f"preflight receipt is unreadable: {exc}")
+    required = {
+        "schema_version",
+        "created_at",
+        "config_sha256",
+        "harness",
+        "targets",
+    }
+    if not isinstance(document, dict) or set(document) != required:
+        die("preflight receipt has unknown or missing fields")
+    if document["schema_version"] != 1:
+        die("preflight receipt schema is unsupported")
+    if document["config_sha256"] != hashlib.sha256(CONFIG.read_bytes()).hexdigest():
+        die("preflight receipt is bound to stale routing configuration")
+    if document["harness"] not in HARNESSES or not isinstance(document["targets"], list):
+        die("preflight receipt has invalid harness or targets")
+    target_fields = {
+        "cli",
+        "model",
+        "effort",
+        "write_enabled",
+        "roles",
+        "probe_sha256",
+    }
+    descriptors: list[dict[str, Any]] = []
+    for target in document["targets"]:
+        if not isinstance(target, dict) or set(target) != target_fields:
+            die("preflight receipt target has unknown or missing fields")
+        if CANDIDATE_ID.fullmatch(str(target["probe_sha256"])) is None:
+            die("preflight receipt target lacks a valid probe digest")
+        descriptors.append({key: target[key] for key in target_fields if key != "probe_sha256"})
+    expected = preflight_target_descriptors(load_document()["role_models"], document["harness"])
+    if sorted(descriptors, key=lambda row: json.dumps(row, sort_keys=True)) != expected:
+        die("preflight receipt does not cover the current resolved role targets")
+    if document["targets"] and len({target["probe_sha256"] for target in document["targets"]}) != 1:
+        die("preflight receipt targets do not share one probe identity")
+    print("PREFLIGHT RECEIPT VALID")
+    return document
 
 
 def utc_now() -> str:
@@ -1461,7 +1568,9 @@ def inject_telemetry_failure(stage: str) -> None:
         raise TelemetryError(f"injected {stage} failure")
 
 
-def validate_telemetry_registration(arguments: argparse.Namespace) -> dict[str, Any] | None:
+def validate_telemetry_registration(
+    arguments: argparse.Namespace,
+) -> dict[str, Any] | None:
     supplied = [
         arguments.telemetry_trace_id,
         arguments.telemetry_parent_span_id,
@@ -1793,7 +1902,10 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
             dispatch_candidate=dispatch_candidate,
         )
         if topology_error:
-            print(f"kickoff-config: telemetry incomplete: {topology_error}", file=sys.stderr)
+            print(
+                f"kickoff-config: telemetry incomplete: {topology_error}",
+                file=sys.stderr,
+            )
         die(f"could not start {command[0]}: {exc}")
     if intelligence is not None:
         try:
@@ -2075,7 +2187,10 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
     try:
         append_record(diagnostic, os.environ.get("KICKOFF_TIMING_LOG", DEFAULT_TELEMETRY))
     except OSError as exc:
-        print(f"kickoff-config: local timing diagnostic write failed: {exc}", file=sys.stderr)
+        print(
+            f"kickoff-config: local timing diagnostic write failed: {exc}",
+            file=sys.stderr,
+        )
     if telemetry_errors:
         print(
             f"kickoff-config: telemetry incomplete: {'; '.join(telemetry_errors)}",
@@ -2209,7 +2324,10 @@ def build_parser() -> argparse.ArgumentParser:
     reset_parser = subparsers.add_parser("reset")
     reset_parser.add_argument("scope", choices=("models", "research", "timeouts", "budgets", "all"))
 
-    subparsers.add_parser("preflight")
+    preflight_parser = subparsers.add_parser("preflight")
+    preflight_parser.add_argument("--receipt", type=Path)
+    receipt_parser = subparsers.add_parser("verify-preflight-receipt")
+    receipt_parser.add_argument("--receipt", type=Path, required=True)
     subparsers.add_parser("recommend-timeouts")
 
     def add_routing_arguments(parser: argparse.ArgumentParser) -> None:
@@ -2281,7 +2399,9 @@ def main() -> None:
     elif arguments.action == "set-budgets":
         set_budgets(arguments.arguments)
     elif arguments.action == "preflight":
-        preflight(document["role_models"])
+        preflight(document["role_models"], receipt=arguments.receipt)
+    elif arguments.action == "verify-preflight-receipt":
+        verify_preflight_receipt(arguments.receipt)
     elif arguments.action == "watch":
         raise SystemExit(watch(arguments, document))
     elif arguments.action == "render-command":

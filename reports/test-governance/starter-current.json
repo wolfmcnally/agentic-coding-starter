@@ -1,16 +1,16 @@
 {
   "by_kind": {
     "gate": {
-      "families": 16,
-      "leaves": 16
+      "families": 17,
+      "leaves": 17
     },
     "hook": {
-      "families": 3,
-      "leaves": 3
+      "families": 4,
+      "leaves": 4
     },
     "pytest": {
-      "families": 89,
-      "leaves": 107
+      "families": 87,
+      "leaves": 105
     }
   },
   "counts": {
@@ -28,6 +28,7 @@
     "gate:policy-harness-parity",
     "gate:policy-hooks-installed",
     "gate:policy-lessons",
+    "gate:policy-log",
     "gate:policy-shell-syntax",
     "gate:policy-test-governance",
     "gate:policy-toolchain-callers",
@@ -35,6 +36,7 @@
     "gate:test",
     "gate:vital",
     "hook:.githooks/pre-commit:./bin/check-harness-parity",
+    "hook:.githooks/pre-commit:./bin/check-log --staged",
     "hook:.githooks/pre-commit:./bin/check-toolchain-callers",
     "hook:.githooks/pre-commit:./bin/test-governance validate",
     "pytest:project/tests/test_cli.py::test_main_hello_default",
@@ -76,22 +78,21 @@
     "pytest:tests/test_kickoff_config.py::test_timeout_kills_descendant_after_group_leader_exits",
     "pytest:tests/test_kickoff_config.py::test_watch_extracts_fresh_claude_result_and_telemetry",
     "pytest:tests/test_kickoff_config.py::test_watch_preserves_codex_artifact_when_terminal_stream_is_incomplete",
+    "pytest:tests/test_kickoff_control_plane.py::test_manifest_preflight_and_runner_admission_fail_closed",
     "pytest:tests/test_kickoff_evidence.py::test_a_proven_disjoint_drift_is_accepted_and_recorded",
     "pytest:tests/test_kickoff_evidence.py::test_change_manifest_is_candidate_bound_and_detects_authority_drift",
     "pytest:tests/test_kickoff_evidence.py::test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates",
     "pytest:tests/test_kickoff_evidence.py::test_final_validation_rejects_blocking_findings",
     "pytest:tests/test_kickoff_evidence.py::test_finding_state_is_stable_validated_and_reopen_is_counted",
-    "pytest:tests/test_kickoff_evidence.py::test_gate_record_rejects_stale_candidate_and_hashes_artifact",
     "pytest:tests/test_kickoff_evidence.py::test_init_creates_complete_run_scoped_evidence",
     "pytest:tests/test_kickoff_evidence.py::test_revision_round_requires_and_carries_failure_analysis",
     "pytest:tests/test_kickoff_evidence.py::test_role_artifacts_feed_findings_and_change_metadata_without_reparsing",
     "pytest:tests/test_kickoff_evidence.py::test_validate_detects_corrupt_evidence",
     "pytest:tests/test_kickoff_tree_id.py::test_identity_is_cwd_independent_and_manifest_is_ordered",
-    "pytest:tests/test_kickoff_tree_id.py::test_symlink_escape_fails_closed",
-    "pytest:tests/test_kickoff_tree_id.py::test_tracked_staged_unstaged_and_untracked_changes_affect_identity",
     "pytest:tests/test_lessons.py::test_candidates_applies_graduation_threshold_to_open_lessons_only",
     "pytest:tests/test_lessons.py::test_codified_lesson_requires_graduated_to",
     "pytest:tests/test_lessons.py::test_valid_open_and_archived_lessons_pass",
+    "pytest:tests/test_log_control_plane.py::test_append_prefix_chronology_and_bounded_repairs_preserve_bytes",
     "pytest:tests/test_methodology_toolchain_contract.py::test_every_gate_required_executable_propagates",
     "pytest:tests/test_methodology_toolchain_contract.py::test_every_universal_skill_propagates_with_its_codex_mirror",
     "pytest:tests/test_methodology_toolchain_contract.py::test_material_review_counts_are_reproducible",
@@ -99,7 +100,6 @@
     "pytest:tests/test_methodology_toolchain_contract.py::test_research_authority_contract_propagates_and_stays_allow_by_default",
     "pytest:tests/test_mirror_parity.py::test_repository_is_in_parity",
     "pytest:tests/test_new_name.py::test_avoids_collisions_across_all_ledger_dirs",
-    "pytest:tests/test_pre_commit.py::test_pre_commit_preserves_governance_failure",
     "pytest:tests/test_pre_commit.py::test_pre_commit_runs_structural_governance_after_existing_checks",
     "pytest:tests/test_research_authority.py::test_generated_commands_enforce_the_role_authority_matrix",
     "pytest:tests/test_research_authority.py::test_policy_is_allow_by_default_without_assuming_any_named_server",
@@ -127,7 +127,7 @@
     "pytest:tests/test_treatise.py::test_an_external_fact_without_a_retrieval_date_fails",
     "pytest:tests/test_treatise.py::test_the_repository_own_treatises_validate"
   ],
-  "inventory_sha256": "b6b77deca02229feeeef41cbdbcde15fe72386d664ddb285420455dc26382866",
+  "inventory_sha256": "84c599019ec9b8773422671e12fea600a77ed6507a20c11018570f586535ced1",
   "proofs": [
     {
       "family": "pytest:project/tests/test_cli.py::test_main_hello_default",
@@ -452,6 +452,13 @@
       "source_path": "tests/test_kickoff_config.py"
     },
     {
+      "family": "pytest:tests/test_kickoff_control_plane.py::test_manifest_preflight_and_runner_admission_fail_closed",
+      "id": "pytest:tests/test_kickoff_control_plane.py::test_manifest_preflight_and_runner_admission_fail_closed",
+      "kind": "pytest",
+      "selector": "tests/test_kickoff_control_plane.py::test_manifest_preflight_and_runner_admission_fail_closed",
+      "source_path": "tests/test_kickoff_control_plane.py"
+    },
+    {
       "family": "pytest:tests/test_kickoff_evidence.py::test_init_creates_complete_run_scoped_evidence",
       "id": "pytest:tests/test_kickoff_evidence.py::test_init_creates_complete_run_scoped_evidence",
       "kind": "pytest",
@@ -484,13 +491,6 @@
       "id": "pytest:tests/test_kickoff_evidence.py::test_revision_round_requires_and_carries_failure_analysis",
       "kind": "pytest",
       "selector": "tests/test_kickoff_evidence.py::test_revision_round_requires_and_carries_failure_analysis",
-      "source_path": "tests/test_kickoff_evidence.py"
-    },
-    {
-      "family": "pytest:tests/test_kickoff_evidence.py::test_gate_record_rejects_stale_candidate_and_hashes_artifact",
-      "id": "pytest:tests/test_kickoff_evidence.py::test_gate_record_rejects_stale_candidate_and_hashes_artifact",
-      "kind": "pytest",
-      "selector": "tests/test_kickoff_evidence.py::test_gate_record_rejects_stale_candidate_and_hashes_artifact",
       "source_path": "tests/test_kickoff_evidence.py"
     },
     {
@@ -543,20 +543,6 @@
       "source_path": "tests/test_kickoff_tree_id.py"
     },
     {
-      "family": "pytest:tests/test_kickoff_tree_id.py::test_tracked_staged_unstaged_and_untracked_changes_affect_identity",
-      "id": "pytest:tests/test_kickoff_tree_id.py::test_tracked_staged_unstaged_and_untracked_changes_affect_identity",
-      "kind": "pytest",
-      "selector": "tests/test_kickoff_tree_id.py::test_tracked_staged_unstaged_and_untracked_changes_affect_identity",
-      "source_path": "tests/test_kickoff_tree_id.py"
-    },
-    {
-      "family": "pytest:tests/test_kickoff_tree_id.py::test_symlink_escape_fails_closed",
-      "id": "pytest:tests/test_kickoff_tree_id.py::test_symlink_escape_fails_closed",
-      "kind": "pytest",
-      "selector": "tests/test_kickoff_tree_id.py::test_symlink_escape_fails_closed",
-      "source_path": "tests/test_kickoff_tree_id.py"
-    },
-    {
       "family": "pytest:tests/test_lessons.py::test_valid_open_and_archived_lessons_pass",
       "id": "pytest:tests/test_lessons.py::test_valid_open_and_archived_lessons_pass",
       "kind": "pytest",
@@ -576,6 +562,13 @@
       "kind": "pytest",
       "selector": "tests/test_lessons.py::test_candidates_applies_graduation_threshold_to_open_lessons_only",
       "source_path": "tests/test_lessons.py"
+    },
+    {
+      "family": "pytest:tests/test_log_control_plane.py::test_append_prefix_chronology_and_bounded_repairs_preserve_bytes",
+      "id": "pytest:tests/test_log_control_plane.py::test_append_prefix_chronology_and_bounded_repairs_preserve_bytes",
+      "kind": "pytest",
+      "selector": "tests/test_log_control_plane.py::test_append_prefix_chronology_and_bounded_repairs_preserve_bytes",
+      "source_path": "tests/test_log_control_plane.py"
     },
     {
       "family": "pytest:tests/test_methodology_toolchain_contract.py::test_proof_estate_governance_propagates_without_local_judgments",
@@ -631,13 +624,6 @@
       "id": "pytest:tests/test_pre_commit.py::test_pre_commit_runs_structural_governance_after_existing_checks",
       "kind": "pytest",
       "selector": "tests/test_pre_commit.py::test_pre_commit_runs_structural_governance_after_existing_checks",
-      "source_path": "tests/test_pre_commit.py"
-    },
-    {
-      "family": "pytest:tests/test_pre_commit.py::test_pre_commit_preserves_governance_failure",
-      "id": "pytest:tests/test_pre_commit.py::test_pre_commit_preserves_governance_failure",
-      "kind": "pytest",
-      "selector": "tests/test_pre_commit.py::test_pre_commit_preserves_governance_failure",
       "source_path": "tests/test_pre_commit.py"
     },
     {
@@ -883,112 +869,119 @@
       "id": "gate:changed",
       "kind": "gate",
       "selector": "changed",
-      "source_path": "bin/check:127"
+      "source_path": "bin/check:132"
     },
     {
       "family": "gate:format",
       "id": "gate:format",
       "kind": "gate",
       "selector": "format",
-      "source_path": "bin/check:108"
+      "source_path": "bin/check:111"
     },
     {
       "family": "gate:lint",
       "id": "gate:lint",
       "kind": "gate",
       "selector": "lint",
-      "source_path": "bin/check:95"
+      "source_path": "bin/check:96"
     },
     {
       "family": "gate:policy-anonymization",
       "id": "gate:policy-anonymization",
       "kind": "gate",
       "selector": "policy-anonymization",
-      "source_path": "bin/check:143"
+      "source_path": "bin/check:149"
     },
     {
       "family": "gate:policy-catalogs",
       "id": "gate:policy-catalogs",
       "kind": "gate",
       "selector": "policy-catalogs",
-      "source_path": "bin/check:137"
+      "source_path": "bin/check:142"
     },
     {
       "family": "gate:policy-config",
       "id": "gate:policy-config",
       "kind": "gate",
       "selector": "policy-config",
-      "source_path": "bin/check:136"
+      "source_path": "bin/check:141"
     },
     {
       "family": "gate:policy-execution-dashboards",
       "id": "gate:policy-execution-dashboards",
       "kind": "gate",
       "selector": "policy-execution-dashboards",
-      "source_path": "bin/check:135"
+      "source_path": "bin/check:140"
     },
     {
       "family": "gate:policy-harness-parity",
       "id": "gate:policy-harness-parity",
       "kind": "gate",
       "selector": "policy-harness-parity",
-      "source_path": "bin/check:133"
+      "source_path": "bin/check:138"
     },
     {
       "family": "gate:policy-hooks-installed",
       "id": "gate:policy-hooks-installed",
       "kind": "gate",
       "selector": "policy-hooks-installed",
-      "source_path": "bin/check:140"
+      "source_path": "bin/check:145"
     },
     {
       "family": "gate:policy-lessons",
       "id": "gate:policy-lessons",
       "kind": "gate",
       "selector": "policy-lessons",
-      "source_path": "bin/check:138"
+      "source_path": "bin/check:143"
+    },
+    {
+      "family": "gate:policy-log",
+      "id": "gate:policy-log",
+      "kind": "gate",
+      "selector": "policy-log",
+      "source_path": "bin/check:147"
     },
     {
       "family": "gate:policy-shell-syntax",
       "id": "gate:policy-shell-syntax",
       "kind": "gate",
       "selector": "policy-shell-syntax",
-      "source_path": "bin/check:141"
+      "source_path": "bin/check:146"
     },
     {
       "family": "gate:policy-test-governance",
       "id": "gate:policy-test-governance",
       "kind": "gate",
       "selector": "policy-test-governance",
-      "source_path": "bin/check:142"
+      "source_path": "bin/check:148"
     },
     {
       "family": "gate:policy-toolchain-callers",
       "id": "gate:policy-toolchain-callers",
       "kind": "gate",
       "selector": "policy-toolchain-callers",
-      "source_path": "bin/check:134"
+      "source_path": "bin/check:139"
     },
     {
       "family": "gate:policy-treatise",
       "id": "gate:policy-treatise",
       "kind": "gate",
       "selector": "policy-treatise",
-      "source_path": "bin/check:139"
+      "source_path": "bin/check:144"
     },
     {
       "family": "gate:test",
       "id": "gate:test",
       "kind": "gate",
       "selector": "test",
-      "source_path": "bin/check:119"
+      "source_path": "bin/check:124"
     },
     {
       "family": "gate:vital",
       "id": "gate:vital",
       "kind": "gate",
       "selector": "vital",
-      "source_path": "bin/check:123"
+      "source_path": "bin/check:128"
     },
     {
       "family": "hook:.githooks/pre-commit:./bin/check-harness-parity",
@@ -1005,11 +998,18 @@
       "source_path": ".githooks/pre-commit:9"
     },
     {
+      "family": "hook:.githooks/pre-commit:./bin/check-log --staged",
+      "id": "hook:.githooks/pre-commit:./bin/check-log --staged",
+      "kind": "hook",
+      "selector": "hook:.githooks/pre-commit:./bin/check-log --staged",
+      "source_path": ".githooks/pre-commit:10"
+    },
+    {
       "family": "hook:.githooks/pre-commit:./bin/test-governance validate",
       "id": "hook:.githooks/pre-commit:./bin/test-governance validate",
       "kind": "hook",
       "selector": "hook:.githooks/pre-commit:./bin/test-governance validate",
-      "source_path": ".githooks/pre-commit:10"
+      "source_path": ".githooks/pre-commit:11"
     }
   ],
   "schema": "agentic.proof_baseline.v2"

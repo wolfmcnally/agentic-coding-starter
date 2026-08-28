@@ -209,6 +209,22 @@ For each proposed addition or update, ask:
   Never transfer run directories or their findings, candidates, hashes, gate
   artifacts, or telemetry. Partial adoption is stale and blocking.
 
+- **Deterministic orchestration-control adoption.** Treat
+  `briefs/deterministic-orchestration-control-plane.md`,
+  `policies/orchestration-control-plane.md`, `bin/kickoff-command-zero`,
+  `bin/check-log`, `bin/check-log-prefix`, `bin/check-log-monotonic`,
+  `bin/log-append`, `bin/log-relocate`, `bin/normalize-final-newline`,
+  `lib/agentic_starter/candidate_boundaries.py`,
+  `lib/agentic_starter/kickoff_runbook.py`,
+  `lib/agentic_starter/log_blocks.py`,
+  `tests/test_kickoff_control_plane.py`, and
+  `tests/test_log_control_plane.py` with their `kickoff-config`,
+  `kickoff-evidence`, `kickoff-tree-id`, `bin/check`, hook, skill, catalog,
+  bootstrap, and proof-estate integrations as one contract. The target defines
+  its exact command rows, selector dry-runs, venue inventory, inert paths,
+  manifests, receipts, and proof exchanges from local evidence; never seed
+  them from Starter. Partial adoption is stale and blocking.
+
 - **Execution-telemetry and dashboard adoption.** Treat
   `policies/execution-telemetry.md`, `lib/agentic_starter/`,
   `bin/execution-telemetry`, `bin/check-execution-dashboards`,
@@ -466,7 +482,7 @@ Once approved, apply the approved items to the target. Order:
 11. Independently search the target for stale operational caller commands and
     prove that staged, unstaged, and nonignored untracked format failures are
     meet the target's 80% historical-defect and held-out-mutant recall floors.
-12. Append the TAUGHT FROM TEMPLATE entry to the target's `LOG.md` (create the file with the standard header if it doesn't exist). The entry lists the transferred items, the **parity heals applied** (separately from transferred items), the stale items migrated, the parity-heal and stale-sweep items surfaced for user decision, and the patterns to feed back via `learn`. Follow the target's LOG/provenance policy and the approved teaching-plan template. Starter's starter-only anonymization policy governs writes to Starter, not writes to the target.
+12. Append the TAUGHT FROM TEMPLATE entry to the target's `LOG.md` (create the file with the standard header if it doesn't exist). When the target has `bin/log-append`, construct the complete block in a temporary file and append it through that tool; never bypass its log custody with a contextual edit. The entry lists the transferred items, the **parity heals applied** (separately from transferred items), the stale items migrated, the parity-heal and stale-sweep items surfaced for user decision, and the patterns to feed back via `learn`. Follow the target's LOG/provenance policy and the approved teaching-plan template. Starter's starter-only anonymization policy governs writes to Starter, not writes to the target.
 
 **Follow the target's delivery policy.** After the unchanged target candidate passes its full gate and every approved manual step is closed, use the target's standing commit/push authority if it has one; a target that still requires its owner to commit gets the file list and nothing more. Re-check the live tree, stage explicit target paths, inspect the staged diff, verify the resulting commit's file set, never force or select an ambiguous remote, and verify clean aligned tips after any push (`policies/commit-staging.md`). Report the file list, build-gate status, and any unresolved manual steps regardless.
 
@@ -522,7 +538,8 @@ Once approved, apply the approved items to the target. Order:
 - **Adapt to the target's language.** Build-gate commands, language metadata, surface names — all get rewritten to the target's stack before the apply finishes.
 - **Catalog drift is forbidden.** Target's `CLAUDE.md` catalogs reflect every file in the target's `briefs/` and `policies/` after apply.
 - **One LOG entry per `teach` run.** Aggregate, in the target's `LOG.md`, using
-  the target's approved provenance/count template and disclosure policy. This
+  its governed append tool when present and the target's approved
+  provenance/count template and disclosure policy. This
   repo's `LOG.md` is not touched, so Starter's starter-only anonymization
   policy does not rewrite target provenance.
 - **Refuse on active-phase conflicts.** If a proposed change touches a file the target's plan marks `🚧`, drop it from the apply set and report it as a manual follow-up the target's owner should resolve via `kickoff` first.

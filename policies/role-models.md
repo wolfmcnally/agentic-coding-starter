@@ -61,7 +61,8 @@ configuration fails before any command runs or write occurs.
 - `show research` reports role capability and originating-query budgets;
 - `set-models` updates only `role_models`;
 - `reset models` resets only model routing;
-- `preflight` validates live external venues.
+- `preflight --receipt <path>` validates live external venues and writes a config-bound receipt;
+- `verify-preflight-receipt` revalidates that receipt against current routing.
 
 It uses round-trip YAML parsing, preserves comments, ordering, quoting, and data under `extensions`, and atomically replaces the file only after full validation. `roles` is its thin natural-language wrapper. Direct human edits are equally supported and take effect after `show models` validates them.
 
@@ -92,16 +93,19 @@ explicitly narrow them.
 Before phase identification, decomposition, status mutation, log writes, or agent invocation, `kickoff` runs:
 
 ```bash
-./bin/kickoff-config preflight
+./bin/kickoff-config preflight --receipt "$RUN_DIR/role-preflight.json"
 ```
 
 The manager probes every non-native role target with its resolved `(CLI, model,
-effort, access mode, research capability)`. It uses production credential
-scrubs, model/effort and research flags, stdin closure, approval posture, and
-read-only/write-enabled access in an empty temporary directory. Success
-requires the exact `KICKOFF_PREFLIGHT_OK` result within 120 seconds.
+effort, access mode, research capability)`. It writes unpredictable bytes to an
+isolated local file and requires the venue to read them and return their exact
+SHA-256 beside `KICKOFF_PREFLIGHT_OK`; echoing a prompt sentinel is insufficient.
+The receipt binds the configuration digest, harness, resolved targets, and
+shared probe digest. All-native routing writes the same schema with no targets.
+Production credential scrubs, model/effort and research flags, stdin closure,
+approval posture, and read-only/write-enabled access still apply.
 
-Preflight is fail-closed. A missing CLI, unusable authentication, unavailable model, network or sandbox error, flag incompatibility, timeout, malformed response, or wrong sentinel aborts `kickoff` before phase state exists. There is no native fallback for an upstream prerequisite failure.
+Preflight is fail-closed. A missing CLI, unusable authentication, unavailable model, network or sandbox error, flag incompatibility, timeout, malformed response, wrong digest, stale configuration, or incomplete target set aborts `kickoff` before phase state exists. There is no native fallback for an upstream prerequisite failure.
 
 ## Invocation, resume, and fallback
 

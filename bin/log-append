@@ -1,0 +1,77 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Append one authenticated block to LOG.md at true EOF."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import stat
+import sys
+import tempfile
+from datetime import datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+
+from agentic_starter import log_blocks  # noqa: E402
+
+
+def atomic_replace(path: Path, content: bytes) -> None:
+    mode = stat.S_IMODE(path.stat().st_mode)
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(temporary, mode)
+        os.replace(temporary, path)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--title", help="synthesize a locally timed H2 header")
+    args = parser.parse_args()
+    try:
+        root = args.root.resolve()
+        target = root / "LOG.md"
+        original = target.read_bytes()
+        body = sys.stdin.read().strip("\n")
+        if not body.strip():
+            raise ValueError("empty block on stdin")
+        if args.title:
+            if body.startswith("## "):
+                raise ValueError("--title cannot be combined with a supplied H2 header")
+            entry = f"## {datetime.now():%Y-%m-%d %H:%M} — {args.title}\n\n{body}\n"
+        else:
+            entry = body + "\n"
+            first = next((line for line in entry.splitlines() if line.strip()), "")
+            if log_blocks.HEADER_RE.match(first) is None:
+                raise ValueError("block must begin with a dated H2 header or use --title")
+        candidate = original.rstrip(b"\n") + b"\n\n" + entry.encode("utf-8")
+        errors = log_blocks.chronology_errors(log_blocks.parse(candidate.decode("utf-8")))
+        if errors:
+            raise ValueError(errors[0])
+        atomic_replace(target, candidate)
+        if target.read_bytes() != candidate:
+            raise ValueError("post-write bytes differ from validated candidate")
+        block = log_blocks.parse(candidate.decode("utf-8")).blocks[-1]
+        print(f"LOG-APPEND OK block={block.sha256}")
+        return 0
+    except (OSError, UnicodeError, ValueError) as exc:
+        print(f"LOG-APPEND REFUSED {exc}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

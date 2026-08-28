@@ -55,6 +55,7 @@ DISPOSITION_FIELDS = {
     "baseline_inventory_sha256",
 }
 ADMISSION_FIELDS = DISPOSITION_FIELDS | {"compensating_retirement"}
+RETIREMENT_FIELDS = DISPOSITION_FIELDS
 EFFECTIVENESS_FIELDS = {
     "record_type",
     "evidence_id",
@@ -461,6 +462,19 @@ def validate(root: Path) -> dict[str, Any]:
     baseline_ids = {row.get("id") for row in baseline.get("proofs", [])}
     disposition_rows = [row for row in ledger if row.get("record_type") == "proof_disposition"]
     admission_rows = [row for row in ledger if row.get("record_type") == "proof_admission"]
+    retirement_rows = [row for row in ledger if row.get("record_type") == "proof_retirement"]
+    known_record_types = {"proof_disposition", "proof_admission", "proof_retirement"}
+    unknown_record_types = sorted(
+        {
+            str(row.get("record_type"))
+            for row in ledger
+            if row.get("record_type") not in known_record_types
+        }
+    )
+    if unknown_record_types:
+        errors.append(
+            "audit ledger contains unknown record types: " + ", ".join(unknown_record_types)
+        )
     disposition_ids = [row.get("proof_id") for row in disposition_rows]
     if len(disposition_ids) != len(set(disposition_ids)):
         errors.append("audit ledger contains duplicate proof dispositions")
@@ -471,11 +485,10 @@ def validate(root: Path) -> dict[str, Any]:
     if extra_dispositions:
         errors.append(f"audit ledger names {len(extra_dispositions)} non-baseline proofs")
     admission_ids = [row.get("proof_id") for row in admission_rows]
-    expected_admissions = current_ids - baseline_ids
     if len(admission_ids) != len(set(admission_ids)):
         errors.append("audit ledger contains duplicate proof admissions")
-    if set(admission_ids) != expected_admissions:
-        errors.append("audit ledger does not admit every post-baseline proof exactly once")
+    if not current_ids - baseline_ids <= set(admission_ids):
+        errors.append("audit ledger does not admit every active post-baseline proof")
     dispositions_seen: set[str] = set()
     for row in disposition_rows:
         if set(row) != DISPOSITION_FIELDS:
@@ -500,29 +513,97 @@ def validate(root: Path) -> dict[str, Any]:
         proof_id = row.get("proof_id")
         replacement = row.get("replacement")
         if row.get("disposition") == "retain":
-            if proof_id not in current_ids or replacement != proof_id:
-                errors.append(f"retained proof is absent or self-binding is wrong: {proof_id}")
+            if replacement != proof_id:
+                errors.append(f"retained proof self-binding is wrong: {proof_id}")
         elif row.get("disposition") == "consolidate":
-            if proof_id in current_ids or replacement not in current_ids:
+            if proof_id in current_ids or replacement not in baseline_ids | set(admission_ids):
                 errors.append(f"consolidated proof has invalid replacement: {proof_id}")
         elif proof_id in current_ids or replacement is not None:
             errors.append(f"deleted proof still exists or names a replacement: {proof_id}")
     if not {"delete", "consolidate"} <= dispositions_seen:
         errors.append("reset must contain both delete and consolidate dispositions")
-    retired_ids = {
+    reset_retired_ids = {
         row.get("proof_id")
         for row in disposition_rows
         if row.get("disposition") in {"delete", "consolidate"}
     }
-    for row in admission_rows:
+    initial_active = {
+        str(row.get("proof_id")) for row in disposition_rows if row.get("disposition") == "retain"
+    }
+    active = set(initial_active)
+    available_retirements = set(reset_retired_ids)
+    consumed_retirements: set[str] = set()
+    seen_retirement_targets: set[str] = set()
+    post_reset_retirement_ids: set[str] = set()
+    post_reset_started = False
+    disposition_phase_open = True
+    for row in ledger:
+        record_type = row.get("record_type")
+        if record_type == "proof_disposition":
+            if not disposition_phase_open:
+                errors.append("baseline dispositions must precede lifecycle events")
+            continue
+        disposition_phase_open = False
+        if record_type == "proof_retirement":
+            post_reset_started = True
+            proof_id = row.get("proof_id")
+            if set(row) != RETIREMENT_FIELDS:
+                errors.append(f"wrong retirement fields for {proof_id}")
+                continue
+            if proof_id in seen_retirement_targets:
+                errors.append(f"proof is retired more than once: {proof_id}")
+            seen_retirement_targets.add(str(proof_id))
+            if proof_id not in active:
+                errors.append(f"retirement target is not active: {proof_id}")
+                continue
+            disposition = row.get("disposition")
+            replacement = row.get("replacement")
+            if disposition == "consolidate":
+                if replacement == proof_id or replacement not in active:
+                    errors.append(f"retirement has invalid consolidation replacement: {proof_id}")
+            elif disposition == "delete":
+                if replacement is not None:
+                    errors.append(f"deleted retirement names a replacement: {proof_id}")
+            else:
+                errors.append(f"retirement must consolidate or delete: {proof_id}")
+            if row.get("baseline_inventory_sha256") != baseline.get("inventory_sha256"):
+                errors.append(f"stale retirement baseline for {proof_id}")
+            for field in (
+                "contract",
+                "oracle",
+                "red_witness",
+                "nearest_overlap",
+                "replacement_evidence",
+                "rationale",
+            ):
+                if not isinstance(row.get(field), str) or not row[field]:
+                    errors.append(f"missing retirement {field} for {proof_id}")
+            active.discard(str(proof_id))
+            available_retirements.add(str(proof_id))
+            post_reset_retirement_ids.add(str(proof_id))
+            continue
+        if record_type != "proof_admission":
+            continue
         if set(row) != ADMISSION_FIELDS:
             errors.append(f"wrong admission fields for {row.get('proof_id')}")
             continue
         proof_id = row.get("proof_id")
         if row.get("disposition") != "retain" or row.get("replacement") != proof_id:
             errors.append(f"post-baseline admission must retain and self-bind: {proof_id}")
-        if row.get("compensating_retirement") not in retired_ids:
-            errors.append(f"post-baseline admission lacks a retired proof budget: {proof_id}")
+        compensation = row.get("compensating_retirement")
+        if compensation not in available_retirements:
+            errors.append(f"post-baseline admission lacks an available retirement: {proof_id}")
+        elif compensation in consumed_retirements:
+            errors.append(f"retirement budget is reused by admission: {proof_id}")
+        elif post_reset_started and compensation not in seen_retirement_targets:
+            errors.append(
+                f"post-reset admission is not funded by a post-reset retirement: {proof_id}"
+            )
+        else:
+            consumed_retirements.add(str(compensation))
+        if proof_id in active:
+            errors.append(f"admission proof is already active: {proof_id}")
+        active.add(str(proof_id))
         for field in (
             "contract",
             "oracle",
@@ -533,6 +614,13 @@ def validate(root: Path) -> dict[str, Any]:
         ):
             if not isinstance(row.get(field), str) or not row[field]:
                 errors.append(f"missing admission {field} for {proof_id}")
+    if active != current_ids:
+        missing = sorted(current_ids - active)
+        shadow = sorted(active - current_ids)
+        errors.append(
+            "replayed proof estate does not match inventory"
+            f" (unadmitted={missing[:3]}, shadow={shadow[:3]})"
+        )
 
     corpus_rel = manifest.get("effectiveness_corpus")
     report_rel = manifest.get("effectiveness_report")
@@ -636,6 +724,8 @@ def validate(root: Path) -> dict[str, Any]:
             for state in ("retain", "consolidate", "delete")
         },
         "admissions": len(admission_rows),
+        "post_reset_retirements": len(retirement_rows),
+        "unspent_retirements": len(post_reset_retirement_ids - consumed_retirements),
     }
 
 

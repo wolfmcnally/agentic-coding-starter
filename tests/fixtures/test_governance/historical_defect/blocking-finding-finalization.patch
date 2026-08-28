@@ -1,8 +1,8 @@
 --- a/bin/kickoff-evidence
 +++ b/bin/kickoff-evidence
-@@ -4375,7 +4375,7 @@
-         raise EvidenceError("recorded repository root no longer resolves to itself")
-     if arguments.require_final:
+@@ -4558,7 +4558,7 @@
+             raise EvidenceError("full-lane final validation requires a gate manifest")
+         validate_role_preflight_receipt(arguments.run_dir, root)
          validate_preclose_telemetry(run, arguments.run_dir, root)
 -        blocking_states = {"open", "addressed", "blocked-owner"}
 +        blocking_states = {"addressed", "blocked-owner"}

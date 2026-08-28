@@ -139,7 +139,7 @@ examples of the shape: *the fix covers the named instance, not the class*, and
 
 ### Who writes
 
-- **Any agent** may file a candidate lesson or append an occurrence: `kickoff`'s harvest step at phase close, `sweep` during a maintenance pass, a `user-actions` disposition, `learn`/`teach` during a transfer, or the user directly.
+- **Any agent** may file a candidate lesson or append an occurrence: `kickoff`'s harvest step at every truthful phase close or park, `sweep` during a maintenance pass, a `user-actions` disposition, `learn`/`teach` during a transfer, or the user directly. A parked run is evidence, not a reason to discard its observations.
 - **`learn` keeps two inputs distinct.** Donor-ledger lessons are harvested as
   direct rule proposals or destination-ledger candidates. New methodology
   defects exposed while adapting the approved bundle are filed separately in

@@ -307,10 +307,11 @@ Once approved, apply the approved items. Before importing any donor remedy for a
    edit in this step: application-found candidates enter the ledger for later
    human ratification. Run `./bin/lessons validate` and
    `./bin/lessons candidates`; count these separately from donor lessons.
-10. Append the LEARN entry to `LOG.md`. Format as proposed in the plan,
-    report donor-ledger and application-found lesson counts separately, and
-    apply this repository's anonymization policy because this write lands in
-    Starter.
+10. Construct the complete LEARN entry in a temporary file and append it at
+    true EOF with `./bin/log-append < <block-file>`. Format it as proposed in
+    the plan, report donor-ledger and application-found lesson counts
+    separately, and apply this repository's anonymization policy before the
+    write because it lands in Starter.
 11. Run `./bin/check all` against the complete unchanged candidate after all
     rule, lesson, stale-migration, and LOG writes. This is the authoritative
     final gate; any subsequent candidate change invalidates it.
@@ -341,6 +342,7 @@ Once approved, apply the approved items. Before importing any donor remedy for a
   directories, source copies, findings, hashes, gate artifacts, or telemetry.
   Candidate mismatches and indeterminate impact fail closed; the
   authoritative final gate remains mandatory.
+- **Deterministic orchestration-control learning is atomic and recipient-owned.** Assess and transfer `briefs/deterministic-orchestration-control-plane.md`, `policies/orchestration-control-plane.md`, `bin/kickoff-command-zero`, `bin/check-log`, `bin/check-log-prefix`, `bin/check-log-monotonic`, `bin/log-append`, `bin/log-relocate`, `bin/normalize-final-newline`, `lib/agentic_starter/candidate_boundaries.py`, `lib/agentic_starter/kickoff_runbook.py`, `lib/agentic_starter/log_blocks.py`, `tests/test_kickoff_control_plane.py`, and `tests/test_log_control_plane.py` with their `kickoff-config`, `kickoff-evidence`, `kickoff-tree-id`, `bin/check`, hook, skill, catalog, bootstrap, and proof-estate integration. Transfer the obligation and procedure, never donor command rows, selector choices, venue inventory, inert-path judgments, manifests, receipts, logs, or repair history. The recipient defines and proves those locally. Partial adoption is stale and blocking.
 - **Toolchain learning is atomic and target-owned.** Never learn only a gate
   wrapper or a raw command. Assess `bin/setup`, `bin/test`, `bin/check`,
   runtime wrappers, the runtime pin, manifest, lockfile, behavioral tests,
@@ -376,6 +378,7 @@ Once approved, apply the approved items. Before importing any donor remedy for a
   both frozen family and leaf counts while preserving at least 80% historical
   and held-out recall plus direct proof for every applicable critical risk; an
   unsatisfied conjunction parks for the owner. Zero-net-growth, complete
-  removal, and executable periodic reassessment transfer with the machinery.
+  removal, post-reset retirement-before-admission replay, and executable
+  periodic reassessment transfer with the machinery.
   Invalid or unmapped selection widens to full; both close gates remain full.
 - **Skill-exclusion list.** `stamp` and the starter template's `example/` Python project are starter-only and never transferred. `learn` and `teach` themselves are universal — if the donor has a more evolved version, treat it like any other candidate; if this repo lacks them and the donor has them, propose adding them (the bootstrap procedure expects them in every methodology-following project).

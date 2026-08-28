@@ -1061,3 +1061,41 @@ still exercises the entire retained estate. `sweep` carries an executable
 reassessment and shrinkage obligation, and learn, teach, stamp, and bootstrap
 require every recipient to perform its own reset without inheriting Starter's
 survivors or judgments.
+
+## 2026-08-28 16:13 — LEARN
+
+Donor: Donor A @ <sha withheld>
+
+Items absorbed: 1 atomic control-plane and proof-lifecycle bundle.
+Donor lessons absorbed into the approved bundle: 5.
+Application-found return candidates: 1 methodology lesson filed.
+Files touched: 62.
+
+Starter now carries a deterministic orchestration control plane: immutable
+exact-command manifests, command-zero admission before substantive execution,
+real-read venue receipts bound to live configuration, separate product and
+full-tree candidate identities, append-only log custody, and one bounded
+bookkeeping repair that parks on ambiguity, repetition, or substantive change.
+The kickoff, learn, teach, stamp, bootstrap, briefs, policies, managers,
+catalogs, hooks, and tests transfer the complete generalized machinery while
+requiring each recipient to supply its own venue inventory, commands, and audit
+judgments.
+
+The proof estate remains at 108 retained families and 126 retained leaves
+against the frozen 541-family and 690-leaf baseline: 19.96% and 18.26%. Four
+physically removed post-reset proofs fund four new control-plane proofs through
+an append-only retirement-before-admission lifecycle, leaving zero unspent
+retirement budget. Later growth now requires a unique preceding retirement;
+the frozen reset surplus cannot be spent again.
+
+A fresh whole-corpus assay recalled eleven of twelve historical defects
+(91.67%) and killed all twelve held-out mutants (100%). Every applicable
+critical-risk class retains direct proof. Vital, changed, and full lanes all
+operate over the retained estate, while the full retained close gate remains
+authoritative. The donor's project-specific commands, selectors, venue
+inventory, inert-path judgments, manifests, receipts, logs, timings, and audit
+judgments were not copied.
+
+The application exposed one methodology lesson: a reset budget is not a
+continuing zero-growth budget unless later retirements are replayed. That
+lesson is filed as boisterous-adder for future recurrence or graduation.

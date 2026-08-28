@@ -40,6 +40,13 @@ replacement. Deletion states why no replacement is needed. A new post-baseline
 proof names its active contract and risk, supplies the same evidence, and spends
 an explicit positive budget or names a compensating retirement.
 
+Zero-net-growth remains executable after the initial reset through append-only
+lifecycle replay. A post-reset retirement removes one currently active baseline
+or admitted proof, names its consolidation replacement or deletion rationale,
+and creates one budget. One later admission consumes that retirement once.
+Reset-era removals fund only reset-era admissions; they are not a permanent bank
+for later growth. Replaying the ledger must reproduce the live estate exactly.
+
 Historical cases may guide the retained selection. The holdout selection is
 frozen before its mutants run, then the result is recorded without tuning. The
 corpora, selectors, survivor identities, risk applicability, timings, and audit

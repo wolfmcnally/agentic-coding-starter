@@ -44,6 +44,16 @@ named active contract or risk, independent oracle, red witness, non-subsumption
 account, and either a named approved positive budget or a compensating retirement.
 Validation fails closed when any admission or budget evidence is absent.
 
+After the reset, retirement is itself an append-only event. A
+`proof_retirement` may target only one currently active baseline or admitted
+proof, exactly once. It records `consolidate` with a named active replacement or
+`delete` with no replacement, plus the same contract, oracle, red-witness,
+overlap, replacement, and rationale evidence as the original reset. Replay
+removes that proof and creates one budget. One later admission may consume that
+budget exactly once. Reset-era dispositions cannot fund admissions appended
+after the post-reset lifecycle begins. The replayed active set MUST equal the
+live inventory; a shadow proof, reused retirement, or missing event refuses.
+
 ## Deterministic manager and lanes
 
 The repository manager MUST inventory expanded pytest leaves, collapsed families,

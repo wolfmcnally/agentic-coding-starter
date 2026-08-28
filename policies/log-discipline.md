@@ -103,7 +103,7 @@ Remaining:
 
 Build-status lines are project-specific. A Python project might list `ruff check`, `ruff format`, `pytest`. A polyglot project lists every surface's gate. Use `N/A` for gates that don't apply to this phase.
 
-The `Lessons:` field is part of the minimum END contract because the harvest question is mandatory at every close ([`lessons.md`](lessons.md)): `none` is a valid answer, but the field may not be omitted. Ledger content and graduation mechanics are governed by `policies/lessons.md`; `kickoff`'s Step 10 may extend this block with additional evidence fields.
+The `Lessons:` field is part of every truthful END or PARK contract because the harvest question is mandatory at every terminal seam ([`lessons.md`](lessons.md)): `none` is a valid answer, but the field may not be omitted. Ledger content and graduation mechanics are governed by `policies/lessons.md`; `kickoff` may extend the block with additional evidence fields.
 
 The `Acceptance:` field is likewise mandatory, and both halves are written even
 when one is `None`. It is the per-phase record of the boundary in
@@ -147,7 +147,7 @@ This block records a correction to an already authorized goal; it does not reope
 
 ## Rules
 
-1. **Append-only.** Never edit a historical START or END block. Mistakes get a follow-up END block ("END (correction)") with the corrected information. "Historical" begins at the first commit: the active run's own entry, while it has never been committed, may still be corrected in place when the run's final state changes before close — enshrining a count or claim already known to be false would be worse than the amendment. Once an entry has been committed, or belongs to any earlier run, corrections are append-only blocks.
+1. **Append-only by exact bytes.** New blocks enter through `bin/log-append` at true EOF. The working and staged candidates must begin with the exact committed bytes; a semantically equivalent rewrite is still a violation. A committed mistake gets a later correction block. An uncommitted block may be relocated only by one unique content digest through `bin/log-relocate`, which preserves the committed prefix and every block identity.
 2. **Skills write; humans read.** Only the skills named in the table above append to `LOG.md`, each writing only its own entry kind. Humans don't write to it directly. The exceptions are bootstrapping (creating the initial `# Activity Log` header) and recovery (when a skill failed partway and left an inconsistent state).
 3. **Timestamps are real.** Use the orchestrator's actual wall-clock time when the block was written. Do not back-date.
 4. **The END block is a contract.** When the orchestrator writes an END block claiming the phase is done, the human is entitled to expect that every claim in the block is true. Fabricated evidence is the most dangerous failure mode this policy guards against; the orchestrator must never claim a build gate passed when it didn't, never claim a manual check was performed by the orchestrator, never embellish the file list.
@@ -156,6 +156,8 @@ This block records a correction to an already authorized goal; it does not reope
    against the actual handoff tree. No tracked write follows that pass. A
    failure reopens and corrects the current uncommitted close; committed
    historical blocks remain append-only.
+6. **Chronology corrections move effective time, never bytes.** A later exact `LOG CHRONOLOGY CORRECTION` block binds one earlier block digest, repeats its recorded anchor, and supplies a strictly later effective anchor no later than the correction record. Duplicate, missing, ambiguous, or backward corrections refuse.
+7. **One bounded mechanical repair.** A novel bookkeeping failure may receive one in-memory-validated atomic repair under `policies/orchestration-control-plane.md`. A second attempt, ambiguity, substantive change, recurring signature, or failed byte verification parks.
 
 ## Why append-only
 

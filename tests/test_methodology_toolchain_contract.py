@@ -106,6 +106,19 @@ def test_every_gate_required_executable_propagates() -> None:
         for document in (STAMP, BOOTSTRAP_BRIEF, TEACH):
             assert f"bin/{name}" in document, f"bin/{name} missing from a transfer document"
 
+    control_plane = (
+        "briefs/deterministic-orchestration-control-plane.md",
+        "policies/orchestration-control-plane.md",
+        "lib/agentic_starter/candidate_boundaries.py",
+        "lib/agentic_starter/kickoff_runbook.py",
+        "lib/agentic_starter/log_blocks.py",
+        "tests/test_kickoff_control_plane.py",
+        "tests/test_log_control_plane.py",
+    )
+    for path in control_plane:
+        for document in (LEARN, TEACH, STAMP, BOOTSTRAP_BRIEF):
+            assert path in document, f"{path} missing from a transfer authority"
+
 
 def test_research_authority_contract_propagates_and_stays_allow_by_default() -> None:
     assert "allow-by-default" in RESEARCH_POLICY

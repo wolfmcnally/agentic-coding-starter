@@ -68,7 +68,7 @@ cases:
 - id: blocking-finding-finalization
   class: historical_defect
   patch: tests/fixtures/test_governance/historical_defect/blocking-finding-finalization.patch
-  patch_sha256: 7e60c1a3e28d72e08137819ad655fe8b12a17903981f84df98a7f41ce05c0177
+  patch_sha256: ce1c296113a271be3fcd1e1f15e79caf010e801ae1a84b18c25a89b5709239c1
   command: ./bin/test tests/test_kickoff_evidence.py -q
   cwd: .
   expected: The retained estate rejects the seeded defect.
@@ -124,7 +124,7 @@ cases:
 - id: optional-disposition-evidence
   class: holdout_mutant
   patch: tests/fixtures/test_governance/holdout_mutant/optional-disposition-evidence.patch
-  patch_sha256: 1bc648b42f3a7773dc4b2b19a34c11222823f939febc1a9f01e678699b487dbb
+  patch_sha256: 1c511849252695b92cd959e02e77d9ce718dc99f3b0d3f9dfff56b8c05cd5084
   command: ./bin/test tests/test_test_governance.py -q
   cwd: .
   expected: The retained estate rejects the seeded defect.
@@ -156,7 +156,7 @@ cases:
 - id: shadow-proof-removal
   class: holdout_mutant
   patch: tests/fixtures/test_governance/holdout_mutant/shadow-proof-removal.patch
-  patch_sha256: 4b93e94a37f1f76066a2baf41dedb6e98882cfb8143e9f123a8b1c4cb275eafc
+  patch_sha256: 65059283e37274bec01d4514cf76c1ff30bb8e2f1c71615ff2b5c38df4a75b3f
   command: ./bin/test tests/test_test_governance.py -q
   cwd: .
   expected: The retained estate rejects the seeded defect.
@@ -188,7 +188,7 @@ cases:
 - id: absent-consolidation-replacement
   class: holdout_mutant
   patch: tests/fixtures/test_governance/holdout_mutant/absent-consolidation-replacement.patch
-  patch_sha256: 724708cbf19d7b8fc3eab3bc9ae9efd643e57ef8226abb0c4b8c92fe446947d4
+  patch_sha256: 27f9f89f3ba9b4d4701f976795b44306c868fa0218af417bc6f83ed8bfaf35ec
   command: ./bin/test tests/test_test_governance.py -q
   cwd: .
   expected: The retained estate rejects the seeded defect.

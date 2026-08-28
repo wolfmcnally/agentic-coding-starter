@@ -376,3 +376,26 @@ def test_preflight_still_aborts_on_a_failed_sentinel(tmp_path: Path) -> None:
     assert result.returncode != 0
     assert "preflight failed" in result.stderr
     assert "toolchain" not in result.stdout
+
+    working = fake_cli(
+        tmp_path,
+        "claude",
+        """if [ -f .kickoff-capability-probe ]; then
+  digest=$(shasum -a 256 .kickoff-capability-probe | awk '{print $1}')
+  printf '{"result":"KICKOFF_PREFLIGHT_OK %s"}\\n' "$digest"
+else
+  printf '%s\\n' '{"result":"KICKOFF_TOOLCHAIN_OK"}'
+fi""",
+    )
+    receipt = tmp_path / "preflight.json"
+    result = run_manager(config, "preflight", "--receipt", str(receipt), cli=working)
+    assert result.returncode == 0, result.stderr
+    assert receipt.is_file()
+    verified = run_manager(config, "verify-preflight-receipt", "--receipt", str(receipt))
+    assert verified.returncode == 0, verified.stderr
+    assert "PREFLIGHT RECEIPT VALID" in verified.stdout
+
+    config.write_text(config.read_text() + "\n# routing configuration changed\n")
+    stale = run_manager(config, "verify-preflight-receipt", "--receipt", str(receipt))
+    assert stale.returncode != 0
+    assert "stale routing configuration" in stale.stderr

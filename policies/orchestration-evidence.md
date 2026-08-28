@@ -16,7 +16,10 @@ temporary directory. It is not committed.
 
 Initialize the run through `./bin/python bin/kickoff-evidence init` with the phase file,
 its cited briefs, applicable policies, `plan/INDEX.md`, `CLAUDE.md`, declared
-dependencies, and the immediately preceding completed phase as authorities.
+dependencies, the immediately preceding completed phase as authorities, and the
+fresh `bin/kickoff-config preflight --receipt` artifact for the resolved role
+topology. A missing, stale, malformed, or differently configured receipt refuses
+initialization and final validation.
 Original files remain authoritative; the manifest is an index and drift
 sensor, not a summary that replaces them.
 
@@ -40,6 +43,14 @@ Ignored runtime state, `.gates/`, and nested repositories do not enter the
 candidate. A clean submodule
 contributes its checked-out commit; a dirty submodule fails closed. Staging
 alone does not change identity.
+
+The evidence plane records two identities from that one implementation. The
+**full-tree candidate** remains authoritative for review handoff, final gates,
+delivery, and commit custody. The **product candidate** excludes only the inert
+bookkeeping vocabulary declared by the policy fence below. It can prove that a
+bounded bookkeeping repair left the implementation unchanged, but it never
+substitutes for the full-tree identity or the independent reviewed-surface and
+declared-authority drift checks.
 
 Every change manifest, finding transition, revision packet, and gate record
 names the candidate it describes. A candidate mismatch is an error, never a
@@ -82,8 +93,15 @@ below.
 - **Finding ledger:** stable id, severity, authority, evidence, affected
   paths, required outcome, introduction/resolution candidates, state,
   classification, and disposition.
-- **Gate ledger:** command, candidate id, selection reason, exit status,
-  warning count, final-gate flag, and optional artifact digest.
+- **Gate ledger:** structured argv, full-tree and product candidate ids,
+  active command-manifest digest, selection reason, exit status, warning count,
+  final-gate flag, and optional artifact digest.
+
+A full-evidence run activates one immutable content-addressed command manifest
+before managed gates begin. Activation is append-only; a successor must name
+the digest it supersedes. `run-gate` admits only an argv that exactly matches an
+active `(operation, attempt, final)` row, and final validation refuses a final
+gate bound to an older manifest. Display quoting is never execution authority.
 
 Exact fields are the executable schema in `./bin/python bin/kickoff-evidence`; behavioral
 tests are the contract floor. Agents exercise judgment to produce the facts.
@@ -152,6 +170,12 @@ Use four levels:
    candidate;
 4. a bare `./bin/check all` after every tracked close write, against the actual
    handoff tree.
+
+Before an expensive acceptance sequence, run `bin/kickoff-command-zero`. It
+validates the manifest, venue receipt, and stage topology; dry-runs every
+declared selector; checks format; and proves both the exact committed-log prefix
+and effective log chronology, stopping at the first refusal. Cheap structural
+failure must not spend the full-gate budget.
 
 **Rehearse before an expensive or irreversible acceptance step.** When a phase's
 acceptance includes a long or externally-irreversible run — a live data
@@ -510,6 +534,7 @@ is parsed by `bin/kickoff-evidence`; it is not restated in code.
 # kickoff-evidence drift partitions
 inert:
   - LOG*.md
+  - EXECUTION_LOG.jsonl
   - plan/INDEX.md
   - lessons/
   - lessons-archived/

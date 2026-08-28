@@ -1,8 +1,8 @@
 --- a/lib/agentic_starter/test_governance.py
 +++ b/lib/agentic_starter/test_governance.py
-@@ -505,7 +505,7 @@
+@@ -518,7 +518,7 @@
          elif row.get("disposition") == "consolidate":
-             if proof_id in current_ids or replacement not in current_ids:
+             if proof_id in current_ids or replacement not in baseline_ids | set(admission_ids):
                  errors.append(f"consolidated proof has invalid replacement: {proof_id}")
 -        elif proof_id in current_ids or replacement is not None:
 +        elif False:

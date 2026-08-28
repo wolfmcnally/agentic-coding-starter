@@ -1,0 +1,99 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Prove that candidate LOG.md extends the committed bytes verbatim."""
+
+from __future__ import annotations
+
+import argparse
+import subprocess
+import sys
+from pathlib import Path
+
+SCRIPT = Path(__file__).resolve()
+ROOT = SCRIPT.parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+
+from agentic_starter import log_blocks  # noqa: E402
+
+
+class PrefixError(RuntimeError):
+    pass
+
+
+def git(root: Path, *arguments: str) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(
+        ["git", "-C", str(root), *arguments],
+        capture_output=True,
+        check=False,
+    )
+
+
+def repository_root(start: Path) -> Path:
+    result = git(start.resolve(), "rev-parse", "--show-toplevel")
+    if result.returncode:
+        raise PrefixError(result.stderr.decode(errors="replace").strip() or "not a repository")
+    return Path(result.stdout.decode().strip()).resolve()
+
+
+def candidate(root: Path, staged: bool) -> bytes:
+    if staged:
+        result = git(root, "show", ":LOG.md")
+        if result.returncode:
+            raise PrefixError("LOG.md has no staged blob")
+        return result.stdout
+    path = root / "LOG.md"
+    if not path.is_file():
+        raise PrefixError("LOG.md is absent")
+    return path.read_bytes()
+
+
+def committed(root: Path) -> bytes:
+    result = git(root, "show", "HEAD:LOG.md")
+    if result.returncode:
+        raise PrefixError("cannot read committed LOG.md")
+    return result.stdout
+
+
+def first_difference(expected: bytes, actual: bytes) -> int:
+    for index, pair in enumerate(zip(expected, actual)):
+        if pair[0] != pair[1]:
+            return index
+    return min(len(expected), len(actual))
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--staged", action="store_true")
+    parser.add_argument("--require-terminal-lessons", action="store_true")
+    parser.add_argument("--quiet", action="store_true")
+    args = parser.parse_args()
+    try:
+        root = repository_root(args.root)
+        before = committed(root)
+        after = candidate(root, args.staged)
+        if not after.startswith(before):
+            raise PrefixError(
+                "committed bytes are not a prefix; first mismatch/truncation at "
+                f"byte {first_difference(before, after)}"
+            )
+        if args.require_terminal_lessons:
+            old = log_blocks.parse(before.decode("utf-8"))
+            new = log_blocks.parse(after.decode("utf-8"))
+            for block in new.blocks[len(old.blocks) :]:
+                terminal = "— END" in block.header or "— PARK" in block.header
+                if terminal and not any(line.strip() == "Lessons:" for line in block.body):
+                    raise PrefixError(f"terminal block lacks Lessons: witness: {block.header}")
+        if not args.quiet:
+            source = "staged" if args.staged else "working"
+            print(f"LOG-PREFIX OK ({source}; appended_bytes={len(after) - len(before)})")
+        return 0
+    except (OSError, UnicodeError, PrefixError) as exc:
+        print(f"LOG-PREFIX REFUSED {exc}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

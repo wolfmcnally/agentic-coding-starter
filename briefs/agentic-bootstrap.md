@@ -261,6 +261,16 @@ These files encode the methodology itself, not any particular product. Copy them
   identity and run-evidence managers)
 - `tests/test_kickoff_tree_id.py` and `tests/test_kickoff_evidence.py`
   (universal behavioral coverage for candidate/evidence mechanics)
+- `bin/kickoff-command-zero`, `bin/check-log`, `bin/check-log-prefix`,
+  `bin/check-log-monotonic`, `bin/log-append`, `bin/log-relocate`, and
+  `bin/normalize-final-newline`, together with
+  `lib/agentic_starter/candidate_boundaries.py`,
+  `lib/agentic_starter/kickoff_runbook.py`, and
+  `lib/agentic_starter/log_blocks.py` (the universal executable-authority,
+  dual-identity, append-only log, and bounded-repair control plane)
+- `tests/test_kickoff_control_plane.py` and `tests/test_log_control_plane.py`
+  (behavioral coverage for exact command admission, command zero, log custody,
+  and the single-repair boundary)
 - `bin/check-receipt` and `tests/test_check_receipt.py` (universal durable
   full-gate records and exact, fail-closed pre-push reuse)
 - `bin/test-governance`, `lib/agentic_starter/test_governance.py`,
@@ -304,6 +314,9 @@ These files encode the methodology itself, not any particular product. Copy them
 - `briefs/cross-agent-invocation.md` (the cross-CLI invocation BCPs cited by `policies/role-models.md`)
 - `briefs/incremental-orchestration.md` (candidate-bound review, revision,
   verification, and protocol-recovery design)
+- `briefs/deterministic-orchestration-control-plane.md` (implemented command
+  authority, venue qualification, dual identity, log custody, and bounded
+  repair design)
 - `briefs/deterministic-orchestration.md` (draft universal brief: decision criteria for a deterministic kickoff loop, so the derived project can act when its harnesses gain parity workflow primitives)
 - `briefs/harness-self-improvement.md` (phase-scale lessons capture,
   rule-surface pruning, and cross-repo propagation)
@@ -497,6 +510,24 @@ Port the self-improvement machinery as the same atomic bundle:
 Do not seed a new project's ledger with the template's lesson entries. Ledger
 content is project state; only the schema, empty directories, capture loop, and
 fitness checks transfer.
+
+Port the deterministic orchestration control plane as one atomic bundle:
+
+- `briefs/deterministic-orchestration-control-plane.md` and
+  `policies/orchestration-control-plane.md`
+- `bin/kickoff-command-zero`, `bin/check-log`, `bin/check-log-prefix`,
+  `bin/check-log-monotonic`, `bin/log-append`, `bin/log-relocate`, and
+  `bin/normalize-final-newline`
+- `lib/agentic_starter/candidate_boundaries.py`,
+  `lib/agentic_starter/kickoff_runbook.py`, and
+  `lib/agentic_starter/log_blocks.py`
+- `tests/test_kickoff_control_plane.py` and `tests/test_log_control_plane.py`
+- its `kickoff-evidence`, `kickoff-config`, `kickoff-tree-id`, `bin/check`,
+  pre-commit, catalog, and skill integrations
+
+The destination regenerates its own exact command manifest, selector dry-runs,
+venue set, inert bookkeeping vocabulary, and proof-estate admissions. Copying
+the template's local values would turn examples into authority.
 
 The executable transfer skills, this manual procedure, its acceptance
 checklist, the methodology narrative, role-output contracts, catalogs, and
@@ -797,8 +828,9 @@ Bootstrap is complete when **all** of the following hold:
     worktrees remain available
 [ ] bin/kickoff-config is executable; kickoff.yaml validates all three sections; scoped updates
     preserve human comments and `extensions` data; `.kickoff/` is gitignored
-[ ] bin/kickoff-tree-id and bin/kickoff-evidence are executable; candidate
-    identity and run-scoped evidence behavioral tests pass
+[ ] bin/kickoff-tree-id, bin/kickoff-evidence, and bin/kickoff-command-zero are
+    executable; full-tree/product identity, immutable command admission,
+    configuration-bound preflight receipts, and run-scoped evidence tests pass
 [ ] bin/lessons and bin/check-catalogs are executable; a .gitkeep exists in
     each of lessons/, lessons-archived/, user-actions/, and
     user-actions-archived/, and none of the four carries an entry copied from
@@ -807,7 +839,9 @@ Bootstrap is complete when **all** of the following hold:
     kickoff-tree-id, kickoff-evidence, kickoff-config, check-receipt,
     execution-telemetry, check-execution-dashboards, check-harness-parity,
     check-toolchain-callers, test-governance, lessons, treatise, check-catalogs,
-    check-hooks-installed, check-shell-syntax, new-name. bin/check fails closed
+    check-hooks-installed, check-shell-syntax, new-name, check-log,
+    check-log-prefix, check-log-monotonic, kickoff-command-zero, log-append,
+    log-relocate, normalize-final-newline. bin/check fails closed
     on the first one missing, before any gate runs — this is the fastest way to
     catch an incomplete transfer
 [ ] lib/agentic_starter/ exists (the telemetry, dashboard, plan-artifact, and

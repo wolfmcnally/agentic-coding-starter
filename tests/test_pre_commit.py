@@ -31,6 +31,7 @@ def hook_repo(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     for executable in (
         "check-harness-parity",
         "check-toolchain-callers",
+        "check-log",
         "test-governance",
     ):
         _write_probe(root / "bin" / executable, executable)
@@ -62,14 +63,21 @@ def test_pre_commit_runs_structural_governance_after_existing_checks(
     assert Path(environment["PRE_COMMIT_LOG"]).read_text().splitlines() == [
         "check-harness-parity",
         "check-toolchain-callers",
+        "check-log",
         "test-governance",
     ]
+    Path(environment["PRE_COMMIT_LOG"]).write_text("")
+    environment["PRE_COMMIT_FAIL"] = "check-log"
 
+    result = _run(root, environment)
 
-def test_pre_commit_preserves_governance_failure(
-    hook_repo: tuple[Path, dict[str, str]],
-) -> None:
-    root, environment = hook_repo
+    assert result.returncode == 37
+    assert Path(environment["PRE_COMMIT_LOG"]).read_text().splitlines() == [
+        "check-harness-parity",
+        "check-toolchain-callers",
+        "check-log",
+    ]
+    Path(environment["PRE_COMMIT_LOG"]).write_text("")
     environment["PRE_COMMIT_FAIL"] = "test-governance"
 
     result = _run(root, environment)

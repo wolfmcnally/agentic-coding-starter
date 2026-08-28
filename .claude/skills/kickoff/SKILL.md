@@ -83,6 +83,13 @@ interval and its union total. Same-boot intervals use exact monotonic time;
 cross-boot intervals use visibly non-exact UTC calendar duration. Never turn an
 open, malformed, or unknowable interval into zero.
 
+When the run must terminate in a truthful PARK rather than merely keep the
+turn open, harvest the available sensor feed immediately using Step 9c's
+file-or-recur rules, validate the ledger, and append a PARK block through
+`bin/log-append`. The block names the reason, preserved evidence, resume
+condition, and a literal `Lessons:` section. Do not postpone a failed attempt's
+learning until a future END.
+
 ### Step 0a: Resolve per-role model/venue
 
 For an initial implementation or delegated follow-up, resolve once per session before role work begins, per [`policies/role-models.md`](../../../policies/role-models.md). This resolves a `(venue, model, effort)` for **each of the four roles** from `kickoff.yaml`'s harness-aware `role_models` section. A direct follow-up fix skips this step.
@@ -103,21 +110,22 @@ For an initial implementation or delegated follow-up, resolve once per session b
 
 Remember each role's resolved `(venue, model, effort)` and the orchestrating harness for Steps 3–6 and the Step 10 END block. Roles do not re-resolve mid-session. A non-`default` model always goes through the CLI recipe — do **not** short-circuit "model == session model" (uniform resolution, no session-model probing).
 
-### Step 0b: Preflight every non-native role venue
+### Step 0b: Preflight and retain the role-topology receipt
 
-Before identifying a phase, changing a status marker, writing `LOG.md`, or invoking any role for an initial implementation or delegated follow-up, run:
+Before identifying a phase, changing a status marker, writing `LOG.md`, or invoking any role for an initial implementation or delegated follow-up, allocate an opaque temporary preflight directory and run:
 
 ```
-./bin/kickoff-config preflight
+PREFLIGHT_DIR="$(mktemp -d)"
+./bin/kickoff-config preflight --receipt "$PREFLIGHT_DIR/role-preflight.json"
 ```
 
-This deterministic preflight resolves the same role pins as Step 0a and makes one live sentinel call for every unique non-native `(CLI, model, effort, access mode)` target. It uses the production credential scrubs, model/effort overrides, headless flags, stdin closure, and read-only versus write-enabled posture, but runs in an empty temporary working directory so it neither loads repository context nor touches the tree (the Codex probe adds `--skip-git-repo-check` solely because that directory is intentionally not a checkout). The active orchestrator needs no probe because the current session already proves it is authenticated; every role that will run through a subprocess is probed, including a deliberately configured same-vendor pin. Duplicate targets are probed once.
+This deterministic preflight resolves the same role pins as Step 0a and makes one live real-read call for every unique non-native `(CLI, model, effort, access mode)` target. It creates unpredictable local bytes in an isolated temporary working directory and requires the venue to return their exact SHA-256, using the production credential scrubs, model/effort overrides, headless flags, stdin closure, and read-only versus write-enabled posture. The Codex probe adds `--skip-git-repo-check` solely because that directory is intentionally not a checkout. The active orchestrator needs no probe because the current session already proves it is authenticated; every role that will run through a subprocess is probed, including a deliberately configured same-vendor pin. Duplicate targets are probed once.
 
-The preflight validates the full upstream path needed by the phase: CLI presence, usable authentication, model entitlement, network reachability, current flag compatibility, sandbox/access posture, a response within the 120-second hang guard, and an exact `KICKOFF_PREFLIGHT_OK` sentinel. A status command or credential-file check is insufficient because it does not prove a live model call under the production environment.
+The preflight validates the full upstream path needed by the phase: CLI presence, usable authentication, model entitlement, network reachability, current flag compatibility, sandbox/access posture, a response within the 120-second hang guard, and access to the unpredictable local bytes. A known echoed sentinel, status command, or credential-file check is insufficient. The receipt binds the routing-config digest, orchestrating harness, exact target descriptors, and shared probe digest; an all-native topology receives the same receipt shape with an empty target set.
 
 **Coder toolchain probe.** For every write-enabled target (the coder, when pinned), the preflight additionally asks the venue to run the repository's cheapest toolchain probe (`./bin/test --help`) from the checkout and reply with `KICKOFF_TOOLCHAIN_OK` or the failure text. This one does **not** abort: a venue whose sandbox cannot reach the toolchain (a uv cache outside its allowed paths, a missing system tool) is reported as `Role venue preflight: WARNING — coder venue cannot run the toolchain: <diagnostic>`, and the orchestrator records for Step 5 that the unverified-handoff guard will run the focused sequence natively on every coder return. Without this, the coder discovers the gap mid-phase, hands off unverified, and the critic spends its round on formatting.
 
-**Any failure aborts `kickoff` immediately.** Report the failed target and the script's diagnostic, then stop. Do not fall back to native, identify or decompose the phase, change `plan/INDEX.md`, append a START/END block, or invoke an agent. After the user fixes authentication or the other upstream error, tell them to rerun `/kickoff` in Claude Code or `$kickoff` in Codex from a clean pre-phase state. If every role is native, or the recursion guard makes every role native, the script reports `N/A` / `skipped` and succeeds.
+**Any failure aborts `kickoff` immediately.** Report the failed target and the script's diagnostic, then stop. Do not fall back to native, identify or decompose the phase, change `plan/INDEX.md`, append a START/END block, or invoke an agent. After the user fixes authentication or the other upstream error, tell them to rerun `/kickoff` in Claude Code or `$kickoff` in Codex from a clean pre-phase state. If every role is native, or the recursion guard makes every role native, preflight still writes and verifies the empty-target receipt.
 
 ### Step 0c: Load per-role execution budgets
 
@@ -220,13 +228,17 @@ Pass the phase id, authority list, trace id, root span id, open setup span id,
 resolved review lane, resolved evidence lane, and follow-up route. Authorities, in governing order, are
 `plan/INDEX.md`; target and parent phase files; cited briefs; declared
 dependencies; the immediately preceding completed phase; `CLAUDE.md`; and
-every applicable policy. Use repo-relative paths with optional `::locator`
-suffixes. Initialization failure aborts before Step 2.
+every applicable policy. Also pass
+`--preflight-receipt "$PREFLIGHT_DIR/role-preflight.json"`; initialization
+copies and revalidates the receipt against the current routing configuration.
+Use repo-relative paths with optional `::locator` suffixes. Initialization
+failure aborts before Step 2.
 
 Initialization pins `kickoff-evidence`, `kickoff-tree-id`,
-`execution-telemetry`, `kickoff-config`, `kickoff.yaml`, and their runtime
-libraries beneath `$RUN_DIR/tools/`. From that point use the pinned
-`EVIDENCE_TOOL`, `TELEMETRY_TOOL`, and `WATCHER_TOOL` for every evidence,
+`kickoff-command-zero`, `execution-telemetry`, `kickoff-config`, `kickoff.yaml`,
+the candidate-boundary policy, and their runtime libraries beneath
+`$RUN_DIR/tools/`. From that point use the pinned `EVIDENCE_TOOL`,
+`TELEMETRY_TOOL`, `WATCHER_TOOL`, and command-zero tool for every evidence,
 role, gate, recovery, finalization, summary, and dashboard action.
 
 The root owns sequential, non-overlapping `reconciliation` stages:
@@ -245,7 +257,11 @@ only the finalized privacy projection enters `EXECUTION_LOG.jsonl`.
 
 Update `plan/INDEX.md` so the target row's status cell is `🚧`. **Do not edit the target `plan/phase-<id>.md` file's frontmatter or body** — status is stored only in `INDEX.md` (see [`policies/phase-status.md`](../../../policies/phase-status.md)).
 
-Append a START entry to `LOG.md`. Create `LOG.md` if it does not exist (with the header described in [`policies/log-discipline.md`](../../../policies/log-discipline.md)). Format:
+Construct the complete START block in a temporary file, then append it at true
+EOF with `./bin/log-append < <block-file>`. Create `LOG.md` if it does not exist
+(with the header described in
+[`policies/log-discipline.md`](../../../policies/log-discipline.md)). Never use a
+contextual patch or direct editor write for log construction. Format:
 
 ```
 ## <YYYY-MM-DD HH:MM> — START
@@ -569,10 +585,28 @@ candidate-bound implementation sequence; it proves the unchanged implementation
 candidate before close bookkeeping changes the tree. The coder's focused checks
 are not repeated merely as ceremony unless the plan includes them in acceptance.
 
+Before executing that sequence, write `$RUN_DIR/gate-manifest.json` as
+structured JSON with `schema_version: 1`, every exact gate argv labeled by
+`operation`, positive `attempt`, and `final`, plus every side-effect-free
+selector dry-run under `preflight_commands` with its reason. The authoritative
+full gate is a final row. Activate it with `$EVIDENCE_TOOL
+activate-gate-manifest --run-dir "$RUN_DIR" --manifest
+"$RUN_DIR/gate-manifest.json"`, retain the printed digest, and never rewrite
+the activated bytes. If the admitted sequence must change, create a new file
+and activate it with `--supersedes <active-digest>`; an unexplained or
+non-superseding replacement is refused.
+
+Then run the pinned `kickoff-command-zero --run-dir "$RUN_DIR"`. It validates
+the manifest, configuration-bound venue receipt, and pre-acceptance topology;
+executes selector dry-runs; checks format; and proves the exact committed-log
+prefix plus effective chronology, stopping on the first failure. Command zero
+must pass before any expensive or irreversible acceptance command begins.
+
 For every command, invoke `$EVIDENCE_TOOL run-gate` with the approved candidate
-id, exact argv, selection reason, attempt, optional diagnostic artifact, and
+id, operation, exact argv, selection reason, attempt, optional diagnostic artifact, and
 `--final` for implementation-gate commands. This boundary records before/after
-candidate identity, preserves complete diagnostics and child exit status,
+full-tree and product identities, the active manifest digest, complete
+diagnostics and child exit status,
 counts warnings, and opens the exact observed gate span. It rejects drift.
 After the sequence, run the pinned `kickoff-tree-id` again and require the same
 id; a gate that mutated the candidate fails.
@@ -643,9 +677,10 @@ Each phase declares its own empirical acceptance checks under `Acceptance` in `p
 Step 7 must already have included every mechanical check before its full
 gate. Here, reconcile each criterion against the gate ledger and classify the
 rest as manual. Do not rerun a recorded check. If this reconciliation discovers
-an omitted mechanical check, the implementation gate was incomplete: run the
-missing check, then rerun the authoritative full gate against the same
-candidate and record both. Reconfirm candidate identity afterward. A failed
+an omitted mechanical check, the implementation gate was incomplete: activate
+a successor manifest that adds the missing check and a new final-gate attempt,
+rerun command zero, run the missing check, then rerun the authoritative full
+gate against the same candidate and record both. Reconfirm candidate identity afterward. A failed
 acceptance gate or candidate mutation routes through Step 7's proportional
 follow-up classification and invalidation loop.
 
@@ -735,9 +770,9 @@ Runs when a major phase's row was just flipped to `✅` — either by Step 9.3 d
 
 If no downstream major phase exists (project complete), Step 9b's ripple is a no-op and `⬅️` advances to nothing — the project is done. Surface this to the user in the report.
 
-### Step 9c: Harvest lessons (every close)
+### Step 9c: Harvest lessons (every END or PARK)
 
-Runs on **every** phase close — sub-phase or major — after the ripple pass and before Step 10, per [`policies/lessons.md`](../../../policies/lessons.md). This is the capture stage of the improvement flywheel: the question is mandatory; "no lessons" is a permitted, recorded answer.
+Runs on **every** truthful terminal record, per [`policies/lessons.md`](../../../policies/lessons.md). For END, it runs after the ripple pass and before Step 10. For PARK, it runs immediately from the evidence available at the stop; status and ripple work do not run. This is the capture stage of the improvement flywheel: the question is mandatory; "no lessons" is a permitted, recorded answer.
 
 1. **Gather the sensor feed.** Re-read the close-out artifacts the ripple pass already collected (END-adjacent material, the plan-reviewer's and code-critic's verdict bodies) plus: every role's **Process Observations** output (planner, reviewer, coder, critic), the coder's **Failure Analysis** from any revision rounds, wall-clock observations, and any `user-actions` dispositions filed during the phase.
 2. **Distill candidate lessons.** A candidate lesson is a specific, generalizable process learning — friction or ambiguity in a brief, policy, plan, skill, or tool that a future phase (or a future repo) should not re-derive. Discard one-off situational notes; keep what would change behavior next time.
@@ -764,7 +799,8 @@ true now and what it means, name every parked criterion the operator still
 owns, and keep ids, paths, and stage mechanics available on request rather
 than ambient. Identifiers the operator must act on are given exactly.
 
-Append an END entry to `LOG.md`:
+Construct the complete END entry in a temporary file and append it at true EOF
+with `./bin/log-append < <block-file>`:
 
 ```
 ## <YYYY-MM-DD HH:MM> — END
@@ -928,10 +964,12 @@ full-gate receipt binds the actual tree handed to the user.
 
 No tracked write may follow a successful handoff gate. Opening the already
 generated local report is read-only and may follow. If the gate fails, do not
-report completion. Reopen the current uncommitted close: restore the phase to
-`🚧` when necessary, correct or regenerate the failing close artifact, amend
-the current run's still-uncommitted END block in place, and rerun the bare gate.
-Do not edit a historical committed END block. If the failure exposes an
+report completion. Append a truthful PARK block with the failing evidence and
+Lessons witness, restore the phase to `🚧` when necessary, then correct or
+regenerate the failing close artifact. A resumed close appends a new terminal
+block; it never amends, truncates, or context-patches an earlier block. Rerun
+the bare gate only after `bin/check-log` proves the resulting append-only log.
+If the failure exposes an
 implementation defect rather than close bookkeeping, return to Step 7's
 proportional correction route; the prior implementation gate is invalidated by
 any implementation-candidate change.
@@ -993,7 +1031,7 @@ Report to the user, in this order:
 - Files created/modified, grouped by surface.
 - Build and gate status.
 - Candidate identity, finding convergence, implementation-gate identity,
-  handoff-gate receipt, and any
+  active command-manifest digest, venue-receipt identity, handoff-gate receipt, and any
   verified protocol recoveries.
 - Any material wall-clock opportunity used or surfaced, and how the unchanged
   guarantees were preserved. Omit marginal timing noise and no-leverage

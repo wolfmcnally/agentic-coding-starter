@@ -19,6 +19,8 @@ The contract is one unit:
 
 - `bin/setup`, `bin/test`, `bin/check`, the full-gate receipt manager, and the
   proof-estate governance manager when governed fast lanes are present;
+- the command-zero preflight, immutable command-manifest manager, and composed
+  log-policy gate when candidate-bound orchestration is present;
 - any runtime entry point such as `bin/python`;
 - any shared runtime resolver or dependency-chain probe used by those entry
   points;
@@ -107,6 +109,11 @@ named modes are:
 - `test` — delegates to `./bin/test`;
 - `policy` — deterministic repository-policy checks that are not language
   lint or tests.
+
+The universal policy lane includes `policy-log`, which runs the composed exact
+committed-prefix and effective-chronology validator. The staged pre-commit hook
+runs the same wrapper against the staged blob. Neither substitutes for the
+full gate.
 
 A repository with governed proof lanes also exposes `vital` and
 `changed <ref>` as iteration-only modes that delegate to the matching
