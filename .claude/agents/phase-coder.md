@@ -58,6 +58,15 @@ Incorporate reviewer corrections as you go. On revision passes, address each
 stable finding id and preserve the mapping from finding to implementation and
 verification. On build-fix passes, address the concrete failures.
 
+Before implementing a revision finding that adds a defensive requirement,
+actor, platform, operating mode, compatibility behavior, or mandatory proof,
+verify its basis under `policies/four-canonical-agents.md` § "Failure-backed
+scope and the outward-spiral stop." If no observed failure, explicit operator
+decision, or actually-targeted platform contract authorizes it, do not build it
+merely to satisfy review. Return the finding as `rejected-with-evidence`, or
+identify the unsupported premise as an owner question, and leave the candidate
+unchanged on that point.
+
 ### 3. Uphold invariants while writing
 
 - **Briefs are the contract.** When a brief specifies a behavior, implement it as specified. If the brief is ambiguous, prefer the reading the plan articulated. Never silently extend a brief.

@@ -117,6 +117,13 @@ in neither the tree nor this table.]
   whose non-change matters to the review.
 - **Review-rebase triggers**: identify which planned decisions would require a
   complete review if a revision changed them.
+- **Failure basis**: for every defensive requirement, refusal, guard,
+  compatibility behavior, or mandatory proof, name its authority — an
+  observed failure with preserved evidence, an explicit operator decision, or
+  the contract of an actually targeted platform and operating mode. State the
+  supported actors, platforms, concurrency model, and deployment mode. Put
+  unsupported hypotheticals in Open Questions; do not silently make them
+  implementation requirements.
 
 ## Invariant Checks
 Confirm explicitly how this plan respects the load-bearing invariants from
@@ -127,6 +134,10 @@ CLAUDE.md and the policies in `policies/`:
 - **Acceptance is empirical.** Acceptance items are verifiable via shell commands or named manual checks.
 - **Repo-relative paths only.** All committed files use repo-relative paths.
 - **Cross-harness parity.** If this phase touches a skill or agent definition, the canonical source is edited and the mirror is updated in the same plan step.
+- **Monotonic progress.** Every defense stays inside the authorized target and
+  has a failure-backed basis. A deeper defect inside that target may expand
+  the work; a new actor, platform, operating mode, or failure premise goes to
+  Open Questions rather than moving the target outward.
 - **Autonomous delivery, human judgment.** This plan may end in an ordinary commit and non-force push once the phase closes with every gate green; it never skips a gate, claims subjective acceptance, performs a destructive git operation, or silently extends a brief.
 
 ## Dependency Changes

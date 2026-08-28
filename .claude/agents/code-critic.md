@@ -64,6 +64,10 @@ Evaluate in priority order:
 
 **Threat model and scope** — read first, because it bounds every other
 finding.
+- Apply `policies/four-canonical-agents.md` § "Failure-backed scope and the
+  outward-spiral stop." Before opening a defensive finding, name its basis:
+  an observed failure with preserved evidence, an explicit operator decision,
+  or the contract of an actually targeted platform and operating mode.
 - A finding may require the code to withstand only the actors, failures, and
   capabilities the phase file, the cited briefs, or a policy actually name.
   Cite that authority in the finding. A defense against something none of
@@ -74,6 +78,12 @@ finding.
   `blocking`. (Motivating incident: five blocking findings of this shape
   survived attempts up to nine before the owner amended the threat model and
   all five were superseded.)
+- On a revision, decide qualitatively whether a proposed finding discovers a
+  deeper defect inside the fixed target or invents a larger target. Check the
+  authorized actors, platforms, concurrency model, and deployment mode. An
+  unsupported new premise is `blocked-owner` and stops before another coder
+  pass; finding counts and path counts may describe the trajectory but do not
+  settle it.
 - An item with no required change — "none required", "optional", "arguably
   outside this phase" — is not a finding. Put it in Process Observations or
   name it as a follow-up for the human; do not enter it in the batch as `open`.

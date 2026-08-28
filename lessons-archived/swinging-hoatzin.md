@@ -1,7 +1,7 @@
 ---
 slug: swinging-hoatzin
 title: A guard invented from foresight is a candidate, not a rule, even when the agent inventing it wrote the rule saying so
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-25
@@ -9,6 +9,10 @@ source: user
 occurrences:
   - date: 2026-08-25
     ref: "Building the treatise editorial record, the orchestrator made the `directives` log append-only and enforced it in `bin/treatise` with four tests and a mutation proof. No incident motivated it; the shape was copied from LOG.md and the lessons ledger. The operator asked one question — is append-only really necessary — and the guard did not survive its own repository's growth rule. Removed the same day it shipped"
+  - date: 2026-08-27
+    ref: "A derived project's local, single-writer preview repair for three paths widened through repeated reviews into Windows compatibility and arbitrary concurrent-filesystem mutation defenses, although the supported environments were single-writer macOS development and static read-only Linux deployment. Defensive machinery and blocking finding classes grew until the operator removed the unsupported premises"
+closed: 2026-08-27
+graduated_to: policies/four-canonical-agents.md
 ---
 
 The doctrine in [`briefs/methodology.md`](../briefs/methodology.md) says a new
@@ -41,9 +45,16 @@ Three tells this had, visible before the operator asked:
 The costly part was not the guard. It was that removing it also cost four tests,
 a mutation proof, three rule surfaces, and the operator's attention to ask.
 
-Candidate rule, if this recurs: before adding any binding check, state the
-incident that motivated it in the same edit, and if the honest answer is "none
-yet," file the idea here and ship the validator without it. Kin to
-`electric-goshawk` (a one-off arrives pre-trusted): there the imported thing is a
-fact that was never a convention; here it is a pattern that was a convention
-somewhere else.
+The second occurrence exposed the same generator at review-loop scale. A real,
+bounded repair accumulated defenses against actors and platforms outside its
+operating contract. Each finding looked locally prudent, but the sequence moved
+the target outward and made more review produce less convergence. Finding
+counts showed the symptom; only reading the premises exposed the cause.
+
+Codified rule: a defensive requirement needs an observed failure, an explicit
+operator decision, or an actually targeted platform contract. On revision,
+reviewers distinguish deeper discovery inside the fixed target from an
+unsupported premise that enlarges it, and the latter parks for the operator
+before another implementation pass. The judgment lives in
+[`policies/four-canonical-agents.md`](../policies/four-canonical-agents.md)
+§ "Failure-backed scope and the outward-spiral stop."

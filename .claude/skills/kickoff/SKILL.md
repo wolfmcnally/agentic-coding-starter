@@ -408,6 +408,18 @@ review when the packet requires it. Escalate on recurrence, oscillation,
 authority disagreement, or two rounds without lower severity or uncertainty.
 The 10-cycle runaway backstop still applies.
 
+Before dispatching another planner after any `REVISE`, apply
+[`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md)
+§ "Failure-backed scope and the outward-spiral stop." Ask which documented
+failure or requirement justifies each new defensive premise, whether it stays
+inside the authorized actors/platforms/concurrency/deployment envelope, and
+whether the round moves the fixed target closer or outward. A deeper defect
+inside the target may continue; an unsupported new premise becomes
+`blocked-owner` and parks before another planning pass. Counts are supporting
+evidence only. After divergence, any extension request states the disputed
+premise in the `plain` register rather than presenting finding ids or counts
+alone.
+
 ### Step 5: Implement
 
 **Native venue** (coder unpinned, per Step 0a): delegate implementation to the `phase-coder` agent. Pass it:
@@ -528,6 +540,15 @@ equal-or-worse finding reopens. When the change manifest requires rebasing,
 run a complete critique rather than a delta-only pass. Escalate on recurrence,
 oscillation, authority disagreement, or two rounds without reduced severity or
 uncertainty. The 10-cycle runaway backstop still applies.
+
+Before dispatching another coder after any `REVISE`, apply the same
+failure-backed outward-spiral judgment. A critic may deepen the work inside the
+authorized target, but may not enlarge the target through an unsupported
+actor, platform, operating mode, or failure premise. Route such a premise as
+`blocked-owner` and park before implementation; do not ask the coder to build
+it merely to make review pass. After divergence, explain the disputed premise
+to the operator in ordinary language; finding and path counts do not substitute
+for the judgment.
 
 **If any code finding is `blocked-owner`** — the critic asked an owner
 question (an adversary or authorization no authority names): park it to the

@@ -65,6 +65,20 @@ an invalidated acceptance claim, or lost trustworthy continuity.
 
 Evaluate in priority order:
 
+**Failure basis and outward progress**
+- Apply `policies/four-canonical-agents.md` § "Failure-backed scope and the
+  outward-spiral stop" before opening a finding. For every defensive
+  requirement, refusal, guard, compatibility behavior, or mandatory proof,
+  identify its documented failure, explicit operator decision, or
+  actually-targeted platform contract.
+- Confirm the plan's actors, platforms, concurrency model, and deployment mode
+  match the authorized target. A deeper defect inside that target is review
+  work; a new unsupported premise is an owner question, not a planner defect.
+- On a revision, judge whether the proposed work moves the fixed target closer
+  or moves the target outward. An unsupported expansion is `blocked-owner` and
+  stops before another planning round. Finding and path counts may support the
+  judgment but never decide it.
+
 **Completeness**
 - Every deliverable in the phase is addressed.
 - Every acceptance item has a concrete path to satisfaction (a command in Build Gate Sequence, a manual check named explicitly, or a deliverable that satisfies it by construction).

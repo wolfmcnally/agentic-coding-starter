@@ -142,6 +142,22 @@ Hard-won rules for step 7 when the loop runs fail-closed and unattended. Distill
   round-trip during their absence; two of the phase's three parks and three
   relays traced to count expiry rather than any defect.) Mechanized in
   `policies/four-canonical-agents.md § Convergence-lease grants`.
+- **Stop an outward spiral at its premise.** A defensive requirement,
+  refusal, guard, compatibility behavior, or mandatory proof joins the target
+  only when it is backed by an observed failure, an explicit operator
+  decision, or the contract of an actually targeted platform and operating
+  mode. On every revision, the reviewer asks what failure justifies the
+  change, whether it stays inside the authorized actors and environments, and
+  whether it moves the fixed target closer or moves the target outward. An
+  unsupported premise becomes an owner question before another implementation
+  pass; counts may describe divergence but do not decide it. (Observed in a
+  derived project: a single-writer macOS preview repair widened into Windows
+  compatibility and arbitrary concurrent-filesystem mutation defenses, even
+  though deployment was a static read-only Linux artifact. Repeated reviews
+  added machinery and new blocking classes until the operator removed the
+  invented premises.) This is a judgment protocol, not a semantic detector:
+  the reviewer explains the failure basis, operating envelope, and direction
+  of travel in the verdict, and an unsupported premise parks for the operator.
 - **Doctrine and ceremony grow only against incidents, and every review prunes.** A new binding rule or protocol step enters only with its motivating incident cited inline; foresight proposals remain candidates (the `lessons/` ledger is the holding pen), never rules. Every binding step names the park it prevents. Every review pass — plan review, code review, `sweep` — treats steps whose failure families are structurally dead as deletion candidates, because fail-closed pressure ratchets ceremony (every defect adds rigor; nothing subtracts) and only deliberate pruning reverses it. This generalizes the instrument-retirement rule above from measuring instruments to every binding step of the protocol itself. The worked form is a **ceremony audit**: walk every binding step of an orchestration protocol, require each to name the park it prevents or cite its motivating incident, and delete or demote the rest. (Observed in a donor repo: a full audit under this rule deleted or demoted four binding steps, including a strictness family whose every production firing was a comparator false positive and a per-fix reseal duty — roughly twenty-seven whole-repository reseal cycles in one phase, each invalidated by the next one-line fix — judged pure ceremony in the phase's own closing verdict.)
 
 ## Run-lifecycle vocabulary

@@ -106,6 +106,41 @@ authorization, or custody call — enters the ledger as `blocked-owner` and
 routes to the operator; sending it back to the planner as `REVISE` loops until
 someone notices.
 
+### Failure-backed scope and the outward-spiral stop
+
+A defensive requirement, refusal, guard, compatibility behavior, or mandatory
+proof is in scope only when at least one authority names its basis: an observed
+failure with preserved incident evidence, an explicit operator decision, or a
+contract of a platform and operating mode the project actually targets. A
+reviewer's statement that something *could* happen is a proposal, not a
+blocking requirement. Put it in Open Questions or `blocked-owner`; do not make
+the planner or coder satisfy it merely to make review pass.
+
+On every revision pass, the reviewer or critic makes a qualitative judgment
+before opening a new finding:
+
+1. What documented failure or requirement justifies this change?
+2. Is it inside the authorized actors, platforms, concurrency model, and
+   deployment mode?
+3. Does it move the fixed target closer, or move the target outward?
+
+If the answer depends on expanding an unsupported premise, stop the loop and
+route that premise to the operator as `blocked-owner` before another
+implementation pass. Finding counts and path counts are evidence about the
+loop; they never substitute for judgment. After any divergence, a request to
+extend the loop states the disputed premise in ordinary language; finding ids
+or counts alone are insufficient.
+
+This rule does not forbid a reviewer from discovering a real defect in the
+authorized target. It separates deeper discovery inside the target from an
+outward spiral that invents a larger target. (Observed in a derived project:
+a local, single-writer preview repair for three paths widened across successive
+reviews into Windows compatibility and arbitrary concurrent-filesystem
+mutation defenses, although the supported environments were single-writer
+macOS development and static read-only Linux deployment. Defensive machinery
+and blocking finding classes grew until the operator removed the unsupported
+premises.)
+
 The code loop adds four rules of the same kind, each from the month's
 code-review record:
 
