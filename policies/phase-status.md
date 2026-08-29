@@ -66,6 +66,12 @@ truth, and quoted forms inside fenced blocks or inline code spans are exempt:
 ./bin/check-catalogs
 ```
 
+When a child phase closes, the close operation additionally runs
+`./bin/check-catalogs --closing-phase <id>`. The child must already be `✅`,
+and its direct parent must either be `✅` too or remain `🚧` with another
+drafted, incomplete direct child. A close may not strand a decomposed parent
+whose ledger promises work but names no executable continuation.
+
 The checker runs inside the authoritative full gate:
 
 ```bash

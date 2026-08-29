@@ -124,6 +124,16 @@ Evaluate in priority order:
   substantial, low-risk execution improvement is reasonably apparent. Do not
   demand timing thresholds, speculative profiling, unproven parallelism, or
   micro-optimization; do not reduce effectiveness or expand phase scope.
+- A review finding that requires a mechanism the phase never named is
+  `blocked-owner`, not a revision instruction. Name the scope expansion and
+  the operator decision it requires. If a revision grows the plan a second
+  time, exceeds 600 lines, or grows by more than one third, stop the loop and
+  route decomposition or re-scoping to the operator.
+- Any proposed filter, score, bucket, or classifier names its real property,
+  observable proxy, innocent triggers, and sign-inversion risk. A proxy whose
+  false positives can systematically select the best material as the worst is
+  scripted judgment and is `REVISE` unless context-sensitive classification
+  remains with intelligence.
 
 ### 3. Resolve open questions
 

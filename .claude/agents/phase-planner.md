@@ -105,6 +105,9 @@ in neither the tree nor this table.]
 - [Key decisions about layout, function shapes, error handling, naming, framework choices.]
 - [For non-obvious choices, note the alternative considered and why rejected.]
 - [If you researched best practice in step 3, cite the finding.]
+- [For every filter, score, bucket, or classifier: name the real property, the
+  observable proxy, innocent triggers, and whether false positives can invert
+  the sign. Route context-sensitive judgment to intelligence.]
 
 ## Risk and Evidence
 - **Risk tags**: choose every applicable universal tag from

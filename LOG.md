@@ -1099,3 +1099,45 @@ judgments were not copied.
 The application exposed one methodology lesson: a reset budget is not a
 continuing zero-growth budget unless later retirements are replayed. That
 lesson is filed as boisterous-adder for future recurrence or graduation.
+
+## 2026-08-29 12:33 MDT — LEARN
+
+Donor: Donor A @ <sha withheld>
+
+Items absorbed: 3, by tier T1=3/T2=0/T3=0/T4=0.
+Donor lessons harvested: 0 (0 absorbed as rule proposals; 0 filed to
+`lessons/`). Application-found return candidates: 0 filed to `lessons/`.
+Stale-in-light-of-learning migrations: 11 AUTO; 0 DECIDE; 0 DEFER. Files
+touched: 19.
+
+Starter now stops plan review before apparent convergence can conceal scope
+growth. The mechanical pre-review refuses plans over 600 lines, a one-round
+increase greater than one third, and the second growth event in an exact
+artifact history. Reviewers route out-of-phase mechanisms to the operator for
+decomposition or re-scoping. These plan-only bounds leave the existing
+code-review convergence lease and runaway backstop unchanged.
+
+Run evidence now distinguishes integrity from acceptance. Integrity validates
+only facts that actually exist; acceptance additionally requires the complete
+role, convergence, finding, telemetry, manifest, and final-gate conjunction.
+`status` names missing acceptance roles, and one locked, idempotent `close`
+operation records exactly one accepted, parked, or failed terminal outcome.
+Non-accepted close requires a complete failure signature and cannot manufacture
+success evidence. A child phase close must complete its parent or leave that
+parent in progress with another drafted incomplete direct child. Starter's
+separate implementation-candidate and post-bookkeeping handoff gates remain
+authoritative.
+
+The mechanistic-versus-intelligence boundary now requires every proposed
+filter, score, bucket, or classifier to name the real property, its observable
+proxy, innocent triggers, and whether false positives can invert the sign. A
+context-sensitive proxy that can systematically select the best material as
+the worst remains intelligence; deterministic code may enforce only the
+resulting mechanical contract.
+
+The donor's domain machinery, fixed two-pass review cap, stall-specific
+lifecycle, project-specific test parallelization, and redundant instruction
+surfaces were not imported. Focused tool, lifecycle, catalog, plan, log, and
+toolchain tests passed. The retained proof estate remains exactly 108 families
+and 126 leaves with no new budget. The authoritative full gate passed 105 tests
+before this append; it is rerun against this complete logged candidate below.

@@ -351,6 +351,13 @@ exact `ERROR` rows as feedback — a new registered attempt with reason
 and re-check. Two consecutive refusals on the same rows park the phase for the
 operator. Only a passing plan proceeds to Step 4.
 
+On every revision, preserve the exact earlier reviewed plan artifacts and add
+each one, oldest to newest, as `--prior-plan <artifact>`. The checker also
+refuses a plan over 600 lines, a single-round increase greater than one third,
+or the second growth event in the review history. Those refusals stop the
+planner/reviewer loop immediately: decompose the phase or route the scope
+decision to the operator. More material is not evidence of convergence.
+
 ### Step 4: Review the plan
 
 **Light lane** (per Step 1's lane resolution): skip this step entirely. Record `Plan review: skipped (light lane)` for the END block and proceed to Step 5. Everything below applies to the full lane only.
@@ -382,9 +389,9 @@ operator. Only a passing plan proceeds to Step 4.
    convergence metrics attach to that span, and a finalized trace cannot be
    repaired retroactively, so `timing-summary` refuses for the whole run until
    the pass is measured. An omission is recoverable rather than terminal:
-   `validate` refuses an accepted, successful review dispatch whose span lacks
-   metrics **unconditionally** — not only under `--require-final` — so the gap
-   surfaces while a re-ingest still costs one command; and where the batch was
+   acceptance validation refuses an accepted, successful review dispatch
+   whose span lacks metrics, so the gap surfaces while a re-ingest still costs
+   one command; and where the batch was
    structurally uningestable, `kickoff-evidence attach-derived-metrics` records
    an overlay that `validate` recomputes from the run's artifacts and honors
    either side of finalization. Neither is a reason to omit the flag:
@@ -701,7 +708,7 @@ let a phase claim evidence that does not exist; when in doubt, park it.
 
 ### Step 8b: Finalize exact execution evidence
 
-Run `$EVIDENCE_TOOL validate --run-dir <run> --require-final
+Run `$EVIDENCE_TOOL validate --run-dir <run> --level acceptance
 --required-final-command "./bin/check all"` and require success. Prepare the
 acceptance reconciliation and downstream ripple decisions while the trace is
 still open. Then close `orchestration.acceptance`, open
@@ -799,8 +806,10 @@ true now and what it means, name every parked criterion the operator still
 owns, and keep ids, paths, and stage mechanics available on request rather
 than ambient. Identifiers the operator must act on are given exactly.
 
-Construct the complete END entry in a temporary file and append it at true EOF
-with `./bin/log-append < <block-file>`:
+Construct the complete END entry in a temporary file. Materialize acceptance
+and append that exact block at true EOF with `$EVIDENCE_TOOL close --run-dir
+<run> --outcome accepted --reason-code gates-green --log-block <block-file>
+--required-final-command "./bin/check all"`:
 
 ```
 ## <YYYY-MM-DD HH:MM> — END

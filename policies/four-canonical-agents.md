@@ -182,6 +182,15 @@ Low-risk, bounded follow-up corrections do not enter a review loop by default. T
 
 These bounds are deliberate. The methodology assumes a human in the loop ([`human-in-the-loop.md`](human-in-the-loop.md)); the goal is to spend revision cycles only while they are buying convergence, and to hand a genuinely stuck decision to the human rather than grind identical objections — or burn the whole backstop — against a wall.
 
+**Plan growth is an earlier stop signal.** Before another plan-review dispatch,
+the deterministic pre-review checker measures the exact artifact history. A
+plan over 600 lines, a one-round increase greater than one third, or the second
+growth event stops the loop for decomposition or operator re-scoping. A review
+finding that introduces a mechanism outside the phase's named scope is routed
+to that same operator decision instead of being handed back as another planner
+revision. These plan-only bounds do not shorten the code-review convergence
+lease above.
+
 ## Adding a fifth agent
 
 This policy does not forbid project-specific agents — a project may add a `database-migration-reviewer` or an `audio-perceptual-judge` agent as needed. But:

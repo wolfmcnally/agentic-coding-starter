@@ -320,13 +320,18 @@ trace cannot be repaired retroactively); a non-review ingest passes
 before the gated command runs and records an artifact absent afterward with no
 digest plus a loud warning rather than stranding the closed gate span. Run
 `--help` or a subcommand's `--help` for the full schema-driven interface.
+`validate --level integrity` proves only the facts actually recorded;
+`validate --level acceptance` adds every required success event. `status`
+reports missing acceptance roles and allowed next actions. `close` materializes
+one idempotent accepted, parked, or failed terminal record and appends its exact
+log block once; parked and failed closes require a validated failure signature.
 
 ```bash
 ./bin/kickoff-evidence --help
 ```
 
 ```bash
-./bin/kickoff-evidence validate --run-dir /absolute/run/directory --require-final
+./bin/kickoff-evidence validate --run-dir /absolute/run/directory --level acceptance
 ```
 
 Governed by
@@ -458,7 +463,9 @@ link quoted inside backticks is a quoted edit target, not a live link. It also
 enforces [`policies/phase-status.md`](../policies/phase-status.md) over
 per-phase files: a `status:` frontmatter field or a `Status: ✅`-shaped
 declaration line in any `plan/phase-*.md` fails; narrative emoji mentions in
-prose stay fine.
+prose stay fine. `--closing-phase <id>` additionally refuses a completed child
+that neither completes its parent nor leaves that parent in progress with
+another drafted incomplete direct child.
 
 ```bash
 ./bin/check-catalogs
@@ -485,7 +492,10 @@ before coding"). Shell pass-through wrappers such as `bin/test` are not
 flag-checked, since their arguments reach another program. Exit 0 prints
 `PLAN CONCRETENESS PASS`; exit 1 prints one `ERROR\t<check>\t<line>\t<message>`
 row per refusal; exit 2 is a usage or I/O error. The plan may live anywhere;
-`--root` names the repository it describes.
+`--root` names the repository it describes. Revision runs repeat
+`--prior-plan <artifact>` in chronological order; the checker stops a plan
+over 600 lines, growth greater than one third in one round, or the second
+growth event in the artifact history.
 
 ```bash
 ./bin/check-plan-concreteness --plan /absolute/path/to/plan.md --root .

@@ -78,6 +78,9 @@ DEFERRAL_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
         ),
     ),
 )
+MAX_PLAN_LINES = 600
+MAX_GROWTH_NUMERATOR = 4
+MAX_GROWTH_DENOMINATOR = 3
 # argparse defines these without being asked.
 IMPLICIT_FLAGS = {"--help"}
 # Not checkable against this tree: external constants and environment
@@ -104,7 +107,11 @@ def check_commands(plan: Plan, tree: Tree, errors: list[tuple[str, int, str]]) -
             continue
         for token in PLACEHOLDER_TOKEN_PATTERN.findall(stripped):
             errors.append(
-                ("command-placeholder", number, f"placeholder token {token} in a command")
+                (
+                    "command-placeholder",
+                    number,
+                    f"placeholder token {token} in a command",
+                )
             )
         if CANDIDATE_ID_PATTERN.search(stripped):
             errors.append(
@@ -201,7 +208,11 @@ def check_definitions(plan: Plan, tree: Tree, errors: list[tuple[str, int, str]]
                 )
         elif not needle_pattern.search(text):
             errors.append(
-                ("definition-not-in-file", number, f"`{identifier}` does not occur in {target}")
+                (
+                    "definition-not-in-file",
+                    number,
+                    f"`{identifier}` does not occur in {target}",
+                )
             )
     return declared
 
@@ -283,6 +294,13 @@ def main() -> int:
     parser.add_argument(
         "--root", type=Path, default=Path.cwd(), help="repository the plan describes"
     )
+    parser.add_argument(
+        "--prior-plan",
+        type=Path,
+        action="append",
+        default=[],
+        help="earlier reviewed plan artifact, oldest to newest; repeat for each round",
+    )
     arguments = parser.parse_args()
     try:
         text = arguments.plan.read_text(encoding="utf-8")
@@ -293,6 +311,49 @@ def main() -> int:
     tree = Tree(root, arguments.plan.resolve())
     plan = parse_plan(text)
     errors: list[tuple[str, int, str]] = []
+    current_lines = len(text.splitlines())
+    if current_lines > MAX_PLAN_LINES:
+        errors.append(
+            (
+                "plan-size",
+                0,
+                f"plan has {current_lines} lines; the {MAX_PLAN_LINES}-line review ceiling "
+                "requires decomposition or operator re-scoping",
+            )
+        )
+    prior_counts: list[int] = []
+    for prior_path in arguments.prior_plan:
+        try:
+            prior_counts.append(len(prior_path.read_text(encoding="utf-8").splitlines()))
+        except OSError as exc:
+            print(
+                f"check-plan-concreteness: cannot read prior plan: {exc}",
+                file=sys.stderr,
+            )
+            return 2
+    counts = [*prior_counts, current_lines]
+    growth_events = sum(later > earlier for earlier, later in zip(counts, counts[1:]))
+    if (
+        prior_counts
+        and current_lines * MAX_GROWTH_DENOMINATOR > prior_counts[-1] * MAX_GROWTH_NUMERATOR
+    ):
+        errors.append(
+            (
+                "plan-growth",
+                0,
+                f"plan grew from {prior_counts[-1]} to {current_lines} lines (> one third); "
+                "decompose it or route the scope decision to the operator",
+            )
+        )
+    if growth_events >= 2:
+        errors.append(
+            (
+                "plan-growth",
+                0,
+                f"plan history contains {growth_events} growth events across {len(counts)} "
+                "artifacts; stop the review loop and route scope to the operator",
+            )
+        )
     declared = check_definitions(plan, tree, errors)
     check_citations(plan, tree, declared, errors)
     check_commands(plan, tree, errors)

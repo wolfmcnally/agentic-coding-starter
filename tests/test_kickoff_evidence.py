@@ -87,6 +87,8 @@ def repository(tmp_path: Path) -> Path:
     (root / "bin").mkdir()
     (root / "bin" / "check").write_text("#!/bin/sh\nexit 0\n")
     (root / "bin" / "check").chmod(0o755)
+    (root / "bin" / "check-catalogs").write_text("#!/bin/sh\nexit 0\n")
+    (root / "bin" / "check-catalogs").chmod(0o755)
     subprocess.run(["git", "add", "."], cwd=root, check=True)
     subprocess.run(["git", "commit", "-m", "fixture"], cwd=root, check=True, capture_output=True)
     return root
@@ -676,7 +678,8 @@ def test_final_validation_rejects_blocking_findings(
         "validate",
         "--run-dir",
         str(run_dir),
-        "--require-final",
+        "--level",
+        "acceptance",
         "--required-final-command",
         "./bin/check all",
     )
@@ -686,6 +689,7 @@ def test_final_validation_rejects_blocking_findings(
 
 
 def test_validate_detects_corrupt_evidence(repository: Path, tmp_path: Path) -> None:
+    _assert_failed_close_is_truthful_terminal_and_idempotent(repository, tmp_path)
     run_dir = tmp_path / "run"
     initialize(repository, run_dir)
     valid = run("validate", "--run-dir", str(run_dir))
@@ -696,6 +700,67 @@ def test_validate_detects_corrupt_evidence(repository: Path, tmp_path: Path) -> 
     invalid = run("validate", "--run-dir", str(run_dir))
     assert invalid.returncode == 2
     assert "invalid JSON" in invalid.stderr
+
+
+def _assert_failed_close_is_truthful_terminal_and_idempotent(
+    repository: Path, tmp_path: Path
+) -> None:
+    run_dir = tmp_path / "failed-run"
+    initialize(repository, run_dir, follow_up_route="full-cycle")
+    status = run("status", "--run-dir", str(run_dir))
+    assert status.returncode == 0, status.stderr
+    observed = json.loads(status.stdout)
+    assert observed["missing_acceptance_role_operations"]
+    assert run("validate", "--run-dir", str(run_dir), "--level", "integrity").returncode == 0
+    acceptance = run("validate", "--run-dir", str(run_dir), "--level", "acceptance")
+    assert acceptance.returncode == 2
+    assert "missing required initial role attempt" in acceptance.stderr
+
+    metadata = json.loads((run_dir / "run.json").read_text())
+    failure = {
+        "affected_contract": "phase acceptance",
+        "causal_generator": "run stopped before required roles completed",
+        "execution_boundary": "role dispatch",
+        "failed_operation": "phase.1.1",
+        "novelty": "known",
+        "park_id": "a" * 32,
+        "phase": "1.1",
+        "remaining_budget": 0,
+        "resume_permitted": False,
+        "resume_refusal_reason": "operator decision required",
+        "self_resume_consumed": False,
+        "terminal_condition": "run cannot accept",
+        "trace_id": metadata["telemetry_trace_id"],
+    }
+    failure_path = tmp_path / "failed-close.json"
+    failure_path.write_text(json.dumps(failure) + "\n")
+    log_text = "## 2026-01-01 10:00 — PARK\n\nPhase 1.1 — failed\n"
+    log_block = tmp_path / "failed-close.md"
+    log_block.write_text(log_text)
+    arguments = (
+        "close",
+        "--run-dir",
+        str(run_dir),
+        "--outcome",
+        "failed",
+        "--reason-code",
+        "required-roles-missing",
+        "--log-block",
+        str(log_block),
+        "--failure-record",
+        str(failure_path),
+    )
+    first = run(*arguments)
+    second = run(*arguments)
+    assert first.returncode == second.returncode == 0, first.stderr + second.stderr
+    assert (repository / "LOG.md").read_text().count(log_text) == 1
+    rows = [
+        json.loads(line)
+        for line in (repository / ".kickoff" / "failure-signatures.jsonl").read_text().splitlines()
+    ]
+    assert rows == [failure]
+    closure = json.loads((run_dir / "closure.json").read_text())
+    assert closure["status"] == "complete" and closure["outcome"] == "failed"
 
 
 def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
@@ -1051,7 +1116,8 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
         "validate",
         "--run-dir",
         str(run_dir),
-        "--require-final",
+        "--level",
+        "acceptance",
         "--required-final-command",
         "/usr/bin/true",
     )
@@ -1071,6 +1137,29 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
     assert projection["failed_ns"] > 0
     for slow in projection["slowest_spans"]:
         assert slow["operation"] in markdown.stdout
+
+    close_text = "## 2026-01-01 10:00 — END\n\nPhase 1.1 — accepted\n"
+    close_block = tmp_path / "accepted-close.md"
+    close_block.write_text(close_text)
+    close_arguments = (
+        "close",
+        "--run-dir",
+        str(run_dir),
+        "--outcome",
+        "accepted",
+        "--reason-code",
+        "all-gates-green",
+        "--log-block",
+        str(close_block),
+        "--required-final-command",
+        "/usr/bin/true",
+    )
+    closed = run(*close_arguments)
+    repeated = run(*close_arguments)
+    assert closed.returncode == repeated.returncode == 0, closed.stderr + repeated.stderr
+    assert (repository / "LOG.md").read_text().count(close_text) == 1
+    closure = json.loads((run_dir / "closure.json").read_text())
+    assert closure["status"] == "complete" and closure["outcome"] == "accepted"
 
     (repository / "code.py").write_text("VALUE = 2\n")
     stale = run(

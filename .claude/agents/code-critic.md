@@ -110,6 +110,12 @@ finding.
   - Hand-edited historical entries in `LOG.md`.
   - Subjective claims in END blocks ("the audio sounds great", "the page looks clean") that the orchestrator cannot honestly assert.
   - **Unread names**, per `policies/verification-discipline.md`: any function, method, flag, environment variable, config key, endpoint, package, or schema field the code or its docs cites that does not resolve. Resolve each one against its definition — grep the symbol, read the schema, check `--help` — not against another mention of it. Convention-consistent naming is what produces a plausible wrong name, so a fluent, idiomatic, correctly-structured artifact is where this hides best. An unresolved name is blocking.
+  - **Proxy inversion at an automation boundary**, per
+    `policies/mechanistic-vs-intelligence.md`: every implemented filter, score,
+    bucket, or classifier must identify the real property, observable proxy,
+    innocent triggers, and sign-inversion risk. Block deterministic judgment
+    when context-sensitive false positives can systematically select the best
+    material as the worst.
 - Block on any match.
 - **User demo protocol**, per `policies/user-demo-protocols.md`: if the approved plan carries a `User Demo:` block, verify against the merged code that the entry point exists, the suggested inputs are valid, and the observable outcomes are reachable. A stale or broken demo is blocking. If the plan declared `User Demo: N/A`, sanity-check that the phase really has no user-facing change worth demoing. Since the demo is the user's acceptance surface for work that will be delivered without waiting, a padded or unreachable demo is blocking, not a note.
 - **The acceptance split**, per `policies/human-in-the-loop.md`: check every acceptance criterion's *type*, not just its result. A criterion is objective only if it is executable, independently reviewed, gate-proved, and candidate-bound; anything manual, perceptual, product-shaped, or custody-bearing must park for the user. **A subjective criterion typed as objective is blocking** — it is the one defect that would let the phase deliver itself on evidence that does not exist. You are the last independent reviewer before delivery; this check is yours.

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import fcntl
 import hashlib
 import json
 import os
@@ -30,13 +31,14 @@ sys.path.insert(0, str(LIB_ROOT))
 # Sourced, not restated. `bin/kickoff-config` constrains generation from the
 # same definitions, so a second copy of the closed sets here would be exactly
 # the drift this arrangement exists to remove.
-from agentic_starter import candidate_boundaries, kickoff_runbook  # noqa: E402
+from agentic_starter import candidate_boundaries, kickoff_runbook, log_blocks  # noqa: E402
 from agentic_starter.execution_telemetry import (  # noqa: E402
     TelemetryError,
     attach_review_metrics,
     closed_span,
     closed_spans,
     finalized_trace,
+    recover_trace,
     run_observed,
     runtime_span_context,
     trace_context,
@@ -113,6 +115,7 @@ ROLE_OPERATIONS = {
 ROLE_REASONS = {"initial", "revision", "resume", "rescue", "reexecution", "fallback"}
 ROLE_HARNESSES = {"native", "claude", "codex"}
 REVIEW_LANES = {"full", "light", "one-shot"}
+CLOSURE_OUTCOMES = {"accepted", "parked", "failed"}
 EVIDENCE_LANES = {"full", "light"}
 FOLLOW_UP_ROUTES = {"initial", "direct-fix", "coder-only", "full-cycle"}
 ORCHESTRATION_OPERATIONS = (
@@ -283,6 +286,41 @@ def append_jsonl(path: Path, value: Any) -> None:
     with path.open("a") as handle:
         json.dump(value, handle, sort_keys=True, separators=(",", ":"))
         handle.write("\n")
+
+
+def append_text_once(path: Path, payload: str) -> None:
+    """Append one exact closure block once, under an inter-process lock."""
+    if not payload or payload.startswith("\n") or not payload.endswith("\n"):
+        raise EvidenceError(
+            "closure log block must be nonempty, begin at its H2 header, and end in one newline"
+        )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(path, os.O_RDWR | os.O_CREAT, 0o666)
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        size = os.lseek(descriptor, 0, os.SEEK_END)
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        existing = os.read(descriptor, size).decode("utf-8")
+        occurrences = existing.count(payload)
+        if occurrences > 1:
+            raise EvidenceError("closure log block already appears more than once")
+        if occurrences == 1:
+            return
+        if existing and not existing.endswith("\n"):
+            raise EvidenceError("refusing append to a non-newline-terminated log")
+        separator = "\n" if existing and not existing.endswith("\n\n") else ""
+        candidate = existing + separator + payload
+        errors = log_blocks.chronology_errors(log_blocks.parse(candidate))
+        if errors:
+            raise EvidenceError(f"closure log chronology invalid: {errors[0]}")
+        os.lseek(descriptor, 0, os.SEEK_END)
+        addition = (separator + payload).encode("utf-8")
+        written = os.write(descriptor, addition)
+        if written != len(addition):
+            raise EvidenceError("short closure log append")
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def load_json(path: Path) -> Any:
@@ -610,6 +648,9 @@ def install_tool_bundle(run_dir: Path) -> dict[str, Any]:
         ),
         "lib/agentic_starter/kickoff_runbook.py": (
             REPO_ROOT / "lib" / "agentic_starter" / "kickoff_runbook.py"
+        ),
+        "lib/agentic_starter/log_blocks.py": (
+            REPO_ROOT / "lib" / "agentic_starter" / "log_blocks.py"
         ),
         "kickoff-command-zero": REPO_ROOT / "bin" / "kickoff-command-zero",
     }
@@ -2866,7 +2907,9 @@ def accept_incomplete_wait_join(
     }
 
 
-def validate_role_spans(run_dir: Path, run: dict[str, Any]) -> list[dict[str, Any]]:
+def validate_role_spans(
+    run_dir: Path, run: dict[str, Any], *, require_initial: bool = True
+) -> list[dict[str, Any]]:
     declarations = load_telemetry_declarations(run_dir)
     degraded: list[dict[str, Any]] = []
     records = load_jsonl(run_dir / "role-attempts.jsonl")
@@ -2883,7 +2926,7 @@ def validate_role_spans(run_dir: Path, run: dict[str, Any]) -> list[dict[str, An
         if sorted(attempts) != list(range(1, max(attempts) + 1)):
             raise EvidenceError(f"role attempts are not contiguous for {operation}")
     for operation in run["required_initial_role_operations"]:
-        if (operation, 1) not in keys and run.get("evidence_lane") != "light":
+        if require_initial and (operation, 1) not in keys and run.get("evidence_lane") != "light":
             # In the light evidence lane role registration is validated when
             # present, never required; the run metadata records the demotion.
             raise EvidenceError(f"missing required initial role attempt: {operation}")
@@ -4386,6 +4429,7 @@ def command_packet(arguments: argparse.Namespace) -> None:
 def command_validate(arguments: argparse.Namespace) -> None:
     run = validate_run_dir(arguments.run_dir)
     root = Path(run["repository_root"])
+    acceptance = arguments.level == "acceptance"
     authority = load_json(arguments.run_dir / "authority.json")
     if (
         not isinstance(authority, dict)
@@ -4423,17 +4467,15 @@ def command_validate(arguments: argparse.Namespace) -> None:
         run["phase"],
         run["telemetry_trace_id"],
         run["telemetry_root_span_id"],
-        open_required=arguments.require_final,
+        open_required=False,
     )
-    validate_role_spans(arguments.run_dir, run)
-    # Unconditional, not `--require-final`. Convergence metrics are repairable
-    # only while the trace is open, and checking them at `timing-summary` alone
-    # let a run pass validation all night with unmeasured passes and discover
-    # the gap after finalization, when the only "repair" left was re-ingesting
-    # earlier artifacts and driving `verified -> open`.
+    validate_role_spans(arguments.run_dir, run, require_initial=acceptance)
+    # Derived measurements are integrity claims and are always recomputed.
+    # Missing measurements block acceptance, while integrity validation may
+    # still describe an honestly incomplete run without inventing success.
     if run.get("evidence_lane") != "light":
         unmeasured = unmeasured_review_passes(arguments.run_dir, run)
-        if unmeasured:
+        if acceptance and unmeasured:
             named = ", ".join(
                 f"{item['operation']}#{item['attempt']} (span {item['span_id']})"
                 for item in unmeasured
@@ -4530,7 +4572,8 @@ def command_validate(arguments: argparse.Namespace) -> None:
         artifact_hash = gate.get("artifact_sha256")
         if artifact_hash is not None:
             validate_candidate_id(artifact_hash, f"artifact hash in gates.jsonl line {line_number}")
-    validate_gate_span_join(ledgers["gates.jsonl"], run, root)
+    if acceptance:
+        validate_gate_span_join(ledgers["gates.jsonl"], run, root)
     active_manifest = active_gate_manifest(arguments.run_dir)
     if run["evidence_lane"] == "full":
         for gate in ledgers["gates.jsonl"]:
@@ -4553,7 +4596,7 @@ def command_validate(arguments: argparse.Namespace) -> None:
             validate_candidate_id(source_hash, f"packet source hash {label}")
     if root != git_root(root):
         raise EvidenceError("recorded repository root no longer resolves to itself")
-    if arguments.require_final:
+    if acceptance:
         if run["evidence_lane"] == "full" and active_manifest is None:
             raise EvidenceError("full-lane final validation requires a gate manifest")
         validate_role_preflight_receipt(arguments.run_dir, root)
@@ -4566,20 +4609,22 @@ def command_validate(arguments: argparse.Namespace) -> None:
             raise EvidenceError(
                 "phase-close findings remain unresolved: " + ", ".join(blocking_findings)
             )
-        current_id = tree_manifest(root)["candidate_id"]
+        current_product_id = product_manifest(root)["candidate_id"]
         successful_final = [
             gate
             for gate in ledgers["gates.jsonl"]
             if gate["final"]
             and gate["telemetry_complete"]
-            and gate["candidate_id"] == current_id
-            and gate["candidate_after_id"] == current_id
-            and gate["product_candidate_id"] == gate["product_candidate_after_id"]
+            and gate["candidate_id"] == gate["candidate_after_id"]
+            and gate["product_candidate_id"] == current_product_id
+            and gate["product_candidate_after_id"] == current_product_id
             and gate["exit_code"] == 0
             and gate["outcome"] == "success"
         ]
         if not successful_final:
-            raise EvidenceError("no successful final gate is recorded for the current candidate")
+            raise EvidenceError(
+                "no successful final gate is recorded for the current product candidate"
+            )
         if arguments.required_final_command and not any(
             gate["command"] == arguments.required_final_command for gate in successful_final
         ):
@@ -4593,6 +4638,194 @@ def command_validate(arguments: argparse.Namespace) -> None:
                 "current successful final gate is not bound to the active command manifest"
             )
     print("EVIDENCE VALID")
+
+
+def _closure_digest(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def _validate_failure_record(value: Any, *, run: dict[str, Any], outcome: str) -> dict[str, Any]:
+    required = {
+        "affected_contract",
+        "causal_generator",
+        "execution_boundary",
+        "failed_operation",
+        "novelty",
+        "park_id",
+        "phase",
+        "remaining_budget",
+        "resume_permitted",
+        "resume_refusal_reason",
+        "self_resume_consumed",
+        "terminal_condition",
+        "trace_id",
+    }
+    if not isinstance(value, dict) or set(value) != required:
+        raise EvidenceError("invalid failure record schema")
+    if value["phase"] != run["phase"] or value["trace_id"] != run["telemetry_trace_id"]:
+        raise EvidenceError("failure record belongs to another run")
+    for field in (
+        "affected_contract",
+        "causal_generator",
+        "execution_boundary",
+        "failed_operation",
+        "novelty",
+        "park_id",
+        "terminal_condition",
+    ):
+        if not isinstance(value[field], str) or not value[field].strip():
+            raise EvidenceError(f"failure record {field} must be nonempty text")
+    if not re.fullmatch(r"[0-9a-f]{32}", value["park_id"]):
+        raise EvidenceError("failure record park_id must be lowercase 32-hex")
+    if not isinstance(value["remaining_budget"], int) or value["remaining_budget"] < 0:
+        raise EvidenceError("failure record remaining_budget must be nonnegative")
+    for field in ("resume_permitted", "self_resume_consumed"):
+        if not isinstance(value[field], bool):
+            raise EvidenceError(f"failure record {field} must be boolean")
+    refusal = value["resume_refusal_reason"]
+    if value["resume_permitted"]:
+        if refusal is not None:
+            raise EvidenceError("permitted resume cannot carry a refusal reason")
+    elif not isinstance(refusal, str) or not refusal.strip():
+        raise EvidenceError("refused resume must carry a reason")
+    if outcome not in {"parked", "failed"}:
+        raise EvidenceError("failure records are valid only for non-accepted closes")
+    return value
+
+
+def _append_failure_once(path: Path, record: dict[str, Any]) -> None:
+    existing = load_jsonl(path) if path.exists() else []
+    exact = [item for item in existing if item == record]
+    if len(exact) > 1:
+        raise EvidenceError("failure record already appears more than once")
+    if exact:
+        return
+    for item in existing:
+        if item.get("park_id") == record["park_id"] or item.get("trace_id") == record["trace_id"]:
+            raise EvidenceError("failure record conflicts with an existing park or trace")
+    append_jsonl(path, record)
+
+
+def _validate_phase_close(root: Path, phase: str) -> None:
+    checker = root / "bin" / "check-catalogs"
+    process = subprocess.run(
+        [str(checker), "--closing-phase", phase],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if process.returncode != 0:
+        detail = (process.stdout + process.stderr).strip()
+        raise EvidenceError(f"phase ledger refuses close: {detail}")
+
+
+def command_status(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    closure_path = arguments.run_dir / "closure.json"
+    closure = load_json(closure_path) if closure_path.exists() else None
+    attempts = load_jsonl(arguments.run_dir / "role-attempts.jsonl")
+    present = sorted({item["operation"] for item in attempts})
+    missing = sorted(set(run["required_initial_role_operations"]) - set(present))
+    allowed = (
+        []
+        if closure and closure.get("status") == "complete"
+        else [
+            "record-attempt",
+            "record-review",
+            "record-gate",
+            "close",
+        ]
+    )
+    print(
+        json.dumps(
+            {
+                "phase": run["phase"],
+                "closure": closure,
+                "observed_role_operations": present,
+                "missing_acceptance_role_operations": missing,
+                "allowed_next": allowed,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    )
+
+
+def command_close(arguments: argparse.Namespace) -> int:
+    """Materialize one truthful, idempotent accepted/parked/failed close."""
+    run = validate_run_dir(arguments.run_dir)
+    root = Path(run["repository_root"])
+    outcome = arguments.outcome
+    reason_code = arguments.reason_code.strip()
+    if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", reason_code):
+        raise EvidenceError("reason-code must be lowercase kebab-case")
+    log_block = arguments.log_block.read_text(encoding="utf-8")
+    failure_record: dict[str, Any] | None = None
+    if outcome == "accepted":
+        if arguments.failure_record is not None:
+            raise EvidenceError("accepted close cannot carry a failure record")
+    else:
+        if arguments.failure_record is None:
+            raise EvidenceError("parked and failed closes require --failure-record")
+        failure_record = _validate_failure_record(
+            load_json(arguments.failure_record), run=run, outcome=outcome
+        )
+    request = {
+        "schema_version": SCHEMA_VERSION,
+        "phase": run["phase"],
+        "trace_id": run["telemetry_trace_id"],
+        "outcome": outcome,
+        "reason_code": reason_code,
+        "log_sha256": hashlib.sha256(log_block.encode()).hexdigest(),
+        "failure_sha256": _closure_digest(failure_record) if failure_record else None,
+    }
+    closure_id = _closure_digest(request)
+    closure_path = arguments.run_dir / "closure.json"
+    lock_path = arguments.run_dir / "closure.lock"
+    with lock_path.open("a+b") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        existing = load_json(closure_path) if closure_path.exists() else None
+        if existing is not None and existing.get("closure_id") != closure_id:
+            raise EvidenceError("closure request conflicts with the recorded close")
+        if existing is not None and existing.get("status") == "complete":
+            print("closure complete")
+            return 0
+        if outcome in {"parked", "failed"}:
+            try:
+                finalized_trace(engine_root=root, trace_id=run["telemetry_trace_id"])
+            except TelemetryError:
+                recover_trace(engine_root=root, trace_id=run["telemetry_trace_id"])
+            assert failure_record is not None
+            _append_failure_once(root / ".kickoff" / "failure-signatures.jsonl", failure_record)
+            append_text_once(root / "LOG.md", log_block)
+        else:
+            command_validate(
+                argparse.Namespace(
+                    run_dir=arguments.run_dir,
+                    level="acceptance",
+                    required_final_command=arguments.required_final_command,
+                )
+            )
+            try:
+                finalized_trace(engine_root=root, trace_id=run["telemetry_trace_id"])
+            except TelemetryError as exc:
+                raise EvidenceError(f"accepted trace is not durably finalized: {exc}") from exc
+            _validate_phase_close(root, run["phase"])
+            append_text_once(root / "LOG.md", log_block)
+        atomic_json(
+            closure_path,
+            {
+                **request,
+                "closure_id": closure_id,
+                "status": "complete",
+                "completed_at": now(),
+            },
+        )
+    print("closure complete")
+    return 0
 
 
 def add_run_dir(parser: argparse.ArgumentParser) -> None:
@@ -4884,9 +5117,22 @@ def build_parser() -> argparse.ArgumentParser:
     packet.add_argument("--output", type=Path, required=True)
     packet.set_defaults(handler=command_packet)
 
+    status = subparsers.add_parser("status")
+    add_run_dir(status)
+    status.set_defaults(handler=command_status)
+
+    close = subparsers.add_parser("close")
+    add_run_dir(close)
+    close.add_argument("--outcome", choices=sorted(CLOSURE_OUTCOMES), required=True)
+    close.add_argument("--reason-code", required=True)
+    close.add_argument("--log-block", type=Path, required=True)
+    close.add_argument("--failure-record", type=Path)
+    close.add_argument("--required-final-command")
+    close.set_defaults(handler=command_close)
+
     validate = subparsers.add_parser("validate")
     add_run_dir(validate)
-    validate.add_argument("--require-final", action="store_true")
+    validate.add_argument("--level", choices=("integrity", "acceptance"), default="integrity")
     validate.add_argument("--required-final-command")
     validate.set_defaults(handler=command_validate)
 
@@ -4900,11 +5146,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     arguments = build_parser().parse_args()
     try:
-        arguments.handler(arguments)
+        result = arguments.handler(arguments)
     except (AttributeError, EvidenceError, KeyError, OSError, TypeError) as exc:
         print(f"kickoff-evidence: {exc}", file=sys.stderr)
         return 2
-    return 0
+    return 0 if result is None else result
 
 
 if __name__ == "__main__":

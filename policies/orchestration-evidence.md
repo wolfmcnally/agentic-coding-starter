@@ -32,7 +32,7 @@ lane, role registration, span joins, and stage envelopes are validated when
 present but their absence does not fail validation — the recorded lane is the
 auditable declaration of that demotion. Everything else in this policy is
 lane-independent, and the final candidate-bound gate under
-`validate --require-final` is mandatory in every lane.
+`validate --level acceptance` is mandatory in every lane.
 
 ## Candidate identity
 
@@ -209,7 +209,7 @@ the required local reset rather than a small lane over an untouched shadow
 suite. A relevant candidate change
 invalidates prior gate evidence. Verify candidate identity before and after
 the implementation sequence; mutation by a read-only gate fails the phase.
-`./bin/python bin/kickoff-evidence validate --require-final --required-final-command
+`./bin/python bin/kickoff-evidence validate --level acceptance --required-final-command
 "./bin/check all"` is the mechanical implementation acceptance proof and must
 run immediately after the implementation gate, before status and append-only
 log bookkeeping change the working tree. It also refuses close bookkeeping
@@ -222,7 +222,7 @@ successful handoff gate.
 
 The ordinary commit and non-force push of gate-proved work
 ([`human-in-the-loop.md`](human-in-the-loop.md)) are close-out bookkeeping in
-exactly that sense: they run only after the successful `--require-final`
+exactly that sense: they run only after successful acceptance validation
 validation and the handoff gate, they change no tracked content, and they
 therefore leave the accepted candidate identity intact. An operator restriction
 may suppress either action; neither may be used to repair a failed gate.
@@ -292,8 +292,7 @@ the active run itself needs — and is deliberately explicit rather than silent.
 
 ## An unmeasured review pass is caught while it can still be repaired
 
-`validate` refuses, unconditionally in the full evidence lane and not only
-under `--require-final`, whenever an accepted review dispatch closed
+Acceptance validation refuses in the full evidence lane whenever an accepted review dispatch closed
 successfully and its intelligence span carries no convergence integers. It
 names each `operation#attempt` with its span id.
 
@@ -576,7 +575,7 @@ reading its close will see it.
   ingest binds to, a finding's `resolved_in` may name that dispatch's open
   candidate. An ingest with `--no-review-span` has no dispatch to bind to and
   gets no relaxation.
-- **Gate rows and the final seal are untouched.** `validate --require-final`
+- **Gate rows and the final seal are untouched.** `validate --level acceptance`
   still demands the final candidate-bound gate row with equal
   before/after/current candidates. A gate whose candidates differ has measured a
   tree other than the one being accepted, and that is lane- and drift-independent.
@@ -681,9 +680,17 @@ with `shlex.join`, so a writer cannot emit the noncanonical command/argv pair
 that its validator refuses. Historical imported rows with the old whole-command
 single-element argv remain readable; validation refuses each by its exact
 `gates.jsonl` line, recorded command, argv, and canonical display.
-Final eligibility requires a complete matching span, exact argv, and equal
-before/after/current candidates. Acceptance validates while the root is open;
-finalization and `timing-summary` precede completion bookkeeping.
+Final eligibility requires a complete matching span, exact argv, unchanged
+full-tree identity during the gate, and a current matching product candidate.
+`validate --level integrity` checks recorded facts without inventing missing
+success events; `validate --level acceptance` additionally requires the full
+role topology, convergence measurements, gate joins, resolved findings, and
+the final seal. `status` exposes missing acceptance roles and permitted next
+actions. One idempotent `close` operation then records exactly one truthful
+outcome: accepted, parked, or failed. Non-accepted close requires the complete
+failure signature, recovers/finalizes interrupted telemetry, and never claims
+acceptance; accepted close requires finalized acceptance evidence before it
+appends the exact END block.
 
 Initialization also creates an immutable run-scoped tool bundle containing the
 exact evidence binary, candidate tree identifier, telemetry CLI, and telemetry

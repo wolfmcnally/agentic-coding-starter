@@ -43,9 +43,16 @@ def repository(tmp_path: Path) -> Path:
     return root
 
 
-def run(root: Path, plan: Path) -> subprocess.CompletedProcess[str]:
+def run(root: Path, plan: Path, *prior_plans: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [str(CHECKER), "--plan", str(plan), "--root", str(root)],
+        [
+            str(CHECKER),
+            "--plan",
+            str(plan),
+            "--root",
+            str(root),
+            *[item for prior in prior_plans for item in ("--prior-plan", str(prior))],
+        ],
         capture_output=True,
         text=True,
         timeout=120,
@@ -88,6 +95,50 @@ def write_plan(tmp_path: Path, text: str) -> Path:
     return plan
 
 
+def sized_plan(lines: int) -> str:
+    base = GOOD_PLAN.splitlines()
+    notes = [f"Evidence note {index}." for index in range(lines - len(base))]
+    return "\n".join([*base, *notes]) + "\n"
+
+
+def _assert_refuses_oversized_plan(tmp_path: Path) -> None:
+    root = repository(tmp_path)
+    result = run(root, write_plan(tmp_path, sized_plan(601)))
+    assert result.returncode == 1
+    assert "plan-size" in result.stdout
+    assert "601 lines" in result.stdout
+
+
+def _assert_refuses_more_than_one_third_growth(tmp_path: Path) -> None:
+    root = repository(tmp_path)
+    prior = tmp_path / "prior.md"
+    prior.write_text(sized_plan(300))
+    current = write_plan(tmp_path, sized_plan(401))
+    result = run(root, current, prior)
+    assert result.returncode == 1
+    assert "grew from 300 to 401 lines" in result.stdout
+
+
+def _assert_refuses_second_growth_event(tmp_path: Path) -> None:
+    root = repository(tmp_path)
+    first = tmp_path / "first.md"
+    second = tmp_path / "second.md"
+    first.write_text(sized_plan(300))
+    second.write_text(sized_plan(320))
+    current = write_plan(tmp_path, sized_plan(330))
+    result = run(root, current, first, second)
+    assert result.returncode == 1
+    assert "2 growth events" in result.stdout
+
+
+def _assert_one_bounded_growth_event_passes(tmp_path: Path) -> None:
+    root = repository(tmp_path)
+    prior = tmp_path / "prior.md"
+    prior.write_text(sized_plan(300))
+    result = run(root, write_plan(tmp_path, sized_plan(330)), prior)
+    assert result.returncode == 0, result.stdout
+
+
 def test_unread_identifier_refuses_and_declared_new_passes(tmp_path: Path) -> None:
     root = repository(tmp_path)
     text = GOOD_PLAN.replace(
@@ -101,6 +152,10 @@ def test_unread_identifier_refuses_and_declared_new_passes(tmp_path: Path) -> No
     assert "`provision_json`" in result.stdout
     # `frobnicate_widget` is cited in the plan but declared new, so it is fine.
     assert "frobnicate_widget" not in result.stdout
+    _assert_refuses_oversized_plan(tmp_path / "oversized")
+    _assert_refuses_more_than_one_third_growth(tmp_path / "large-growth")
+    _assert_refuses_second_growth_event(tmp_path / "second-growth")
+    _assert_one_bounded_growth_event_passes(tmp_path / "bounded-growth")
 
 
 def test_node_ids_and_line_ranges_resolve_to_members(tmp_path: Path) -> None:

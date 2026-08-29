@@ -25,10 +25,10 @@ Status legend: ⏳ Not Started · ⬅️ Next (only one at a time) · 🚧 In Pr
 """
 
 
-def run(root: Path) -> subprocess.CompletedProcess[str]:
+def run(root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
     checker = root / "bin" / "check-catalogs"
     return subprocess.run(
-        [str(checker)],
+        [str(checker), *arguments],
         cwd=root,
         capture_output=True,
         text=True,
@@ -79,6 +79,9 @@ def test_tracked_markdown_deleted_from_worktree_is_not_read_as_a_source(
     result = run(root)
 
     assert result.returncode == 0, result.stdout + result.stderr
+    _assert_child_close_requires_parent_close_or_another_drafted_child(tmp_path / "stranded-child")
+    _assert_child_close_accepts_parent_close(tmp_path / "closed-parent")
+    _assert_child_close_accepts_drafted_incomplete_sibling(tmp_path / "queued-sibling")
 
 
 def test_missing_internal_inline_and_reference_links_are_reported(
@@ -114,4 +117,44 @@ def test_the_citation_rule_is_directional_not_symmetric(tmp_path: Path) -> None:
 
     result = run(root)
 
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def _assert_child_close_requires_parent_close_or_another_drafted_child(tmp_path: Path) -> None:
+    root = fixture(tmp_path, first="🚧", second="⏳")
+    (root / "plan" / "INDEX.md").write_text(
+        INDEX.format(first="🚧", second="⏳").replace(
+            "| Phase 2 | Second | ⏳ |",
+            "| Phase 1.1 | Child | ✅ |\n| Phase 2 | Second | ⏳ |",
+        )
+    )
+    result = run(root, "--closing-phase", "1.1")
+    assert result.returncode == 1
+    assert "must close parent Phase 1 or leave it 🚧" in result.stdout
+
+
+def _assert_child_close_accepts_parent_close(tmp_path: Path) -> None:
+    root = fixture(tmp_path, first="✅", second="⬅️")
+    (root / "plan" / "INDEX.md").write_text(
+        INDEX.format(first="✅", second="⬅️").replace(
+            "| Phase 2 | Second | ⬅️ |",
+            "| Phase 1.1 | Child | ✅ |\n| Phase 2 | Second | ⬅️ |",
+        )
+    )
+    result = run(root, "--closing-phase", "1.1")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def _assert_child_close_accepts_drafted_incomplete_sibling(tmp_path: Path) -> None:
+    root = fixture(tmp_path, first="🚧", second="⏳")
+    (root / "plan" / "phase-1.2.md").write_text("# Phase 1.2\n")
+    (root / "plan" / "INDEX.md").write_text(
+        INDEX.format(first="🚧", second="⏳").replace(
+            "| Phase 2 | Second | ⏳ |",
+            "| Phase 1.1 | Child one | ✅ |\n"
+            "| Phase 1.2 | Child two | ⬅️ |\n"
+            "| Phase 2 | Second | ⏳ |",
+        )
+    )
+    result = run(root, "--closing-phase", "1.1")
     assert result.returncode == 0, result.stdout + result.stderr
