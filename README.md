@@ -23,6 +23,9 @@ The template ships with:
 
 - A **methodology** (eleven-step pipeline, see [`briefs/methodology.md`](briefs/methodology.md)) that takes you from idea to shipped code.
 - A **`kickoff` skill** that orchestrates one phase of work end-to-end: plan → plan-review → code → code-review → build → log.
+- A universal **`rule-one` skill and diagnostic brief** that turn corrections,
+  failures, surprises, and discarded effort into causally diagnosed, durable
+  learning instead of symptom-shaped fixes.
 - Four **canonical agent roles** (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`) defined once and mirrored to every supported harness.
 - A **`stamp` skill** (starter-template-only) for stamping out new repos from this one.
 - **`learn` and `teach` skills** (universal — carried into every derived project) for moving patterns *between* methodology-following repos. `learn` absorbs patterns from another repo into the current one; `teach` sends patterns from the current repo out to a target. Both work one decision at a time, then present one complete plan for approval before any file changes.
@@ -254,10 +257,16 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 │   ├── skills/
 │   │   ├── kickoff/SKILL.md        ←   phase orchestrator
 │   │   ├── methodology/SKILL.md    ←   the eleven steps (self-contained)
+│   │   ├── rule-one/SKILL.md       ←   symptom → diagnosis → durable learning
 │   │   ├── learn/SKILL.md          ←   absorb patterns FROM another repo (universal)
 │   │   ├── teach/SKILL.md          ←   send patterns TO another repo (universal)
 │   │   ├── roles/SKILL.md          ←   pin a model/harness to a role (universal)
 │   │   ├── sweep/SKILL.md          ←   prune and graduate rule surfaces (universal)
+│   │   ├── sweep-planning/SKILL.md ←   calibrate the planner/reviewer loop
+│   │   ├── sweep-coding/SKILL.md   ←   calibrate the coder/critic loop
+│   │   ├── demo/SKILL.md           ←   interactive demo walkthrough
+│   │   ├── treatise/SKILL.md       ←   durable outward explanation
+│   │   ├── plain/SKILL.md          ←   operator-facing register
 │   │   └── stamp/SKILL.md          ←   new-project bootstrapper (starter-only)
 │   └── agents/
 │       ├── phase-planner.md
@@ -273,11 +282,17 @@ The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The 
 └── .agents/                        ← Codex CLI's native project-skill discovery
     └── skills/                     ←   (developers.openai.com/codex/skills)
         ├── kickoff                 ←   each is a directory symlink → ../../.claude/skills/<name>
-        ├── methodology             ←     (directory-level because Codex doesn't follow
-        ├── learn                   ←      file-level symlinks inside skill dirs — issue #11314)
+        ├── methodology
+        ├── rule-one
+        ├── learn
         ├── teach
         ├── roles
         ├── sweep
+        ├── sweep-planning
+        ├── sweep-coding
+        ├── demo
+        ├── treatise
+        ├── plain
         └── stamp                   ←   present only in this template repo
 ```
 
@@ -356,6 +371,9 @@ Both skills are carried into every project that `stamp` creates, so any methodol
 Every derived project also carries the `lessons/` ledger and `sweep` skill.
 Phase work records candidate process lessons; `sweep` proposes graduation,
 rejection, consolidation, and rule-surface maintenance for human approval.
+Rule One sits before that ledger: it requires causal diagnosis before a
+symptom becomes a proposed lesson, and it travels with its diagnostic brief so
+the reasoning remains available when the prescription is revised.
 
 The `<desc>` argument narrows intent. Omit it for a broad assessment that defaults to general-purpose improvements; supply it to focus on a specific surface ("focus on the testing setup", "Unity specialization", "just the policies").
 

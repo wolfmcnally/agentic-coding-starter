@@ -1,6 +1,6 @@
 ---
 title: "The Agentic Coding Methodology — Eleven Steps"
-date: 2026-08-24
+date: 2026-08-29
 status: methodology
 scope: The canonical statement of the methodology this template implements. Authoritative reference for every skill, agent, and policy in the repo.
 ---
@@ -8,6 +8,27 @@ scope: The canonical statement of the methodology this template implements. Auth
 # The Agentic Coding Methodology
 
 A methodology for writing software with AI coding agents in a way that scales beyond ad-hoc prompting. Each step involves conversing with or using LLMs. Apply it when scoping or structuring a coding project — not when answering one-off coding questions.
+
+## Rule One surrounds the sequence
+
+The eleven steps describe how construction advances. **Rule One** is the
+ambient anomaly-response and learning discipline around those steps, and
+around other project work as well. When something goes wrong or not as
+expected, the visible condition is treated as a symptom rather than a
+diagnosis. The response moves through proportionate causal diagnosis,
+including a contribution-system map when causes interact; separates
+containment, correction, and prevention; and does not call the lesson learned
+until the reusable change has been persisted on a durable cross-harness
+surface.
+
+The operative skill is
+[`.claude/skills/rule-one/SKILL.md`](../.claude/skills/rule-one/SKILL.md). It is
+repository-owned and does not depend on a machine-global copy. The reasoning,
+limits, and open diagnostic questions behind it live in
+[`rule-one-diagnostic-learning.md`](rule-one-diagnostic-learning.md). The two
+travel together through `learn`, `teach`, and `stamp`: the skill supplies the
+prescription, while the brief preserves the discernment needed to revise and
+apply it without turning every surprise into a mechanical rule.
 
 ## The eleven steps
 
@@ -184,6 +205,9 @@ What you get in exchange: each phase leaves a reviewable artifact pair (END bloc
 
 ## Related skills
 
+- **`rule-one`** — runs the symptom → diagnosis → response → persistence
+  discipline; its rationale and diagnostic research live in
+  [`rule-one-diagnostic-learning.md`](rule-one-diagnostic-learning.md).
 - **`kickoff`** — runs steps 7–9 for one sub-phase, end-to-end.
 - **`stamp`** — runs the bootstrap procedure described in [`agentic-bootstrap.md`](agentic-bootstrap.md) to stand up a new repo under this methodology.
 - **`methodology`** — re-states this brief as a skill, invoked as `/methodology` in Claude Code or `$methodology` in Codex, for sessions that need a reminder without reading the whole file.

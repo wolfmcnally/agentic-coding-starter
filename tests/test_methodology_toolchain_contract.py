@@ -16,10 +16,12 @@ ORCHESTRATION_POLICY = _normalized(REPO_ROOT / "policies" / "orchestration-evide
 ANONYMIZATION_POLICY = _normalized(REPO_ROOT / "policies" / "anonymize-log-references.md")
 INCREMENTAL_BRIEF = _normalized(REPO_ROOT / "briefs" / "incremental-orchestration.md")
 METHODOLOGY_BRIEF = _normalized(REPO_ROOT / "briefs" / "methodology.md")
+RULE_ONE_BRIEF = _normalized(REPO_ROOT / "briefs" / "rule-one-diagnostic-learning.md")
 BOOTSTRAP_BRIEF = _normalized(REPO_ROOT / "briefs" / "agentic-bootstrap.md")
 CLAUDE = _normalized(REPO_ROOT / "CLAUDE.md")
 KICKOFF = _normalized(REPO_ROOT / ".claude" / "skills" / "kickoff" / "SKILL.md")
 METHODOLOGY = _normalized(REPO_ROOT / ".claude" / "skills" / "methodology" / "SKILL.md")
+RULE_ONE = _normalized(REPO_ROOT / ".claude" / "skills" / "rule-one" / "SKILL.md")
 PLANNER = _normalized(REPO_ROOT / ".claude" / "agents" / "phase-planner.md")
 PLAN_REVIEWER = _normalized(REPO_ROOT / ".claude" / "agents" / "plan-reviewer.md")
 CODER = _normalized(REPO_ROOT / ".claude" / "agents" / "phase-coder.md")
@@ -84,6 +86,32 @@ def test_every_universal_skill_propagates_with_its_codex_mirror() -> None:
             assert canonical in document, f"{skill} missing from a transfer document"
             assert mirror in document, f"{skill} mirror missing from a transfer document"
         assert skill in TEACH
+
+    skill_path = ".claude/skills/rule-one/SKILL.md"
+    brief_name = "rule-one-diagnostic-learning.md"
+    assert "name: rule-one" in RULE_ONE
+    assert "symptom, not a diagnosis" in RULE_ONE
+    assert skill_path in RULE_ONE_BRIEF
+    for surface in (
+        CLAUDE,
+        METHODOLOGY_BRIEF,
+        METHODOLOGY,
+        LEARN,
+        TEACH,
+        STAMP,
+        BOOTSTRAP_BRIEF,
+    ):
+        assert skill_path in surface
+        assert brief_name in surface
+    assert "Rule One learning is atomic" in LEARN
+    assert "Rule One teaching is atomic" in TEACH
+    assert "one member absent" in LEARN
+    assert "one member absent" in TEACH
+
+    mirror = REPO_ROOT / ".agents" / "skills" / "rule-one"
+    assert mirror.is_symlink()
+    assert mirror.readlink().as_posix() == "../../.claude/skills/rule-one"
+    assert (mirror / "SKILL.md").is_file()
 
 
 def test_every_gate_required_executable_propagates() -> None:

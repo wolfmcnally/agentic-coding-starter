@@ -1141,3 +1141,10 @@ surfaces were not imported. Focused tool, lifecycle, catalog, plan, log, and
 toolchain tests passed. The retained proof estate remains exactly 108 families
 and 126 leaves with no new budget. The authoritative full gate passed 105 tests
 before this append; it is rerun against this complete logged candidate below.
+
+## 2026-08-29 18:51 MDT — LEARN
+Donor: Donor A @ <sha withheld>
+Items absorbed: 1, by tier T1=1/T2=0/T3=0/T4=0
+Stale-in-light-of-learning migrations: 11 AUTO; 0 DECIDE; 0 DEFER
+Lessons: 0 from the donor ledger; 0 return-path (source: learn)
+Files touched: 15

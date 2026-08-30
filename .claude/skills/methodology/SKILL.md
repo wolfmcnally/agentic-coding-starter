@@ -8,7 +8,7 @@ description: >-
   new project, setting up a repo's planning structure, breaking a large
   initiative into phases, or reviewing the steps without reading the full
   brief. Invoke as /methodology in Claude Code or $methodology in Codex.
-last-reviewed: 2026-08-10
+last-reviewed: 2026-08-29
 ---
 
 # The Agentic Coding Methodology
@@ -16,6 +16,19 @@ last-reviewed: 2026-08-10
 A methodology for writing software with AI coding agents in a way that scales beyond ad-hoc prompting. Each step involves conversing with or using LLMs. Apply it when scoping or structuring a coding project — not when answering one-off coding questions.
 
 The authoritative source is [`briefs/methodology.md`](../../../briefs/methodology.md). Invoke this restatement as `/methodology` in Claude Code or `$methodology` in Codex.
+
+## Rule One surrounds the sequence
+
+The eleven steps govern forward construction. Rule One governs what happens
+when any step—or any other kind of work—goes wrong or not as expected: treat
+the observed condition as a symptom, diagnose the causal contribution system
+proportionately, distinguish containment from correction and prevention, and
+persist any reusable lesson on a durable cross-harness surface. The operative
+skill is [`.claude/skills/rule-one/SKILL.md`](../rule-one/SKILL.md); the
+reasoning and open diagnostic questions live in
+[`briefs/rule-one-diagnostic-learning.md`](../../../briefs/rule-one-diagnostic-learning.md).
+They are one methodology unit and must travel together through `learn` and
+`teach`.
 
 ## The eleven steps
 
@@ -127,4 +140,7 @@ Full statement: `briefs/methodology.md` § Run-lifecycle vocabulary.
 
 ## Source
 
-This skill restates [`briefs/methodology.md`](../../../briefs/methodology.md). If that brief changes, update this skill.
+This skill restates [`briefs/methodology.md`](../../../briefs/methodology.md).
+If that brief changes, update this skill. Rule One's operative prescription is
+[`.claude/skills/rule-one/SKILL.md`](../rule-one/SKILL.md), with its rationale
+in [`briefs/rule-one-diagnostic-learning.md`](../../../briefs/rule-one-diagnostic-learning.md).

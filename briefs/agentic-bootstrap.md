@@ -93,6 +93,7 @@ A project derived from this template contains the following **portable structure
   briefs/
     BRIEF.md               # Entry-point brief, project-specific
     methodology.md         # The eleven steps (copied verbatim)
+    rule-one-diagnostic-learning.md # Rule One's diagnostic rationale
     agentic-bootstrap.md   # This brief (copied verbatim, for the next bootstrap)
     cross-agent-invocation.md  # Cross-CLI invocation BCPs (copied verbatim)
     incremental-orchestration.md # Candidate-bound incremental assurance
@@ -127,6 +128,7 @@ A project derived from this template contains the following **portable structure
     skills/
       kickoff/SKILL.md     # Phase orchestrator
       methodology/SKILL.md # Self-contained methodology reference
+      rule-one/SKILL.md    # Universal symptom-to-learning discipline
       learn/SKILL.md       # Universal cross-repo skill: absorb patterns into
                            #   THIS repo from another
       teach/SKILL.md       # Universal cross-repo skill: apply THIS repo's
@@ -158,9 +160,10 @@ A project derived from this template contains the following **portable structure
                            # (developers.openai.com/codex/skills)
     skills/
       kickoff              # Directory symlink → ../../.claude/skills/kickoff
-      methodology          # (Codex doesn't follow file-level symlinks inside
-      learn                #  a skill dir — issue #11314 — but does traverse
-      teach                #  a symlinked skill directory.)
+      methodology
+      rule-one
+      learn
+      teach
       roles
       sweep
       sweep-planning
@@ -224,6 +227,8 @@ These files encode the methodology itself, not any particular product. Copy them
 
 - `.claude/skills/kickoff/SKILL.md`
 - `.claude/skills/methodology/SKILL.md`
+- `.claude/skills/rule-one/SKILL.md` (universal diagnostic-learning workflow;
+  travels atomically with its reasoning brief)
 - `.claude/skills/learn/SKILL.md` (universal cross-repo skill)
 - `.claude/skills/teach/SKILL.md` (universal cross-repo skill)
 - `.claude/skills/roles/SKILL.md` (universal — per-role model/effort editing; wraps `bin/kickoff-config`)
@@ -241,6 +246,7 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.codex/agents/*.toml`
 - `.agents/skills/kickoff` (directory symlink → `../../.claude/skills/kickoff`)
 - `.agents/skills/methodology` (directory symlink → `../../.claude/skills/methodology`)
+- `.agents/skills/rule-one` (directory symlink → `../../.claude/skills/rule-one`)
 - `.agents/skills/learn` (directory symlink → `../../.claude/skills/learn`)
 - `.agents/skills/teach` (directory symlink → `../../.claude/skills/teach`)
 - `.agents/skills/roles` (directory symlink → `../../.claude/skills/roles`)
@@ -310,6 +316,8 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.gitattributes` (line-ending normalization that keeps cross-harness mirrors
   byte-identical across platforms)
 - `briefs/methodology.md`
+- `briefs/rule-one-diagnostic-learning.md` (Rule One's portable diagnostic
+  rationale; required companion to its skill)
 - `briefs/agentic-bootstrap.md` (this file, so the next bootstrap is possible)
 - `briefs/cross-agent-invocation.md` (the cross-CLI invocation BCPs cited by `policies/role-models.md`)
 - `briefs/incremental-orchestration.md` (candidate-bound review, revision,
@@ -422,6 +430,7 @@ Then create the empty directory shape:
 ```text
 .claude/skills/kickoff/
 .claude/skills/methodology/
+.claude/skills/rule-one/
 .claude/skills/learn/
 .claude/skills/teach/
 .claude/skills/roles/
@@ -433,7 +442,7 @@ Then create the empty directory shape:
 .claude/skills/plain/
 .claude/agents/
 .codex/agents/
-.agents/skills/        # (the eleven skill entries here are directory symlinks
+.agents/skills/        # (the twelve skill entries here are directory symlinks
                        #  to ../../.claude/skills/<name>, created in Step 5)
 briefs/
 lessons/
@@ -459,7 +468,7 @@ In this exact order (each feeds the next):
      - `## Project briefs` — `briefs/` entries specific to this project (initially `BRIEF.md` only).
      - `## Project surfaces` — the deliverable (location, language, seed code description).
      - `## Project conventions` — language, tooling, build-gate command shape.
-     - `## Project-specific skills` — any beyond the universal eleven. Omit if none.
+     - `## Project-specific skills` — any beyond the universal twelve. Omit if none.
 
 3. **`AGENTS.md`** — symlink to `CLAUDE.md`:
    ```bash
@@ -481,6 +490,7 @@ Copy verbatim, then adapt project names and surface-specific build-gate commands
 
 - `.claude/skills/kickoff/SKILL.md`
 - `.claude/skills/methodology/SKILL.md`
+- `.claude/skills/rule-one/SKILL.md`
 - `.claude/skills/learn/SKILL.md`
 - `.claude/skills/teach/SKILL.md`
 - `.claude/skills/roles/SKILL.md`
@@ -496,7 +506,15 @@ Copy verbatim, then adapt project names and surface-specific build-gate commands
 - `.claude/agents/phase-coder.md`
 - `.claude/agents/code-critic.md`
 - `.codex/agents/*.toml`
-- `.agents/skills/{kickoff,methodology,learn,teach,roles,sweep,sweep-planning,sweep-coding,demo,treatise,plain}` (directory symlinks → `../../.claude/skills/<name>`)
+- `.agents/skills/{kickoff,methodology,rule-one,learn,teach,roles,sweep,sweep-planning,sweep-coding,demo,treatise,plain}` (directory symlinks → `../../.claude/skills/<name>`)
+
+Port Rule One as one atomic methodology unit:
+
+- `.claude/skills/rule-one/SKILL.md`
+- `briefs/rule-one-diagnostic-learning.md`
+- `.agents/skills/rule-one` (directory symlink → `../../.claude/skills/rule-one`)
+
+The destination may not contain only the skill or only the brief.
 
 Port the self-improvement machinery as the same atomic bundle:
 
@@ -697,9 +715,10 @@ Before declaring the bootstrap complete, verify:
   and resolves every current-candidate internal Markdown link.
 - `head -1 LOG.md` is `# Activity Log`.
 - `ls .claude/agents/` lists exactly the four canonical role files.
-- Each of `.claude/skills/{kickoff,methodology,learn,teach,roles,sweep,sweep-planning,sweep-coding,demo,treatise,plain}/`
+- Each of `.claude/skills/{kickoff,methodology,rule-one,learn,teach,roles,sweep,sweep-planning,sweep-coding,demo,treatise,plain}/`
   contains `SKILL.md`, and each corresponding `.agents/skills/<name>` entry
   is a directory symlink to `../../.claude/skills/<name>`.
+- `briefs/rule-one-diagnostic-learning.md` exists alongside the Rule One skill.
 - `bin/lessons validate`, `bin/check-catalogs`, and their behavioral tests
   pass against the empty initial ledger and Phase 1 status table.
 - `bin/kickoff-config show` succeeds and `kickoff.yaml` contains valid `role_models`, `role_timeouts`, and `research_budgets` sections.
@@ -808,6 +827,9 @@ Bootstrap is complete when **all** of the following hold:
 [ ] .claude/skills/kickoff/SKILL.md exists, adapted for this project's
     surfaces and build gates
 [ ] .claude/skills/methodology/SKILL.md exists (verbatim from template)
+[ ] .claude/skills/rule-one/SKILL.md exists (verbatim from template)
+[ ] briefs/rule-one-diagnostic-learning.md exists and is compatible with the
+    Rule One skill
 [ ] .claude/skills/learn/SKILL.md exists (verbatim from template)
 [ ] .claude/skills/teach/SKILL.md exists (verbatim from template)
 [ ] .claude/skills/roles/SKILL.md exists (verbatim from template)
@@ -821,7 +843,7 @@ Bootstrap is complete when **all** of the following hold:
 [ ] .claude/agents/{phase-planner,plan-reviewer,phase-coder,code-critic}.md
     exist, adapted for this project
 [ ] .codex/agents/*.toml mirrors exist
-[ ] .agents/skills/{kickoff,methodology,learn,teach,roles,sweep,sweep-planning,sweep-coding,demo,treatise,plain} exist as directory
+[ ] .agents/skills/{kickoff,methodology,rule-one,learn,teach,roles,sweep,sweep-planning,sweep-coding,demo,treatise,plain} exist as directory
     symlinks to ../../.claude/skills/<name> (the canonical skill directory)
 [ ] .agents/skills/stamp does NOT exist (starter-only, must not propagate)
 [ ] .claude/settings.json sets worktree.bgIsolation to none while explicit

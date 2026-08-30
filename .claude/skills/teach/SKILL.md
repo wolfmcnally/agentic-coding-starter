@@ -44,8 +44,11 @@ If `<target-dir>` is missing or is an empty/non-existent directory, refuse with 
 1. **This repo follows the methodology.** Verify the universal invariants:
    - `AGENTS.md` is a symlink to `CLAUDE.md` (or both files exist and have identical content).
    - `.claude/agents/` contains the four canonical roles (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`).
-   - `.claude/skills/kickoff/SKILL.md` exists.
-   - `.claude/skills/methodology/SKILL.md` exists.
+   - `.claude/skills/kickoff/SKILL.md`,
+     `.claude/skills/methodology/SKILL.md`,
+     `.claude/skills/rule-one/SKILL.md`, and
+     `briefs/rule-one-diagnostic-learning.md` exist. Rule One's skill and brief
+     are one required methodology pair; either missing member fails pre-flight.
    - `bin/kickoff-config` and `kickoff.yaml` exist; `show` validates role models, role timeouts, and research budgets.
    - `.claude/settings.json` exists and sets `worktree.bgIsolation` to `none`.
    - `bin/kickoff-tree-id` and `bin/kickoff-evidence` exist, are executable,
@@ -79,8 +82,12 @@ Build a structural map of the target. Mirror Stage 1 of `learn`, but from the op
 2. **Methodology surfaces.** Check for `briefs/`, `policies/`, `plan/`, `LOG.md`, `.claude/`, `.codex/`. Their absence vs. partial presence vs. divergent presence is the first signal.
 3. **What the target already has from the template.** If any file in the target matches (by name and content shape) a file in this starter, mark it as "in sync," "diverged," or "absent." This is the structural diff that drives the plan.
 4. **What the target has that the starter doesn't.** Custom skills, custom agents, project-specific briefs and policies, domain conventions. **These are the target's specializations.** Treat them as load-bearing: never propose to remove or flatten them.
-5. **Phase plan shape.** If the target has a `plan/INDEX.md`, read it. Note which phase is `⬅️` (in-flight work the teaching must not stomp on).
-6. **Repository-owned toolchain contract.** Inspect the target's `bin/setup`,
+5. **Rule One pair.** Inspect the target for both its Rule One skill and its
+   diagnostic-learning brief. Classify the pair as absent, complete,
+   incomplete, or divergent. If either member exists, assess both together;
+   never propose a standalone skill or standalone brief transfer.
+6. **Phase plan shape.** If the target has a `plan/INDEX.md`, read it. Note which phase is `⬅️` (in-flight work the teaching must not stomp on).
+7. **Repository-owned toolchain contract.** Inspect the target's `bin/setup`,
    `bin/test`, `bin/check`, any runtime wrapper, runtime-version file, language
    metadata, lockfile, behavioral tests, hooks, and workflow callers as one
    bundle. The apply step preserves the target's primary language, supported
@@ -93,15 +100,15 @@ Build a structural map of the target. Mirror Stage 1 of `learn`, but from the op
    staged, unstaged, and nonignored untracked candidates; and identify hot
    loops, mutation gates, and detached processes that must resolve the selected
    interpreter once.
-7. **Active work signals.** Read the target's `LOG.md` if present. A phase in `🚧` is a clear "do not stomp" signal — the teaching apply step waits for that phase or limits itself to additive, non-conflicting changes.
-8. **Kickoff configuration contract.** Inspect `kickoff.yaml`, `bin/kickoff-config`, `tests/test_kickoff_config.py`, the role, timeout, and research-authority policies, `roles`, `kickoff` Steps 0a–0c and invocation call sites, `.gitignore`, and the invocation brief as one bundle. Note target model, timeout, and research-budget values; comments; `extensions` data; and local `.kickoff/` telemetry as preservation-only state. Never read or transfer raw telemetry. Research resources are allow-by-default; do not invent a global MCP-server or plugin denylist, and do not assume any named server exists.
-9. **Candidate-bound orchestration evidence.** Inspect the target's candidate
+8. **Active work signals.** Read the target's `LOG.md` if present. A phase in `🚧` is a clear "do not stomp" signal — the teaching apply step waits for that phase or limits itself to additive, non-conflicting changes.
+9. **Kickoff configuration contract.** Inspect `kickoff.yaml`, `bin/kickoff-config`, `tests/test_kickoff_config.py`, the role, timeout, and research-authority policies, `roles`, `kickoff` Steps 0a–0c and invocation call sites, `.gitignore`, and the invocation brief as one bundle. Note target model, timeout, and research-budget values; comments; `extensions` data; and local `.kickoff/` telemetry as preservation-only state. Never read or transfer raw telemetry. Research resources are allow-by-default; do not invent a global MCP-server or plugin denylist, and do not assume any named server exists.
+10. **Candidate-bound orchestration evidence.** Inspect the target's candidate
    identity, evidence schemas, role JSON blocks, revision packets,
    focused/final verification split, watcher protocol outcomes, docs, and
    tests as one atomic bundle. Preserve project-defined risk tags and
    assurance additions; never read or transfer run-scoped evidence.
 
-10. **Mechanical parity-heal scan.** Walk the target's cross-harness parity surfaces and detect every shape that has *one canonical correct form and no judgment call*. These are auto-healable independent of whatever else this teach pass is carrying. **Always run this scan, regardless of `<desc>` scope.** The catalog of mechanical violations is:
+11. **Mechanical parity-heal scan.** Walk the target's cross-harness parity surfaces and detect every shape that has *one canonical correct form and no judgment call*. These are auto-healable independent of whatever else this teach pass is carrying. **Always run this scan, regardless of `<desc>` scope.** The catalog of mechanical violations is:
 
    - **`AGENTS.md` not a symlink.** If `<target>/CLAUDE.md` exists and `<target>/AGENTS.md` is either absent or is a regular file (not a symlink to `CLAUDE.md`). Heal: `rm -f <target>/AGENTS.md && ln -s CLAUDE.md <target>/AGENTS.md`. Exception: if the regular `AGENTS.md` content differs meaningfully from `CLAUDE.md`, downgrade to DECIDE — the target may be intentionally splitting them.
    - **`.agents/skills/<name>` in the broken file-symlink shape, or a non-symlink directory.** Codex's native skill loader does not follow file-level symlinks inside a skill dir ([openai/codex#11314](https://github.com/openai/codex/issues/11314)), so the file-level shape (`<target>/.agents/skills/<name>/SKILL.md` as a file symlink) is silently invisible to Codex. A non-symlink directory at `<target>/.agents/skills/<name>` is the buggy output of the Codex desktop "import settings" prompt — those mechanical search/replace bugs always need cleanup. The starter-only `stamp` skill must never appear here. Heal: for each universal skill that exists at `<target>/.claude/skills/<name>/`, `rm -rf <target>/.agents/skills/<name> && mkdir -p <target>/.agents/skills && ln -s ../../.claude/skills/<name> <target>/.agents/skills/<name>`. Also `rm -rf <target>/.agents/skills/stamp` if present.
@@ -110,7 +117,7 @@ Build a structural map of the target. Mirror Stage 1 of `learn`, but from the op
 
    For each detected violation, classify as **AUTO** (mechanical, one correct shape, heal it) or **DECIDE** (intent is ambiguous, surface to user). Capture both classifications for Stage 3.
 
-11. **Lessons ledger.** Check for `<target>/lessons/` and `<target>/lessons-archived/` (the ledger contract in `policies/lessons.md`). Two findings matter: (a) the ledger is **absent** — the target predates the lessons contract; its adoption is a stale-sweep bullet below; (b) the ledger holds **unharvested `scope: methodology` candidates** — pre-digested learnings destined for this starter that no `learn` pass has collected yet. List them (slug + one-line title only) for Stage 3's "Patterns to feed back via `learn`" section. Never transfer or resolve the target's `scope: local` entries — those are target state.
+12. **Lessons ledger.** Check for `<target>/lessons/` and `<target>/lessons-archived/` (the ledger contract in `policies/lessons.md`). Two findings matter: (a) the ledger is **absent** — the target predates the lessons contract; its adoption is a stale-sweep bullet below; (b) the ledger holds **unharvested `scope: methodology` candidates** — pre-digested learnings destined for this starter that no `learn` pass has collected yet. List them (slug + one-line title only) for Stage 3's "Patterns to feed back via `learn`" section. Never transfer or resolve the target's `scope: local` entries — those are target state.
 
 Output of Stage 1 is internal. The user sees Stage 3's plan.
 
@@ -138,7 +145,7 @@ For each candidate file or pattern, compare bidirectionally: starter → target 
 
 Same tiers as `learn`:
 
-- **Tier 1 — Methodology-level.** The four canonical agents, the orchestrator skill, the briefs/policies/plan triplet, the LOG.md contract.
+- **Tier 1 — Methodology-level.** The four canonical agents, the orchestrator skill, the briefs/policies/plan triplet, the LOG.md contract, and Rule One's skill-plus-diagnostic-brief pair.
 - **Tier 2 — Universal template content.** Every file under `policies/`
   (including both role policies and orchestration evidence), the universal
   briefs, `.claude/settings.json`, `bin/kickoff-config`, `bin/kickoff-tree-id`,
@@ -311,7 +318,7 @@ the write set.
 - **Provenance can flip the classification.** A target file that looks like a specialization (extra sections, project-specific examples) may instead be a naive earlier copy from a *different* donor repo that the target's owner never refined — in which case the source's version *is* a strict improvement and update-in-place is correct. Content alone cannot distinguish the two cases. When a candidate update-in-place is blocked because the target's version *looks* more elaborated, surface it in the plan with both readings explicitly — *"target specialization, preserve"* AND *"earlier copy from another donor, update"* — and let the user disambiguate at approval time. Default to preserve when no provenance signal is available; only update when the user (or a clear repo signal — e.g., a `# Imported verbatim from <other-donor>` header) confirms naive-copy provenance.
 - **Never propose removing a target's custom skill, agent, brief, or policy.** Those are the target's specializations.
 - **Never propose modifying a file the target marks as `⬅️` or `🚧` in its plan.** Active phase work belongs to the target's `kickoff`, not to a teaching pass.
-- **Skill-exclusion list during transfer.** `stamp` and the starter template's `example/` Python project are starter-only — they are never taught from anywhere. The universal set is `kickoff`, `methodology`, `learn`, `teach`, `roles`, `sweep`, `sweep-planning`, `sweep-coding`, `demo`, `treatise`, and `plain`; if the teaching repo has one and the target lacks it, it may be transferred like any other skill.
+- **Skill-exclusion list during transfer.** `stamp` and the starter template's `example/` Python project are starter-only — they are never taught from anywhere. The universal set is `kickoff`, `methodology`, `rule-one`, `learn`, `teach`, `roles`, `sweep`, `sweep-planning`, `sweep-coding`, `demo`, `treatise`, and `plain`; if the teaching repo has one and the target lacks it, it may be transferred like any other skill.
 - **Kickoff configuration is target-owned.** Teach the contract atomically, but never replace existing model choices, effort fields, timeout values, research budgets, comments, extensions, local telemetry/percentiles, or project overrides. Seed defaults only when `kickoff.yaml` is absent.
 - **Honor the target's primary language.** If the target is a Node project, do not propose adding `pyproject.toml` from this template. Adapt commands and references accordingly.
 
@@ -420,6 +427,11 @@ Files touched in target: <count>
 
 End the plan with one line: **"Approve this plan to apply to the target, ask for revisions, or reject."**
 
+A Rule One proposal names both `.claude/skills/rule-one/SKILL.md` and
+`briefs/rule-one-diagnostic-learning.md`, including an explicit `UNCHANGED`
+compatibility finding when one target member requires no write. An incomplete
+target pair is one coupled proposal, not two independently approvable items.
+
 ## Stage 4 — Approve (gate)
 
 Do not write a single byte to the target until the user clearly approves.
@@ -440,11 +452,17 @@ Once approved, apply the approved items to the target. Order:
 3. MODIFY existing target files (smallest diffs first; one logical change per Edit call).
 4. Maintain cross-harness parity for any *newly added or modified* skills and agents — apply the same four-surface contract the parity heals enforce, but to whatever the teach pass just added:
    - **Top-level instructions** — `CLAUDE.md` ↔ `AGENTS.md` symlink. If a fresh `CLAUDE.md` was created in step 2, also create the `AGENTS.md → CLAUDE.md` symlink (the parity-heal pass in step 1 only repairs existing-`CLAUDE.md` mismatches).
-   - **Skills — Codex native skill-discovery surface** — `.claude/skills/<name>/` ↔ `.agents/skills/<name>` (directory symlink). For every universal skill added or modified (kickoff, methodology, learn, teach, roles, sweep, sweep-planning, sweep-coding, demo, treatise, plain — *not* `stamp`): `mkdir -p <target>/.agents/skills && ln -s ../../.claude/skills/<name> <target>/.agents/skills/<name>`. Directory-level, not file-level — per [openai/codex#11314](https://github.com/openai/codex/issues/11314).
+   - **Skills — Codex native skill-discovery surface** — `.claude/skills/<name>/` ↔ `.agents/skills/<name>` (directory symlink). For every universal skill added or modified (kickoff, methodology, rule-one, learn, teach, roles, sweep, sweep-planning, sweep-coding, demo, treatise, plain — *not* `stamp`): `mkdir -p <target>/.agents/skills && ln -s ../../.claude/skills/<name> <target>/.agents/skills/<name>`. Directory-level, not file-level — per [openai/codex#11314](https://github.com/openai/codex/issues/11314).
    - **Agent roles** — `.claude/agents/<role>.md` ↔ `.codex/agents/<role>.toml` (thin wrapper TOML). For every agent .md added or modified, generate or refresh the .toml as a thin pointer: a `description` field plus a `developer_instructions` body that just says "Read .claude/agents/<role>.md and follow it."
 5. Update the target's `CLAUDE.md` catalogs (briefs catalog, policies catalog, critical-files map) so every new file is indexed. Add the catalog as a new section when the target lacks it.
-6. Substitute names in transferred files: `Agentic Coding Starter Template` → target's project name; `agentic-coding-starter-template` → target's slug; references to this template's `example/` package → target's primary surface.
-7. **Adapt the repository-owned toolchain contract.** If the approved teaching
+6. If Rule One is approved, transfer or update
+   `.claude/skills/rule-one/SKILL.md` and
+   `briefs/rule-one-diagnostic-learning.md` as one transaction. The resulting
+   target must contain both compatible members, the Codex directory symlink,
+   and both catalog entries; an already-current member is recorded as
+   `UNCHANGED`, not omitted from the pair assessment.
+7. Substitute names in transferred files: `Agentic Coding Starter Template` → target's project name; `agentic-coding-starter-template` → target's slug; references to this template's `example/` package → target's primary surface.
+8. **Adapt the repository-owned toolchain contract.** If the approved teaching
    includes `policies/build-gates.md` or any contract member, create or update
    the target's cwd- and symlink-independent `bin/setup`, `bin/test`, `bin/check`, and
    `bin/check-receipt`, plus
@@ -469,20 +487,20 @@ Once approved, apply the approved items to the target. Order:
    Otherwise preserve the complete target-owned bundle and adapt only stale
    copied examples. Never replace target language/version/package-manager
    choices with this template's Python values.
-8. **Apply the stale-in-light-of-teaching migrations.** Walk the "Stale-in-light-of-teaching" section of the approved plan and execute every AUTO item (catalog entries, link additions, header restructures, file-shape migrations to richer conventions established by newly-added policies). DECIDE items get listed in the LOG entry as a manual follow-up for the target's owner. DEFER items get listed with their deferral condition.
+9. **Apply the stale-in-light-of-teaching migrations.** Walk the "Stale-in-light-of-teaching" section of the approved plan and execute every AUTO item (catalog entries, link additions, header restructures, file-shape migrations to richer conventions established by newly-added policies). DECIDE items get listed in the LOG entry as a manual follow-up for the target's owner. DEFER items get listed with their deferral condition.
    - For unified kickoff configuration, verify the final write set is atomic and all target-owned fields, comments, `extensions` data, and telemetry remain untouched. A new target gets seed defaults; an existing config changes values only when the approved plan explicitly names a human choice.
    - For candidate-bound evidence, validate the complete transferred bundle,
      confirm candidate identity covers tracked and nonignored-untracked state,
      and keep all target run evidence untouched.
-9. Run the parity verification sweep from `policies/cross-harness-parity.md` §Verification against the target. **Expected outcome: clean** — only `AGENTS.md OK` printed, because parity heals ran first (step 1) and any new content was wired up correctly (step 4). Any remaining "not a symlink" / "wrong target" / "missing peer" line indicates either a heal that was downgraded to DECIDE and skipped, a violation discovered post-Apply that the scan in Stage 1 missed (file a lesson in Starter's `lessons/` — `source: teach`, proposing the heal-catalog extension — in a later session against Starter, since this repo is read-only during `teach`), or a regression in step 4. Re-confirm catalog and stale-sweep coverage at the same time.
-10. Run the target's `./bin/setup`, focused behavioral tests through
+10. Run the parity verification sweep from `policies/cross-harness-parity.md` §Verification against the target. **Expected outcome: clean** — only `AGENTS.md OK` printed, because parity heals ran first (step 1) and any new content was wired up correctly (step 4). Any remaining "not a symlink" / "wrong target" / "missing peer" line indicates either a heal that was downgraded to DECIDE and skipped, a violation discovered post-Apply that the scan in Stage 1 missed (file a lesson in Starter's `lessons/` — `source: teach`, proposing the heal-catalog extension — in a later session against Starter, since this repo is read-only during `teach`), or a regression in step 4. Re-confirm catalog and stale-sweep coverage at the same time.
+11. Run the target's `./bin/setup`, focused behavioral tests through
     `./bin/test`, and canonical full gate (`./bin/check all`) when the contract
     is present. Otherwise run the exact setup/test/gate commands declared by
     its current package metadata and flag every missing contract member.
-11. Independently search the target for stale operational caller commands and
+12. Independently search the target for stale operational caller commands and
     prove that staged, unstaged, and nonignored untracked format failures are
     meet the target's 80% historical-defect and held-out-mutant recall floors.
-12. Append the TAUGHT FROM TEMPLATE entry to the target's `LOG.md` (create the file with the standard header if it doesn't exist). When the target has `bin/log-append`, construct the complete block in a temporary file and append it through that tool; never bypass its log custody with a contextual edit. The entry lists the transferred items, the **parity heals applied** (separately from transferred items), the stale items migrated, the parity-heal and stale-sweep items surfaced for user decision, and the patterns to feed back via `learn`. Follow the target's LOG/provenance policy and the approved teaching-plan template. Starter's starter-only anonymization policy governs writes to Starter, not writes to the target.
+13. Append the TAUGHT FROM TEMPLATE entry to the target's `LOG.md` (create the file with the standard header if it doesn't exist). When the target has `bin/log-append`, construct the complete block in a temporary file and append it through that tool; never bypass its log custody with a contextual edit. The entry lists the transferred items, the **parity heals applied** (separately from transferred items), the stale items migrated, the parity-heal and stale-sweep items surfaced for user decision, and the patterns to feed back via `learn`. Follow the target's LOG/provenance policy and the approved teaching-plan template. Starter's starter-only anonymization policy governs writes to Starter, not writes to the target.
 
 **Follow the target's delivery policy.** After the unchanged target candidate passes its full gate and every approved manual step is closed, use the target's standing commit/push authority if it has one; a target that still requires its owner to commit gets the file list and nothing more. Re-check the live tree, stage explicit target paths, inspect the staged diff, verify the resulting commit's file set, never force or select an ambiguous remote, and verify clean aligned tips after any push (`policies/commit-staging.md`). Report the file list, build-gate status, and any unresolved manual steps regardless.
 
@@ -492,6 +510,12 @@ Once approved, apply the approved items to the target. Order:
 
 - **Improvements only.** Every proposed change must be a strict improvement to the target. Never replace target content with source content that is less elaborated, less specialized, or less capable. When the target has surpassed the source, the right move is to surface it for a future `learn`, not to drag the target backward.
 - **Stale sweep is acceptance, not follow-up.** A `teach` run is not done when the new files have been copied in. It is done when every file in the target that went stale *because of* the apply has been migrated (AUTO), surfaced for a user decision (DECIDE), or named with a deferral reason (DEFER). Empty catalogs, orphan policies, and existing-file shapes that the new policies supersede are all stale-sweep targets.
+- **Rule One teaching is atomic.** The portable prescription at
+  `.claude/skills/rule-one/SKILL.md` and the diagnostic rationale at
+  `briefs/rule-one-diagnostic-learning.md` are one transfer unit. Whenever
+  either is proposed, assess and deliver both as a compatible pair, preserve
+  target-owned improvements, create the Codex directory symlink, update both
+  catalogs, and never leave one member absent.
 - **Kickoff-config transfer is atomic and state-preserving.** Never teach only one config section, policy, manager, test, skill, or invocation recipe. Transfer/update the bundle together, preserve target-local values, comments, `extensions` data, and telemetry, and validate with `bin/kickoff-config show`, the behavioral suite, scoped-reset preservation tests, and a bounded watchdog smoke test.
 - **Orchestration-evidence transfer is atomic and state-preserving.** Transfer
   or update the candidate identity, evidence manager, policy, brief,
@@ -529,7 +553,7 @@ Once approved, apply the approved items to the target. Order:
   owner. Invalid or unmapped selection widens to full; both close gates remain
   full over the retained estate.
 - **Lessons-ledger transfer is atomic, and ledger content is target state.** Port the whole lessons bundle or none of it (per the stale-sweep bullet); ship an empty ledger to a target that lacks one; never seed it with Starter's lessons, never resolve or transfer the target's `scope: local` entries, and surface — never harvest — its `scope: methodology` candidates (harvest belongs to a `learn` run against the target).
-- **Mechanical parity heals always run, independent of `<desc>` scope.** Every `teach` invocation scans the target's parity surfaces and surfaces known-broken shapes (per the catalog in Stage 1 step 10) for repair. Even a narrow `teach` pass — "just bring policies up to date" — heals an `AGENTS.md`-as-file, a file-level `.agents/skills/<name>/SKILL.md`, or a stray `.agents/skills/stamp` it finds along the way. This is what closes the gap where broken parity shapes lingered because the teach pass didn't otherwise touch them.
+- **Mechanical parity heals always run, independent of `<desc>` scope.** Every `teach` invocation scans the target's parity surfaces and surfaces known-broken shapes (per the catalog in Stage 1 step 11) for repair. Even a narrow `teach` pass — "just bring policies up to date" — heals an `AGENTS.md`-as-file, a file-level `.agents/skills/<name>/SKILL.md`, or a stray `.agents/skills/stamp` it finds along the way. This is what closes the gap where broken parity shapes lingered because the teach pass didn't otherwise touch them.
 - **This repo is read-only.** Never write to this repository during `teach`. The starter learns via `learn`, not as a side effect of `teach`.
 - **Generality first.** Default to Tier 1+2 transfers. Specialize only when those are exhausted or the user's `<desc>` requested it.
 - **Approval is mandatory.** No bytes change in the target before explicit approval.
@@ -543,4 +567,4 @@ Once approved, apply the approved items to the target. Order:
   repo's `LOG.md` is not touched, so Starter's starter-only anonymization
   policy does not rewrite target provenance.
 - **Refuse on active-phase conflicts.** If a proposed change touches a file the target's plan marks `🚧`, drop it from the apply set and report it as a manual follow-up the target's owner should resolve via `kickoff` first.
-- **`stamp` and the starter template's `example/` are never taught.** They live only in the starter template. The corresponding `.agents/skills/stamp` mirror is also starter-only — if a target somehow acquired it (e.g., from a buggy Codex import), remove it as part of the apply. The eleven universal skills — including `learn`, `teach`, `sweep-planning`, `sweep-coding`, `demo`, `treatise`, and `plain` — may be transferred to a target that lacks them, with the user's approval.
+- **`stamp` and the starter template's `example/` are never taught.** They live only in the starter template. The corresponding `.agents/skills/stamp` mirror is also starter-only — if a target somehow acquired it (e.g., from a buggy Codex import), remove it as part of the apply. The twelve universal skills — including `rule-one`, `learn`, `teach`, `sweep-planning`, `sweep-coding`, `demo`, `treatise`, and `plain` — may be transferred to a target that lacks them, with the user's approval.

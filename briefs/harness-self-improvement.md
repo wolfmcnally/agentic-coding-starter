@@ -1,6 +1,6 @@
 ---
 title: "Harness Self-Improvement: The Two-Tier Flywheel"
-date: 2026-08-11
+date: 2026-08-29
 status: implemented
 scope: How this template captures process lessons at phase scale, prunes its rule surfaces on a cadence, and propagates both disciplines to every derived project.
 ---
@@ -10,6 +10,12 @@ scope: How this template captures process lessons at phase scale, prunes its rul
 This repo is a harness — skills, agents, policies, briefs, and deterministic scripts wrapped around whichever coding-agent CLI hosts a session. A harness that only accumulates rules by hand improves at the speed of its operator's memory. Current best practice is to make improvement *structural*: every unit of work ends by asking what was learned, learnings accumulate as addressable entries rather than prose rewrites, recurring ones graduate into rules under human ratification, and the rule surfaces themselves are pruned on a cadence so the compounding asset never turns into a compounding liability.
 
 This brief records the design: what the loop is, where each stage lives, what was deliberately declined, and the one decision deferred.
+
+[Rule One: From Symptom to Durable Learning](rule-one-diagnostic-learning.md)
+sits before this flywheel. It diagnoses what happened and determines whether a
+reusable lesson exists; this brief governs how that lesson is captured,
+ratified, propagated, and eventually pruned. The ledger must not turn an
+unexamined symptom or first plausible causal story into a durable rule.
 
 ## 1. The two tiers
 

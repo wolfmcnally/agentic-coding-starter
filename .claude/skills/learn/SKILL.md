@@ -35,8 +35,11 @@ If `<donor-dir>` is missing or not a readable directory, refuse with `Usage: /le
 1. **This repo follows the methodology.** Verify the universal invariants:
    - `AGENTS.md` is a symlink to `CLAUDE.md` (or both files exist and have identical content).
    - `.claude/agents/` contains the four canonical roles (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`).
-   - `.claude/skills/kickoff/SKILL.md` exists.
-   - `.claude/skills/methodology/SKILL.md` exists.
+   - `.claude/skills/kickoff/SKILL.md`,
+     `.claude/skills/methodology/SKILL.md`,
+     `.claude/skills/rule-one/SKILL.md`, and
+     `briefs/rule-one-diagnostic-learning.md` exist. Rule One's skill and brief
+     are one required methodology pair; either missing member fails pre-flight.
    - `bin/kickoff-config` and `kickoff.yaml` exist; `show` validates both config sections.
    - If `policies/orchestration-evidence.md` exists, `bin/kickoff-tree-id`,
      `bin/kickoff-evidence`, and their behavioral tests exist and the scripts
@@ -66,8 +69,12 @@ Build a structural map of the donor. **Do not** open every file; do targeted rea
 
 1. **Top-level inventory.** `ls -la <donor-dir>`. Note root files (READMEs, AGENTS.md, CLAUDE.md, language metadata) and directory shape.
 2. **Methodology surfaces.** Check for `briefs/`, `policies/`, `plan/`, `LOG.md`, `.claude/`, `.codex/`, `.agents/`. Their presence — or absence of structure where this template has structure — is the first signal.
-3. **Skills & agents.** `ls <donor>/.claude/skills/` and `ls <donor>/.claude/agents/`. Also `ls -la <donor>/.agents/skills/` (Codex CLI's native skill-discovery path — expected to be **directory-level symlinks** back to `<donor>/.claude/skills/<name>` per the workaround for [openai/codex#11314](https://github.com/openai/codex/issues/11314); surface novelty only if the *target* of the symlink is novel, or if an entry there is *not* a directory symlink — the latter typically indicates a stray from the Codex desktop "import settings" prompt and is not a learning candidate). Read the `SKILL.md` and agent files whose names are *not* in the canonical set (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`, `kickoff`, `methodology`, `demo`, `stamp`, `learn`, `teach`, `treatise`, `roles`, `sweep`, `sweep-planning`, `sweep-coding`, `plain`). The novel ones are the candidates for learning. When a novel skill is thin and delegates its rules to a policy or brief, read that owning authority in full before classifying the skill; the wrapper alone is not the behavior being assessed.
+3. **Skills & agents.** `ls <donor>/.claude/skills/` and `ls <donor>/.claude/agents/`. Also `ls -la <donor>/.agents/skills/` (Codex CLI's native skill-discovery path — expected to be **directory-level symlinks** back to `<donor>/.claude/skills/<name>` per the workaround for [openai/codex#11314](https://github.com/openai/codex/issues/11314); surface novelty only if the *target* of the symlink is novel, or if an entry there is *not* a directory symlink — the latter typically indicates a stray from the Codex desktop "import settings" prompt and is not a learning candidate). Read the `SKILL.md` and agent files whose names are *not* in the canonical set (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`, `kickoff`, `methodology`, `rule-one`, `demo`, `stamp`, `learn`, `teach`, `treatise`, `roles`, `sweep`, `sweep-planning`, `sweep-coding`, `plain`). The novel ones are the candidates for learning. When a novel skill is thin and delegates its rules to a policy or brief, read that owning authority in full before classifying the skill; the wrapper alone is not the behavior being assessed.
 4. **Briefs & policies.** `ls <donor>/briefs/` and `ls <donor>/policies/`. Read each one whose name doesn't already exist here. For names that *do* exist, do a structural diff (head + section list + line count) so the assessment knows whether the donor's version supersedes ours, diverges, or just paraphrases.
+   **Rule One exception:** if the donor contains either a Rule One skill or a
+   diagnostic-learning brief, inspect both surfaces as a single candidate.
+   Record an absent mate as an incomplete donor pair; never treat the present
+   member as a standalone import.
 5. **Phase plan shape.** If `<donor>/plan/INDEX.md` exists, read it. Look for cross-cutting concerns or critical-files-map patterns we don't have.
 6. **Language conventions.** Read `<donor>/CLAUDE.md` (or `AGENTS.md`) section by section. Note any architectural invariants, glossary entries, or conventions the donor pins that this starter doesn't.
 7. **Repository-owned toolchain contract.** Inspect the donor's `bin/setup`,
@@ -128,7 +135,7 @@ For each candidate surfaced in Stage 1, classify on two axes.
 
 ### Generality tier (lower number = more general = higher priority)
 
-- **Tier 1 — Methodology-level.** Orchestrator patterns, agent role definitions, policy structures, brief shapes, the briefs/policies/plan triplet itself, cross-harness orchestration machinery, role-timeout enforcement/calibration contracts, and review-intensity machinery. Improvements here help *every* downstream project. A donor lesson with `scope: methodology` maps here (or to Tier 2) by construction — the donor already made the generality call.
+- **Tier 1 — Methodology-level.** Orchestrator patterns, agent role definitions, policy structures, brief shapes, the briefs/policies/plan triplet itself, the Rule One skill-plus-diagnostic-brief pair, cross-harness orchestration machinery, role-timeout enforcement/calibration contracts, and review-intensity machinery. Improvements here help *every* downstream project. A donor lesson with `scope: methodology` maps here (or to Tier 2) by construction — the donor already made the generality call.
 - **Tier 2 — Universal template content.** `.gitignore` patterns, build-gate idioms common across languages, log discipline rules, status-marker conventions.
 - **Tier 3 — Language or platform specializations.** Python-specific lint rules, TypeScript-specific tsconfig defaults, Rust workspace patterns. These specialize the template for a language family.
 - **Tier 4 — Domain specializations.** Unity game project structure, ML/data-science project structure, CDK-backed AWS project structure. These narrow the template to a niche.
@@ -230,7 +237,10 @@ gates, durable full-gate receipts, runtime selection, metadata, or locking must 
 bundle and classify partial existing adoption as stale.
 The proposed tests must execute the adapted entry points with controlled
 toolchain stubs; source-text assertions alone do not satisfy the behavioral
-coverage floor.
+coverage floor. A Rule One proposal must name both
+`.claude/skills/rule-one/SKILL.md` and
+`briefs/rule-one-diagnostic-learning.md`, including an explicit `UNCHANGED`
+compatibility finding when one member requires no write.
 
 ## Proposed write set (will only be applied after approval)
 
@@ -275,7 +285,7 @@ If the user partially approves (a subset of items, whether via plan-mode revise-
 Once approved, apply the approved items. Before importing any donor remedy for a defect — a hardening, a guard, an error-handling change — verify the defect actually **reproduces in this repo**: shared lineage makes the donor's diagnosis plausible, never established, and the destination may already have solved the same incident differently (sometimes more strictly, so the donor's "fix" would be a regression here). When the defect does not reproduce, record the divergence in the LOG entry instead of importing the remedy. This verification is per item, hunk by hunk — an atomic bundle can be half genuine gap, half regression-wearing-the-shape-of-a-fix. Order:
 
 1. Add NEW files (policies first, then briefs, then skills/agents, then plan files, then code).
-2. MODIFY existing files (smallest diffs first; one logical change per Edit call).
+2. MODIFY existing files (smallest diffs first; one logical change per Edit call). If Rule One is approved, apply its skill and diagnostic brief as one transaction: the resulting candidate must contain both, and an update to either includes a compatibility check and any required update to the other.
 3. Apply every approved AUTO item from "Stale-in-light-of-learning"; carry DECIDE/DEFER items into the LOG entry with their decision or condition.
 4. Resolve every cross-harness parity obligation that the changes create:
    - If a `.claude/agents/<role>.md` body changed, refresh `.codex/agents/<role>.toml` (the wrapper body changes only if the description line changed; the pointer stays the same).
@@ -333,6 +343,12 @@ Once approved, apply the approved items. Before importing any donor remedy for a
   `scope: methodology` candidates. Keep their count distinct from lessons
   that already existed in the donor.
 - **Stale sweep is acceptance.** Every file made stale by an approved learning is migrated (AUTO), decided (DECIDE), or deferred with a named condition (DEFER) in the same plan and LOG entry.
+- **Rule One learning is atomic.** `.claude/skills/rule-one/SKILL.md` is the
+  portable prescription and `briefs/rule-one-diagnostic-learning.md` is its
+  diagnostic rationale. Assess both whenever a donor exposes either one;
+  import or update them only as a compatible pair, maintain the Codex skill
+  symlink and both catalogs, and never accept a candidate that leaves one
+  member absent.
 - **Kickoff-config learning is atomic and privacy-preserving.** Adopt generalizable policy/schema/round-trip manager/test/invocation/reporting improvements together. Never ingest donor raw telemetry, percentiles, values, comments, `extensions` data, overrides, model choices, or efforts; validate the local bundle with `bin/kickoff-config show`, the behavioral suite, scoped-update preservation tests, and a bounded watchdog smoke test.
 - **Orchestration-evidence learning is atomic and privacy-preserving.** Never
   learn only a packet shape, candidate hash, finding block, watcher status, or
