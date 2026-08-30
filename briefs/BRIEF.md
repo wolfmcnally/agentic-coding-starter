@@ -11,9 +11,9 @@ A repository template for building software with AI coding agents under a struct
 
 ## Thesis
 
-Coding with AI agents is high-leverage but easy to do badly. Without structure, you get plans nobody reviewed, code nobody checked, and a workspace whose state is impossible to reconstruct from its files. This template externalizes the load-bearing parts of the work — the brief (what), the architecture (how), the plan (in what order), the log (what actually happened), and the policies (what's off-limits) — so every session starts from a known state and ends by updating it.
+Coding with AI agents is high-leverage but easy to do badly. Without structure, you get plans nobody reviewed, code nobody checked, and a workspace whose state is impossible to reconstruct from its files. This template keeps the important parts of the work in the repository: the brief (what), the architecture (how), the plan (in what order), the log (what actually happened), and the policies (what's off-limits). Every session starts from a known state and ends by updating it.
 
-The result is a workflow where each phase is incremental, testable, and reviewed by a human before the next one begins.
+The result is a workflow where each phase is incremental and testable. Objective work closes after independent review and the repository's checks prove it; manual, subjective, product, and custody judgments still wait for a person.
 
 ## Catalog
 
@@ -76,7 +76,7 @@ The new project comes up ready for `kickoff`. The old template repo is unchanged
 
 ### Mode B — Self-build
 
-A secondary mode used to validate that the template actually works, and to give human readers a fully working example. If a user opens *this* repo and invokes `kickoff` (`/kickoff` in Claude Code; `$kickoff` in Codex), the orchestrator picks up Phase 1 from the plan ledger and walks through the full plan → review → code → review → build → log cycle against the example Python project.
+A secondary mode used to validate that the template actually works, and to give human readers a fully working example. A user working directly in this repository first replaces the template brief and placeholder Phase 1 with their real project. They then invoke `kickoff` (`/kickoff` in Claude Code; `$kickoff` in Codex) to run the plan → review → code → review → build → log cycle against that project.
 
 In Mode B, the example project under `project/example/` is the build target. In Mode A, the example may be deleted or replaced as soon as the new project's real surface lands.
 
@@ -121,7 +121,7 @@ These are the rules the template assumes about itself. A project derived from th
 
 The template is acceptable when:
 
-- A user clones this repo and invokes `/kickoff` in Claude Code or `$kickoff` in Codex — and the orchestrator picks up Phase 1, walks through plan → plan-review → code → code-review → build → log, and produces a START/END pair in `LOG.md` with a non-empty Files changed section.
+- A user clones this repo, replaces the template brief and placeholder Phase 1 with a real project, and invokes `/kickoff` in Claude Code or `$kickoff` in Codex. The orchestrator picks up that real Phase 1, walks through plan → plan-review → code → code-review → build → log, and produces a START/END pair in `LOG.md` with a non-empty Files changed section.
 - A user invokes `/stamp ~/some-new-dir "build a small CLI that fetches the time from an NTP server"` in Claude Code or `$stamp ~/some-new-dir "build a small CLI that fetches the time from an NTP server"` in Codex — and ends up with a populated new directory that itself satisfies the bullet above, with project-specific naming everywhere references appear.
 - The example Python project exists, and the atomic repository-owned
   `./bin/setup`, `./bin/test`, `./bin/check`, `./bin/check-receipt`, and
@@ -134,7 +134,7 @@ The template is acceptable when:
   and nonignored-untracked candidate state; `bin/kickoff-evidence` validates
   run-scoped authority, change, finding, packet, and implementation-final-gate
   evidence; the separate handoff gate proves the post-bookkeeping tree.
-- No file in this repo attributes the methodology to a particular operator, or references any individual's email, unrelated projects, or third-party PII. The template author is named in `LICENSE` and cited where an external work of theirs is quoted; nowhere else does a personal name appear, and no rule is written as though a specific person were running the checkout. The template is distributable.
+- No file in this repo attributes the methodology to a particular operator, or references any individual's email, unrelated projects, or third-party PII. The template author may be named as author, maintainer, or creator, but no rule is written as though that person were running the checkout. The template is distributable.
 - Every file under `briefs/` and `policies/` is cataloged bidirectionally, and
   every current-candidate repository-internal Markdown link resolves. No orphans or
   dangling document links.

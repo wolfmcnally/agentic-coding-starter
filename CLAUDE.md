@@ -287,6 +287,7 @@ Full contract: [`policies/lessons.md`](policies/lessons.md); design rationale: [
 ## Universal conventions
 
 - **Repo-relative paths only** in committed files (also load-bearing per the invariants).
+- **Never hard-wrap Markdown prose.** Do not reflow Markdown to a fixed column width. Write every prose paragraph as one physical line, including paragraphs inside list items and block quotes; use additional line breaks only where Markdown syntax or deliberate layout requires them, such as headings, separate list items, tables, fenced code, YAML, or intentional hard breaks.
 - **Harness-specific skill invocation.** In harness-neutral prose, name a skill without a command prefix (for example, "the `kickoff` skill"). When showing an invocation, always give both forms: `/kickoff` for Claude Code and `$kickoff` for Codex. Never present Claude Code's `/name` syntax as universal.
 - **The operator gets the `plain` register.** Every message addressed to the
   operator — a decision request, a ratification question, a phase report or

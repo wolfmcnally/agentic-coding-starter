@@ -457,7 +457,7 @@ Because the anonymization policy and its script are starter-only but `code-criti
 
 Author these afresh, using the gathered configuration:
 
-- **`<dest>/README.md`** — didactic top-level for human readers. Mirror the template's section structure (what this is, why, how to use, repository layout, status markers, four canonical agents, briefs-vs-policies-vs-plan, first-time setup). Every line is `<project_name>`-specific. **If the seed carried a `README.md`, keep it**: append the repository-layout and getting-started sections beneath what the user wrote rather than replacing their words.
+- **`<dest>/README.md`** — didactic top-level for human readers. Preserve the Starter Kit README's front-door job, not its project-specific wording or an exhaustive inventory. Tell the reader what `<project_name>` is, why it exists, who made or maintains it when the seed or operator supplied that fact, how the methodology works at a high level, how to get started through `kickoff`, which other skills are essential, what the essential directories contain, and where the full documentation lives. Leave catalogs, status protocol, role tool matrices, and harness-mirror mechanics in their authoritative documents. Never invent missing authorship or copy the Starter Kit author's identity into the destination. **If the seed carried a `README.md`, keep it**: add only the missing orientation, getting-started, essential-map, and documentation-guide material instead of replacing the user's words.
 
 - **`<dest>/CLAUDE.md`** — top-level agent guidance. The template's `CLAUDE.md` has two clearly-marked zones (HTML comments delimit them), plus a **Hard rules** section above both. The job:
   - **Copy the file as a whole.**

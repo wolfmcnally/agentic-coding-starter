@@ -1,391 +1,165 @@
-# Agentic Coding Starter Template
+# Wolf's Agentic Coding Starter Kit
 
-A repository template for building software with AI coding agents under a structured, multi-agent methodology. It encodes a workflow that turns a vague idea into shippable software through a planner → reviewer → coder → critic loop, with humans owning every judgment a check cannot settle.
+*An opinionated starting point for building software with AI coding agents.*
 
-This template is harness-agnostic. It works with [Claude Code](https://claude.com/claude-code), with [Codex CLI](https://github.com/openai/codex), and with any other agent host that reads project-level instructions and agent definitions from `.claude/`, `.codex/`, `.agents/`, or `AGENTS.md`. The same files drive both — never edit a harness-specific mirror by hand.
+**Wolf McNally**
 
----
+Wolf McNally created and maintains this repository. For a broader guide to agentic methods, terminology, and failure modes, see his [Encyclopedia of Agentic Coding Patterns](https://aipatternbook.com/).
 
 ## What this is
 
-A starter template — a *master template* — for projects that use agent-driven development. Clone it, invoke the `stamp` skill to spin up a new project from it, or open it directly and invoke `kickoff` to start building.
+This repository is both a working template and a collection of practices for building software with AI coding agents. A project made from it has written briefs, binding policies, a phased plan, independent review roles, repeatable checks, and a durable record of what happened.
 
-Skill invocation is harness-specific:
+The working agreements and evidence live in the repository rather than in one conversation. A new agent session can read the same decisions, rules, and evidence as the previous one.
 
-| Harness | Syntax | Example |
-|---|---|---|
-| Claude Code | `/name [arguments]` | `/kickoff` |
-| Codex | `$name [arguments]` | `$kickoff` |
+The kit supports [Claude Code](https://claude.com/claude-code) and [Codex CLI](https://github.com/openai/codex). Claude Code invokes a project skill with a slash, such as `/kickoff`. Codex uses a dollar sign, such as `$kickoff`. The tutorial below uses the Claude Code spelling; Codex users can substitute `$` for `/`.
 
-The rest of this README uses bare names such as `kickoff` when discussing a skill and shows both forms when giving a command to type.
+## Why it exists
 
-The template ships with:
+Coding agents are good at producing plausible plans, plausible code, and plausible reports that say the work succeeded. Plausible is not the same as correct.
 
-- A **methodology** (eleven-step pipeline, see [`briefs/methodology.md`](briefs/methodology.md)) that takes you from idea to shipped code.
-- A **`kickoff` skill** that orchestrates one phase of work end-to-end: plan → plan-review → code → code-review → build → log.
-- A universal **`rule-one` skill and diagnostic brief** that turn corrections,
-  failures, surprises, and discarded effort into causally diagnosed, durable
-  learning instead of symptom-shaped fixes.
-- Four **canonical agent roles** (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`) defined once and mirrored to every supported harness.
-- A **`stamp` skill** (starter-template-only) for stamping out new repos from this one.
-- **`learn` and `teach` skills** (universal — carried into every derived project) for moving patterns *between* methodology-following repos. `learn` absorbs patterns from another repo into the current one; `teach` sends patterns from the current repo out to a target. Both work one decision at a time, then present one complete plan for approval before any file changes.
-- Universal **`demo` and `treatise` skills** for walking a human through an approved demo one visible action at a time and producing an audience-specific outward explanation from canonical repository authority.
-- **Human-editable kickoff configuration.** One `kickoff.yaml` contains harness-aware role routing, execution budgets, and per-role originating-search budgets. Model and effort are separate fields. Edit it directly or use the `roles` skill; the round-trip-safe manager rejects schema typos while preserving comments and project-specific data under `extensions`.
-- **Role-based research authority.** Planner and plan reviewer may search and retrieve; coder and code critic may retrieve plan- or brief-identified resources plus same-host structural neighbors but may not originate searches. Installed MCP servers and plugins are allow-by-default, never assumed present, and external research is GET-only without repository-content egress.
-- **Fail-fast readiness and progress-aware timeouts.** `kickoff` live-validates every required non-orchestrator CLI/model/auth path before it mutates phase state. Production role calls then use per-role first-event, idle, and hard deadlines from the same config; local gitignored telemetry supports evidence-based recalibration. See [`policies/role-models.md`](policies/role-models.md) and [`policies/role-timeouts.md`](policies/role-timeouts.md).
-- **Candidate-bound incremental assurance.** Complete first reviews produce
-  stable findings; later rounds receive causal revision packets and widen when
-  authority, scope, risk, or continuity changes. Focused checks accelerate
-  convergence. A complete implementation-candidate gate proves the unchanged
-  approved candidate; after evidence and tracked close bookkeeping, a second
-  bare handoff gate proves the actual tree delivered to the user. See
-  [`briefs/incremental-orchestration.md`](briefs/incremental-orchestration.md).
-- **Deterministic executable authority.** Immutable exact-command manifests,
-  a real-read venue receipt, ordered command-zero preflight, dual product and
-  full-tree identities, and exact-byte append-only log checks prevent expensive
-  acceptance from running on an invalid candidate.
-- **Exact operator-wait telemetry.** Execution traces measure active work;
-  a separate phase ledger records every interval parked for user input and an
-  overlap-safe total. Same-boot spans are exact; cross-boot calendar spans are
-  clearly marked non-exact in the offline dashboard.
-- **No implicit background worktrees.** The shipped `.claude/settings.json`
-  sets `worktree.bgIsolation` to `none`; explicit worktrees remain available
-  when the user chooses one.
-- A **`plan/` ledger** (status table, dependency graph, cross-cutting concerns) where work is tracked phase by phase.
-- A **`briefs/` library** for durable design decisions and methodology notes.
-- A **`policies/` library** for the rules every phase must respect.
-- A **`LOG.md`** activity log written by `kickoff` on phase open and close.
-- A minimal Python example project so the toolchain contract has a real target
-  from the first checkout.
+Without a durable project structure, decisions disappear with the conversation, the author grades their own work, and the same mistakes return. This kit moves the important state into files, separates creation from review, and turns failures into lessons that later sessions can use.
 
----
+## How the methodology works
 
-## Why this exists
+The complete methodology has [eleven steps](briefs/methodology.md). Four stages are enough to understand the working loop.
 
-Coding with agents is high-leverage but easy to do badly. Without structure, you get:
+### 1. Define
 
-- Agents that re-derive the same decisions every session.
-- Plans nobody reviewed and code nobody checked.
-- "Done" that means "the agent stopped talking" rather than "the work was independently reviewed and proved."
-- A directory whose state is impossible to reconstruct from its files.
+Start with an idea and turn it into a brief. The brief describes what you want to build and why. Architecture notes describe how you intend to build it. Policies state the rules every phase must obey, and the plan divides the work into testable phases.
 
-This template solves those problems by externalizing the parts of the work that *must* persist across sessions: the brief (what), the architecture (how), the plan (in what order), the log (what actually happened), and the policies (what's off-limits). Each session starts from those artifacts and ends by updating them.
+### 2. Execute
 
-The result is a workflow where each phase is incremental, testable, and reviewed by a human before the next one begins.
+The `kickoff` skill runs one phase at a time. One role plans, another reviews the plan, a third writes the code, and a fourth reviews the result. The author of an artifact does not provide its only judgment.
 
----
+### 3. Prove and deliver
 
-## How to use this template
+After review, the repository runs its checks against the exact version that was reviewed. Work that can be checked objectively closes only after independent review and the complete test and policy suite pass. Anything that requires product or other human judgment, a manual inspection, or someone to take custody of an artifact still waits for a person. Once the objective work is complete, `kickoff` commits it and fast-forward pushes it when the repository has a suitable upstream. It does not choose remotes or perform destructive Git operations.
 
-There are two ways to start.
+### 4. Learn
 
-### Option A — Stamp out a new project (recommended)
+The log records what happened. When an assumption is corrected, work fails, or a result is surprising, Rule One diagnoses the cause before turning it into a reusable lesson. Later maintenance passes can fold recurring lessons into the methodology, revise stale guidance, or remove rules that no longer earn their keep.
 
-From inside this repo, invoke `stamp` with the destination and description.
+## Getting started
 
-Claude Code:
+You need Git, [`uv`](https://docs.astral.sh/uv/), and either Claude Code or Codex CLI.
 
-```
-/stamp ~/path/to/new-project "one-line description of what to build"
+Clone the kit and open it in your coding harness:
+
+```bash
+git clone https://github.com/wolfmcnally/agentic-coding-starter.git
+cd agentic-coding-starter
+claude
 ```
 
-Codex:
+Run `codex` instead of `claude` if you use Codex CLI.
 
+### Start with a seed brief (recommended)
+
+A seed brief is a plain Markdown account of the project you want. It does not need to be a formal specification or settle every question. Include the parts that matter to your project:
+
+- the problem or opportunity
+- who the project is for
+- what the finished project should do
+- important constraints and deliberate non-goals
+- platforms, languages, frameworks, or dependencies already chosen
+- what success would look like
+- open questions or tradeoffs that still need work
+
+You do not have to write it alone. Give your idea to an AI chatbot or coding harness and ask it to interview you. For example:
+
+> Help me turn this project idea into a seed brief. Ask me one question at a time about its users, purpose, behavior, constraints, technology, success criteria, and open questions. Then write the result as Markdown.
+
+Put the finished brief in the otherwise-empty destination for the new project. A simple layout is:
+
+```text
+my-project/
+└── briefs/
+    └── BRIEF.md
 ```
-$stamp ~/path/to/new-project "one-line description of what to build"
+
+Then, from this Starter Kit session, run:
+
+```text
+/stamp ~/path/to/my-project
 ```
 
-The `stamp` skill copies this repo's structural files into the new directory, asks a few configuration questions (project name, primary language, build commands) when the description doesn't make them obvious, and leaves you with a project ready for `kickoff`.
+`stamp` adopts the brief, adds any required metadata, and leaves its body unchanged. It reads the project name, language, dependencies, major phases, and whether the project is a CLI, web app, service, library, or something else from what you wrote. If the brief leaves a necessary choice open, `stamp` asks rather than inventing an answer.
 
-### Option B — Use this repo directly
+The destination may also contain an existing `.git/` directory, a `.gitignore`, and other Markdown briefs. It must not contain source code or unrelated files. The [bootstrap brief](briefs/agentic-bootstrap.md#seed-briefs) gives the complete seed rules.
 
-If you're trying it out or learning the workflow, open this repo and invoke `kickoff`.
+### Start from a description
 
-Claude Code:
+For a quick experiment, give `stamp` a destination and a one-line description:
 
+```text
+/stamp ~/path/to/weather-cli "A Rust command-line app that reports the weather for a named city"
 ```
+
+`stamp` infers what it safely can and asks about anything the description does not settle. It creates a starter brief and an initial phase. Review and expand that brief before beginning serious work.
+
+### Run the first phase
+
+`stamp` creates and checks the new repository, makes its initial commit, and leaves remote selection to you. Open the new directory in Claude Code or Codex, then read:
+
+- `briefs/BRIEF.md`, or the entry-point brief you supplied;
+- `plan/INDEX.md`, which shows the roadmap and current phase; and
+- `plan/phase-1.md`, which describes the first piece of work.
+
+Correct anything `stamp` inferred badly. Then run:
+
+```text
 /kickoff
 ```
 
-Codex:
+With no argument, `kickoff` selects the next phase from the plan. You can also name one:
 
-```
-$kickoff
-```
-
-The first `kickoff` run will pick up Phase 1 (currently a placeholder for
-"decide what you're building"), walk through the planner → reviewer → coder →
-critic loop, and write a START/END pair to `LOG.md`. Edit the brief and plan,
-then invoke `/kickoff` again in Claude Code or `$kickoff` again in Codex. The
-example under `project/example/` gives the toolchain a real target immediately.
-
-### Verify the checkout
-
-Every repository stamped from this template owns a cwd-independent toolchain
-contract:
-
-```bash
-./bin/setup                 # provision the pinned, locked environment
-./bin/test                  # run every test
-./bin/test tests/test_check.py -q  # focused repo-relative selection
-./bin/test --vital          # locally admitted fast proof families
-./bin/test --changed-from HEAD~1   # union of families mapped to changed paths
-./bin/check all             # authoritative lint/format/test/policy suite
-./bin/python --version      # Python profile: selected project interpreter
+```text
+/kickoff phase 2
 ```
 
-The host only needs `uv`; Starter selects a managed Python from
-`project/.python-version`, uses `project/uv.lock`, and verifies the real
-project/test/lint dependency chain before each entry point proceeds. For a
-deliberate compatibility check,
-`TOOLCHAIN_PYTHON=/absolute/path/to/python ./bin/check all` makes that
-base interpreter authoritative; it must live outside `project/.venv`, and
-failure never falls back to the managed default.
-Each full gate stores a complete durable log and a receipt bound to the exact
-candidate and environment. Optional tracked Git hooks reuse that receipt only
-for the clean current `HEAD`; every miss or error runs the same full-gate entry
-point. Opt in for the current checkout with:
+The orchestrator plans the phase, gets the plan reviewed, implements it, gets the code reviewed, runs the repository's checks, and records the result. If the phase includes something only a person can judge, it stops with a concrete demo or decision instead of claiming success.
 
-```bash
-./bin/install-hooks
-```
+## Other useful skills
 
----
+These are the other commands most users will reach for:
 
-## The eleven-step methodology
+| Skill | What it does |
+|---|---|
+| `/methodology` | Explains the full methodology or helps scope a new project. |
+| `/demo` | Walks through an approved user demo one visible step at a time. |
+| `/roles` | Shows or changes which model and harness perform each review role. |
+| `/learn` | Assesses another repository for practices worth adopting here. |
+| `/teach` | Assesses which practices from this repository should move to another one. |
+| `/sweep` | Reviews accumulated policies, briefs, skills, and lessons for maintenance. |
 
-The full version lives in [`briefs/methodology.md`](briefs/methodology.md). The short version:
+`learn`, `teach`, and `sweep` present their judgments and wait for approval before changing the affected repository. You normally do not invoke Rule One yourself. When work fails or an assumption is corrected, the agent diagnoses what happened and saves any reusable lesson.
 
-1. **Vague ideas → insights.** Surface what's actually being asked for. Do competitive analysis.
-2. **Insights → brief.** Write down *what* you're building. Lives under `briefs/`.
-3. **Brief → architecture.** Research Best Current Practices. Decide *how*.
-4. **Repo-level policies.** Codify the non-negotiables. Lives under `policies/`.
-5. **Brief + architecture → phased plan.** Break the work into incremental, testable phases.
-6. **Sub-phase breakdown at phase start.** Decompose each major phase only when you start it.
-7. **Orchestrator-driven sub-phase execution.** `kickoff` runs initial work through planner → reviewer → coder → critic. Complete first reviews establish stable findings; bounded revision rounds receive candidate-bound causal packets. Small low-risk follow-ups may be fixed directly; only high-risk or large/cross-cutting corrections require another full coder → critic cycle.
-8. **Acceptance check.** Focused checks run while work converges. After critic approval, the orchestrator runs the complete phase-prescribed sequence and one authoritative full gate against the unchanged approved candidate.
-9. **Append-only phase log.** `LOG.md` records open and close with evidence.
-10. **Human evaluation.** *You* decide whether each sub-phase is done. The agent does not.
-11. **Stay agile.** Add or split phases as the problem gets clearer.
+The [project guidance](CLAUDE.md#project-specific-skills) lists the full skill set.
 
----
+## Essential repository map
 
-## Repository layout
+| Location | Purpose |
+|---|---|
+| `briefs/` | Product intent, design thinking, research, and methodology. |
+| `policies/` | Decisions and rules that every phase must obey. |
+| `plan/` | The phase roadmap, dependencies, acceptance criteria, and current status. |
+| `project/` | The example deliverable in this repository; a stamped project adapts this to its real software. |
+| `.claude/skills/` | Canonical skill definitions used by the supported harnesses. |
+| `bin/` | Repeatable setup, test, validation, and methodology commands. |
+| `LOG.md` | Append-only record of phase starts, parks, and closes. |
+| `CLAUDE.md` and `AGENTS.md` | Complete instructions and catalogs for coding agents. |
 
-```
-.
-├── README.md                       ← this file
-├── CLAUDE.md                       ← top-level guidance for agents
-├── AGENTS.md                       ← symlink → CLAUDE.md (for Codex/aider)
-├── LOG.md                          ← append-only activity log
-├── kickoff.yaml                    ← human-editable role models/efforts/timeouts
-├── project/                        ← the deliverable (self-contained per
-│   │                                  policies/project-isolation.md)
-│   ├── .python-version             ←   managed interpreter selection
-│   ├── pyproject.toml              ←   package metadata
-│   ├── uv.lock                     ←   exact dependency resolution
-│   ├── example/                    ←   source code
-│   │   ├── __init__.py
-│   │   └── cli.py
-│   ├── tests/                      ←   pytest suite
-│   │   └── test_cli.py
-│   └── README.md                   ←   the artifact's own quickstart
-├── briefs/                         ← durable design + methodology library
-│   ├── BRIEF.md                    ←   entry-point brief for *this* repo
-│   ├── methodology.md              ←   the eleven-step methodology
-│   ├── agentic-bootstrap.md        ←   how to stand up a new project
-│   ├── cross-agent-invocation.md   ←   cross-CLI invocation BCPs
-│   ├── incremental-orchestration.md ← candidate-bound incremental assurance
-│   ├── deterministic-orchestration-control-plane.md ← executable command/log custody
-│   ├── deterministic-orchestration.md ← draft: deterministic kickoff loop
-│   ├── harness-self-improvement.md ← lessons, sweep, and cross-repo flywheel
-│   └── test-suite-value-governance.md ← proof-estate reset + governed fast lanes
-├── policies/                       ← non-negotiable rules every phase honors
-│   ├── README.md
-│   ├── briefs-and-policies.md
-│   ├── cross-harness-parity.md
-│   ├── phase-status.md
-│   ├── acceptance-empirical.md
-│   ├── repo-relative-paths.md
-│   ├── log-discipline.md
-│   ├── human-in-the-loop.md
-│   ├── four-canonical-agents.md
-│   ├── role-models.md              ← role routing and fail-closed preflight
-│   ├── role-timeouts.md            ← first-event/idle/hard execution budgets
-│   ├── orchestration-evidence.md   ← candidate/revision/gate evidence
-│   ├── orchestration-control-plane.md ← manifests, command zero, dual identity
-│   ├── review-lanes.md             ← review intensity + proportional follow-ups
-│   ├── lessons.md                  ← candidate process-lessons lifecycle
-│   ├── build-gates.md              ← atomic repository toolchain contract
-│   ├── test-suite-governance.md    ← local proof inventory, assay, and lanes
-│   ├── project-isolation.md        ← isolate deliverable under project/
-│   └── greenfield-until-released.md ← no backward-compat shims pre-release
-├── bin/                            ← deterministic methodology executables
-│   ├── setup                       ← provision pinned + locked environment
-│   ├── test                        ← full/focused canonical test runner
-│   ├── check                       ← authoritative lint/format/test/policy gate
-│   ├── check-receipt               ← durable exact-candidate gate receipts
-│   ├── test-governance              ← proof reset/assay/selection/reassessment
-│   ├── python                      ← selected managed Python interpreter
-│   ├── install-hooks               ← opt in to tracked lifecycle hooks
-│   ├── kickoff-config              ← round-trip config, preflight, watchdog
-│   ├── kickoff-command-zero        ← cheap ordered pre-acceptance refusal
-│   ├── kickoff-tree-id             ← complete review candidate identity
-│   ├── kickoff-evidence            ← authority/change/finding/gate records
-│   ├── check-log                    ← exact-prefix + chronology policy gate
-│   ├── lessons                     ← validate and query the lessons ledger
-│   ├── check-catalogs              ← catalogs, links, citations, phase ledger
-│   └── check-anonymization.sh      ← starter-only public-repo leak guard
-├── .githooks/
-│   └── pre-push                    ← exact receipt hit or canonical full gate
-├── tests/                          ← universal methodology machinery tests
-│   ├── test_toolchain_entrypoints.py ← setup/test/runtime behavior
-│   ├── test_check.py               ← canonical gate behavioral coverage
-│   ├── test_check_receipt.py       ← receipt integrity/fail-closed coverage
-│   ├── test_install_hooks.py       ← opt-in hook installer coverage
-│   ├── test_kickoff_config.py      ← config/watchdog behavioral coverage
-│   ├── test_kickoff_tree_id.py     ← candidate identity coverage
-│   ├── test_kickoff_evidence.py    ← evidence/packet/gate coverage
-│   ├── test_lessons.py             ← lessons-ledger coverage
-│   └── test_check_catalogs.py      ← document and phase-ledger coverage
-├── lessons/                        ← open candidate process lessons
-├── lessons-archived/               ← codified/rejected lesson audit trail
-├── plan/                           ← phased execution plan
-│   ├── INDEX.md                    ←   phase ledger (status lives ONLY here)
-│   └── phase-1.md                  ←   first phase (a stub you replace)
-├── .claude/                        ← Claude Code agent definitions
-│   ├── skills/
-│   │   ├── kickoff/SKILL.md        ←   phase orchestrator
-│   │   ├── methodology/SKILL.md    ←   the eleven steps (self-contained)
-│   │   ├── rule-one/SKILL.md       ←   symptom → diagnosis → durable learning
-│   │   ├── learn/SKILL.md          ←   absorb patterns FROM another repo (universal)
-│   │   ├── teach/SKILL.md          ←   send patterns TO another repo (universal)
-│   │   ├── roles/SKILL.md          ←   pin a model/harness to a role (universal)
-│   │   ├── sweep/SKILL.md          ←   prune and graduate rule surfaces (universal)
-│   │   ├── sweep-planning/SKILL.md ←   calibrate the planner/reviewer loop
-│   │   ├── sweep-coding/SKILL.md   ←   calibrate the coder/critic loop
-│   │   ├── demo/SKILL.md           ←   interactive demo walkthrough
-│   │   ├── treatise/SKILL.md       ←   durable outward explanation
-│   │   ├── plain/SKILL.md          ←   operator-facing register
-│   │   └── stamp/SKILL.md          ←   new-project bootstrapper (starter-only)
-│   └── agents/
-│       ├── phase-planner.md
-│       ├── plan-reviewer.md
-│       ├── phase-coder.md
-│       └── code-critic.md
-├── .codex/                         ← Codex CLI agent mirrors
-│   └── agents/
-│       ├── phase-planner.toml
-│       ├── plan-reviewer.toml
-│       ├── phase-coder.toml
-│       └── code-critic.toml
-└── .agents/                        ← Codex CLI's native project-skill discovery
-    └── skills/                     ←   (developers.openai.com/codex/skills)
-        ├── kickoff                 ←   each is a directory symlink → ../../.claude/skills/<name>
-        ├── methodology
-        ├── rule-one
-        ├── learn
-        ├── teach
-        ├── roles
-        ├── sweep
-        ├── sweep-planning
-        ├── sweep-coding
-        ├── demo
-        ├── treatise
-        ├── plain
-        └── stamp                   ←   present only in this template repo
-```
+## Full documentation
 
----
-
-## Status markers
-
-Phase status lives in **`plan/INDEX.md`** and nowhere else. The legend is:
-
-- ⏳ Not Started
-- ⬅️ Next — at most one phase; required while idle and incomplete
-- 🚧 In Progress
-- ✅ Completed
-
-`kickoff` flips `⬅️` → `🚧` on start, `🚧` → `✅` on completion, and advances the next `⏳` row to `⬅️`. Status does not live in per-phase frontmatter; `id`, `title`, `depends_on`, `informs`, and the optional `review_lane` (see `policies/review-lanes.md`) are the only frontmatter fields.
-
-Every phase row carries exactly one recognized status. Zero next rows is valid
-while work is active and after the project completes; more than one is always
-invalid.
-
----
-
-## The four canonical agents
-
-Every initial implementation uses the four canonical roles, subject to the declared review lane; proportional follow-ups may invoke only the roles their risk and size justify. The role names are load-bearing — `kickoff` calls them by name.
-
-| Role | Tools | Writes code | Job |
-|---|---|---|---|
-| `phase-planner` | Read, Grep, Glob, WebSearch, WebFetch | No | Turn one phase into a concrete, file-level plan |
-| `plan-reviewer` | Read, Grep, Glob, WebSearch, WebFetch | No | Approve the plan or send it back for revision |
-| `phase-coder` | Read, Write, Edit, Grep, Glob, Bash, WebFetch | Yes | Implement the approved plan and retrieve its named references |
-| `code-critic` | Read, Grep, Glob, WebFetch | No | Approve the code or send it back for revision, retrieving named references as needed |
-
-`kickoff` normally delegates implementation; it may directly apply only an
-eligible small, low-risk follow-up correction. It owns candidate identity,
-evidence validation, both close gates, status, and `LOG.md`.
-
----
-
-## Briefs vs. policies vs. plan
-
-These three directories look similar at a glance. The distinction is load-bearing.
-
-- **`briefs/`** — *what* you're building and why. Durable design decisions, methodology, research notes, glossaries. A brief informs every phase that references it.
-- **`policies/`** — non-negotiable *rules* every phase honors. Cross-cutting invariants ("repo-relative paths only", "tests must hit a real database", "every phase produces a START/END log entry"). Policies are short and prescriptive.
-- **`plan/`** — *in what order* you're building it. Phase files, dependency graph, status ledger.
-
-When the plan and a brief disagree, the plan wins — it is the refinement. When code and a policy disagree, the policy wins — it is the law.
-
-See [`policies/briefs-and-policies.md`](policies/briefs-and-policies.md) for the full contract.
-
----
-
-## Cross-harness parity
-
-The same workflow runs in Claude Code, Codex CLI, and other agent hosts. The contract:
-
-- **Canonical sources** live under `.claude/` (skills, agents) and at the repo root (`CLAUDE.md`).
-- **Harness mirrors** are either symlinks (`AGENTS.md` → `CLAUDE.md`; `.agents/skills/<name>` → `.claude/skills/<name>` as a *directory* symlink) or thin wrapper files (`.codex/agents/*.toml`) that point at the canonical content.
-- **`.agents/skills/`** feeds Codex's native skill loader ([documented contract](https://developers.openai.com/codex/skills)). Repo skills are invoked with `$name` in Codex. The mirror uses *directory* symlinks because Codex doesn't follow file-level symlinks inside a skill directory ([openai/codex#11314](https://github.com/openai/codex/issues/11314)), but does traverse a symlinked skill directory.
-- **Never edit a mirror by hand.** Update the canonical file; refresh the mirror.
-
-See [`policies/cross-harness-parity.md`](policies/cross-harness-parity.md) for the rules and the onboarding procedure for adding a third harness.
-
----
-
-## Cross-repo knowledge transfer: `learn` and `teach`
-
-Once you have more than one methodology-following project, patterns evolve in one and stop in another. Two universal skills handle the round trip:
-
-- **`learn <donor-dir> [<desc>]`** — Invoke as `/learn ...` in Claude Code or `$learn ...` in Codex. Explores `<donor-dir>` for patterns (skills, policies, briefs, agent refinements, build-gate idioms, even domain specializations) and proposes which to absorb. The donor stays read-only. Nothing is written here until you approve. After application, it captures methodology defects exposed by adapting the donor so a later return pass can harvest them.
-- **`teach <target-dir> [<desc>]`** — Invoke as `/teach ...` in Claude Code or `$teach ...` in Codex. Proposes which of *this* repo's patterns to apply to `<target-dir>`. This repo stays read-only, and the target's custom work is preserved by default.
-
-Both skills are carried into every project that `stamp` creates, so any methodology-following project can learn from or teach another.
-
-Every derived project also carries the `lessons/` ledger and `sweep` skill.
-Phase work records candidate process lessons; `sweep` proposes graduation,
-rejection, consolidation, and rule-surface maintenance for human approval.
-Rule One sits before that ledger: it requires causal diagnosis before a
-symptom becomes a proposed lesson, and it travels with its diagnostic brief so
-the reasoning remains available when the prescription is revised.
-
-The `<desc>` argument narrows intent. Omit it for a broad assessment that defaults to general-purpose improvements; supply it to focus on a specific surface ("focus on the testing setup", "Unity specialization", "just the policies").
-
-## First-time setup
-
-1. Pick a harness:
-   - **Claude Code**: `claude` in this directory.
-   - **Codex CLI**: `codex` in this directory.
-2. Read [`briefs/BRIEF.md`](briefs/BRIEF.md), [`briefs/methodology.md`](briefs/methodology.md), and [`plan/INDEX.md`](plan/INDEX.md) to ground yourself in what this repo expects.
-3. Either invoke `kickoff` (`/kickoff` in Claude Code; `$kickoff` in Codex) to use this repo directly, or invoke `stamp` (`/stamp ...` in Claude Code; `$stamp ...` in Codex) to create a new project.
-
----
+- [Wolf's Agentic Coding Starter Kit: An introduction](briefs/methodology-treatise.md) is the general explanation of the repository and its principles.
+- [The product brief](briefs/BRIEF.md) defines what this Starter Kit provides, who it is for, and its acceptance criteria.
+- [The methodology](briefs/methodology.md) gives the complete eleven-step process and operating doctrine.
+- [The bootstrap brief](briefs/agentic-bootstrap.md) documents how `stamp` creates and adapts a project.
+- [The project guidance](CLAUDE.md) contains the complete brief and policy catalogs, project conventions, and agent instructions.
+- [The script reference](bin/README.md) documents every deterministic command.
+- [The phased plan](plan/INDEX.md) shows the current state of this repository.
+- [The EACP pattern map](briefs/eacp-pattern-map.md) connects the repository's structures to patterns in the Encyclopedia of Agentic Coding Patterns.
 
 ## License
 

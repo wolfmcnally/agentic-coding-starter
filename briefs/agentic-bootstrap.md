@@ -13,6 +13,26 @@ This brief assumes you already have (or are about to write) a high-level brief f
 
 ---
 
+## Seed briefs
+
+A real brief is the best input to `stamp`. It gives the bootstrap enough information to identify the project's users, purpose, surfaces, dependencies, constraints, and major phases. A one-line description is useful for an experiment, but it usually yields only a starter brief and the first phase.
+
+The brief does not need to begin as a formal specification. A person can write it directly, or ask an AI chatbot or coding harness to interview them about the project and turn the answers into Markdown. Unknowns belong in the brief as open questions rather than guesses.
+
+To adopt a seed, `stamp` accepts a destination containing only:
+
+- an optional `.git/` directory and `.gitignore`;
+- Markdown files at the top level; and
+- a `briefs/` directory containing only Markdown files.
+
+Source code, package manifests, archives, and other unrelated files make the destination ineligible. `stamp` refuses and names those files instead of merging a template into an existing project by accident.
+
+`briefs/BRIEF.md` is the entry point when present. If there is exactly one brief, it keeps its name and becomes the entry point. When several briefs exist without `BRIEF.md`, `stamp` asks which one leads. Top-level Markdown briefs move under `briefs/`, except an existing `README.md`, which stays in place.
+
+`stamp` may add required frontmatter, but it does not rewrite the body of an adopted brief. It reads configuration and the major-phase roadmap from the brief, asks only about missing decisions, and verifies afterward that the original body is unchanged. An explicit one-line description on the `stamp` command wins when it conflicts with the seed because it is the newer statement of intent; the final report names the override.
+
+---
+
 ## 1. What gets transferred
 
 A project derived from this template contains the following **portable structure**. Names and paths are load-bearing — don't rename them.
@@ -341,7 +361,7 @@ These files encode the methodology itself, not any particular product. Copy them
 
 These files have a stable shape and a project-specific body. Mirror the shape; write fresh content from the new project's brief.
 
-- `README.md` — keep the section structure (what the project is, why, how to use, repository layout, status markers, four canonical agents, briefs-vs-policies-vs-plan, first-time setup), but every line is project-specific.
+- `README.md` — preserve the front-door job, not an exhaustive inventory. Write project-specific sections that tell a human reader what the project is, why it exists, who made or maintains it when the source material supplies that fact, how the methodology works at a high level, how to get started through `kickoff`, which other skills are essential, where the essential directories lead, and where the full documentation lives. Do not reproduce catalogs, status protocol, role tool matrices, or harness-mirror mechanics in the README; link to their authoritative homes. Judge completeness by what the newcomer needs to understand and act, not by whether every repository member appears. Never invent missing authorship or copy the Starter Kit author's identity into a derived project.
 - `CLAUDE.md` — uses a two-zone structure delimited by HTML comment markers, with a **Hard rules** section above both. The `Methodology Contract` zone (between `<!-- METHODOLOGY_CONTRACT_START -->` and `<!-- METHODOLOGY_CONTRACT_END -->`) is copied verbatim — methodology briefs catalog, policies catalog, universal repo layout, phase-work protocol, status markers, reading protocol, architectural invariants, activity-log contract, universal conventions, glossary — **except for the starter-only members its catalogs name**. That zone lists what exists in *this* repository, so any entry pointing at a file the new project will not have (today: the `anonymize-log-references.md` policy bullet, and the `check-anonymization.sh` clause in the `bin/` layout bullet) comes out; left in, it is a `CLAUDE.md` reference to a missing file, which `bin/check-catalogs` fails closed on. The Hard rules section above the zones drops **Hard rule 3**, the starter-only anonymization rule, and the sentence introducing the rules is repaired to say the two survivors are universal. The `Project Context` zone (between `<!-- PROJECT_CONTEXT_START -->` and `<!-- PROJECT_CONTEXT_END -->`) is rewritten for the new project — the project's thesis, project-specific briefs list, project surfaces description, project conventions, and any project-specific skills.
 - `briefs/BRIEF.md` — the entry-point brief for the new project. Pick a shape:
   - **Thesis-stub.** One short paragraph plus a pointer to `../CLAUDE.md#briefs-catalog`. Use when the project will quickly grow many topic briefs.
@@ -482,7 +502,7 @@ In this exact order (each feeds the next):
    ```
    `kickoff` will append the first START block.
 
-5. **`README.md`** — didactic top-level for human readers. Mirror the template's section structure; write project-specific content. The README is the human's entry point; CLAUDE.md is the agent's.
+5. **`README.md`** — didactic top-level for human readers. Apply the front-door contract in section 2b with project-specific content. If the seed carried a README, keep the user's text and add only the missing orientation, getting-started, essential-map, and documentation-guide material. The README is the human's entry point; CLAUDE.md is the agent's.
 
 ### Step 5 — Port the universal harness bundle
 
