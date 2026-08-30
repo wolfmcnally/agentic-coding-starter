@@ -8,7 +8,7 @@ description: >-
   new project, setting up a repo's planning structure, breaking a large
   initiative into phases, or reviewing the steps without reading the full
   brief. Invoke as /methodology in Claude Code or $methodology in Codex.
-last-reviewed: 2026-08-29
+last-reviewed: 2026-08-30
 ---
 
 # The Agentic Coding Methodology
@@ -92,6 +92,7 @@ The orchestrator delegates to four specialist roles. Their names are load-bearin
 ## Non-negotiables
 
 - **Every completed phase is incremental and testable.**
+- **Prefer conceptual economy.** Among designs that satisfy the same requirements and invariants, choose the one that leaves fewer independent concepts, states, paths, representations, authorities, and exceptions for the next reader to understand; never substitute line, file, or abstraction counts for that judgment. See [`policies/simplicity-and-consolidation.md`](../../../policies/simplicity-and-consolidation.md).
 - **Every initial phase implementation passes the code critic; repeat review on follow-ups is risk- and size-based.**
 - **Review, findings, and gates are bound to exact candidate identity.**
 - **Revision rounds use causal packets and widen when continuity is uncertain.**

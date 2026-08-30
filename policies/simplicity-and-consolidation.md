@@ -2,6 +2,10 @@
 
 Build the least structure that satisfies the requirement in front of you, and give each piece of knowledge one home. These are the same rule read from two directions, and one question settles both: **how many concrete, present-tense uses can you name?**
 
+When more than one design satisfies those rules, prefer the one that leaves the next reader fewer independent concepts and exceptions to understand. Simplicity limits structure; consolidation limits repetition; conceptual economy chooses among otherwise-valid designs.
+
+The methodology names conceptual economy as a non-negotiable in [`briefs/methodology.md`](../briefs/methodology.md#non-negotiables); this policy defines the test.
+
 | Named uses | What the rule requires |
 |---|---|
 | 0 or 1 | Keep the code concrete. Write a note, not a hook. |
@@ -52,6 +56,18 @@ This binds prose exactly as it binds code. In this repo the rule surfaces **are*
 
 A citation is a real pointer to a named file and section, not a paraphrase that happens to agree. A paraphrase is a fourth copy wearing a citation's clothes, and it drifts like any other copy.
 
+## Rule 3 — Prefer conceptual economy
+
+Among designs that fully satisfy the brief, policies, acceptance criteria, performance needs, and operational constraints, prefer the one that leaves the next reader fewer independent concepts, states, branches, representations, authorities, and exceptional rules to understand. This is conceptual economy.
+
+Do not measure it by lines of code, file count, or abstraction count. Those proxies can invert the result: compressed code may hide complexity, while one well-chosen abstraction may eliminate several concepts. Count what the reader must understand, not what the repository happens to contain.
+
+A new concept earns its place when it represents a real distinction in the problem or removes more accidental complexity than it introduces. One behavior should have one obvious path, one piece of state should have one authority, and the common case should not travel through machinery built only for hypothetical variation.
+
+When two designs are materially equivalent in correctness and capability, choose the one expressible with fewer rules and exceptions. If the more elaborate design wins, name the concrete requirement that makes the simpler design insufficient.
+
+A conceptual-economy finding must be comparative. Name the unnecessary concept or exception, describe a simpler in-scope design, and show that the alternative preserves the applicable requirements and invariants. “This feels over-engineered” and “this is inelegant” are not findings.
+
 ## What this policy does not license
 
 **It is not anti-design.** Public APIs, on-disk data formats, migration paths, and security boundaries are expensive to change after release, and treating them as requirements rather than guesses is correct. The difference is evidence: write the constraint down, name who depends on it, and test the compatibility promise. The antipattern begins when the only evidence is anxiety about a future nobody has committed to.
@@ -68,9 +84,9 @@ This policy is deliberately enforced by review rather than by script. Its load-b
 
 The enforcement points are therefore:
 
-- The **planner** does not plan structure whose second case it cannot name in the plan body.
-- The **plan reviewer** blocks a plan that adds abstractions or deliverables the phase did not ask for.
-- The **coder** honors the bar while writing, and takes the removal pass before reporting.
-- The **code critic** blocks on either rule, and names the concrete cost — what is duplicated, what is unreachable, what a future reader must model that cannot happen.
+- The **planner** does not plan structure whose second case it cannot name and, among phase-compliant designs, chooses the one with fewer independent concepts and exceptions unless a concrete requirement defeats it.
+- The **plan reviewer** blocks unrequested structure and accidental complexity only with a simpler in-scope alternative that preserves the requirements and invariants.
+- The **coder** honors the second-case bar while writing, then takes both the removal pass and the indirection pass before reporting.
+- The **code critic** blocks on speculative structure, third copies, or accidental complexity, naming both the concrete comprehension cost and the smaller equivalent design.
 
 One mechanical check does apply, because it is exact: `bin/check-catalogs` enforces that a policy has one cataloged home and that every citation of it resolves. That guards Rule 2's *pointer* discipline, not its judgment.

@@ -157,6 +157,7 @@ finding.
 - No abstraction, generic, base class, helper, interface, parameter, hook, or mode flag whose **second concrete present-tense use** the code or plan cannot name. A one-implementation interface, a parameter every caller passes identically, and a flag with one reachable value are all blocking; so are tests that exist only to exercise machinery production code never calls. Name the concrete cost in the finding — what a future reader must model that cannot happen.
 - No third copy. When the change puts the same rule, constant, or procedure in a third site, the finding is that it needs one home with the others citing it. A paraphrase that agrees is a fourth copy, not a citation.
 - Do not invert this into a demand for more structure. A fix layered as a special case onto shared infrastructure is the same policy's other half — flag it as wrong-depth, not as admirable smallness.
+- A conceptual-economy finding is comparative: identify the unnecessary concept, state its concrete comprehension cost, give the smaller in-scope design, and show that the alternative preserves the requirements and invariants. “Inelegant” without that comparison is not a finding.
 - Flag a conspicuous avoidable wall-clock regression—such as genuinely
   independent mechanics forced serially or invariant setup repeated—only when
   a substantial, low-risk local correction is reasonably apparent. Do not

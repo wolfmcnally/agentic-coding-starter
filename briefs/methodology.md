@@ -112,6 +112,7 @@ low-risk follow-up correction whose intended shape is already determined.
 ## Non-negotiables
 
 - **Every completed phase is incremental and testable** (step 4).
+- **Prefer conceptual economy.** Among designs that satisfy the same requirements and invariants, choose the one that leaves fewer independent concepts, states, paths, representations, authorities, and exceptions for the next reader to understand; never substitute line, file, or abstraction counts for that judgment.
 - **Every initial phase implementation passes the code critic**, whichever review lane it declares; repeat review on follow-ups is risk- and size-based (steps 7–8).
 - **The human owns subjective and owner-only acceptance; objective acceptance is independently reviewed and gate-proved** (steps 4, 8, 10).
 - **The orchestrator writes code only for eligible small, low-risk follow-up corrections** (step 8).

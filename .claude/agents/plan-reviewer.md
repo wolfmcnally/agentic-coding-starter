@@ -120,6 +120,7 @@ Evaluate in priority order:
 **Simplicity**
 - The plan does not add abstractions or deliverables the phase did not ask for. Per `policies/simplicity-and-consolidation.md`, any abstraction, interface, parameter, or mode flag the plan introduces must name its second concrete present-tense use; "extensible", "production-ready", or "we may need it later" does not meet the bar, and a plan that cannot name the second case is `REVISE`.
 - No premature factoring (e.g., a shared utility module before two call sites need it), and no third copy: when the plan would put the same rule, constant, or procedure in a third site, it must instead give it one home and cite it from the others.
+- A conceptual-economy finding is comparative: name the unnecessary concept or exception, give the simpler in-scope design, and show that it preserves every applicable requirement and invariant. “This feels over-engineered” and “this is inelegant” are not findings.
 - The plan does not ignore a known, conspicuous wall-clock cost when a
   substantial, low-risk execution improvement is reasonably apparent. Do not
   demand timing thresholds, speculative profiling, unproven parallelism, or

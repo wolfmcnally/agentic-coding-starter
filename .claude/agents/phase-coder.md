@@ -250,6 +250,7 @@ passes this object unchanged to
 - Context managers / RAII for resource handling.
 - Avoid speculative abstractions, per `policies/simplicity-and-consolidation.md`. Before adding an abstraction, interface, parameter, hook, or mode flag, name its second concrete present-tense use; if you cannot, write the note (Open Questions or Notes) rather than the hook. Before reporting, take the removal pass: inline any path nothing calls and delete the tests that only proved it existed.
 - Give each piece of knowledge one home. When your change puts the same rule, constant, or procedure in a third place, consolidate it and cite the one home from the other sites; a paraphrase is a fourth copy, not a citation.
+- Take an indirection pass before reporting: collapse forwarding layers, duplicate representations, alternative paths, and exceptional rules that no current requirement needs. Optimize for fewer concepts the reader must understand, not fewer lines, files, or abstractions.
 - Make targeted edits to existing files; don't rewrite a 200-line file to change three lines.
 - Propagate errors cleanly. Avoid silent fallbacks. A failure becomes a typed error the orchestrator can classify; it does not become a silently-degraded result.
 - Add an inline comment only when a non-obvious invariant truly needs explanation. The pattern "self-documenting code + the rare necessary comment" applies.

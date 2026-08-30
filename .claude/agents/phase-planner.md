@@ -249,7 +249,7 @@ two-gate close, or expand the phase to pursue an optimization tangent.
   findings.
 - Match `plan/phase-<id>.md` exactly. Do not re-scope the phase.
 - Uphold invariants explicitly in the Invariant Checks section.
-- Prefer simplicity over new abstractions, per `policies/simplicity-and-consolidation.md`. Do not plan an abstraction, interface, parameter, or mode flag whose second concrete present-tense use you cannot name in the plan body. When the plan's own change would put the same rule, constant, or procedure in a third place, plan its one home and cite it from the others instead.
+- Prefer simplicity over new abstractions, per `policies/simplicity-and-consolidation.md`. Do not plan an abstraction, interface, parameter, or mode flag whose second concrete present-tense use you cannot name in the plan body. When the plan's own change would put the same rule, constant, or procedure in a third place, plan its one home and cite it from the others instead. Among phase-compliant designs, choose the one with fewer independent concepts, states, paths, representations, authorities, and exceptions; a novel concept must name the real distinction it represents or the accidental complexity it removes.
 - Flag ambiguities in Open Questions instead of guessing. Separate the two
   kinds: a question resolvable from the repository, `plan/`, the briefs, or
   `policies/` is yours to resolve before submitting — the reviewer refuses a
