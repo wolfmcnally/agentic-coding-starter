@@ -5,8 +5,10 @@
 """Fail closed when durable-document catalogs, links, or citations drift.
 
 Covers catalog/file sync, the phase-ledger state machine, tracked internal
-link targets *and* their `#fragment` anchors, and the one-way citation
-direction between briefs, policies, and the plan.
+link targets *and* their `#fragment` anchors, the one-way citation
+direction between briefs, policies, and the plan, and the `docs/` contract:
+every pinned third-party document is cataloged in `docs/README.md`, and no
+file under `docs/` links outside `docs/`.
 """
 
 from __future__ import annotations
@@ -28,6 +30,11 @@ CATALOGED_DIRECTORIES = ("policies", "briefs")
 # predates the rule derived from it, so the citation runs one way only.
 CITATION_SOURCE_DIRECTORY = "briefs"
 CITATION_FORBIDDEN_DIRECTORIES = ("policies", "plan")
+# policies/docs.md: pinned third-party material never references the project.
+# Every top-level entry under docs/ is linked from docs/README.md, and no file
+# under docs/ (other than that project-owned catalog) links outside docs/.
+DOCS_DIRECTORY = "docs"
+DOCS_CATALOG = "README.md"
 PHASE_STATUSES = ("⏳", "⬅️", "🚧", "✅")
 NEXT_MARKER = "⬅️"
 IN_PROGRESS_MARKER = "🚧"
@@ -379,6 +386,98 @@ def check_citation_direction(
     )
 
 
+def check_docs_containment(
+    source: Path, line_number: int, relative_target: Path, destination: str
+) -> None:
+    """A pinned third-party document never links outside docs/ (policies/docs.md).
+
+    The catalog docs/README.md is project-owned and exempt; it may cite the
+    governing policy. Direction is judged before the target's existence.
+    """
+    relative_source = source.relative_to(ROOT)
+    if relative_source.parts[:1] != (DOCS_DIRECTORY,):
+        return
+    if relative_source == Path(DOCS_DIRECTORY, DOCS_CATALOG):
+        return
+    if relative_target.parts[:1] == (DOCS_DIRECTORY,):
+        return
+    report(
+        "docs",
+        relative_source.as_posix(),
+        f"line {line_number}: pinned document links outside {DOCS_DIRECTORY}/ "
+        f"({destination}); third-party material never references the project",
+    )
+
+
+def docs_catalog_links(catalog: Path) -> set[str]:
+    """Top-level docs/ entry names that catalog rows link to."""
+    referenced: set[str] = set()
+    try:
+        text = catalog.read_text(encoding="utf-8")
+    except OSError as exc:
+        report("docs", catalog.relative_to(ROOT).as_posix(), str(exc))
+        return referenced
+    docs_root = (ROOT / DOCS_DIRECTORY).resolve()
+    for _line_number, raw_line in markdown_prose_lines(text):
+        line = CODE_SPAN_PATTERN.sub("", raw_line)
+        destinations = [match.group("destination") for match in INLINE_LINK_PATTERN.finditer(line)]
+        reference_match = REFERENCE_LINK_PATTERN.match(line)
+        if reference_match:
+            destinations.append(reference_match.group("destination"))
+        for raw_destination in destinations:
+            destination = link_destination(raw_destination)
+            if destination is None or URI_SCHEME_PATTERN.match(destination):
+                continue
+            file_part = destination.partition("#")[0].split("?", 1)[0]
+            if not file_part:
+                continue
+            if file_part.startswith("/"):
+                candidate = ROOT / file_part.lstrip("/")
+            else:
+                candidate = catalog.parent / file_part
+            try:
+                relative = candidate.resolve(strict=False).relative_to(docs_root)
+            except ValueError:
+                continue
+            if relative.parts:
+                referenced.add(relative.parts[0])
+    return referenced
+
+
+def check_docs_catalog() -> None:
+    """Every top-level docs/ entry is linked from docs/README.md (policies/docs.md).
+
+    Missing link targets are reported by the ordinary link check; this check
+    owns the converse — an entry on disk that no catalog row names — and the
+    README's presence whenever the directory holds anything else.
+    """
+    base = ROOT / DOCS_DIRECTORY
+    if not base.is_dir():
+        return
+    entries = sorted(
+        item.name
+        for item in base.iterdir()
+        if item.name != DOCS_CATALOG and not item.name.startswith(".")
+    )
+    catalog = base / DOCS_CATALOG
+    if not catalog.is_file():
+        if entries:
+            report(
+                "docs",
+                f"{DOCS_DIRECTORY}/{DOCS_CATALOG}",
+                f"catalog is missing while {DOCS_DIRECTORY}/ holds {len(entries)} entries",
+            )
+        return
+    referenced = docs_catalog_links(catalog)
+    for name in entries:
+        if name not in referenced:
+            report(
+                "docs",
+                f"{DOCS_DIRECTORY}/{name}",
+                f"entry is not linked from any {DOCS_DIRECTORY}/{DOCS_CATALOG} catalog row",
+            )
+
+
 def check_link(source: Path, line_number: int, destination: str) -> None:
     if (
         not destination
@@ -412,6 +511,7 @@ def check_link(source: Path, line_number: int, destination: str) -> None:
         )
         return
     check_citation_direction(source, line_number, relative_candidate, destination)
+    check_docs_containment(source, line_number, relative_candidate, destination)
     if not candidate.exists():
         report(
             "links",
@@ -456,6 +556,7 @@ def main() -> int:
     if instructions:
         for directory in CATALOGED_DIRECTORIES:
             check_catalog(directory, instructions)
+    check_docs_catalog()
     check_phase_ledger()
     if arguments.closing_phase:
         check_closing_phase(arguments.closing_phase)

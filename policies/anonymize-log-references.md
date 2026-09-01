@@ -37,6 +37,7 @@ Wherever a committed file documents a cross-repo operation or references externa
 - **Patterns and ideas** absorbed or taught. The whole point of `LOG.md` is the audit trail. Describing the *shape* of a pattern, framed in terms of what this template now has, preserves the audit value without leaking the donor.
 - **Generic characterizations** of the external project: "a single-product repo with a lightweight `user-actions/` queue", "a multi-domain platform repo with two-tier policies". These preserve enough context to make the entry useful to a future maintainer without naming or fingerprinting the donor.
 - **References to this template's own files** — `policies/log-discipline.md`, `briefs/methodology.md`, etc. All in-template references are fine.
+- **Public third-party material pinned under `docs/`** per `policies/docs.md` — a public standard or a vendor's published documentation discloses nothing private. The mechanical guard still runs over it unchanged; a pin that trips the path or SHA pattern (a changelog quoting commits, an example home path) is excerpted around the trip rather than exempted, so the guard keeps one behavior.
 
 ## Authoring discipline
 

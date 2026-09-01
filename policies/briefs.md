@@ -18,6 +18,7 @@ A brief captures *durable* analysis or reasoning that future work will refer bac
 - **A queue.** Work to be done lives in commit messages, a TODO list, or an issue tracker — not in `briefs/`.
 - **A policy.** Operational rules — "always do X, never Y, here's the schema" — live in `policies/`. A brief *informs* policy; a brief is not policy.
 - **A log.** Briefs capture durable positions, not running history.
+- **Third-party documentation.** Vendor pages, specifications, RFCs, and license texts are pinned verbatim under `docs/` ([`docs.md`](docs.md)). A brief cites the pin and holds what the project *concluded* from it; it never carries the source text itself.
 
 ## When to write one
 
@@ -25,7 +26,7 @@ Write a brief when:
 - Research turns up a position or methodology the team will cite later (a BCP list, a measured number, a worked example).
 - A non-trivial decision is made whose reasoning matters more than its outcome.
 - An audit, evaluation, or discrepancy review produces findings that will inform future work.
-- A snapshot of an external system (AWS infra state, a third-party service's behavior) is worth pinning at a specific date.
+- A snapshot of an external system's *observed state or behavior* (cloud infrastructure as configured, how a third-party service actually responded) is worth pinning at a specific date. The vendor's own published document is a different thing: that goes under `docs/`, and the brief records what was observed and concluded against it.
 - An outward explanation, white paper, or treatise needs a canonical internal
   source. Repair the owning brief before rendering derivative formats; see
   [`treatise.md`](treatise.md).

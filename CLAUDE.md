@@ -96,7 +96,8 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 
 - [`README.md`](policies/README.md) — what `policies/` is and how it differs from `briefs/`.
 - [`briefs.md`](policies/briefs.md) — the brief-file lifecycle: frontmatter schema (`title`, `date`, `status`, `scope`), four-value status flow (`draft` / `methodology` / `implemented` / `historical`), filename conventions, when to write one, when to retire one.
-- [`briefs-and-policies.md`](policies/briefs-and-policies.md) — the contract: briefs describe, policies prescribe, plan sequences.
+- [`briefs-and-policies.md`](policies/briefs-and-policies.md) — the contract: briefs describe, policies prescribe, plan sequences; `docs/` sits beneath all three and is cited by them.
+- [`docs.md`](policies/docs.md) — `docs/` holds pinned third-party reference material (vendor documentation, specifications, RFCs, license texts): verbatim or verbatim excerpt, never project-authored, never linking outside `docs/`. Cataloged only in `docs/README.md` with source, `As of`, `Retrieved`, and redistribution basis; briefs, policies, and the plan cite the local pin rather than the URL alone. Reading a pin is retrieval for every role. Enforced by `bin/check-catalogs`.
 - [`cross-harness-parity.md`](policies/cross-harness-parity.md) — keep Claude Code, Codex CLI, and any other supported harness in lockstep; canonical files vs. mirrors; onboarding a new harness.
 - [`four-canonical-agents.md`](policies/four-canonical-agents.md) — the four roles `kickoff` invokes by name; their tool stances; their verdict headers; failure-backed scope and the outward-spiral stop; convergence-bounded revision loops (iterate while converging, escalate on stall, 10-cycle runaway backstop, convergence-lease extension grants), with an earlier plan-only stop for excessive size or repeated growth.
 - [`role-models.md`](policies/role-models.md) — harness-aware per-role model/venue in `kickoff.yaml`, with separate model and effort fields. Direct edits and `roles` are both supported; `bin/kickoff-config` preserves comments and `extensions` data, preflights every non-native target before phase mutation, and owns runtime fallback/reporting mechanics.
@@ -136,6 +137,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
 
 - `briefs/` — durable design library. Each brief is markdown with YAML frontmatter (`title`, `date`, `status`, `scope`); brief-file lifecycle is governed by [`policies/briefs.md`](policies/briefs.md). See "Methodology briefs" above for the universal briefs, and "Project briefs" in Project Context for this repo's specifics.
 - `policies/` — non-negotiable rules. Full catalog above.
+- `docs/` — pinned third-party reference material the project depends on: vendor documentation, specifications, RFCs, license texts, kept verbatim so briefs and policies can cite exact text and every role can read it without network access. Nothing under it is written by the project or references the project; its only catalog is [`docs/README.md`](docs/README.md), which records source, `As of`, `Retrieved`, and redistribution basis per pin. Governed by [`policies/docs.md`](policies/docs.md).
 - `bin/` — the repo's deterministic executables: the mechanistic half of the
   methodology. [`bin/README.md`](bin/README.md) is the operator index. This
   repo ships the atomic `setup`/`test`/`check`/`python` toolchain interface,
@@ -203,7 +205,7 @@ projects may have zero `⬅️` rows; more than one is always invalid.
 1. Read [`plan/INDEX.md`](plan/INDEX.md) — cross-cutting concerns apply to every phase.
 2. Read the parent `plan/phase-N.md` to understand the larger context (if a sub-phase is targeted).
 3. Read the target `plan/phase-N.M.md` (or `plan/phase-N.md` when no sub-phase has been split out).
-4. Read every brief listed under "Brief refs". Briefs are the source of truth for *what* to build; the phase file specifies *how*.
+4. Read every brief listed under "Brief refs". Briefs are the source of truth for *what* to build; the phase file specifies *how*. When a cited brief or policy rests on a file under `docs/`, read that pin too — it is the exact external text the claim was made against, and it outranks whatever the live URL says today.
 5. Read every file in the target's frontmatter `depends_on`.
 6. As a guard against missing `depends_on`, also read the immediately preceding completed phase (last `✅` row before the target).
 7. Do **not** slurp every `phase-*.md`. `depends_on` is the contract for which predecessors actually matter.
@@ -309,6 +311,7 @@ Terms used consistently across briefs, skills, policies, and code. Mismatched us
 
 - **Brief.** A document under `briefs/` describing *what* to build, *why*, and *what was decided*. Briefs inform phases; phases reference briefs.
 - **Policy.** A short, prescriptive rule under `policies/` that every phase honors. Policies are the law of the repo.
+- **Pinned document.** A verbatim third-party document (or excerpt) under `docs/`, recorded in `docs/README.md` with its source, `As of` and `Retrieved` dates, and redistribution basis. Cited by briefs, policies, and the plan; cites nothing in the repo itself. Governed by `policies/docs.md`.
 - **Phase.** One unit of phased work. A phase file (`plan/phase-N.md`) holds Goal, Deliverables, Acceptance, and Brief refs. Status lives in `plan/INDEX.md`.
 - **Sub-phase.** A child of a major phase (`plan/phase-N.M.md`), produced by decomposing the parent at the moment the parent becomes the next phase to work.
 - **`kickoff`.** The orchestrator skill. Invoke it as `/kickoff` in Claude Code or `$kickoff` in Codex. Runs an initial phase implementation through planner → reviewer → coder → critic, retains candidate-bound evidence across revision rounds, closes through separate implementation-candidate and handoff gates, records exact execution and operator-park timing, generates the end-of-phase HTML report, then routes later corrections in proportion to risk and size. Writes START/END blocks to `LOG.md`; it may write code only for an eligible small, low-risk follow-up fix.

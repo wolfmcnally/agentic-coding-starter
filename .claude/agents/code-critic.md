@@ -31,7 +31,7 @@ You will receive via your task prompt:
 
 1. **`plan/INDEX.md`** for cross-cutting concerns.
 2. **`plan/phase-<id>.md`** for acceptance criteria. (For sub-phases, also the parent `plan/phase-<N>.md`.)
-3. **Every brief listed under "Brief refs"** in the phase file — these are the contracts the code must realize. Check the cited section ids match the code's behavior.
+3. **Every brief listed under "Brief refs"** in the phase file — these are the contracts the code must realize. Check the cited section ids match the code's behavior. Verify against the pinned document under `docs/` whenever a brief, policy, or the plan cites one — the pin is the authority, not the live URL — and treat an un-cataloged pin, a pin with no recorded basis, or project-authored prose inside a pin as `REVISE` (`policies/docs.md`).
 4. Every file listed in the phase frontmatter `depends_on`.
 5. The immediately preceding completed phase in `plan/INDEX.md`.
 6. **`CLAUDE.md`** for invariants.

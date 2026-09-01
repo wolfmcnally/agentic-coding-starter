@@ -335,7 +335,8 @@ Once approved, apply the approved items. Before importing any donor remedy for a
 - **Direction of advance is established per item, never per repo.** A donor being "ahead" overall proves nothing about any one file, hunk, or fix. Before replacing a shared file, classify every hunk by direction (destination-ahead hunks are re-applied on top); before importing a donor remedy, verify its defect reproduces in the destination and record the divergence when it does not. Both failure modes are silent: reverting a stronger assertion or relaxing a stricter guard cannot fail any gate.
 - **Approval is mandatory.** No bytes change in this repo before explicit approval.
 - **Cross-harness parity is non-negotiable.** Any change touching `.claude/` or `.codex/` updates both surfaces in the same apply step.
-- **Catalog drift is forbidden.** `CLAUDE.md`'s catalogs reflect every file in `briefs/` and `policies/` after the apply finishes. Verify before reporting done.
+- **Catalog drift is forbidden.** `CLAUDE.md`'s catalogs reflect every file in `briefs/` and `policies/` after the apply finishes, and `docs/README.md` links every entry under `docs/`. Verify before reporting done.
+- **A donor's `docs/` is donor state.** Pinned third-party documents are the donor's dependencies; never transfer them. What may transfer is the `docs/` *contract* itself when the donor's version of `policies/docs.md`, its catalog shape, or its `check-catalogs` enforcement improves on ours.
 - **Skip donor-specific PII, secrets, and proprietary content** wholesale during Stage 1. If a donor file contains real names, emails, API keys, or internal company names, do not read its body beyond confirming the type; never transfer such content, even in inspiration form.
 - **One LOG entry per `learn` run.** Not per item. The aggregate entry preserves the audit trail without flooding the log.
 - **The return path is mandatory.** After application and focused validation,

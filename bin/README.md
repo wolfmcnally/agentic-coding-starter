@@ -454,8 +454,12 @@ derivable anchor set and is skipped rather than guessed at. It enforces the
 one-way citation direction from
 [`policies/briefs-and-policies.md`](../policies/briefs-and-policies.md): a file
 under `briefs/` may not link into `policies/` or `plan/`, because the thinking
-predates the rule derived from it. And it validates the complete phase
-lifecycle:
+predates the rule derived from it. It enforces the `docs/` contract from
+[`policies/docs.md`](../policies/docs.md): whenever `docs/` holds anything
+beyond its README, `docs/README.md` must exist and link every top-level entry,
+and no file under `docs/` other than that catalog may link outside `docs/`,
+because pinned third-party material never references the project. And it
+validates the complete phase lifecycle:
 each phase-table row has one recognized status, at most one row is `⬅️`, idle
 incomplete work has exactly one next row, and active or complete work may have
 none. Link scanning exempts fenced code blocks *and* inline code spans — a

@@ -30,7 +30,7 @@ You will receive via your task prompt:
 
 1. **`plan/INDEX.md`** for cross-cutting concerns.
 2. **`plan/phase-<id>.md`** for the target phase context. (For sub-phases, also the parent `plan/phase-<N>.md`.)
-3. **Every brief listed under "Brief refs"** in the phase file — these are the contracts the implementation realizes. Refer to numbered sections by id when applicable.
+3. **Every brief listed under "Brief refs"** in the phase file — these are the contracts the implementation realizes. Refer to numbered sections by id when applicable. Read every pinned document under `docs/` that the plan or a cited brief names — it is retrieval, not research, and it is the text to implement against rather than the live URL (`policies/docs.md`).
 4. Every file listed in the phase frontmatter `depends_on`.
 5. The immediately preceding completed phase in `plan/INDEX.md`.
 6. **`CLAUDE.md`** for invariants and the project's conventions (language, tooling, formatting, file shapes).

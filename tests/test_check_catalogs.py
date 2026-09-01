@@ -73,7 +73,7 @@ def test_tracked_markdown_deleted_from_worktree_is_not_read_as_a_source(
     tmp_path: Path,
 ) -> None:
     root = fixture(tmp_path)
-    obsolete = write_tracked(root, "docs/obsolete.md", "# Obsolete\n")
+    obsolete = write_tracked(root, "notes/obsolete.md", "# Obsolete\n")
     obsolete.unlink()
 
     result = run(root)
@@ -91,14 +91,16 @@ def test_missing_internal_inline_and_reference_links_are_reported(
     write_tracked(
         root,
         "README.md",
-        "[inline](docs/missing.md)\n\n[reference]: policies/absent.md\n",
+        "[inline](notes/missing.md)\n\n[reference]: policies/absent.md\n",
     )
 
     result = run(root)
 
     assert result.returncode == 1
-    assert "links\tREADME.md\tline 1: missing target docs/missing.md" in result.stdout
+    assert "links\tREADME.md\tline 1: missing target notes/missing.md" in result.stdout
     assert "links\tREADME.md\tline 3: missing target policies/absent.md" in result.stdout
+    _assert_a_docs_catalog_row_linking_a_missing_file_is_reported(tmp_path / "docs-missing")
+    _assert_every_pinned_document_is_linked_from_the_docs_catalog(tmp_path / "docs-catalog")
 
 
 def test_the_citation_rule_is_directional_not_symmetric(tmp_path: Path) -> None:
@@ -113,6 +115,126 @@ def test_the_citation_rule_is_directional_not_symmetric(tmp_path: Path) -> None:
         root,
         "briefs/design.md",
         "# Design\n\nA sibling brief: [`design.md`](design.md), and `../policies/example.md`.\n",
+    )
+
+    result = run(root)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    _assert_briefs_and_policies_may_cite_a_pinned_document(tmp_path / "cite-docs")
+    _assert_a_pinned_document_never_links_outside_docs(tmp_path / "docs-outbound")
+
+
+DOCS_CATALOG_HEADER = (
+    "# docs\n\n| Document | Source | As of | Retrieved | Basis | Pinned for |\n"
+    "|---|---|---|---|---|---|\n"
+)
+
+
+def _assert_every_pinned_document_is_linked_from_the_docs_catalog(tmp_path: Path) -> None:
+    root = fixture(tmp_path)
+    write_tracked(root, "docs/vendor-spec-v2.md", "# Vendor spec v2\n")
+    write_tracked(root, "docs/rfc-0000/index.txt", "RFC 0000\n")
+
+    missing_catalog = run(root)
+
+    assert missing_catalog.returncode == 1
+    assert (
+        "docs\tdocs/README.md\tcatalog is missing while docs/ holds 2 entries"
+        in missing_catalog.stdout
+    )
+
+    write_tracked(
+        root,
+        "docs/README.md",
+        DOCS_CATALOG_HEADER
+        + "| [`vendor-spec-v2.md`](vendor-spec-v2.md) | https://example.invalid/spec"
+        " | v2 | 2026-01-01 | CC BY 4.0 | briefs/design.md |\n",
+    )
+
+    orphan = run(root)
+
+    assert orphan.returncode == 1
+    assert "docs\tdocs/rfc-0000\tentry is not linked from any docs/README.md catalog row" in (
+        orphan.stdout
+    )
+    assert "vendor-spec-v2.md" not in orphan.stdout
+
+    write_tracked(
+        root,
+        "docs/README.md",
+        DOCS_CATALOG_HEADER
+        + "| [`vendor-spec-v2.md`](vendor-spec-v2.md) | https://example.invalid/spec"
+        " | v2 | 2026-01-01 | CC BY 4.0 | briefs/design.md |\n"
+        "| [`rfc-0000/`](rfc-0000/index.txt) | https://example.invalid/rfc"
+        " | 2020-01-01 | 2026-01-01 | public standard | excerpt; policies/example.md |\n",
+    )
+
+    complete = run(root)
+
+    assert complete.returncode == 0, complete.stdout + complete.stderr
+
+
+def _assert_a_docs_catalog_row_linking_a_missing_file_is_reported(tmp_path: Path) -> None:
+    root = fixture(tmp_path)
+    write_tracked(
+        root,
+        "docs/README.md",
+        DOCS_CATALOG_HEADER
+        + "| [`gone.md`](gone.md) | https://example.invalid | - | 2026-01-01 | MIT | - |\n",
+    )
+
+    result = run(root)
+
+    assert result.returncode == 1
+    assert "links\tdocs/README.md\tline 5: missing target docs/gone.md" in result.stdout
+
+
+def _assert_a_pinned_document_never_links_outside_docs(tmp_path: Path) -> None:
+    root = fixture(tmp_path)
+    write_tracked(
+        root,
+        "docs/README.md",
+        DOCS_CATALOG_HEADER
+        + "| [`vendor-spec-v2.md`](vendor-spec-v2.md) | https://example.invalid/spec"
+        " | v2 | 2026-01-01 | CC BY 4.0 | briefs/design.md |\n"
+        "\nGoverned by [`policies/example.md`](../policies/example.md).\n",
+    )
+    write_tracked(
+        root,
+        "docs/vendor-spec-v2.md",
+        "# Vendor spec v2\n\n"
+        "See [the design](../briefs/design.md) and [section](#vendor-spec-v2).\n",
+    )
+
+    result = run(root)
+
+    assert result.returncode == 1
+    assert (
+        "docs\tdocs/vendor-spec-v2.md\tline 3: pinned document links outside docs/ "
+        "(../briefs/design.md); third-party material never references the project"
+    ) in result.stdout
+    assert "docs/README.md" not in result.stdout
+
+
+def _assert_briefs_and_policies_may_cite_a_pinned_document(tmp_path: Path) -> None:
+    root = fixture(tmp_path)
+    write_tracked(
+        root,
+        "docs/README.md",
+        DOCS_CATALOG_HEADER
+        + "| [`vendor-spec-v2.md`](vendor-spec-v2.md) | https://example.invalid/spec"
+        " | v2 | 2026-01-01 | CC BY 4.0 | briefs/design.md |\n",
+    )
+    write_tracked(root, "docs/vendor-spec-v2.md", "# Vendor spec v2\n\n## Limits\n")
+    write_tracked(
+        root,
+        "briefs/design.md",
+        "# Design\n\nPer [the spec](../docs/vendor-spec-v2.md#limits).\n",
+    )
+    write_tracked(
+        root,
+        "policies/example.md",
+        "# Policy: Example\n\nBound by [the spec](../docs/vendor-spec-v2.md).\n",
     )
 
     result = run(root)

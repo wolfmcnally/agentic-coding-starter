@@ -33,6 +33,8 @@ the template does not ship a global default-deny list. A named optional server
 is never assumed to exist, and its absence is not a failure unless the project
 or phase explicitly makes it a prerequisite.
 
+The repository's own `docs/` directory is the local reference store that is always present: reading a pinned document there is retrieval for every role, and a pin that a brief, policy, or plan cites is a plan- or brief-identified resource for the coder and critic. Adding or replacing a pin originates from research and is planner or reviewer work under `policies/docs.md`.
+
 Capability and authority are separate checks:
 
 - The role definition and dispatch prompt determine what the role may do.

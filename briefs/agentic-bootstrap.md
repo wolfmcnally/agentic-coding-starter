@@ -122,6 +122,10 @@ A project derived from this template contains the following **portable structure
     session-context-compaction.md # Managing compaction during long runs
     <topic>.md             # Project-specific topic briefs as they appear
 
+  docs/
+    README.md              # Catalog of pinned third-party documents (shape copied; rows are project state)
+    <origin>-<topic>.md    # Verbatim third-party pins as the project acquires dependencies
+
   policies/
     README.md
     briefs-and-policies.md
@@ -278,6 +282,7 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.agents/skills/plain` (directory symlink → `../../.claude/skills/plain`)
 - `AGENTS.md` symlink → `CLAUDE.md`
 - Every file under `policies/` (these are universal by design)
+- `docs/README.md` — the pinned-document catalog shape (header and column contract) with every row dropped; pinned content is project state and never transfers
 - `policies/test-suite-governance.md` and
   `briefs/test-suite-value-governance.md` (the universal proof-estate contract;
   recipient-local values are generated later)
@@ -389,6 +394,7 @@ These files have a stable shape and a project-specific body. Mirror the shape; w
   effectiveness, reset, and assay state, not methodology content.
 - `briefs/eacp-pattern-map.md` and `briefs/methodology-treatise.md` — both are *about this repository*: one maps its structures onto a named pattern corpus, the other is its outward explanation. A derived project writes its own if it wants them.
 - `LICENSE` and `.vscode/` — the new repository's licensing and editor settings belong to whoever owns it.
+- Every pinned document under this repository's `docs/` and every row of its `docs/README.md` catalog — pins are the template's own dependencies, not the new project's. The catalog file itself transfers with its header and no rows.
 - This repository's `lessons/`, `lessons-archived/`, `user-actions/`, and `user-actions-archived/` entries — every ledger starts empty, with only a `.gitkeep` in each of the four so the directories survive the first commit.
 
 If in doubt, ask: "does this file describe the methodology or a universally useful agentic capability, or does it describe the template itself?" Methodology and universal-capability files transfer; template-specific files don't.
@@ -465,6 +471,7 @@ Then create the empty directory shape:
 .agents/skills/        # (the twelve skill entries here are directory symlinks
                        #  to ../../.claude/skills/<name>, created in Step 5)
 briefs/
+docs/
 lessons/
 lessons-archived/
 policies/

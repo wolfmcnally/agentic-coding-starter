@@ -7,6 +7,7 @@ This directory holds the rules every phase of work in this repo honors. A policy
 - A **brief** describes *what* and *why*. It is a durable design decision with context. Lives under `briefs/`.
 - A **policy** prescribes *how to behave* or *what to never do*. It is a rule. Lives under `policies/`.
 - A **phase file** specifies *in what order* and *with what acceptance*. Lives under `plan/`.
+- A **pinned document** is third-party text the project depends on, kept verbatim. It is none of the above and is cited by all of them. Lives under `docs/` ([`docs.md`](docs.md)).
 
 The full contract is in [`briefs-and-policies.md`](briefs-and-policies.md).
 

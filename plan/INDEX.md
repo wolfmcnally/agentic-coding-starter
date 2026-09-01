@@ -114,6 +114,7 @@ Shipped files are linked. A file a future phase will create may also appear, as 
 | Incremental orchestration            | [`../briefs/incremental-orchestration.md`](../briefs/incremental-orchestration.md), [`../policies/orchestration-evidence.md`](../policies/orchestration-evidence.md) |
 | Bootstrap a new project              | [`../briefs/agentic-bootstrap.md`](../briefs/agentic-bootstrap.md) |
 | Top-level agent guidance             | [`../CLAUDE.md`](../CLAUDE.md)                            |
+| Pinned third-party documentation     | [`../docs/README.md`](../docs/README.md), [`../policies/docs.md`](../policies/docs.md), [`../bin/check-catalogs`](../bin/check-catalogs) |
 | Activity log                         | [`../LOG.md`](../LOG.md)                                  |
 | Lessons and maintenance flywheel     | [`../briefs/harness-self-improvement.md`](../briefs/harness-self-improvement.md), [`../policies/lessons.md`](../policies/lessons.md), [`../bin/lessons`](../bin/lessons), [`../bin/check-catalogs`](../bin/check-catalogs), [`../.claude/skills/sweep/SKILL.md`](../.claude/skills/sweep/SKILL.md) |
 | Toolchain contract                  | [`../bin/setup`](../bin/setup), [`../bin/test`](../bin/test), [`../bin/check`](../bin/check), [`../bin/check-receipt`](../bin/check-receipt), [`../bin/python`](../bin/python), [`../policies/build-gates.md`](../policies/build-gates.md) |

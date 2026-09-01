@@ -143,6 +143,7 @@ The [project guidance](CLAUDE.md#project-specific-skills) lists the full skill s
 |---|---|
 | `briefs/` | Product intent, design thinking, research, and methodology. |
 | `policies/` | Decisions and rules that every phase must obey. |
+| `docs/` | Third-party documentation the project depends on, pinned verbatim and cataloged with its source and dates. |
 | `plan/` | The phase roadmap, dependencies, acceptance criteria, and current status. |
 | `project/` | The example deliverable in this repository; a stamped project adapts this to its real software. |
 | `.claude/skills/` | Canonical skill definitions used by the supported harnesses. |

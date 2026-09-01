@@ -28,7 +28,7 @@ You will receive via your task prompt:
 
 1. **`plan/INDEX.md`** for the phase dependency graph, cross-cutting concerns, and critical-files map.
 2. **`plan/phase-<id>.md`** for the target phase's Goal, Deliverables, Acceptance, and brief refs. (For sub-phases, also read the parent `plan/phase-<N>.md` for context.)
-3. **Every brief listed under "Brief refs"** in the target phase file. Briefs in `briefs/` are the source of truth for *what* to build; the phase file specifies *how to build it*. The primary brief is usually `briefs/BRIEF.md`; refer to its numbered sections by id when applicable.
+3. **Every brief listed under "Brief refs"** in the target phase file. Briefs in `briefs/` are the source of truth for *what* to build; the phase file specifies *how to build it*. The primary brief is usually `briefs/BRIEF.md`; refer to its numbered sections by id when applicable. When a cited brief or policy rests on a pinned document under `docs/`, read the pin: it is the exact external text the claim was made against, and the plan cites it by file and section rather than by URL (`policies/docs.md`).
 4. Every file listed in the target phase frontmatter `depends_on`.
 5. The immediately preceding completed phase in `plan/INDEX.md` as a guard against missing `depends_on` declarations.
 6. **`CLAUDE.md`** for architectural invariants and the project's conventions.

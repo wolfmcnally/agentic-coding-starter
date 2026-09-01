@@ -41,6 +41,7 @@ Project *governance metadata* — the scaffolding that builds and supervises the
 
 - `briefs/` — design library
 - `policies/` — rules every phase honors (including this one)
+- `docs/` — pinned third-party reference material the briefs and policies cite
 - `plan/` — phased execution plan
 - `LOG.md` — append-only activity log
 - `CLAUDE.md` / `AGENTS.md` — top-level agent guidance
@@ -58,7 +59,7 @@ The single load-bearing rule of this policy:
 
 Concrete consequences:
 
-- No source file under `project/` imports from `../briefs/`, `../policies/`, or `../plan/`.
+- No source file under `project/` imports from `../briefs/`, `../policies/`, `../docs/`, or `../plan/`. A pinned document the deliverable must ship with (a license text, a conformance table) is copied into `project/` as a build input, not read across the boundary.
 - No `pyproject.toml` (or analogous) field names a path outside `project/`.
 - No test fixture loads data from `../*`.
 - No `README.md` inside `project/` links to `../briefs/` or `../policies/`.

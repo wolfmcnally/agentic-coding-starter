@@ -183,6 +183,7 @@ Follow [`briefs/agentic-bootstrap.md` §3](../../../briefs/agentic-bootstrap.md)
 ```
 <dest>/
   briefs/
+  docs/                   # (docs/README.md catalog header only; policies/docs.md)
   policies/
   plan/
   bin/
@@ -252,6 +253,7 @@ extra file, which the adaptation pass or the next `sweep` catches.
 - `.claude/settings.json`
 - `policies/`
 - `briefs/`
+- `docs/README.md` **only** — the catalog's prose and table header, with every row removed. The template's pinned documents are its own dependencies and never transfer (`policies/docs.md`).
 - `bin/`, including `bin/README.md` and its convention preamble
 - `lib/` — the shared deterministic library the universal `bin/` scripts import
 - `tests/`, including `tests/fixtures/`
@@ -837,6 +839,7 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
   Hard rules section (rule 3 is gone) and the Policies catalog inside the
   Methodology Contract zone.
 - The new `CLAUDE.md`'s catalogs reference every file in `briefs/` and `policies/`.
+- `<dest>/docs/README.md` exists with its catalog header and no rows, and `<dest>/docs/` holds nothing else.
 - When a seed brief was adopted: every adopted brief's body below its frontmatter
   is **byte-identical** to what the user wrote, an adopted `README.md` still
   contains the user's own text, and `plan/` carries one sketch per major phase

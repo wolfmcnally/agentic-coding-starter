@@ -47,6 +47,7 @@ See [`CLAUDE.md` — Project briefs](../CLAUDE.md#project-briefs) and [`CLAUDE.m
 - **A `plan/` ledger.** Phase table, dependency graph, cross-cutting concerns, critical-files map. Status lives only here.
 - **A `briefs/` library.** Durable design decisions and methodology notes.
 - **A `policies/` library.** The non-negotiable rules every phase respects.
+- **A `docs/` library.** Third-party documentation the project depends on, pinned verbatim with source and dates so briefs and policies cite exact text and every role can read it offline. Cataloged in `docs/README.md`; never references the project.
 - **A `LOG.md`.** Append-only activity log, owned by `kickoff`.
 - **A minimal example project.** A tiny Python package under `project/example/` so build gates have a real target to lint and test against from the first session. The deliverable lives under `project/`, self-contained enough that nothing inside it references anything above it, which is what makes it submodule-ready once the project is real.
 
@@ -137,7 +138,8 @@ The template is acceptable when:
 - No file in this repo attributes the methodology to a particular operator, or references any individual's email, unrelated projects, or third-party PII. The template author may be named as author, maintainer, or creator, but no rule is written as though that person were running the checkout. The template is distributable.
 - Every file under `briefs/` and `policies/` is cataloged bidirectionally, and
   every current-candidate repository-internal Markdown link resolves. No orphans or
-  dangling document links.
+  dangling document links. Every entry under `docs/` is linked from
+  `docs/README.md`, and no pinned document links outside `docs/`.
 - The lessons ledger, phase-close harvest, and user-gated `sweep` workflow ship
   as one portable contract; `bin/lessons validate` and `bin/check-catalogs`
   pass in this repo and in a freshly stamped project.

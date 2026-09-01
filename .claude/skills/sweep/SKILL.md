@@ -46,7 +46,8 @@ Run the mechanical checks first — they are deterministic and their output anch
 
 1. `./bin/check-catalogs` — catalog/file sync, current-candidate internal-link integrity
    (paths *and* `#fragment` anchors), the one-way brief → policy/plan citation
-   direction, and the lifecycle-aware phase-ledger state machine.
+   direction, the `docs/` contract (every pin cataloged in `docs/README.md`,
+   no pin linking outside `docs/`), and the lifecycle-aware phase-ledger state machine.
 2. `./bin/lessons validate` — ledger schema health.
 3. `./bin/lessons candidates` — graduation-ready lessons (≥3 occurrences).
 4. `./bin/test-governance reassess` when the proof-estate bundle exists —
@@ -62,6 +63,8 @@ Then the judgment audits, each producing candidate findings:
 7. **Skills and agents.** Compare each `.claude/skills/*/SKILL.md` `last-reviewed:` date against the sweep date; re-read any skill past ~90 days or whose subject matter changed since its stamp. For agent definitions (no frontmatter date), use `git log -1 --format=%cs -- <file>` as the staleness heuristic. Flag steps that reference renamed files, retired tools, or contradicted policies.
 8. **Lessons ledger.** Beyond the mechanical candidates list: flag `candidate` lessons that have sat unratified across multiple sweeps (propose graduate or reject — an undecided ledger is a silent backlog), and near-duplicate lessons that should merge (only when their *remedies* coincide — [`policies/lessons.md`](../../../policies/lessons.md) § Named families). **Read each occurrence `ref` against its own body**: a row that narrates several distinct instances is under-counting the lesson and silently suppressing the three-occurrence graduation trigger (the counting rule in `policies/lessons.md`) — this audit is the only enforcement that has ever caught it, because the lexical detectors built for it were all cut as hopeless. Treat catalog completeness and internal-link integrity as separate claims even though one deterministic checker now enforces both.
 9. **Hub-only — methodology corpus.** Only when this repo is itself a template (detect: `.claude/skills/stamp/` exists). Audit the surfaces that propagate to every derived project: the universal policies, the methodology briefs, and the orchestration runtime doctrine in [`briefs/methodology.md`](../../../briefs/methodology.md) — applying the doctrine's own anti-ratchet rule: an instrument or rule whose defect class a design change eliminated is retired, not accumulated. A defect that ships from a template multiplies into every spoke; this audit exists because of that leverage.
+
+10. **Pinned documents.** Read `docs/README.md` against `docs/` and the briefs and policies that cite each pin, per [`policies/docs.md`](../../../policies/docs.md). Flag: a pin nothing cites any more (retire it, catalog row and file together); a catalog row whose `As of` has fallen materially behind the source's current edition for a dependency the project still tracks (propose a re-pin, naming every citing brief and policy that must be re-read against the new text); a row with no recorded redistribution basis; and project-authored prose inside a pin, which belongs in a brief. Age alone is not staleness — weigh it against how fast the source moves.
 
 Output of Stage 1 is internal. The user sees Stage 3's plan.
 
