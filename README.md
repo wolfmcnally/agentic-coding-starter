@@ -98,6 +98,16 @@ For a quick experiment, give `stamp` a destination and a one-line description:
 
 `stamp` infers what it safely can and asks about anything the description does not settle. It creates a starter brief and an initial phase. Review and expand that brief before beginning serious work.
 
+### Start minimal (upgrade later)
+
+Some projects — a small tool, a research folder, a knowledge base — do not need the whole methodology yet. The [mini-method brief](briefs/mini-method.md) carries a complete minimal `CLAUDE.md` in one fenced block: copy it into a new directory and the first agent to read it idempotently sets up a git repository, a `.gitignore`, and `briefs/`, `policies/`, `docs/`, and `bin/` directories with their catalogs. Or ask an agent in this repository to do it:
+
+```text
+Set up ~/path/to/my-notes with mini-method
+```
+
+When the project outgrows the minimal shape, `/teach` upgrades it in place to the full methodology.
+
 ### Run the first phase
 
 `stamp` creates and checks the new repository, makes its initial commit, and leaves remote selection to you. Open the new directory in Claude Code or Codex, then read:
@@ -157,6 +167,7 @@ The [project guidance](CLAUDE.md#project-specific-skills) lists the full skill s
 - [The product brief](briefs/BRIEF.md) defines what this Starter Kit provides, who it is for, and its acceptance criteria.
 - [The methodology](briefs/methodology.md) gives the complete eleven-step process and operating doctrine.
 - [The bootstrap brief](briefs/agentic-bootstrap.md) documents how `stamp` creates and adapts a project.
+- [The mini-method brief](briefs/mini-method.md) carries the minimal `CLAUDE.md` for projects that do not need the whole methodology.
 - [The project guidance](CLAUDE.md) contains the complete brief and policy catalogs, project conventions, and agent instructions.
 - [The script reference](bin/README.md) documents every deterministic command.
 - [The phased plan](plan/INDEX.md) shows the current state of this repository.

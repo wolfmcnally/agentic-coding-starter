@@ -355,6 +355,9 @@ These files encode the methodology itself, not any particular product. Copy them
   rule-surface pruning, and cross-repo propagation)
 - `briefs/session-context-compaction.md` (managing harness context compaction
   during long orchestration runs)
+- `briefs/mini-method.md` (the minimal subset a derived project can hand to
+  its own small sub-projects; such a sub-project graduates back through
+  `teach`)
 - `briefs/test-suite-value-governance.md` (proof attribution, recipient-local
   assays, and governed fast-feedback lanes)
 - The skeletal headings/structure of `plan/INDEX.md`

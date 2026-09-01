@@ -80,6 +80,8 @@ Build a structural map of the target. Mirror Stage 1 of `learn`, but from the op
 
 1. **Top-level inventory.** `ls -la <target-dir>`. Note root files (READMEs, AGENTS.md, CLAUDE.md, language metadata) and directory shape.
 2. **Methodology surfaces.** Check for `briefs/`, `policies/`, `plan/`, `LOG.md`, `.claude/`, `.codex/`. Their absence vs. partial presence vs. divergent presence is the first signal.
+
+   **Mini-method target.** If the target's `CLAUDE.md` carries the `<!-- mini-method: agentic-coding-starter -->` marker (see `briefs/mini-method.md`), classify the run as a **graduation**, not divergence: `briefs/`, `policies/`, `docs/`, and `bin/` transfer as they stand; the `briefs/README.md` and `policies/README.md` catalogs fold into the new `CLAUDE.md`'s catalogs while `docs/README.md` and `bin/README.md` remain the catalog files the full methodology also uses; the mini `CLAUDE.md` is replaced wholesale by the two-zone form, carrying its "Project" paragraph into the Project Context zone; and the absence of `plan/`, `LOG.md`, the ledgers, roles, skills, and gates is absent-by-design — every one of them is an ordinary Tier-1/Tier-2 addition, not a drift finding.
 3. **What the target already has from the template.** If any file in the target matches (by name and content shape) a file in this starter, mark it as "in sync," "diverged," or "absent." This is the structural diff that drives the plan.
 4. **What the target has that the starter doesn't.** Custom skills, custom agents, project-specific briefs and policies, domain conventions. **These are the target's specializations.** Treat them as load-bearing: never propose to remove or flatten them.
 5. **Rule One pair.** Inspect the target for both its Rule One skill and its

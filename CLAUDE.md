@@ -90,6 +90,8 @@ In addition to the universal `kickoff`, `methodology`, `rule-one`, `learn`, `tea
 - [`session-context-compaction.md`](briefs/session-context-compaction.md) — managing harness context compaction during long orchestration runs: verified harness facts (the model can neither invoke `/compact` nor see its own fill level), why mid-arc compaction severs evidence bindings, measured per-arc token economics, the safe-boundary pause protocol (a capacity pause must show its arithmetic), and an unimplemented hook-based automation option.
 - [`test-suite-value-governance.md`](briefs/test-suite-value-governance.md) — treats the test suite as an attributable proof estate: a recipient-local whole-estate reset with physical consolidation/deletion, 20% family/leaf ceilings, 80% historical and held-out effectiveness floors, direct critical-risk proofs, zero-net-growth, governed fast lanes, and full retained close gates.
 
+- [`mini-method.md`](briefs/mini-method.md) — the minimal subset for small development or knowledge-work projects: a verbatim fenced `CLAUDE.md` that idempotently provisions a git repo, `.gitignore`, `briefs/`, `policies/`, `docs/`, and `bin/` with per-directory catalogs and a short rule set; commits its scaffold and never pushes; graduates to the full methodology through `teach`.
+
 ## Policies catalog
 
 Every file under `policies/`, indexed so agents see the catalog without an extra Read. A policy is a non-negotiable rule every phase honors.

@@ -315,7 +315,8 @@ the copy was performed. It is not exhaustive and does not need to be.
   primitive), `briefs/harness-self-improvement.md` (the two-tier improvement
   flywheel the lessons ledger, `sweep`, and the transfer skills implement),
   `briefs/session-context-compaction.md` (managing harness compaction during long
-  orchestration runs), and `briefs/test-suite-value-governance.md` (the
+  orchestration runs), `briefs/mini-method.md` (the minimal subset the derived
+  project can hand to its own small sub-projects), and `briefs/test-suite-value-governance.md` (the
   universal proof-estate and fast-feedback design)
 - `.githooks/pre-push` (optional hook; it reuses only an exact verified full-gate
   receipt and otherwise delegates to the canonical gate; inert until explicitly
