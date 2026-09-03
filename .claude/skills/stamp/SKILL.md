@@ -36,7 +36,7 @@ Before changing anything, verify:
 1. **Source repo invariants.** This repo (the template) is itself in a healthy state. Specifically:
    - `readlink AGENTS.md` returns `CLAUDE.md`.
    - `.claude/agents/` contains exactly `phase-planner.md`, `plan-reviewer.md`, `phase-coder.md`, `code-critic.md`.
-   - Each universal skill in `{kickoff, methodology, rule-one, learn, teach, roles, sweep, sweep-planning, sweep-coding, demo, treatise, plain}` has a `.claude/skills/<name>/SKILL.md`.
+   - Each universal skill in `{kickoff, methodology, rule-one, learn, teach, roles, sweep, sweep-planning, sweep-coding, demo, treatise, plain, ask}` has a `.claude/skills/<name>/SKILL.md`.
    - `.claude/settings.json` exists and sets `worktree.bgIsolation` to `none`.
    - `bin/kickoff-config` exists and is executable.
    - `bin/kickoff-tree-id` and `bin/kickoff-evidence` exist and are executable.
@@ -152,7 +152,7 @@ The skill needs a small set of facts to customize the new project. When a seed b
 - Description mentions "Swift", "iOS" → `primary_language: swift`.
 - Description mentions "Kotlin", "Android" → `primary_language: kotlin`.
 
-**Ask the user only the questions inference can't answer.** Use `AskUserQuestion` with up to four questions per round. Common patterns:
+**Ask the user only the questions inference can't answer.** Use `AskUserQuestion` with up to four questions per round, formulated as [`ask`](../ask/SKILL.md) prescribes (recommended option first, 2–4 concrete options, one concept per question). Common patterns:
 
 - If `<description>` is empty or vague: ask for a one-line description first.
 - If language can't be inferred: ask for primary language with the common choices.
@@ -203,10 +203,11 @@ Follow [`briefs/agentic-bootstrap.md` §3](../../../briefs/agentic-bootstrap.md)
   .claude/skills/demo/
   .claude/skills/treatise/
   .claude/skills/plain/
+  .claude/skills/ask/
   .claude/agents/
   .codex/agents/
   .agents/skills/         # (kickoff, methodology, rule-one, learn, teach, roles, sweep, sweep-planning, sweep-coding,
-                          #  demo, treatise, plain
+                          #  demo, treatise, plain, ask
                           #  added as directory symlinks in Step 2)
   lessons/                # (empty ledger — .gitkeep only; policies/lessons.md)
   lessons-archived/       # (empty — .gitkeep only)
@@ -290,7 +291,8 @@ the copy was performed. It is not exhaustive and does not need to be.
   `.claude/skills/learn/SKILL.md`,
   `.claude/skills/teach/SKILL.md`, `.claude/skills/roles/SKILL.md`,
   `.claude/skills/sweep/SKILL.md`, `.claude/skills/sweep-planning/SKILL.md`, `.claude/skills/sweep-coding/SKILL.md`, `.claude/skills/demo/SKILL.md`,
-  `.claude/skills/treatise/SKILL.md`, `.claude/skills/plain/SKILL.md`
+  `.claude/skills/treatise/SKILL.md`, `.claude/skills/plain/SKILL.md`,
+  `.claude/skills/ask/SKILL.md`
 - `.claude/settings.json` (an explicitly requested worktree stays available; only
   implicit background worktree isolation is disabled)
 - The four canonical agents and their Codex mirrors:
@@ -428,6 +430,7 @@ ln -s ../../.claude/skills/sweep-coding .agents/skills/sweep-coding
 ln -s ../../.claude/skills/demo        .agents/skills/demo
 ln -s ../../.claude/skills/treatise    .agents/skills/treatise
 ln -s ../../.claude/skills/plain       .agents/skills/plain
+ln -s ../../.claude/skills/ask         .agents/skills/ask
 ```
 
 There is one mirror per canonical skill directory, and `bin/check-harness-parity`
@@ -437,10 +440,11 @@ never copied at all.
 
 Verify each `readlink <dest>/.agents/skills/<name>` returns the expected target and `test -L <dest>/.agents/skills/<name> && test -d <dest>/.agents/skills/<name>` passes before moving on.
 
-The twelve universal skills are all carried over, including ambient
+The thirteen universal skills are all carried over, including ambient
 diagnostic-learning skill `rule-one`, cross-repo `learn` and `teach`, the two
 longitudinal review-loop sweeps, interactive `demo`, publication-gated
-`treatise`, and the operator register `plain`.
+`treatise`, the operator register `plain`, and the operator-invoked decision
+inventory `ask`.
 
 Seed both config sections by running `<dest>/bin/kickoff-config reset all`; this
 preserves data under `extensions` if the destination already has it. The managers
@@ -476,7 +480,7 @@ Author these afresh, using the gathered configuration:
     - `## Project surfaces` — describe the deliverable (path, what language, what the example or seed code is). When `project_isolation` is on, the surface is `project/`; when off, name the sibling deliverable directories.
     - `## Project conventions` — language, tooling, build-gate command shape for this project.
     - `## Model & review venue` — describe `kickoff.yaml` as the human-editable source for separate model/effort fields and execution budgets; `roles` is an optional validated editor; the shipped default gives cross-vendor review. Governed by the two role policies.
-    - `## Project-specific skills` — if the new project carries any skills beyond the universal twelve (`kickoff`, `methodology`, `rule-one`, `learn`, `teach`, `roles`, `sweep`, `sweep-planning`, `sweep-coding`, `demo`, `treatise`, `plain`), list them here. For most fresh projects, this section is empty (or omitted).
+    - `## Project-specific skills` — if the new project carries any skills beyond the universal thirteen (`kickoff`, `methodology`, `rule-one`, `learn`, `teach`, `roles`, `sweep`, `sweep-planning`, `sweep-coding`, `demo`, `treatise`, `plain`, `ask`), list them here. For most fresh projects, this section is empty (or omitted).
   - Preserve the introductory paragraph that explains the two-zone contract; it is informational and lives outside both markers. Adjust only its `stamp`-specific wording: the destination is not a template, so the zones are described as written-for-this-project and carried-from-the-template rather than as things `stamp` does.
 
 - **`<dest>/AGENTS.md`** — symlink to `CLAUDE.md`. Create with `ln -s CLAUDE.md AGENTS.md` in the destination.
@@ -794,7 +798,7 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - `ls <dest>/.claude/skills/rule-one/` contains `SKILL.md`, and
   `<dest>/briefs/rule-one-diagnostic-learning.md` exists.
 - `ls <dest>/.claude/skills/stamp/` does **not** exist (we did not transfer it).
-- For each name in {kickoff, methodology, rule-one, learn, teach, roles, sweep, sweep-planning, sweep-coding, demo, treatise, plain}: `readlink <dest>/.agents/skills/<name>` returns `../../.claude/skills/<name>`, `test -L <dest>/.agents/skills/<name>` and `test -d <dest>/.agents/skills/<name>` both pass, and `<dest>/.agents/skills/<name>/SKILL.md` is reachable through the directory symlink.
+- For each name in {kickoff, methodology, rule-one, learn, teach, roles, sweep, sweep-planning, sweep-coding, demo, treatise, plain, ask}: `readlink <dest>/.agents/skills/<name>` returns `../../.claude/skills/<name>`, `test -L <dest>/.agents/skills/<name>` and `test -d <dest>/.agents/skills/<name>` both pass, and `<dest>/.agents/skills/<name>/SKILL.md` is reachable through the directory symlink.
 - `<dest>/.claude/settings.json` sets `worktree.bgIsolation` to `none`; an explicitly requested worktree remains available.
 - `<dest>/bin/kickoff-config show` runs; `<dest>/bin/README.md` retains its universal entry but **not** the `### check-anonymization.sh` entry.
 - `<dest>/bin/kickoff-tree-id` and `<dest>/bin/kickoff-evidence` are

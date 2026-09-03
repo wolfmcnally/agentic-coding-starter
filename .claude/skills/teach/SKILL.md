@@ -285,7 +285,10 @@ For each proposed addition or update, ask:
 
 - **Operator-register adoption.** `.claude/skills/plain/SKILL.md` and its
   `.agents/skills/plain` directory symlink travel together with the CLAUDE.md
-  convention that every message addressed to the operator follows it.
+  convention that every message addressed to the operator follows it. The
+  operator-invoked `.claude/skills/ask/SKILL.md` and its `.agents/skills/ask`
+  symlink travel the same way, with the CLAUDE.md convention that names the
+  two directions of operator decisions.
   `bin/check-harness-parity` fails closed on a canonical skill with no mirror,
   so a skill copied without its symlink breaks the target's gate.
 
@@ -321,7 +324,7 @@ the write set.
 - **Provenance can flip the classification.** A target file that looks like a specialization (extra sections, project-specific examples) may instead be a naive earlier copy from a *different* donor repo that the target's owner never refined — in which case the source's version *is* a strict improvement and update-in-place is correct. Content alone cannot distinguish the two cases. When a candidate update-in-place is blocked because the target's version *looks* more elaborated, surface it in the plan with both readings explicitly — *"target specialization, preserve"* AND *"earlier copy from another donor, update"* — and let the user disambiguate at approval time. Default to preserve when no provenance signal is available; only update when the user (or a clear repo signal — e.g., a `# Imported verbatim from <other-donor>` header) confirms naive-copy provenance.
 - **Never propose removing a target's custom skill, agent, brief, or policy.** Those are the target's specializations.
 - **Never propose modifying a file the target marks as `⬅️` or `🚧` in its plan.** Active phase work belongs to the target's `kickoff`, not to a teaching pass.
-- **Skill-exclusion list during transfer.** `stamp` and the starter template's `example/` Python project are starter-only — they are never taught from anywhere. The universal set is `kickoff`, `methodology`, `rule-one`, `learn`, `teach`, `roles`, `sweep`, `sweep-planning`, `sweep-coding`, `demo`, `treatise`, and `plain`; if the teaching repo has one and the target lacks it, it may be transferred like any other skill.
+- **Skill-exclusion list during transfer.** `stamp` and the starter template's `example/` Python project are starter-only — they are never taught from anywhere. The universal set is `kickoff`, `methodology`, `rule-one`, `learn`, `teach`, `roles`, `sweep`, `sweep-planning`, `sweep-coding`, `demo`, `treatise`, `plain`, and `ask`; if the teaching repo has one and the target lacks it, it may be transferred like any other skill.
 - **Kickoff configuration is target-owned.** Teach the contract atomically, but never replace existing model choices, effort fields, timeout values, research budgets, comments, extensions, local telemetry/percentiles, or project overrides. Seed defaults only when `kickoff.yaml` is absent.
 - **Honor the target's primary language.** If the target is a Node project, do not propose adding `pyproject.toml` from this template. Adapt commands and references accordingly.
 
@@ -455,7 +458,7 @@ Once approved, apply the approved items to the target. Order:
 3. MODIFY existing target files (smallest diffs first; one logical change per Edit call).
 4. Maintain cross-harness parity for any *newly added or modified* skills and agents — apply the same four-surface contract the parity heals enforce, but to whatever the teach pass just added:
    - **Top-level instructions** — `CLAUDE.md` ↔ `AGENTS.md` symlink. If a fresh `CLAUDE.md` was created in step 2, also create the `AGENTS.md → CLAUDE.md` symlink (the parity-heal pass in step 1 only repairs existing-`CLAUDE.md` mismatches).
-   - **Skills — Codex native skill-discovery surface** — `.claude/skills/<name>/` ↔ `.agents/skills/<name>` (directory symlink). For every universal skill added or modified (kickoff, methodology, rule-one, learn, teach, roles, sweep, sweep-planning, sweep-coding, demo, treatise, plain — *not* `stamp`): `mkdir -p <target>/.agents/skills && ln -s ../../.claude/skills/<name> <target>/.agents/skills/<name>`. Directory-level, not file-level — per [openai/codex#11314](https://github.com/openai/codex/issues/11314).
+   - **Skills — Codex native skill-discovery surface** — `.claude/skills/<name>/` ↔ `.agents/skills/<name>` (directory symlink). For every universal skill added or modified (kickoff, methodology, rule-one, learn, teach, roles, sweep, sweep-planning, sweep-coding, demo, treatise, plain, ask — *not* `stamp`): `mkdir -p <target>/.agents/skills && ln -s ../../.claude/skills/<name> <target>/.agents/skills/<name>`. Directory-level, not file-level — per [openai/codex#11314](https://github.com/openai/codex/issues/11314).
    - **Agent roles** — `.claude/agents/<role>.md` ↔ `.codex/agents/<role>.toml` (thin wrapper TOML). For every agent .md added or modified, generate or refresh the .toml as a thin pointer: a `description` field plus a `developer_instructions` body that just says "Read .claude/agents/<role>.md and follow it."
 5. Update the target's `CLAUDE.md` catalogs (briefs catalog, policies catalog, critical-files map) so every new file is indexed. Add the catalog as a new section when the target lacks it.
 6. If Rule One is approved, transfer or update

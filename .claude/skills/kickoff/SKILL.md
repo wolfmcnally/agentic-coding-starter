@@ -410,8 +410,12 @@ decision to the operator. More material is not evidence of convergence.
 **If `REVISE` and any finding is `blocked-owner`**: do not re-run the
 planner on that finding — it is a question the planner cannot answer. Open an
 operator-input park, put the finding's `required_outcome` to the operator in
-the `plain` register (natively via `AskUserQuestion`; while unattended, the
-parked artifact per the AFK rules), and on the answer record the ruling in the
+the `plain` register, formulated as [`ask`](../ask/SKILL.md) prescribes
+(recommended option first, 2–4 concrete options, one concept per question):
+natively through the harness's structured ask-user control when the operator
+is present, or, while the run is unattended, as a parked artifact plus a
+`user-actions/` item that the operator answers on return. On the answer,
+record the ruling in the
 phase file or the owning brief, transition the finding `blocked-owner → open`
 with the ruling in `disposition`, and re-run the planner with it. Findings that
 are not `blocked-owner` proceed in the same round as below.

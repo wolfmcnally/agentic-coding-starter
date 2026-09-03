@@ -67,7 +67,7 @@ Which model runs each `kickoff` role is set under `role_models` in human-editabl
 
 ## Project-specific skills
 
-In addition to the universal `kickoff`, `methodology`, `rule-one`, `learn`, `teach`, `roles`, `sweep`, `sweep-planning`, `sweep-coding`, `demo`, `treatise`, and `plain` skills (carried into every derived project):
+In addition to the universal `kickoff`, `methodology`, `rule-one`, `learn`, `teach`, `roles`, `sweep`, `sweep-planning`, `sweep-coding`, `demo`, `treatise`, `plain`, and `ask` skills (carried into every derived project):
 
 - **`stamp`** — starter-template-only bootstrapping skill. Stamps out a new project from this repo. Registered for Codex in this template repo only; not carried into derived projects. Source: `.claude/skills/stamp/SKILL.md`; Codex native skill: `.agents/skills/stamp`.
 
@@ -177,6 +177,7 @@ Every file under `policies/`, indexed so agents see the catalog without an extra
   - `demo/SKILL.md` — walks the user through an approved demo protocol one visible action at a time, answering questions without advancing.
   - `treatise/SKILL.md` — builds an audience-specific outward explanation from canonical authority, maintains the brief's editorial record, and enforces the publication gate.
   - `plain/SKILL.md` — the register for addressing the operator: lead with the consequence, carry every detail that would change their answer, leave the mechanism available on request. Followed without invocation whenever the audience is the operator.
+  - `ask/SKILL.md` — operator-invoked only: inventories every open loop in the current work (deferred decisions, forks, acted-on assumptions, owner-only blockers, missing information), puts them to the operator as batched concrete questions with a recommended option first, and records owner-only rulings where the repo tracks them. Never model-triggered, so it cannot block unattended work.
   - (Project-specific skills live here too; see Project Context.)
 - `.claude/agents/` — canonical role definitions invoked by `kickoff`: `phase-planner.md`, `plan-reviewer.md`, `phase-coder.md`, `code-critic.md`. These are the four roles in the methodology's planner → reviewer → coder → critic loop; do not invoke them by hand for full-phase work unless deliberately bypassing orchestration.
 - `.codex/agents/` — Codex CLI mirrors of the four canonical roles (TOML).
@@ -301,6 +302,7 @@ Full contract: [`policies/lessons.md`](policies/lessons.md); design rationale: [
   Code) or `$plain` (Codex) only to correct a message that missed it. The
   register switches at the audience boundary, per message: agent-to-agent
   traffic keeps full fidelity.
+- **Operator decisions have two directions.** Agent-initiated escalations go through the repo's own route — `kickoff`'s operator-input park and the `plan-reviewer`'s `blocked-owner` finding — and, while unattended, park in an artifact for the operator's return. The operator pulls the complete inventory of open loops by typing `/ask` (Claude Code) or `$ask` (Codex); because only the operator can invoke it, [`.claude/skills/ask/SKILL.md`](.claude/skills/ask/SKILL.md) raises the interactive question control directly. Both directions compose in the `plain` register and record owner-only rulings in the governing phase file or brief, with human-only work filed in `user-actions/`.
 - **One executable command per fenced code block** when a code block is meant to be copy-pasted into a shell, so the user can copy individual commands one at a time without breaking on multi-line clipboards.
 - **Toolchain commands belong to the repository.** Use `./bin/setup` for
   provisioning, `./bin/test` for full or focused tests, and `./bin/check` for
@@ -326,6 +328,7 @@ Terms used consistently across briefs, skills, policies, and code. Mismatched us
 - **`demo`.** Universal interactive-evaluation skill. Invoke it as `/demo` in Claude Code or `$demo` in Codex. Runs an already approved `User Demo:` protocol one visible action per turn and preserves the resume point without repairing the product mid-demo.
 - **`treatise`.** Universal outward-explanation skill. Invoke it as `/treatise` in Claude Code or `$treatise` in Codex. Repairs the canonical brief first, renders for a named audience, and requires explicit authority plus a governing disclosure policy before external publication.
 - **`plain`.** Universal operator-register skill. Invoke it as `/plain` in Claude Code or `$plain` in Codex to recompose a message that missed the register; agents follow it unprompted for anything addressed to the operator. Two tests govern it: a detail belongs only if changing it would change the operator's answer, and every sentence must parse without the repo, the session, or the transcript open.
+- **`ask`.** Universal operator-pull skill. Invoke it as `/ask` in Claude Code or `$ask` in Codex, optionally scoped to a topic. Inventories the open loops in the current work, asks only what the agent cannot settle itself, batches the questions through the harness's structured ask-user control (numbered plain text where none is usable), and applies the answers. Operator-invoked only; agent-initiated escalation uses the operator-input park and `blocked-owner` routes instead.
 - **Operator.** The human who owns the project and makes its calls — whoever holds this checkout. Never a named individual in a committed file, and referred to as *they*.
 - **Research authority.** The per-role search/retrieval boundary in `policies/research-authority.md` and `kickoff.yaml`: planner/reviewer search and retrieve; coder/critic retrieve approved authorities and same-host structural neighbors; installed resources are allow-by-default but never presumed present.
 - **Operator-input park.** A phase-level interval during which progress is waiting on a human decision or action. It is measured outside execution traces, reports every span plus an overlap-safe total, and fails closed while any interval remains open.

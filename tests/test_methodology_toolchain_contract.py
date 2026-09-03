@@ -31,6 +31,7 @@ TEACH = _normalized(REPO_ROOT / ".claude" / "skills" / "teach" / "SKILL.md")
 STAMP = _normalized(REPO_ROOT / ".claude" / "skills" / "stamp" / "SKILL.md")
 DEMO = _normalized(REPO_ROOT / ".claude" / "skills" / "demo" / "SKILL.md")
 TREATISE = _normalized(REPO_ROOT / ".claude" / "skills" / "treatise" / "SKILL.md")
+ASK = _normalized(REPO_ROOT / ".claude" / "skills" / "ask" / "SKILL.md")
 RESEARCH_POLICY = _normalized(REPO_ROOT / "policies" / "research-authority.md")
 VERIFICATION_POLICY = _normalized(REPO_ROOT / "policies" / "verification-discipline.md")
 TREATISE_POLICY = _normalized(REPO_ROOT / "policies" / "treatise.md")
@@ -79,6 +80,7 @@ def test_every_universal_skill_propagates_with_its_codex_mirror() -> None:
         item.name for item in canonical_root.iterdir() if item.is_dir() and item.name != "stamp"
     )
     assert "plain" in universal, "the operator register is a universal skill"
+    assert "ask" in universal, "the operator-invoked decision inventory is a universal skill"
     for skill in universal:
         canonical = f".claude/skills/{skill}/SKILL.md"
         mirror = f".agents/skills/{skill}"
@@ -107,6 +109,19 @@ def test_every_universal_skill_propagates_with_its_codex_mirror() -> None:
     assert "Rule One teaching is atomic" in TEACH
     assert "one member absent" in LEARN
     assert "one member absent" in TEACH
+
+    ask_path = ".claude/skills/ask/SKILL.md"
+    assert "name: ask" in ASK
+    assert "disable-model-invocation: true" in ASK, "ask is operator-invoked only"
+    assert "$ARGUMENTS" in ASK
+    assert "unavailable in the current mode" in ASK, "ask needs the mode fallback"
+    for surface in (CLAUDE, KICKOFF, PLAN_REVIEWER, STAMP, TEACH, BOOTSTRAP_BRIEF):
+        assert ask_path in surface or "ask/SKILL.md" in surface, "ask missing from a citing surface"
+    assert "AFK" not in KICKOFF, "kickoff must not cite a machine-global unattended protocol"
+    ask_mirror = REPO_ROOT / ".agents" / "skills" / "ask"
+    assert ask_mirror.is_symlink()
+    assert ask_mirror.readlink().as_posix() == "../../.claude/skills/ask"
+    assert (ask_mirror / "SKILL.md").is_file()
 
     mirror = REPO_ROOT / ".agents" / "skills" / "rule-one"
     assert mirror.is_symlink()

@@ -142,6 +142,7 @@ These are the other commands most users will reach for:
 | `/learn` | Assesses another repository for practices worth adopting here. |
 | `/teach` | Assesses which practices from this repository should move to another one. |
 | `/sweep` | Reviews accumulated policies, briefs, skills, and lessons for maintenance. |
+| `/ask` | Collects every open decision the agent is holding and asks you all of them at once, with a recommended answer first. |
 
 `learn`, `teach`, and `sweep` present their judgments and wait for approval before changing the affected repository. You normally do not invoke Rule One yourself. When work fails or an assumption is corrected, the agent diagnoses what happened and saves any reusable lesson.
 
