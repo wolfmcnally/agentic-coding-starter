@@ -304,13 +304,7 @@ then close both truthfully and record their ids with
 and create no wait. Every retry, resume, rescue, reexecution, or fallback gets
 a new immutable registration and attempt number.
 
-Every dispatch also records the candidate it opened against and the candidate
-it returned at, and the pair **brackets the child's run**, so a tree that moved
-under an in-flight role is visible at the seam instead of surfacing later as a
-wholesale refused batch, and `accept-candidate-drift` — the only sanctioned
-recovery for that movement (`policies/orchestration-evidence.md § Candidate
-drift under an in-flight dispatch`) — has both sides to classify. **For an
-external role you do nothing:** `$WATCHER_TOOL` captures the open candidate
+Every dispatch records product identity before and after the role. Bookkeeping alone does not move it; an active change requires review against the current product candidate, with no drift-acceptance exception. Declared-authority and explicitly reviewed-bookkeeping checks remain binding under `policies/orchestration-evidence.md`. **For an external role you do nothing:** `$WATCHER_TOOL` captures the open candidate
 immediately before it spawns the child and records the row only after the
 child terminates. **For a native role**, and only then, run
 `record-role-dispatch --state opened` (with `--dispatch-candidate` set to the

@@ -25,6 +25,8 @@ You will receive via your task prompt:
 - On revision rounds, the prior finding ledger and deterministic code-revision
   packet.
 
+Candidate ids supplied by the orchestrator bind the product identity under `candidate-partition.yaml`. Bookkeeping exclusion does not waive declared-authority or explicitly reviewed-file protection. The full handoff gate remains mandatory; see `policies/orchestration-evidence.md`.
+
 ## Procedure
 
 ### 1. Read the authorities

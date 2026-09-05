@@ -150,6 +150,8 @@ def test_every_gate_required_executable_propagates() -> None:
             assert f"bin/{name}" in document, f"bin/{name} missing from a transfer document"
 
     control_plane = (
+        "candidate-partition.yaml",
+        "bin/check-candidate-partition",
         "briefs/deterministic-orchestration-control-plane.md",
         "policies/orchestration-control-plane.md",
         "lib/agentic_starter/candidate_boundaries.py",

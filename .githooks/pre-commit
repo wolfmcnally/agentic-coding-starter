@@ -8,4 +8,5 @@ cd "$repo_root"
 ./bin/check-harness-parity
 ./bin/check-toolchain-callers
 ./bin/check-log --staged
+./bin/check-candidate-partition --staged
 ./bin/test-governance validate

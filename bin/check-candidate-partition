@@ -1,0 +1,56 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Validate tracked paths using the live or staged candidate declaration."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+from agentic_starter.candidate_boundaries import (  # noqa: E402
+    FILENAME,
+    BoundaryError,
+    load_partition,
+    parse_partition,
+)
+
+
+def git(root: Path, *arguments: str) -> bytes:
+    return subprocess.check_output(["git", "-C", str(root), *arguments], stderr=subprocess.PIPE)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument(
+        "--staged", action="store_true", help="use index paths and declaration bytes"
+    )
+    args = parser.parse_args()
+    try:
+        root = args.root.resolve()
+        tracked = [
+            os.fsdecode(p) for p in git(root, "ls-files", "--cached", "-z").split(b"\0") if p
+        ]
+        if args.staged:
+            if FILENAME not in tracked:
+                raise BoundaryError("candidate-partition.yaml is absent from the index")
+            partition = parse_partition(git(root, "show", f":{FILENAME}"))
+        else:
+            partition = load_partition(root)
+        partition.require_tracked(tracked)
+    except (BoundaryError, OSError, subprocess.CalledProcessError) as exc:
+        print(f"PARTITION REFUSED: {exc}", file=sys.stderr)
+        return 1
+    print(f"PARTITION PASS: {len(tracked)} tracked paths; declaration {partition.sha256}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

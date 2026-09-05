@@ -26,9 +26,10 @@ else:
 sys.path.insert(0, str(LIB_ROOT))
 
 from agentic_starter.candidate_boundaries import (  # noqa: E402
+    FILENAME,
     BoundaryError,
-    load_inert_paths,
-    path_is_inert,
+    Partition,
+    load_partition,
 )
 
 
@@ -65,13 +66,28 @@ def repository_root(start: Path) -> Path:
     return Path(os.fsdecode(output).strip()).resolve()
 
 
-def candidate_paths(root: Path, *, product: bool = False) -> list[Path]:
-    tracked = git(root, "ls-files", "--cached", "-z").split(b"\0")
-    untracked = git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
-    paths = {Path(os.fsdecode(raw)) for raw in (*tracked, *untracked) if raw}
-    if product:
-        inert = load_inert_paths(root)
-        paths = {path for path in paths if not path_is_inert(path.as_posix(), inert)}
+def candidate_paths(root: Path, *, partition: Partition | None = None) -> list[Path]:
+    tracked = {
+        Path(os.fsdecode(p)) for p in git(root, "ls-files", "--cached", "-z").split(b"\0") if p
+    }
+    untracked = {
+        Path(os.fsdecode(p))
+        for p in git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
+        if p
+    }
+    paths = tracked | untracked
+    if partition is not None:
+        partition.require_tracked([p.as_posix() for p in tracked])
+        unknown = sorted(
+            p.as_posix() for p in untracked if partition.classify(p.as_posix()) is None
+        )
+        if unknown:
+            print(
+                "kickoff-tree-id: unclassified untracked paths retained as active: "
+                + ", ".join(unknown),
+                file=sys.stderr,
+            )
+        paths = {p for p in paths if partition.classify(p.as_posix()) != "bookkeeping"}
     return sorted(paths, key=lambda item: os.fsencode(item.as_posix()))
 
 
@@ -106,7 +122,8 @@ def mode_and_content(path: Path, root: Path) -> tuple[str, bytes]:
 def candidate_manifest(root: Path, *, product: bool = False) -> dict[str, Any]:
     digest = hashlib.sha256(NAMESPACE)
     entries: list[dict[str, str]] = []
-    for relative in candidate_paths(root, product=product):
+    partition = load_partition(root) if product else None
+    for relative in candidate_paths(root, partition=partition):
         mode, content = mode_and_content(root / relative, root)
         path_bytes = os.fsencode(relative.as_posix())
         content_hash = hashlib.sha256(content).hexdigest()
@@ -121,12 +138,25 @@ def candidate_manifest(root: Path, *, product: bool = False) -> dict[str, Any]:
                 "content_sha256": content_hash,
             }
         )
-    return {
+    manifest = {
         "schema_version": 1,
         "candidate_id": digest.hexdigest(),
         "path_count": len(entries),
         "entries": entries,
     }
+
+    if partition is not None:
+        declaration = next((entry for entry in entries if entry["path"] == FILENAME), None)
+        if declaration is None or declaration["mode"] not in {"100644", "100755"}:
+            raise BoundaryError("candidate declaration must be a regular file")
+        # Require the parsed declaration to be the exact bytes included in the hash.
+        if (
+            partition.sha256 != declaration["content_sha256"]
+            or load_partition(root).sha256 != partition.sha256
+        ):
+            raise BoundaryError("candidate declaration changed during classification")
+        manifest["partition_sha256"] = partition.sha256
+    return manifest
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -147,7 +177,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--product",
         action="store_true",
-        help="exclude only the policy-owned orchestration-bookkeeping boundary",
+        help="use the declared active/bookkeeping boundary",
     )
     return parser
 

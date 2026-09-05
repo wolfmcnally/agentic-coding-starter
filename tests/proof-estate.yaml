@@ -377,6 +377,9 @@ families:
   selectors:
   - tests/test_kickoff_tree_id.py
   source_paths: &id014
+  - candidate-partition.yaml
+  - bin/check-candidate-partition
+  - lib/agentic_starter/candidate_boundaries.py
   - bin/kickoff-tree-id
   - tests/test_kickoff_tree_id.py
   covers: *id014
@@ -1082,3 +1085,45 @@ families:
   duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
+
+- id: gate-policy-candidate-partition
+  kind: gate
+  selectors:
+  - policy-candidate-partition
+  source_paths:
+  - bin/check
+  covers:
+  - bin/check
+  contract: Every tracked path has an explicit candidate classification and the declaration remains active.
+  risk_class: lifecycle-custody
+  oracle: The live gate or staged hook refuses an absent, invalid, or incomplete declaration.
+  admission: A post-reset retirement funds the new lifecycle wiring.
+  nearest_overlap: Behavioral identity tests prove matching; this proof establishes lifecycle enforcement.
+  historical_evidence: []
+  mutation_evidence: []
+  tier: full
+  duration_seconds: 0.0
+  flake_rate: 0.0
+  replacement_lineage:
+  - pytest:tests/test_kickoff_evidence.py::test_a_proven_disjoint_drift_is_accepted_and_recorded
+
+- id: hook-candidate-partition
+  kind: hook
+  selectors:
+  - hook:.githooks/pre-commit:./bin/check-candidate-partition --staged
+  source_paths:
+  - .githooks/pre-commit
+  covers:
+  - .githooks/pre-commit
+  contract: Every tracked path has an explicit candidate classification and the declaration remains active.
+  risk_class: lifecycle-custody
+  oracle: The live gate or staged hook refuses an absent, invalid, or incomplete declaration.
+  admission: A post-reset retirement funds the new lifecycle wiring.
+  nearest_overlap: Behavioral identity tests prove matching; this proof establishes lifecycle enforcement.
+  historical_evidence: []
+  mutation_evidence: []
+  tier: full
+  duration_seconds: 0.0
+  flake_rate: 0.0
+  replacement_lineage:
+  - pytest:tests/test_kickoff_evidence.py::test_init_creates_complete_run_scoped_evidence

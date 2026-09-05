@@ -74,6 +74,14 @@ may lower a budget; widening it is a deliberate project decision. The runtime
 must render the resolved authority and budget into every role dispatch so the
 same contract follows cross-harness execution.
 
+## Check consequential facts for freshness
+
+Before planning, identify potentially changing facts whose reversal could invalidate the plan: installed CLI behavior, API contracts, platform defaults, and dependency behavior. Consult existing dated local evidence first, and verify against the authority for the version actually targeted when the fact's age and volatility warrant it. An inability to name a recent dated development is a reason to investigate, not a measurement of correctness; confident recall is not evidence of freshness.
+
+Record the consequential fact, source, and evidence dates concisely in the existing Architecture Decisions section or owning brief. Keep the current query budget and `docs/` pinning contract. Do not add a confidence table or research stable facts merely to populate a section. When the authority is an installed command a read-only role cannot execute, name the exact probe for the orchestrator instead of asserting its result.
+
+The plan reviewer independently challenges assumptions whose staleness could change the design; it may search beyond the planner's bibliography within its role budget. An insufficiency advisory states the unanswered question, the sources consulted, and what evidence would settle it. The planner emits durable brief content and its intended path; the orchestrator lands it outside the read-only dispatch and recomputes the candidate before the next role.
+
 ## Evidence and freshness
 
 Research that survives the run names its source and distinguishes the date the

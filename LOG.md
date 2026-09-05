@@ -1148,3 +1148,20 @@ Items absorbed: 1, by tier T1=1/T2=0/T3=0/T4=0
 Stale-in-light-of-learning migrations: 11 AUTO; 0 DECIDE; 0 DEFER
 Lessons: 0 from the donor ledger; 0 return-path (source: learn)
 Files touched: 15
+
+## 2026-09-04 20:01 — LEARN
+
+Donor: Donor A @ <sha withheld>
+Items absorbed: 4, by tier T1=4/T2=0/T3=0/T4=0
+Donor lessons harvested: 1 absorbed as a direct rule; 0 copied into the ledger.
+Destination findings: 1 assessment candidate; 1 application-found recurrence on an existing codified lesson.
+Stale-in-light-of-learning: the approved candidate-boundary consumers, gate and hook inventories, test fixtures, instructions, catalogs, transfer contracts, and proof reports migrated together; 0 unresolved DECIDE items. Model-specific prompting changes remain deferred to the separate research assessment.
+Files touched: 45
+
+Approved focused research freshness in existing plan sections, dependent-edit searches before finalizing a plan, reuse of existing proof before adding a test or guard, and one root active/bookkeeping declaration. Unknown tracked paths refuse; unknown nonignored untracked paths stay active. Review identity excludes only declared bookkeeping, while full-tree gate and delivery custody remain intact. Removed the special drift-acceptance mechanism; declared authority and explicitly reviewed bookkeeping remain independently protected. The bounded newline repair retains its original three-path scope.
+
+The new gate and staged hook were exercised with a real refusal in an isolated fixture. Two overlapping evidence-test entries were physically consolidated into the retained change-manifest proof, preserving their assertions and funding the two lifecycle admissions. The suite remains at 108 families and 126 leaves. The unchanged local effectiveness corpus detects 11 of 12 historical defects and 12 of 12 held-out mutations. Focused behavioral, toolchain, transfer, receipt, lint, format, and policy checks passed; the authoritative full gate runs against this complete logged candidate before delivery.
+
+Lessons: [smoky-jackrabbit](lessons/smoky-jackrabbit.md) records the assessment's omitted configuration dependency; [macho-collie](lessons-archived/macho-collie.md) records the application recurrence involving independent gate and hook fixture inventories. No new rule was derived from these destination findings. The Rule One diagnostic brief and Codex pointer wrappers remain compatible without edits. Donor-specific operational settings, private evidence, proof judgments, and domain code were not transferred; the donor remained read-only.
+
+Final-gate correction: the first full run exposed a stale per-kind test inventory assertion. It now names 85 behavioral families and 103 behavioral leaves, plus 23 gate/hook proofs, preserving the 108-family and 126-leaf totals. The full gate is rerun against this corrected uncommitted close per the handoff rule.

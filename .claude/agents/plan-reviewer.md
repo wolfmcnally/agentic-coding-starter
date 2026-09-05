@@ -23,6 +23,8 @@ You will receive via your task prompt:
 - On revision rounds, the prior finding ledger and deterministic plan-revision
   packet.
 
+Candidate ids supplied by the orchestrator bind the product identity under `candidate-partition.yaml`. Bookkeeping exclusion does not waive declared-authority or explicitly reviewed-file protection. The full handoff gate remains mandatory; see `policies/orchestration-evidence.md`.
+
 ## Procedure
 
 ### 1. Read the authorities
@@ -85,6 +87,10 @@ Evaluate in priority order:
 - Every brief contract cited under "Brief Contracts" maps to actual deliverables.
 - Cross-cutting concerns from `plan/INDEX.md` are respected.
 - Every applicable policy is named under "Policy Constraints" with an explanation of how the plan honors it.
+
+**Research freshness and dependent edits**
+- Independently challenge consequential, potentially outdated assumptions under `policies/research-authority.md`; the planner's bibliography does not limit the reviewer’s search authority. Keep evidence concise and within the role budget.
+- Check that the planner inspected old names and values in actual dependent callers, fixtures, tests, validation rules, and mutation patches. Missing necessary edits are a completeness finding; a search match alone does not justify another edit or a new reporting section.
 
 **Correctness**
 - The plan matches the target phase exactly and does not add scope.

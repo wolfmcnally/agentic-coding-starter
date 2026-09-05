@@ -36,48 +36,17 @@ lane-independent, and the final candidate-bound gate under
 
 ## Candidate identity
 
-`./bin/python bin/kickoff-tree-id` is the sole candidate-identity implementation. It hashes
-tracked content regardless of staging, tracked deletions, normalized modes,
-symlink targets, and nonignored untracked files in bytewise path order.
-Ignored runtime state, `.gates/`, and nested repositories do not enter the
-candidate. A clean submodule
-contributes its checked-out commit; a dirty submodule fails closed. Staging
-alone does not change identity.
+`./bin/python bin/kickoff-tree-id` hashes the complete tracked and nonignored-untracked tree, including deletions, normalized modes and symlink targets. Staging identical bytes does not change identity; dirty submodules and escaping symlinks refuse. The `--product` form excludes only paths classified bookkeeping by the repository-root `candidate-partition.yaml`.
 
-The evidence plane records two identities from that one implementation. The
-**full-tree candidate** remains authoritative for review handoff, final gates,
-delivery, and commit custody. The **product candidate** excludes only the inert
-bookkeeping vocabulary declared by the policy fence below. It can prove that a
-bounded bookkeeping repair left the implementation unchanged, but it never
-substitutes for the full-tree identity or the independent reviewed-surface and
-declared-authority drift checks.
+The declaration is the sole classification authority. It is itself active and product manifests carry its exact `partition_sha256`. Changing the declaration moves the product identity. The supported YAML subset has `schema: agentic.candidate-partition.v1`, `active:` and `bookkeeping:` block lists of JSON-quoted strings, blank lines, and full-line comments. Patterns are root-anchored; `*` and `?` stay within a path segment, and whole-segment `**` spans segments. Bookkeeping takes precedence regardless of order. Bare root catch-alls, duplicate fields or patterns, unsupported syntax, and self-exclusion refuse.
 
-Every change manifest, finding transition, revision packet, and gate record
-names the candidate it describes. A candidate mismatch is an error, never a
-warning or an assumed continuation.
+Every tracked path must classify. Nonignored untracked paths with no classification remain included as active with an explicit diagnostic; staging them requires classification. `bin/check-candidate-partition` enforces the declaration in the policy gate, and `--staged` reads the complete index and the indexed declaration in the opt-in commit hook. The initial bookkeeping scope preserves root logs, `plan/INDEX.md`, and lesson/user-action ledgers. Briefs, phase definitions, policies, harness instructions, configuration, tests, and code remain active. Each stamped recipient defines its own explicit active inventory; donor classifications never transfer as judgments.
 
-**The candidate is recomputed, never cached.** A run's tree identity changes for
-reasons that have nothing to do with the code under review: `plan/INDEX.md` and
-the top-level `LOG*.md` logs are tracked files, so the marker flip and the START
-block both move it before any role is dispatched. The phase-close harvest and
-the user-action lifecycle move it the same way and for the same kind of reason,
-through `lessons/`, `lessons-archived/`, `user-actions/`, and
-`user-actions-archived/`. Those six surfaces are the orchestrator's own
-bookkeeping candidate-movers, and they are the whole of it.
-`kickoff-evidence current-candidate`
-recomputes it and records it in the run's **lineage**, and that recomputed id is
-what roles receive. The lineage is the run's own history — seeded at `init` and
-extended wherever the tool observes a candidate — not a list anyone maintains.
+Reviews, dispatch pairs, finding introduction/resolution, revision packets, and gate requests bind the product candidate. Gate artifacts retain full-tree before/after identities as well as product identities; full-tree mutation during a gate fails. Handoff, commit custody, and push receipts cover the complete tree and the selected runtime. Neither full phase-close gate is omitted.
 
-A **new** finding's `introduced_in` may name any candidate in that lineage, not
-only the current head. A reviewer that stamps the id it was given is telling the
-truth; rejecting it discards correct work over the orchestrator's bookkeeping,
-which is exactly what happened to a seven-finding plan review. The set stays
-closed: an id the run never observed is still refused, because a finding bound
-to a tree nobody saw is bound to nothing. A `resolved_in` still requires the
-current candidate — resolution is a claim about the tree as it stands now — with
-one recorded exception, under *Candidate drift under an in-flight dispatch*
-below.
+`current-candidate` recomputes and records product identity in the run's lineage. A new finding's `introduced_in` may name any observed lineage candidate. `resolved_in` must name the current product candidate, with no drift exception. An unobserved id, active change, or stale resolution stamp refuses. Bookkeeping-only changes need no special acceptance record.
+
+Path classification is a proxy for relevance, not a claim that a file can never matter. Declared-authority checks remain independent. Full snapshots also protect bookkeeping explicitly named in changed files, findings, or declared authorities: a later change refuses until it is captured and reviewed again. A bookkeeping match never grants general repair or write authority.
 
 ## Evidence records
 
@@ -436,153 +405,11 @@ stated so neither reads as an oversight:
 
 ## Candidate drift under an in-flight dispatch
 
-`kickoff-tree-id` hashes nonignored untracked files, so **any** write by **any**
-session moves the candidate. A role dispatched against candidate A returns
-findings honestly stamped A, `ingest-findings` binds to the current candidate B,
-and the whole batch is refused. A shared working tree is stricter for
-tree-hashed evidence than for staging: one stray write invalidates an entire
-review.
+Dispatch-open and terminal amendments record the product candidates bracketing the role. The external watcher captures immediately before launch; a native dispatch passes the freshly computed id to `record-role-dispatch --state opened` before launch and records the terminal amendment only after the role returns. Open attempts remain visibly incomplete when no terminal amendment arrives. Capture failure is recorded as unavailable evidence, never as proof that the product held still.
 
-**The freeze convention.** While a role dispatch is in flight, the repository
-tree belongs to one writer. Announce dispatch-open and dispatch-return; queue
-other sessions' writes for the gaps, or hand them to the active writer to land
-at a candidate boundary. "Harmless" is not a property of an edit — it is a
-property of the timing. Gitignored runtime state is structurally invisible to
-the candidate: the freeze covers nonignored paths only.
+Every observed product manifest is stored write-once at `candidates/<candidate_id>.json`. An active change requires a review against the current product candidate. Do not rewrite a finding's resolution stamp to pretend the reviewer saw different bytes. Ordinary bookkeeping no longer moves that identity, so there is no drift-acceptance command, exception ledger, or relaxed resolution vocabulary.
 
-**The convention is now observed rather than merely stated.** Every folded
-dispatch carries both the candidate it opened against and the candidate it
-returned at, and **the pair brackets the child's run**: a dispatch whose two
-candidates differ moved under the role, and — this is the half worth stating,
-because it is the one an operator will rely on — a dispatch whose two
-candidates are equal really did not move.
-
-That converse is a property of *when* each observation is taken, not of whether
-both are recorded, and it is easy to ship a version where only the second is
-true. The open side is captured **by whoever is closest to the child**: for an
-external role — which under the shipped pins is every reviewer role —
-`kickoff-config watch` calls the run's pinned `current-candidate` immediately
-before it spawns the child, later and therefore truer than any id the
-orchestrator could hand down. The watcher appends that opening before spawning
-the child. The return side is recomputed by the terminal `record-role-dispatch`
-amendment **after the child has terminated**. Writing both observations at open
-would carry two dispatch-open candidates, and then a concurrent write during
-the role's run — the case this whole mechanism exists for — would leave them
-equal and earn a "did not move the candidate" refusal that is simply false.
-
-A native dispatch has no watcher, so there the orchestrator passes
-`--dispatch-candidate` itself, naming a candidate that must already be in the
-run's lineage, appends `--state opened` before launch, and appends the terminal
-amendment once the role has returned. A dispatch that records no open candidate
-is not refused, but no drift recovery is available for it: the recovery below
-needs both sides, and an unrecorded one is not reconstructible afterwards. A
-failed candidate capture is recorded as a telemetry incompleteness rather than
-killing the dispatch, and costs exactly that recovery; failure to append the
-opening itself refuses launch.
-
-**The manifest store.** Only two manifests were ever persisted per run
-(`candidate.json`, `reviewed-candidate.json`), both overwritten in place, and
-`lineage.jsonl` carries ids only — so at the moment a batch was refused, the
-manifest the role had been dispatched against was already gone and the drift was
-unclassifiable. Every candidate the tool observes is therefore also written to
-`<run>/candidates/<candidate_id>.json`, content-addressed and **write-once**: a
-manifest whose name is its own digest cannot legitimately change. A
-classification whose manifests are not both present in that store **refuses**;
-it never assumes disjointness.
-
-**The repair is not falsification.** Rewriting `resolved_in` to the ingesting
-candidate records that a reviewer verified a tree it never saw, and
-hand-reconstructing the reviewed tree has been tried upstream and failed to
-reproduce the candidate byte-exactly. The sound recoveries are to re-run the
-review against the current candidate, or to accept the mismatch **only** with a
-recorded, proven-disjoint drift classification.
-
-### Three independent acceptance checks
-
-`accept-candidate-drift` classifies the paths that changed between a dispatch's
-two candidates, recomputed from the two stored manifests. Acceptance requires
-**all three** of the following, and each is independently capable of refusing a
-drift the other two accept:
-
-1. **Partition** — every drifted path lies in the declared inert set below.
-2. **Reviewed surface** — no drifted path appears in `change.json`'s
-   `changed_files`, nor in any ledger finding's `affected_paths`.
-3. **Authority** — no drifted path is a declared authority in `authority.json`.
-
-The third is not implied by the first: `plan/` splits. `plan/INDEX.md` is inert
-bookkeeping and sits in the partition, while `plan/phase-N.md` is the review's
-own specification — and `plan/INDEX.md` is itself routinely a *declared
-authority*, so the authority check is what stops an inert-partition path from
-being waved through when the review was bound to its content.
-
-Any check failing, **or any path the classifier cannot place**, fails closed. A
-false refusal costs one re-review; a false accept records a review of a tree
-nobody read.
-
-### The partition vocabulary
-
-A path partition is a stand-in for "could this drift have changed what the
-review means." Its dangerous direction is the false accept — a path in the inert
-set that actually mattered — which is precisely why checks 2 and 3 exist and are
-independent. The vocabulary is deliberately tiny: only the surfaces this
-document already names as the orchestrator's own bookkeeping candidate-movers.
-Everything unlisted fails closed. This block is the single source of truth and
-is parsed by `bin/kickoff-evidence`; it is not restated in code.
-
-```yaml
-# kickoff-evidence drift partitions
-inert:
-  - LOG*.md
-  - EXECUTION_LOG.jsonl
-  - plan/INDEX.md
-  - lessons/
-  - lessons-archived/
-  - user-actions/
-  - user-actions-archived/
-```
-
-An entry ending in `/` is a directory prefix; any other entry is a single
-path matched component by component, so `*` never crosses a `/` and `LOG*.md`
-names only root-level logs, never a nested file with the same basename. The
-list is read from this file at classification time and again at every
-`validate`, so a record is never accepted on a vocabulary that has since been
-withdrawn.
-
-### The record
-
-`accept-candidate-drift` appends to the run's append-only
-`<run>/candidate-drift.jsonl`: the dispatch it describes, both candidate ids,
-the exact drifted paths, and a mandatory nonempty `cause`. Neither candidate nor
-the path list is an operator input — all three are read from the dispatch row and
-recomputed from the stored manifests, which is what makes the record a
-measurement rather than an assertion. A duplicate `(operation, attempt)`
-refuses, as the telemetry ledger does.
-
-The verb enforces every check its reader will apply, because the reader's
-refusal has no undo: the dispatch must exist, be accepted, name both candidates,
-and the two must actually differ. `validate` then **re-derives** the drifted-path
-set from the two stored manifests and re-runs all three checks on every run;
-a record whose paths no longer recompute, or whose classification no longer
-holds, refuses. Accepted drift is published in both `timing-summary` formats —
-markdown section and a `candidate_drift` projection array — because a run that
-accepted a review of a tree the ingest did not hold must say so where anyone
-reading its close will see it.
-
-### What the drift record does *not* relax
-
-- **`resolved_in` only.** With an accepted record for the review pass's own
-  dispatch, and only when the record's return candidate is the candidate the
-  ingest binds to, a finding's `resolved_in` may name that dispatch's open
-  candidate. An ingest with `--no-review-span` has no dispatch to bind to and
-  gets no relaxation.
-- **Gate rows and the final seal are untouched.** `validate --level acceptance`
-  still demands the final candidate-bound gate row with equal
-  before/after/current candidates. A gate whose candidates differ has measured a
-  tree other than the one being accepted, and that is lane- and drift-independent.
-- **`introduced_in`** is already relaxed to the run's lineage and needs nothing.
-- **The batch-level candidate mismatch in `ingest-findings`** stays an
-  orchestrator error, not a content refusal — an ingest bound to the wrong
-  candidate is a bad invocation, not a defect in a review pass.
+The full snapshots used for explicitly reviewed bookkeeping and the declared-authority hashes remain independent checks. Final acceptance requires current product evidence, unchanged full-tree identity during the gate, complete review evidence, and unchanged declared authority. The separate post-bookkeeping handoff gate proves the complete deliverable tree.
 
 ## Protocol recovery
 

@@ -142,6 +142,8 @@ lane broke fourteen `test_check.py` cases across four independent inventories
 **inside one file** — in a session where the same lesson had been re-filed hours
 earlier.
 
+Apply the changed-contract sweep before a plan's file list is finalized. Search for the old literal as well as the new name: a fixture can encode the old value without mentioning the owning policy, and a mutation patch can pin a value in context without mutating it. Follow actual dependent contracts, inspect every relevant match, and repeat the affected search after a requirement changes in review. Use the plan's existing File Changes and Intentionally unchanged neighbors sections; the obligation is complete work, not a separate inventory report.
+
 ## Govern the proof estate, not a test-count proxy
 
 A file count, test-name count, duration, age, or coverage percentage is a proxy

@@ -258,6 +258,12 @@ coverage, determinism, diagnostics, failure propagation, candidate binding,
 or either close gate. An expensive operation with no obvious safe
 leverage may simply be reported and run.
 
+## Candidate declaration gate
+
+`bin/check-candidate-partition` is a required policy-gate member. It refuses malformed declarations and unclassified tracked files. The opt-in pre-commit hook invokes its `--staged` form against indexed declaration bytes and the complete indexed path inventory. Working-tree edits cannot make an invalid index pass. The declaration and checker propagate with the evidence tools, their shared boundary module, fixtures, and behavioral tests.
+
+Bookkeeping classification preserves product review identity; it does not authorize skipping either full close gate or reusing a full-gate receipt across full-tree or runtime changes. Format checks still cover the complete candidate, including nonignored untracked files.
+
 ## Full-gate receipt reuse
 
 Both close gates run: one against the approved implementation candidate and one

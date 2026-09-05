@@ -140,6 +140,7 @@ esac
         ("check-shell-syntax", "shellsyntax"),
         ("new-name", "newname"),
         ("check-log", "log"),
+        ("check-candidate-partition", "partition"),
         ("check-log-prefix", "logprefix"),
         ("check-log-monotonic", "logmonotonic"),
         ("kickoff-command-zero", "commandzero"),
@@ -198,6 +199,7 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
             "../bin/check-plan-concreteness ../bin/check-plan-delivery ../bin/review-verdicts "
             "../bin/check-log-prefix ../bin/check-log-monotonic ../bin/kickoff-command-zero "
             "../bin/log-append ../bin/log-relocate ../bin/normalize-final-newline "
+            "../bin/check-candidate-partition "
             "../tests"
         ),
         (
@@ -211,6 +213,7 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
             "../bin/check-plan-concreteness ../bin/check-plan-delivery ../bin/review-verdicts "
             "../bin/check-log-prefix ../bin/check-log-monotonic ../bin/kickoff-command-zero "
             "../bin/log-append ../bin/log-relocate ../bin/normalize-final-newline "
+            "../bin/check-candidate-partition "
             "../tests"
         ),
         (
@@ -231,6 +234,7 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
         f"hooksinstalled cwd={root}",
         f"shellsyntax cwd={root}",
         f"log cwd={root}",
+        f"partition cwd={root}",
         f"governance cwd={root} args=validate",
         f"policy cwd={root}",
     ]

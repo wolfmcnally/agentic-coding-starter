@@ -155,6 +155,8 @@ Then do one of the following:
 Lead with the future action, include enough reason to prevent blind
 application, and preserve the terminology and conventions of the destination.
 
+Before creating a test, hook, lint rule, mutation row, or guard, name the active requirement, how correctness is judged, and the nearest existing enforcement. When the same requirement is proved in the same way, strengthen the existing proof or proof family instead of creating another. Similarity alone does not justify consolidation: preserve independent evidence for distinct failures. Read the local proof inventory, admission criteria, and budget before authoring; a new incident does not by itself establish a new proof family.
+
 Mechanization follows discernment. Use a guard when the environment supports
 one and a settled requirement is mechanically recognizable. A guard can
 enforce a decision or contain a symptom; it does not establish the diagnosis.

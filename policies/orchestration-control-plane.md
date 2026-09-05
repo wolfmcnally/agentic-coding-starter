@@ -46,15 +46,10 @@ focused verification back to the orchestrator when the venue cannot run it.
 
 The evidence plane records both identities:
 
-- **product candidate** — excludes only the inert vocabulary in
-  `policies/orchestration-evidence.md`;
-- **full-tree candidate** — includes the entire tracked and
-  nonignored-untracked repository.
+- **product candidate** — active paths from `candidate-partition.yaml`, plus unclassified nonignored untracked paths until classified;
+- **full-tree candidate** — all tracked and nonignored-untracked paths, including bookkeeping.
 
-Product identity may establish that a bounded bookkeeping repair did not alter
-the implementation. Full-tree identity remains authoritative for review
-handoff, final gates, delivery, and commit custody. Reviewed-surface and
-declared-authority drift checks remain separate and mandatory.
+Review and implementation evidence bind product identity. Full-tree before/after ids prove that a gate did not mutate its input; handoff and delivery receipts cover the entire tree. The declaration itself is active, unclassified tracked paths refuse, and declared-authority and explicitly reviewed-bookkeeping checks remain independent. Classification does not grant write authority. `bin/normalize-final-newline` retains its narrower admitted repair set and also requires the target to classify as bookkeeping.
 
 ## Log construction and custody
 

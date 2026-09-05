@@ -193,25 +193,6 @@ INGEST_JOURNAL_FIELDS = frozenset(
         "actionable_findings",
     }
 )
-# The drift partition vocabulary is SOURCED from the governing policy, never
-# restated here. `policies/orchestration-evidence.md` is the contract, and a
-# second copy in code would be exactly the divergence this arrangement exists
-# to remove.
-DRIFT_PARTITION_BLOCK = re.compile(
-    r"```yaml\s*\n# kickoff-evidence drift partitions\n(.*?)```", re.S
-)
-CANDIDATE_DRIFT_FIELDS = frozenset(
-    {
-        "schema_version",
-        "recorded_at",
-        "operation",
-        "attempt",
-        "dispatch_candidate_id",
-        "return_candidate_id",
-        "drifted_paths",
-        "cause",
-    }
-)
 LEGACY_ROLE_DISPATCH_FIELDS = frozenset(
     {
         "schema_version",
@@ -553,6 +534,17 @@ def validate_candidate_manifest(value: Any) -> None:
         digest.update(encoded)
         digest.update(mode.encode("ascii") + b"\0")
         digest.update(bytes.fromhex(content_hash))
+    if "partition_sha256" in value:
+        declaration = next(
+            (entry for entry in entries if entry["path"] == candidate_boundaries.FILENAME),
+            None,
+        )
+        if (
+            declaration is None
+            or declaration["mode"] not in {"100644", "100755"}
+            or declaration["content_sha256"] != value["partition_sha256"]
+        ):
+            raise EvidenceError("candidate partition digest does not match declaration entry")
     if digest.hexdigest() != value["candidate_id"]:
         raise EvidenceError("candidate manifest identifier does not match its entries")
 
@@ -887,7 +879,7 @@ def command_init(arguments: argparse.Namespace) -> None:
         )
     run_dir.mkdir(parents=True, exist_ok=True)
     tool_bundle = install_tool_bundle(run_dir)
-    candidate = tree_manifest(root)
+    candidate = product_manifest(root)
     product = product_manifest(root)
     shutil.copy2(arguments.preflight_receipt, run_dir / "role-preflight.json")
     authorities = [
@@ -953,6 +945,7 @@ def command_init(arguments: argparse.Namespace) -> None:
             "authorities": authorities,
         },
     )
+    atomic_json(run_dir / "reviewed-tree-candidate.json", tree_manifest(root))
     atomic_json(run_dir / "reviewed-candidate.json", candidate)
     atomic_json(run_dir / "reviewed-product-candidate.json", product)
     atomic_json(
@@ -1018,12 +1011,9 @@ def record_lineage(run_dir: Path, manifest: dict[str, Any], reason: str) -> bool
 
     Returns True when the candidate is new to the lineage.
 
-    The lineage is what makes a finding's `introduced_in` checkable against
-    something other than the head of the tree. A run's candidate changes for
-    reasons that have nothing to do with the code under review — the status
-    marker and the START log block are both tracked files — so "the id the tree
-    has right now" is the wrong question to ask of a reviewer that observed the
-    tree minutes ago.
+    The lineage makes a finding's introduced_in checkable against earlier
+    product candidates. Bookkeeping alone does not advance that lineage;
+    active changes do, and resolutions must bind the current product.
 
     The manifest travels with the id rather than beside it: `lineage.jsonl`
     carries ids only, and an id alone cannot say which paths moved.
@@ -1058,15 +1048,11 @@ def lineage_candidates(run_dir: Path) -> list[str]:
 def command_current_candidate(arguments: argparse.Namespace) -> None:
     """Recompute the candidate now and record it, so nobody caches the old one.
 
-    `init` prints a candidate, and the very next orchestration steps — the
-    `plan/INDEX.md` marker flip and the START log block — change it. An
-    orchestrator that carried the init-time value into a role prompt handed
-    every role a value that was stale by construction, and the reviewer's
-    honestly-stamped findings were then rejected wholesale. Calling this
-    immediately before a dispatch is the mechanical answer.
+    Recompute immediately before dispatch so an active edit cannot leave the
+    role prompt bound to an old product. Bookkeeping preserves this identity.
     """
     run = validate_run_dir(arguments.run_dir)
-    current = tree_manifest(Path(run["repository_root"]))
+    current = product_manifest(Path(run["repository_root"]))
     candidate_id = current["candidate_id"]
     if record_lineage(arguments.run_dir, current, arguments.reason):
         print(
@@ -1673,7 +1659,7 @@ def command_record_role_dispatch(arguments: argparse.Namespace) -> None:
         opened_span = opening.get("intelligence_span_id")
         if opened_span is not None and arguments.intelligence_span_id != opened_span:
             raise EvidenceError("terminal intelligence span does not match its opened row")
-    returned = tree_manifest(Path(run["repository_root"]))
+    returned = product_manifest(Path(run["repository_root"]))
     record_lineage(arguments.run_dir, returned, "dispatch-return")
     record = {
         "schema_version": SCHEMA_VERSION,
@@ -1695,8 +1681,7 @@ def command_record_role_dispatch(arguments: argparse.Namespace) -> None:
             "kickoff-evidence: the candidate moved under "
             f"{record['operation']}#{record['attempt']}: "
             f"{dispatch_candidate[:12]}… -> {returned['candidate_id'][:12]}…. "
-            "Re-run the review against the current candidate, or classify the "
-            "drift with `accept-candidate-drift`.",
+            "Re-run the review against the current product candidate.",
             file=sys.stderr,
         )
     print("dispatch-recorded")
@@ -1736,266 +1721,6 @@ def changed_entries(reviewed: dict[str, Any], current: dict[str, Any]) -> list[d
     return changes
 
 
-def load_drift_partitions(root: Path) -> tuple[str, ...]:
-    """Read the shared policy-owned inert-set vocabulary."""
-    try:
-        return candidate_boundaries.load_inert_paths(root)
-    except candidate_boundaries.BoundaryError as exc:
-        raise EvidenceError(str(exc)) from exc
-
-
-def path_is_inert(path: str, entries: tuple[str, ...]) -> bool:
-    return candidate_boundaries.path_is_inert(path, entries)
-
-
-def classify_candidate_drift(
-    run_dir: Path, root: Path, before_id: str, after_id: str
-) -> tuple[list[str], list[str]]:
-    """Every path that moved between two candidates, and every reason to refuse.
-
-    Three checks, each able to refuse a drift the other two accept:
-
-    1. **Partition** — every drifted path lies in the declared inert set.
-    2. **Reviewed surface** — no drifted path is in `change.json`'s
-       `changed_files` or in any ledger finding's `affected_paths`.
-    3. **Authority** — no drifted path is a declared authority.
-
-    All three are evaluated; none short-circuits. A layered rule whose layers
-    are never isolated is one check plus two decorations, and the caller has to
-    be able to see which layer spoke. A path the partition cannot place fails
-    closed, and so does a drift whose manifests are not both in the store.
-    """
-    before = stored_candidate_manifest(run_dir, before_id, label="dispatch-open")
-    after = stored_candidate_manifest(run_dir, after_id, label="dispatch-return")
-    drifted = [item["path"] for item in changed_entries(before, after)]
-    refusals: list[str] = []
-
-    partitions = load_drift_partitions(root)
-    unplaceable = [path for path in drifted if not path_is_inert(path, partitions)]
-    if unplaceable:
-        refusals.append(
-            "drift-partition: "
-            + ", ".join(unplaceable)
-            + " lies outside the inert set declared in "
-            "policies/orchestration-evidence.md"
-        )
-
-    reviewed: dict[str, set[str]] = {}
-    change_path = run_dir / "change.json"
-    if change_path.exists():
-        # Indexed, not `.get(..., [])`: this is an input to a refusal, and a
-        # default of "nothing was reviewed" is the one wrong answer a malformed
-        # change manifest could give here.
-        for item in load_json(change_path)["changed_files"]:
-            reviewed.setdefault(item["path"], set()).add("change.json changed_files")
-    for item in load_json(run_dir / "findings.json")["findings"]:
-        for affected in item["affected_paths"]:
-            reviewed.setdefault(affected, set()).add(item["id"])
-    examined = [path for path in drifted if path in reviewed]
-    if examined:
-        refusals.append(
-            "drift-reviewed-surface: "
-            + ", ".join(f"{path} ({', '.join(sorted(reviewed[path]))})" for path in examined)
-            + " is part of what this review examined"
-        )
-
-    declared = {item["path"] for item in load_json(run_dir / "authority.json")["authorities"]}
-    authorities = [path for path in drifted if path in declared]
-    if authorities:
-        refusals.append(
-            "drift-authority: " + ", ".join(authorities) + " is a declared authority of this review"
-        )
-    return drifted, refusals
-
-
-def load_candidate_drift(run_dir: Path) -> dict[tuple[str, int], dict[str, Any]]:
-    """Accepted candidate-drift records, keyed by the dispatch each describes."""
-    records: dict[tuple[str, int], dict[str, Any]] = {}
-    path = run_dir / "candidate-drift.jsonl"
-    if not path.exists():
-        return records
-    for entry in load_jsonl(path):
-        if (
-            set(entry) != CANDIDATE_DRIFT_FIELDS
-            or entry.get("schema_version") != SCHEMA_VERSION
-            or entry.get("operation") not in ROLE_OPERATIONS
-            or not isinstance(entry.get("attempt"), int)
-            or isinstance(entry["attempt"], bool)
-            or entry["attempt"] < 1
-            or not isinstance(entry.get("cause"), str)
-            or not entry["cause"].strip()
-        ):
-            raise EvidenceError("invalid candidate-drift record")
-        validate_candidate_id(
-            entry.get("dispatch_candidate_id"), "candidate-drift dispatch candidate"
-        )
-        validate_candidate_id(entry.get("return_candidate_id"), "candidate-drift return candidate")
-        validate_relative_paths(entry.get("drifted_paths"), "candidate-drift drifted_paths")
-        key = (entry["operation"], entry["attempt"])
-        if key in records:
-            raise EvidenceError("duplicate candidate-drift record")
-        records[key] = entry
-    return records
-
-
-def drift_record_matches_dispatch(record: dict[str, Any], dispatch: dict[str, Any] | None) -> bool:
-    """Whether a drift record describes exactly this accepted dispatch row.
-
-    Both readers of the ledger apply this — `validate` and the `resolved_in`
-    relaxation in `ingest-findings` — so a poisoned record refuses at the
-    earliest point it is consulted rather than only at the gate.
-    """
-    return (
-        dispatch is not None
-        and bool(dispatch.get("accepted"))
-        and dispatch.get("dispatch_candidate_id") == record["dispatch_candidate_id"]
-        and dispatch.get("return_candidate_id") == record["return_candidate_id"]
-    )
-
-
-def validate_candidate_drift(run_dir: Path, run: dict[str, Any]) -> list[dict[str, Any]]:
-    """Re-derive every accepted drift from the stored manifests and re-classify it.
-
-    Recomputed, never trusted — the analogue of the derived-metrics rule, and
-    for the same reason: without a reader that can contradict it, the ledger
-    would be write-only. Re-*classified* rather than merely re-diffed, because
-    the reviewed surface grows as findings are ingested, so a record that was
-    disjoint this morning can stop being disjoint — and a validator that went on
-    publishing it would be publishing a classification nothing checks.
-    """
-    records = load_candidate_drift(run_dir)
-    if not records:
-        return []
-    dispatches = {
-        (item["operation"], item["attempt"]): item for item in load_role_dispatches(run_dir)
-    }
-    root = Path(run["repository_root"])
-    projected: list[dict[str, Any]] = []
-    for key in sorted(records):
-        record = records[key]
-        if not drift_record_matches_dispatch(record, dispatches.get(key)):
-            raise EvidenceError(
-                "candidate-drift record does not describe an accepted dispatch of "
-                f"this run: {key[0]} attempt {key[1]}"
-            )
-        drifted, refusals = classify_candidate_drift(
-            run_dir,
-            root,
-            record["dispatch_candidate_id"],
-            record["return_candidate_id"],
-        )
-        if drifted != record["drifted_paths"]:
-            raise EvidenceError(
-                f"candidate-drift paths do not recompute for {key[0]} attempt "
-                f"{key[1]}: recorded {record['drifted_paths']}, recomputed "
-                f"{drifted}"
-            )
-        if refusals:
-            # There is deliberately no withdrawal verb: `candidate-drift.jsonl`
-            # is append-only, and a record that can be retracted is a record
-            # that proves nothing. So the refusal names the way out, which is a
-            # fresh evidence run whose review sees the current tree — not an
-            # edit to this ledger.
-            raise EvidenceError(
-                "an accepted candidate drift no longer classifies as disjoint for "
-                f"{key[0]} attempt {key[1]}:\n- "
-                + "\n- ".join(refusals)
-                + "\nA later capture or finding brought the drifted paths inside "
-                "the reviewed surface. The record is append-only and cannot be "
-                "withdrawn: re-run the review against the current candidate in a "
-                "fresh evidence run."
-            )
-        projected.append(
-            {
-                "operation": key[0],
-                "attempt": key[1],
-                "dispatch_candidate_id": record["dispatch_candidate_id"],
-                "return_candidate_id": record["return_candidate_id"],
-                "drifted_paths": record["drifted_paths"],
-                "cause": record["cause"],
-            }
-        )
-    return projected
-
-
-def command_accept_candidate_drift(arguments: argparse.Namespace) -> None:
-    """Record one dispatch's candidate drift as proven disjoint.
-
-    The natural repair for a batch refused on a moved candidate is
-    falsification: rewriting `resolved_in` to the ingesting candidate records
-    that a reviewer verified a tree it never saw, and hand-reconstructing the
-    reviewed tree has been tried and failed to reproduce the candidate
-    byte-exactly. This is the other sound recovery — accept the mismatch only
-    with a recorded, proven-disjoint classification — and the alternative to it
-    is re-running the review, never a looser rule.
-
-    Neither candidate nor the drifted path list is an operator input: both come
-    from the dispatch row and the stored manifests. And every check the reader
-    applies is applied here, because `candidate-drift.jsonl` is append-only and
-    a record accepted against a wrong dispatch would refuse every later
-    `validate` permanently, with hand-editing the ledger as the only way out.
-    """
-    run = validate_run_dir(arguments.run_dir)
-    if not arguments.cause.strip():
-        raise EvidenceError("a candidate-drift record requires its cause")
-    if arguments.attempt < 1:
-        raise EvidenceError("attempt must be a positive integer")
-    dispatches = [
-        item
-        for item in load_role_dispatches(arguments.run_dir)
-        if item.get("operation") == arguments.operation and item.get("attempt") == arguments.attempt
-    ]
-    if len(dispatches) != 1 or not dispatches[0].get("accepted"):
-        raise EvidenceError(
-            "no accepted role dispatch is recorded for "
-            f"{arguments.operation} attempt {arguments.attempt}; a drift record "
-            "describes movement under a dispatch this run actually made"
-        )
-    row = dispatches[0]
-    dispatch_candidate = row.get("dispatch_candidate_id")
-    if dispatch_candidate is None:
-        raise EvidenceError(
-            f"the dispatch for {arguments.operation} attempt {arguments.attempt} "
-            "records no dispatch-open candidate, so the tree the role saw is not "
-            "reconstructible; pass --dispatch-candidate to record-role-dispatch. "
-            "Re-run the review against the current candidate instead."
-        )
-    validate_candidate_id(dispatch_candidate, "recorded dispatch candidate")
-    return_candidate = validate_candidate_id(
-        row.get("return_candidate_id"), "recorded return candidate"
-    )
-    if dispatch_candidate == return_candidate:
-        raise EvidenceError(
-            f"{arguments.operation} attempt {arguments.attempt} did not move the "
-            "candidate, so there is no drift to classify"
-        )
-    if (arguments.operation, arguments.attempt) in load_candidate_drift(arguments.run_dir):
-        raise EvidenceError("duplicate candidate-drift record")
-    drifted, refusals = classify_candidate_drift(
-        arguments.run_dir,
-        Path(run["repository_root"]),
-        dispatch_candidate,
-        return_candidate,
-    )
-    if refusals:
-        raise EvidenceError(
-            f"the drift under {arguments.operation} attempt {arguments.attempt} "
-            "is not proven disjoint:\n- " + "\n- ".join(refusals)
-        )
-    record = {
-        "schema_version": SCHEMA_VERSION,
-        "recorded_at": now(),
-        "operation": arguments.operation,
-        "attempt": arguments.attempt,
-        "dispatch_candidate_id": dispatch_candidate,
-        "return_candidate_id": return_candidate,
-        "drifted_paths": drifted,
-        "cause": arguments.cause.strip(),
-    }
-    append_jsonl(arguments.run_dir / "candidate-drift.jsonl", record)
-    print(f"drift accepted {arguments.operation}#{arguments.attempt}: " + ", ".join(drifted))
-
-
 def authority_drift(run_dir: Path, root: Path) -> list[dict[str, str]]:
     manifest = load_json(run_dir / "authority.json")
     drift: list[dict[str, str]] = []
@@ -2013,12 +1738,40 @@ def authority_drift(run_dir: Path, root: Path) -> list[dict[str, str]]:
     return drift
 
 
+def validate_reviewed_bookkeeping(
+    run_dir: Path, root: Path, affected: list[str] | None = None
+) -> None:
+    """Bookkeeping excluded from identity is not permission to change reviewed bytes."""
+    snapshot_path = run_dir / "change-tree-candidate.json"
+    if not snapshot_path.exists():
+        snapshot_path = run_dir / "reviewed-tree-candidate.json"
+    snapshot = load_json(snapshot_path)
+    validate_candidate_manifest(snapshot)
+    current = tree_manifest(root)
+    changed = {entry["path"] for entry in changed_entries(snapshot, current)}
+    watched = set(affected or [])
+    change_path = run_dir / "change.json"
+    if change_path.exists():
+        watched.update(item["path"] for item in load_json(change_path)["changed_files"])
+    for finding in load_json(run_dir / "findings.json")["findings"]:
+        watched.update(finding["affected_paths"])
+    watched.update(item["path"] for item in load_json(run_dir / "authority.json")["authorities"])
+    partition = candidate_boundaries.load_partition(root)
+    invalid = sorted(
+        path for path in changed & watched if partition.classify(path) == "bookkeeping"
+    )
+    if invalid:
+        raise EvidenceError(
+            "reviewed bookkeeping changed; capture and re-review: " + ", ".join(invalid)
+        )
+
+
 def command_capture_change(arguments: argparse.Namespace) -> None:
     run = validate_run_dir(arguments.run_dir)
     root = Path(run["repository_root"])
     reviewed = load_json(arguments.run_dir / "reviewed-candidate.json")
     validate_candidate_manifest(reviewed)
-    current = tree_manifest(root)
+    current = product_manifest(root)
     reviewed_product = load_json(arguments.run_dir / "reviewed-product-candidate.json")
     validate_candidate_manifest(reviewed_product)
     current_product = product_manifest(root)
@@ -2090,7 +1843,10 @@ def command_capture_change(arguments: argparse.Namespace) -> None:
         "candidate_id": current["candidate_id"],
         "reviewed_product_candidate_id": reviewed_product["candidate_id"],
         "product_candidate_id": current_product["candidate_id"],
-        "changed_files": changed_entries(reviewed, current),
+        "changed_files": changed_entries(
+            load_json(arguments.run_dir / "reviewed-tree-candidate.json"),
+            tree_manifest(root),
+        ),
         "risk_tags": risk_tags,
         "new_risk_tags": new_risk_tags,
         "selected_tests": sorted(set(metadata["selected_tests"])),
@@ -2109,6 +1865,7 @@ def command_capture_change(arguments: argparse.Namespace) -> None:
     }
     atomic_json(arguments.run_dir / "change.json", change)
     atomic_json(arguments.run_dir / "candidate.json", current)
+    atomic_json(arguments.run_dir / "change-tree-candidate.json", tree_manifest(root))
     atomic_json(arguments.run_dir / "product-candidate.json", current_product)
     print(current["candidate_id"])
 
@@ -2116,7 +1873,8 @@ def command_capture_change(arguments: argparse.Namespace) -> None:
 def command_mark_reviewed(arguments: argparse.Namespace) -> None:
     run = validate_run_dir(arguments.run_dir)
     root = Path(run["repository_root"])
-    current = tree_manifest(root)
+    validate_reviewed_bookkeeping(arguments.run_dir, root)
+    current = product_manifest(root)
     current_product = product_manifest(root)
     record_lineage(arguments.run_dir, current, "mark-reviewed")
     if arguments.expected_candidate:
@@ -2125,6 +1883,7 @@ def command_mark_reviewed(arguments: argparse.Namespace) -> None:
             raise EvidenceError(
                 f"candidate mismatch: expected {expected}, found {current['candidate_id']}"
             )
+    atomic_json(arguments.run_dir / "reviewed-tree-candidate.json", tree_manifest(root))
     atomic_json(arguments.run_dir / "reviewed-candidate.json", current)
     atomic_json(arguments.run_dir / "reviewed-product-candidate.json", current_product)
     change_path = arguments.run_dir / "change.json"
@@ -2156,7 +1915,7 @@ def command_capture_plan(arguments: argparse.Namespace) -> None:
     )
     delta_path = arguments.run_dir / "plan-change.patch"
     delta_path.write_text(delta)
-    candidate = tree_manifest(root)
+    candidate = product_manifest(root)
     product = product_manifest(root)
     drift = authority_drift(arguments.run_dir, root)
     manifest = {
@@ -2339,7 +2098,7 @@ def command_ingest_findings(arguments: argparse.Namespace) -> None:
     if arguments.no_review_span is not None and not arguments.no_review_span.strip():
         raise EvidenceError("--no-review-span requires a nonempty reason")
     run = validate_run_dir(arguments.run_dir)
-    current = tree_manifest(Path(run["repository_root"]))
+    current = product_manifest(Path(run["repository_root"]))
     expected_candidate = validate_candidate_id(arguments.candidate, "finding candidate")
     if current["candidate_id"] != expected_candidate:
         raise EvidenceError(
@@ -2392,46 +2151,11 @@ def command_ingest_findings(arguments: argparse.Namespace) -> None:
     }
     reopened = int(ledger.get("reopened_count", 0))
     relationship_errors: list[tuple[str, str]] = []
-    # A new finding's `introduced_in` may name any candidate this run recorded,
-    # not only the current head. The tree's identity changes for reasons that
-    # have nothing to do with the code under review — the status marker and the
-    # START log block are tracked files — so a reviewer that stamped the id it
-    # was actually given is telling the truth, and rejecting it discards correct
-    # work over the orchestrator's bookkeeping. The set stays closed: an id the
-    # run never observed is still refused.
+    # Introductions may refer to any product this run observed. Resolutions
+    # must name the current product; unrelated bookkeeping does not change it.
     accepted_lineage = set(lineage_candidates(arguments.run_dir))
     accepted_lineage.add(expected_candidate)
-    # A `resolved_in` still names the current candidate, with exactly one
-    # recorded exception. When this pass's *own* dispatch carries an accepted,
-    # proven-disjoint drift record whose return candidate is the candidate being
-    # ingested, the candidate the reviewer was dispatched against is admissible
-    # too. Rewriting the stamp instead would record that a reviewer verified a
-    # tree it never saw. An ingest with `--no-review-span` names no dispatch and
-    # gets nothing, and a drift record for some other pass proves nothing here.
     accepted_resolutions = {expected_candidate}
-    admitted_drift: dict[str, Any] | None = None
-    if arguments.review_span_id is not None:
-        drift_records = load_candidate_drift(arguments.run_dir)
-        for item in load_role_dispatches(arguments.run_dir):
-            if item.get("intelligence_span_id") != arguments.review_span_id or not item.get(
-                "accepted"
-            ):
-                continue
-            drift = drift_records.get((item["operation"], item["attempt"]))
-            if drift is None:
-                continue
-            if not drift_record_matches_dispatch(drift, item):
-                # The same check `validate` applies, applied where it is
-                # cheapest to fix. An orchestrator error, not a batch defect:
-                # nothing is wrong with the review pass's findings.
-                raise EvidenceError(
-                    "candidate-drift record does not describe the accepted "
-                    f"dispatch it names: {item['operation']} attempt "
-                    f"{item['attempt']}"
-                )
-            if drift["return_candidate_id"] == expected_candidate:
-                accepted_resolutions.add(drift["dispatch_candidate_id"])
-                admitted_drift = drift
     for finding in incoming:
         if not finding["id"].startswith(prefix):
             relationship_errors.append(
@@ -2531,17 +2255,11 @@ def command_ingest_findings(arguments: argparse.Namespace) -> None:
             },
         )
         raise EvidenceError(detail)
-    if admitted_drift is not None and any(
-        item["resolved_in"] == admitted_drift["dispatch_candidate_id"] for item in incoming
-    ):
-        print(
-            "kickoff-evidence: admitted resolved_in "
-            f"{admitted_drift['dispatch_candidate_id'][:12]}… under the accepted "
-            f"candidate drift for {admitted_drift['operation']}"
-            f"#{admitted_drift['attempt']} "
-            f"({', '.join(admitted_drift['drifted_paths'])})",
-            file=sys.stderr,
-        )
+    validate_reviewed_bookkeeping(
+        arguments.run_dir,
+        Path(run["repository_root"]),
+        [path for item in incoming for path in item["affected_paths"]],
+    )
     updated = {
         "schema_version": SCHEMA_VERSION,
         "updated_at": now(),
@@ -2642,7 +2360,7 @@ def command_ingest_findings(arguments: argparse.Namespace) -> None:
 def command_record_gate(arguments: argparse.Namespace) -> None:
     run = validate_run_dir(arguments.run_dir)
     root = Path(run["repository_root"])
-    current = tree_manifest(root)
+    current = product_manifest(root)
     product = product_manifest(root)
     expected = validate_candidate_id(arguments.candidate, "gate candidate")
     if current["candidate_id"] != expected:
@@ -2665,11 +2383,12 @@ def command_record_gate(arguments: argparse.Namespace) -> None:
         artifact_digest = hashlib.sha256(arguments.artifact.read_bytes()).hexdigest()
     if arguments.final:
         raise EvidenceError("managed final gates must use run-gate")
+    full_candidate = tree_manifest(root)["candidate_id"]
     record = {
         "schema_version": SCHEMA_VERSION,
         "recorded_at": now(),
-        "candidate_id": expected,
-        "candidate_after_id": expected,
+        "candidate_id": full_candidate,
+        "candidate_after_id": full_candidate,
         "product_candidate_id": product["candidate_id"],
         "product_candidate_after_id": product["candidate_id"],
         "command_manifest_sha256": None,
@@ -2698,9 +2417,9 @@ def command_run_gate(arguments: argparse.Namespace) -> None:
     expected = validate_candidate_id(arguments.candidate, "gate candidate")
     before = tree_manifest(root)
     product_before = product_manifest(root)
-    if before["candidate_id"] != expected:
+    if product_before["candidate_id"] != expected:
         raise EvidenceError(
-            f"candidate mismatch: expected {expected}, found {before['candidate_id']}"
+            f"candidate mismatch: expected {expected}, found {product_before['candidate_id']}"
         )
     if arguments.warning_count < 0 or not arguments.selection_reason.strip():
         raise EvidenceError("gate warning count/reason is invalid")
@@ -2781,7 +2500,7 @@ def command_run_gate(arguments: argparse.Namespace) -> None:
     record = {
         "schema_version": SCHEMA_VERSION,
         "recorded_at": now(),
-        "candidate_id": expected,
+        "candidate_id": before["candidate_id"],
         "candidate_after_id": after["candidate_id"],
         "product_candidate_id": product_before["candidate_id"],
         "product_candidate_after_id": product_after["candidate_id"],
@@ -2802,7 +2521,7 @@ def command_run_gate(arguments: argparse.Namespace) -> None:
         "telemetry_complete": telemetry_complete,
     }
     append_jsonl(arguments.run_dir / "gates.jsonl", record)
-    if after["candidate_id"] != expected:
+    if after["candidate_id"] != before["candidate_id"]:
         print("kickoff-evidence: gate changed the candidate", file=sys.stderr)
         raise SystemExit(2)
     if product_after["candidate_id"] != product_before["candidate_id"]:
@@ -4146,10 +3865,6 @@ def command_timing_summary(arguments: argparse.Namespace) -> None:
     # Same reason as telemetry_incomplete: a consumer reading the JSON must be
     # able to see that a pass's integers were recomputed rather than measured.
     projection["derived_review_metrics"] = derived_metrics
-    # And that a review pass was admitted against a tree the ingest did not
-    # hold. A run that accepted drift says so where anyone reading its close
-    # will see it.
-    projection["candidate_drift"] = validate_candidate_drift(arguments.run_dir, run)
     if arguments.format == "json":
         print(json.dumps(projection, sort_keys=True, separators=(",", ":")))
         return
@@ -4237,29 +3952,6 @@ def command_timing_summary(arguments: argparse.Namespace) -> None:
                 "re-ingested honestly, so the integers shown are the span's own "
                 "measurement and the derivation is retained only for the trail."
             )
-    if projection["candidate_drift"]:
-        print()
-        print("#### Accepted candidate drift")
-        print()
-        for item in projection["candidate_drift"]:
-            print(
-                f"- `{item['operation']}` attempt {item['attempt']} — the tree "
-                f"moved from `{item['dispatch_candidate_id'][:12]}…` to "
-                f"`{item['return_candidate_id'][:12]}…` under the dispatch: "
-                + ", ".join(f"`{path}`" for path in item["drifted_paths"])
-                + f". {item['cause']}"
-            )
-        print()
-        print(
-            "Each drift above was proven disjoint from the review it ran under: "
-            "every path lies in the inert partition declared in "
-            "policies/orchestration-evidence.md, none appears in the reviewed "
-            "change surface or any finding's affected paths, and none is a "
-            "declared authority. Validation re-derives the path set from the "
-            "stored candidate manifests and re-runs all three checks rather than "
-            "trusting the record. The relaxation is `resolved_in` only; the "
-            "candidate-bound final gate is untouched."
-        )
 
 
 def source_digest(path: Path) -> str:
@@ -4489,10 +4181,9 @@ def command_validate(arguments: argparse.Namespace) -> None:
                 "`attach-derived-metrics`, and that requires a recorded ingest "
                 "refusal."
             )
-    # Lane-independent, and unconditional for the same reason as the latch
-    # above: a drift classification that has stopped holding must stop being
-    # published while the run can still re-review, not at close.
-    validate_candidate_drift(arguments.run_dir, run)
+    # Protect reviewed bookkeeping at every validation level, while the run
+    # can still capture the changed surface and obtain a fresh review.
+    validate_reviewed_bookkeeping(arguments.run_dir, Path(run["repository_root"]))
     change_path = arguments.run_dir / "change.json"
     if change_path.exists():
         change = load_json(change_path)
@@ -4609,6 +4300,8 @@ def command_validate(arguments: argparse.Namespace) -> None:
             raise EvidenceError(
                 "phase-close findings remain unresolved: " + ", ".join(blocking_findings)
             )
+        if authority_drift(arguments.run_dir, root):
+            raise EvidenceError("declared authority changed; re-review in a fresh evidence run")
         current_product_id = product_manifest(root)["candidate_id"]
         successful_final = [
             gate
@@ -4972,27 +4665,10 @@ def build_parser() -> argparse.ArgumentParser:
             "the candidate the role was actually dispatched against, as printed "
             "by `current-candidate` immediately before the dispatch. Recording "
             "it is what makes a candidate that moves mid-dispatch detectable at "
-            "the seam, and it is the precondition for `accept-candidate-drift`."
+            "the seam. Bookkeeping does not move this product identity."
         ),
     )
     dispatch.set_defaults(handler=command_record_role_dispatch)
-
-    drift = subparsers.add_parser(
-        "accept-candidate-drift",
-        description=(
-            "Record one dispatch's candidate drift as proven disjoint from the "
-            "review it ran under. Requires the dispatch to have recorded both "
-            "candidates; classifies the paths that moved against the partition "
-            "declared in policies/orchestration-evidence.md, the reviewed "
-            "surface, and the declared authorities, all three independently and "
-            "all fail-closed. It relaxes `resolved_in` and nothing else."
-        ),
-    )
-    add_run_dir(drift)
-    drift.add_argument("--operation", choices=sorted(ROLE_OPERATIONS), required=True)
-    drift.add_argument("--attempt", type=int, required=True)
-    drift.add_argument("--cause", required=True)
-    drift.set_defaults(handler=command_accept_candidate_drift)
 
     capture = subparsers.add_parser("capture-change")
     add_run_dir(capture)
@@ -5031,8 +4707,7 @@ def build_parser() -> argparse.ArgumentParser:
         description=(
             "Recompute the candidate now, record it in the run's lineage, and "
             "print it. Call this immediately before a role dispatch: the "
-            "init-time id is stale by construction, because the marker flip and "
-            "the START log block both change the tree."
+            "init-time id may be stale because active edits change the product."
         ),
     )
     add_run_dir(current_candidate)

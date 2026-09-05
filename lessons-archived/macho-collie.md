@@ -19,6 +19,8 @@ occurrences:
     ref: "Donor A — adopting two required gate executables updated the shared fixture but missed an independent format-candidate fixture inventory, which failed at preflight instead of exercising formatting"
   - date: 2026-08-25
     ref: "Adding bin/treatise to the same preflight and policy lane broke fourteen test_check.py cases across the same four inventories, in a session where this very lesson had been re-filed hours earlier. Two further traps surfaced on the repair: the eight-space expected-call string is a substring of the twelve-space one, so a naive text replacement double-applied, and four nearby integers that look like lane counts are sentinel exit codes the fixture propagates — changing them broke four passing tests. Both were caught by running the suite, neither by reading the file"
+  - date: 2026-09-04
+    ref: "LEARN apply — the new candidate checker reached the live gate and hook, but separate expected-command strings and the hook's stub inventory were missed on the first pass; focused tests exposed both before delivery"
 ---
 
 Adding a required member to a shared repository contract — a mandatory CLI

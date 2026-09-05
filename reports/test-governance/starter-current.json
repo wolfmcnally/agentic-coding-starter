@@ -1,16 +1,16 @@
 {
   "by_kind": {
     "gate": {
-      "families": 17,
-      "leaves": 17
+      "families": 18,
+      "leaves": 18
     },
     "hook": {
-      "families": 4,
-      "leaves": 4
+      "families": 5,
+      "leaves": 5
     },
     "pytest": {
-      "families": 87,
-      "leaves": 105
+      "families": 85,
+      "leaves": 103
     }
   },
   "counts": {
@@ -22,6 +22,7 @@
     "gate:format",
     "gate:lint",
     "gate:policy-anonymization",
+    "gate:policy-candidate-partition",
     "gate:policy-catalogs",
     "gate:policy-config",
     "gate:policy-execution-dashboards",
@@ -35,6 +36,7 @@
     "gate:policy-treatise",
     "gate:test",
     "gate:vital",
+    "hook:.githooks/pre-commit:./bin/check-candidate-partition --staged",
     "hook:.githooks/pre-commit:./bin/check-harness-parity",
     "hook:.githooks/pre-commit:./bin/check-log --staged",
     "hook:.githooks/pre-commit:./bin/check-toolchain-callers",
@@ -79,12 +81,10 @@
     "pytest:tests/test_kickoff_config.py::test_watch_extracts_fresh_claude_result_and_telemetry",
     "pytest:tests/test_kickoff_config.py::test_watch_preserves_codex_artifact_when_terminal_stream_is_incomplete",
     "pytest:tests/test_kickoff_control_plane.py::test_manifest_preflight_and_runner_admission_fail_closed",
-    "pytest:tests/test_kickoff_evidence.py::test_a_proven_disjoint_drift_is_accepted_and_recorded",
     "pytest:tests/test_kickoff_evidence.py::test_change_manifest_is_candidate_bound_and_detects_authority_drift",
     "pytest:tests/test_kickoff_evidence.py::test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates",
     "pytest:tests/test_kickoff_evidence.py::test_final_validation_rejects_blocking_findings",
     "pytest:tests/test_kickoff_evidence.py::test_finding_state_is_stable_validated_and_reopen_is_counted",
-    "pytest:tests/test_kickoff_evidence.py::test_init_creates_complete_run_scoped_evidence",
     "pytest:tests/test_kickoff_evidence.py::test_revision_round_requires_and_carries_failure_analysis",
     "pytest:tests/test_kickoff_evidence.py::test_role_artifacts_feed_findings_and_change_metadata_without_reparsing",
     "pytest:tests/test_kickoff_evidence.py::test_validate_detects_corrupt_evidence",
@@ -127,7 +127,7 @@
     "pytest:tests/test_treatise.py::test_an_external_fact_without_a_retrieval_date_fails",
     "pytest:tests/test_treatise.py::test_the_repository_own_treatises_validate"
   ],
-  "inventory_sha256": "84c599019ec9b8773422671e12fea600a77ed6507a20c11018570f586535ced1",
+  "inventory_sha256": "be1a73933ad812fa3b332ebc2e7dff3c783e728965d1c571648eb3bee08d0d83",
   "proofs": [
     {
       "family": "pytest:project/tests/test_cli.py::test_main_hello_default",
@@ -459,13 +459,6 @@
       "source_path": "tests/test_kickoff_control_plane.py"
     },
     {
-      "family": "pytest:tests/test_kickoff_evidence.py::test_init_creates_complete_run_scoped_evidence",
-      "id": "pytest:tests/test_kickoff_evidence.py::test_init_creates_complete_run_scoped_evidence",
-      "kind": "pytest",
-      "selector": "tests/test_kickoff_evidence.py::test_init_creates_complete_run_scoped_evidence",
-      "source_path": "tests/test_kickoff_evidence.py"
-    },
-    {
       "family": "pytest:tests/test_kickoff_evidence.py::test_change_manifest_is_candidate_bound_and_detects_authority_drift",
       "id": "pytest:tests/test_kickoff_evidence.py::test_change_manifest_is_candidate_bound_and_detects_authority_drift",
       "kind": "pytest",
@@ -526,13 +519,6 @@
       "id": "pytest:tests/test_kickoff_evidence.py::test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates",
       "kind": "pytest",
       "selector": "tests/test_kickoff_evidence.py::test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates",
-      "source_path": "tests/test_kickoff_evidence.py"
-    },
-    {
-      "family": "pytest:tests/test_kickoff_evidence.py::test_a_proven_disjoint_drift_is_accepted_and_recorded",
-      "id": "pytest:tests/test_kickoff_evidence.py::test_a_proven_disjoint_drift_is_accepted_and_recorded",
-      "kind": "pytest",
-      "selector": "tests/test_kickoff_evidence.py::test_a_proven_disjoint_drift_is_accepted_and_recorded",
       "source_path": "tests/test_kickoff_evidence.py"
     },
     {
@@ -890,7 +876,14 @@
       "id": "gate:policy-anonymization",
       "kind": "gate",
       "selector": "policy-anonymization",
-      "source_path": "bin/check:149"
+      "source_path": "bin/check:150"
+    },
+    {
+      "family": "gate:policy-candidate-partition",
+      "id": "gate:policy-candidate-partition",
+      "kind": "gate",
+      "selector": "policy-candidate-partition",
+      "source_path": "bin/check:148"
     },
     {
       "family": "gate:policy-catalogs",
@@ -953,7 +946,7 @@
       "id": "gate:policy-test-governance",
       "kind": "gate",
       "selector": "policy-test-governance",
-      "source_path": "bin/check:148"
+      "source_path": "bin/check:149"
     },
     {
       "family": "gate:policy-toolchain-callers",
@@ -1005,11 +998,18 @@
       "source_path": ".githooks/pre-commit:10"
     },
     {
+      "family": "hook:.githooks/pre-commit:./bin/check-candidate-partition --staged",
+      "id": "hook:.githooks/pre-commit:./bin/check-candidate-partition --staged",
+      "kind": "hook",
+      "selector": "hook:.githooks/pre-commit:./bin/check-candidate-partition --staged",
+      "source_path": ".githooks/pre-commit:11"
+    },
+    {
       "family": "hook:.githooks/pre-commit:./bin/test-governance validate",
       "id": "hook:.githooks/pre-commit:./bin/test-governance validate",
       "kind": "hook",
       "selector": "hook:.githooks/pre-commit:./bin/test-governance validate",
-      "source_path": ".githooks/pre-commit:11"
+      "source_path": ".githooks/pre-commit:12"
     }
   ],
   "schema": "agentic.proof_baseline.v2"

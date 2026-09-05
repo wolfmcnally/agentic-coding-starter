@@ -1661,8 +1661,8 @@ def capture_dispatch_candidate(
     by however long the watcher's own routing, containment, and span setup
     took. Recording it is what makes a candidate that moves under an in-flight
     role detectable at the seam instead of surfacing later as a wholesale
-    refused batch, and it is the precondition for `kickoff-evidence
-    accept-candidate-drift`.
+    refused batch. Product identity is stable across bookkeeping-only edits;
+    active changes require review against the current candidate.
 
     Every role is external under the shipped pins, so without this the field is
     null on every dispatch of every real run and both halves of the mechanism

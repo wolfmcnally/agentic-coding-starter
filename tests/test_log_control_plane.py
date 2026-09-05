@@ -47,6 +47,35 @@ def test_append_prefix_chronology_and_bounded_repairs_preserve_bytes(
         ROOT / "lib" / "agentic_starter" / "log_blocks.py",
         root / "lib" / "agentic_starter",
     )
+    shutil.copy2(
+        ROOT / "lib/agentic_starter/candidate_boundaries.py",
+        root / "lib/agentic_starter",
+    )
+    (root / "candidate-partition.yaml").write_text(
+        "schema: agentic.candidate-partition.v1\n"
+        "active:\n"
+        '  - "/candidate-partition.yaml"\n'
+        '  - "/.gitignore"\n'
+        '  - "/CLAUDE.md"\n'
+        '  - "/phase.md"\n'
+        '  - "/policy.md"\n'
+        '  - "/code.py"\n'
+        '  - "/tracked.txt"\n'
+        '  - "/script"\n'
+        '  - "/projects/**"\n'
+        '  - "/policies/**"\n'
+        '  - "/bin/**"\n'
+        '  - "/lib/**"\n'
+        '  - "/plan/**"\n'
+        "bookkeeping:\n"
+        '  - "/LOG*.md"\n'
+        '  - "/EXECUTION_LOG.jsonl"\n'
+        '  - "/plan/INDEX.md"\n'
+        '  - "/lessons/**"\n'
+        '  - "/lessons-archived/**"\n'
+        '  - "/user-actions/**"\n'
+        '  - "/user-actions-archived/**"\n'
+    )
     (root / "LOG.md").write_text(
         "# Activity Log\n\n## 2026-01-01 10:00 — START\n\nLessons:\n\n- None.\n"
     )
@@ -143,3 +172,11 @@ def test_append_prefix_chronology_and_bounded_repairs_preserve_bytes(
     )
     assert normalized.returncode == 0, normalized.stderr
     assert (root / "plan" / "INDEX.md").read_bytes() == b"index\n"
+
+    lesson = root / "lessons" / "one.md"
+    lesson.parent.mkdir()
+    lesson.write_text("lesson\n\n")
+    refused = run(root, "normalize-final-newline", "--root", str(root), "--path", "lessons/one.md")
+    assert refused.returncode == 2
+    assert "outside the admitted" in refused.stderr
+    assert lesson.read_text() == "lesson\n\n"

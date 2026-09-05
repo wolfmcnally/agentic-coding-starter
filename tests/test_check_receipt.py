@@ -76,7 +76,7 @@ def repository(tmp_path: Path) -> Path:
         "printf 'called\\n' >> \"$PWD/.kickoff/hook-called\"\n",
     )
     (root / ".gitignore").write_text(".kickoff/\n__pycache__/\n*.pyc\n", encoding="utf-8")
-    (root / "tracked.txt").write_text("fixture\n", encoding="utf-8")
+    (root / "LOG.md").write_text("fixture\n", encoding="utf-8")
     subprocess.run(["git", "init", "-q", "-b", "master"], cwd=root, check=True)
     subprocess.run(["git", "config", "user.email", "fixture@example.invalid"], cwd=root, check=True)
     subprocess.run(["git", "config", "user.name", "Fixture"], cwd=root, check=True)
@@ -270,7 +270,7 @@ def test_pre_push_hook_skips_only_a_verified_hit(repository: Path) -> None:
     assert "CHECK RECEIPT HIT" in hit.stdout
     assert not marker.exists()
 
-    (repository / "tracked.txt").write_text("dirty\n", encoding="utf-8")
+    (repository / "LOG.md").write_text("dirty\n", encoding="utf-8")
     miss = subprocess.run(
         [str(hook), "origin", "fixture"],
         cwd=repository,

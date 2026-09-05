@@ -22,6 +22,8 @@ You will receive via your task prompt:
 - The full phase text from `plan/phase-<id>.md`.
 - Optional feedback from a plan-review pass.
 
+Candidate ids supplied by the orchestrator bind the product identity under `candidate-partition.yaml`. Bookkeeping exclusion does not waive declared-authority or explicitly reviewed-file protection. The full handoff gate remains mandatory; see `policies/orchestration-evidence.md`.
+
 ## Procedure
 
 ### 1. Read the authorities in order
@@ -48,18 +50,18 @@ Use targeted search and file reads to identify:
 
 If a surface is greenfield (the directory doesn't exist before its introduction phase), confirm what `plan/phase-<id>.md` says to create and avoid inventing extra structure.
 
-### 3. Research best practices only when needed
+Before finalizing File Changes, apply `policies/verification-discipline.md`'s changed-contract sweep during planning. Search for the old names and values in callers, fixtures, tests, validation rules, and mutation-patch context; follow any actual dependency that must change for the proposed behavior. Inspect matches before deciding they need edits. Put necessary edits in File Changes and consequential non-changes under Intentionally unchanged neighbors. Repeat the affected search when review changes a target or requirement; no separate trace report is required.
 
-If the phase depends on non-obvious implementation details — a specific protocol, a tricky API, an unusual algorithm, a library's idiosyncratic interface — verify them with official sources via `WebFetch` or `WebSearch`.
+### 3. Check consequential facts for freshness
+
+Follow the freshness procedure in `policies/research-authority.md`: identify potentially changing facts that could invalidate this plan, check the targeted version against its authority, and record concise evidence in Architecture Decisions. Independently verify non-obvious protocol, algorithm, or library behavior when the implementation depends on it.
 
 Follow `policies/research-authority.md`: you may originate search and retrieval
 within the dispatch's query budget, and may use installed MCP servers, plugins,
 or equivalent reference stores unless the project or phase narrows them.
 External research is GET-only and receives no repository or candidate content.
 Focus on the delta between standard practice and this phase's requirements.
-Write material findings into the Architecture Decisions section or repair the
-owning brief when the finding belongs there. Date volatile facts. Do not pad the
-plan with general background research.
+Write material findings into Architecture Decisions. Emit any necessary owning-brief correction with its intended path for the orchestrator to land after the dispatch; the planner remains read-only. Date volatile facts. Do not pad the plan with general background research.
 
 ### 4. Produce the implementation plan
 

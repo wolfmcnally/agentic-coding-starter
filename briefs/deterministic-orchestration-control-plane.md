@@ -63,15 +63,8 @@ set. Starter's separate write-enabled coder toolchain probe remains in force.
 The full-tree candidate remains the delivery and handoff identity. It includes
 all tracked and nonignored-untracked files.
 
-The product candidate excludes only the policy-owned inert bookkeeping set:
-root logs, the execution event log, the phase status index, lesson ledgers, and
-user-action ledgers. This allows deterministic bookkeeping repair without
-pretending the implementation changed. User-visible execution reports remain
-product content.
+The root `candidate-partition.yaml` supplies the active/bookkeeping boundary. Product identity binds review and implementation evidence; full-tree identity proves gate non-mutation and the delivered tree. The declaration remains active and is digest-bound. Unclassified tracked paths refuse; unclassified nonignored untracked paths remain included as active. Bookkeeping-only edits preserve product identity without an exception ledger. Declared-authority checks and full snapshots for explicitly reviewed bookkeeping prevent an exclusion from hiding a meaningful change. Both full close gates remain mandatory. The repair tools retain their narrower permissions.
 
-The product boundary does not relax review custody. Candidate-drift acceptance
-still independently proves that every moved path is inert, outside the reviewed
-surface, and outside the declared authority set.
 
 ## Append-only construction evidence
 

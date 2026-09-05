@@ -16,6 +16,10 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "lib"))
+
+from agentic_starter.candidate_boundaries import load_partition  # noqa: E402
+
 ALLOWED = {Path("LOG.md"), Path("EXECUTION_LOG.jsonl"), Path("plan/INDEX.md")}
 
 
@@ -50,6 +54,8 @@ def main() -> int:
         if args.path not in ALLOWED:
             raise ValueError("path is outside the admitted bookkeeping repair set")
         root = args.root.resolve()
+        if load_partition(root).classify(args.path.as_posix()) != "bookkeeping":
+            raise ValueError("path is not declared bookkeeping")
         target = (root / args.path).resolve()
         if not target.is_relative_to(root) or not target.is_file():
             raise ValueError("target is absent or escapes repository root")

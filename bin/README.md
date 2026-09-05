@@ -14,6 +14,10 @@
 
 ## Scripts
 
+### `check-candidate-partition` — validate declared paths
+
+`./bin/check-candidate-partition` validates the live declaration and every tracked path. `./bin/check-candidate-partition --staged` validates indexed declaration bytes against the complete index. Missing, malformed, or incomplete classification exits nonzero; a valid declaration reports its digest and tracked-path count. The declaration format and review boundary are owned by [orchestration evidence](../policies/orchestration-evidence.md). The checker runs in the policy gate and opt-in commit hook; it does not install hooks or mutate Git configuration.
+
 ### `setup` — provision the pinned, locked environment
 
 Validates the `uv` prerequisite and the complete Python profile, then

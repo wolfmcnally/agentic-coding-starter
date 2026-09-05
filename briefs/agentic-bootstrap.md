@@ -963,3 +963,8 @@ The last item is the operational test. Until it passes, the bootstrap is not don
 - **The template (this repo) is itself the canonical donor.** Future versions of the bootstrap procedure should be updated *in the template first*, then propagated to derived projects' copies of `agentic-bootstrap.md` on next opportunity.
 - **The methodology** is documented in [`methodology.md`](methodology.md) (sibling brief, copied verbatim into every derived project).
 - **The cross-harness contract** is one canonical home per skill and role definition, with thin pointers from every other harness and a parity check that rejects a missing, copied, or orphaned mirror. Adding a third or fourth harness follows that contract rather than forking the definitions.
+
+
+## Candidate declaration transfer
+
+The candidate boundary transfers atomically: `candidate-partition.yaml`, `bin/check-candidate-partition`, `lib/agentic_starter/candidate_boundaries.py`, candidate/evidence managers, the staged hook, gate inventory, and their behavioral fixtures. Generate the recipient's explicit active inventory and retain only its approved bookkeeping exclusions; never copy the donor's path judgments. The declaration remains active, unclassified tracked files refuse, unclassified nonignored untracked files remain included, and complete-tree delivery receipts remain mandatory. Verify the staged checker by actually tripping it in an isolated fixture. The tiny supported YAML subset and pattern syntax are defined in `policies/orchestration-evidence.md`.

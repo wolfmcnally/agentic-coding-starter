@@ -32,6 +32,7 @@ def hook_repo(tmp_path: Path) -> tuple[Path, dict[str, str]]:
         "check-harness-parity",
         "check-toolchain-callers",
         "check-log",
+        "check-candidate-partition",
         "test-governance",
     ):
         _write_probe(root / "bin" / executable, executable)
@@ -64,6 +65,7 @@ def test_pre_commit_runs_structural_governance_after_existing_checks(
         "check-harness-parity",
         "check-toolchain-callers",
         "check-log",
+        "check-candidate-partition",
         "test-governance",
     ]
     Path(environment["PRE_COMMIT_LOG"]).write_text("")

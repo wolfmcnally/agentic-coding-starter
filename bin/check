@@ -70,7 +70,7 @@ for evidence_executable in \
   check-execution-dashboards check-harness-parity check-toolchain-callers \
   lessons treatise check-catalogs check-hooks-installed check-shell-syntax new-name \
   test-governance check-log check-log-prefix check-log-monotonic kickoff-command-zero \
-  log-append log-relocate normalize-final-newline; do
+  log-append log-relocate normalize-final-newline check-candidate-partition; do
   if [[ ! -x "$repo_root/bin/$evidence_executable" ]]; then
     echo "CHECK ERROR missing required executable: bin/$evidence_executable" >&2
     exit 1
@@ -101,7 +101,7 @@ run_lint() {
       ../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name \
       ../bin/check-plan-concreteness ../bin/check-plan-delivery ../bin/review-verdicts \
       ../bin/check-log-prefix ../bin/check-log-monotonic ../bin/kickoff-command-zero \
-      ../bin/log-append ../bin/log-relocate ../bin/normalize-final-newline ../tests
+      ../bin/log-append ../bin/log-relocate ../bin/normalize-final-newline ../bin/check-candidate-partition ../tests
   )
 }
 
@@ -116,7 +116,7 @@ run_format() {
       ../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name \
       ../bin/check-plan-concreteness ../bin/check-plan-delivery ../bin/review-verdicts \
       ../bin/check-log-prefix ../bin/check-log-monotonic ../bin/kickoff-command-zero \
-      ../bin/log-append ../bin/log-relocate ../bin/normalize-final-newline ../tests
+      ../bin/log-append ../bin/log-relocate ../bin/normalize-final-newline ../bin/check-candidate-partition ../tests
   )
 }
 
@@ -145,6 +145,7 @@ run_policy() {
     run_gate policy-hooks-installed ./bin/check-hooks-installed || return $?
     run_gate policy-shell-syntax ./bin/check-shell-syntax || return $?
     run_gate policy-log ./bin/check-log || return $?
+    run_gate policy-candidate-partition ./bin/check-candidate-partition || return $?
     run_gate policy-test-governance ./bin/test-governance validate || return $?
     run_gate policy-anonymization ./bin/check-anonymization.sh || return $?
     echo "CHECK policy PASS"

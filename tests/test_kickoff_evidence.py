@@ -70,19 +70,32 @@ def repository(tmp_path: Path) -> Path:
     (root / "CLAUDE.md").write_text("# Synthetic engine\n")
     (root / "phase.md").write_text("# Phase\n")
     (root / "policy.md").write_text("# Policy\n")
-    (root / "policies" / "orchestration-evidence.md").write_text(
-        "```yaml\n"
-        "# kickoff-evidence drift partitions\n"
-        "inert:\n"
-        "  - LOG*.md\n"
-        "  - EXECUTION_LOG.jsonl\n"
-        "  - plan/INDEX.md\n"
-        "  - lessons/\n"
-        "  - lessons-archived/\n"
-        "  - user-actions/\n"
-        "  - user-actions-archived/\n"
-        "```\n"
+    (root / "candidate-partition.yaml").write_text(
+        "schema: agentic.candidate-partition.v1\n"
+        "active:\n"
+        '  - "/candidate-partition.yaml"\n'
+        '  - "/.gitignore"\n'
+        '  - "/CLAUDE.md"\n'
+        '  - "/phase.md"\n'
+        '  - "/policy.md"\n'
+        '  - "/code.py"\n'
+        '  - "/tracked.txt"\n'
+        '  - "/script"\n'
+        '  - "/projects/**"\n'
+        '  - "/policies/**"\n'
+        '  - "/bin/**"\n'
+        '  - "/lib/**"\n'
+        '  - "/plan/**"\n'
+        "bookkeeping:\n"
+        '  - "/LOG*.md"\n'
+        '  - "/EXECUTION_LOG.jsonl"\n'
+        '  - "/plan/INDEX.md"\n'
+        '  - "/lessons/**"\n'
+        '  - "/lessons-archived/**"\n'
+        '  - "/user-actions/**"\n'
+        '  - "/user-actions-archived/**"\n'
     )
+
     (root / "code.py").write_text("VALUE = 1\n")
     (root / "bin").mkdir()
     (root / "bin" / "check").write_text("#!/bin/sh\nexit 0\n")
@@ -376,7 +389,7 @@ def capture(repository: Path, run_dir: Path) -> str:
 
 def tree_manifest_for_test(repository: Path) -> str:
     result = subprocess.run(
-        [str(TREE_ID), "--root", str(repository), "--json"],
+        [str(TREE_ID), "--root", str(repository), "--product", "--json"],
         capture_output=True,
         text=True,
         check=False,
@@ -412,11 +425,17 @@ def run_final_gate(run_dir: Path, candidate: str, artifact: Path | None = None):
     )
 
 
-def test_init_creates_complete_run_scoped_evidence(repository: Path, tmp_path: Path) -> None:
+def test_change_manifest_is_candidate_bound_and_detects_authority_drift(
+    repository: Path, tmp_path: Path
+) -> None:
+    custody_dir = tmp_path / "custody"
+    custody_dir.mkdir()
+    custody_repository = custody_dir / "repo"
+    shutil.copytree(repository, custody_repository)
+    _assert_bookkeeping_review_custody(custody_repository, custody_dir)
     run_dir = tmp_path / "run"
-    candidate = initialize(repository, run_dir)
-
-    assert len(candidate) == 64
+    reviewed = initialize(repository, run_dir)
+    assert len(reviewed) == 64
     assert json.loads((run_dir / "run.json").read_text())["phase"] == "1.1"
     authority = json.loads((run_dir / "authority.json").read_text())
     assert [item["path"] for item in authority["authorities"]] == [
@@ -427,12 +446,6 @@ def test_init_creates_complete_run_scoped_evidence(repository: Path, tmp_path: P
     assert (run_dir / "findings.json").is_file()
     assert (run_dir / "gates.jsonl").is_file()
 
-
-def test_change_manifest_is_candidate_bound_and_detects_authority_drift(
-    repository: Path, tmp_path: Path
-) -> None:
-    run_dir = tmp_path / "run"
-    reviewed = initialize(repository, run_dir)
     active_digest = json.loads((run_dir / "gate-manifests.jsonl").read_text())["manifest_sha256"]
     original_manifest = json.loads((tmp_path / "run-commands.json").read_text())
     successor = tmp_path / "successor-commands.json"
@@ -1237,18 +1250,6 @@ def ingest_artifact(
 DRIFT_MARKERS = ("drift-partition:", "drift-reviewed-surface:", "drift-authority:")
 
 
-def install_drift_policy(repository: Path) -> None:
-    """Give the fixture the real policy file that owns the partition vocabulary.
-
-    The block in `policies/orchestration-evidence.md` is the single source of
-    truth, so the tests read the shipped vocabulary rather than a paraphrase of
-    it that could agree with a wrong implementation.
-    """
-    destination = repository / "policies" / "orchestration-evidence.md"
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_bytes((ROOT / "policies" / "orchestration-evidence.md").read_bytes())
-
-
 def write_repo_file(repository: Path, relative: str, text: str) -> None:
     target = repository / relative
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -1263,13 +1264,6 @@ def dispatch_rows(run_dir: Path) -> list[dict[str, object]]:
         for row in [json.loads(line)]
         if row.get("state") != "opened"
     ]
-
-
-def drift_records(run_dir: Path) -> list[dict[str, object]]:
-    path = run_dir / "candidate-drift.jsonl"
-    if not path.exists():
-        return []
-    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
 def drifting_attempt(
@@ -1373,26 +1367,6 @@ def drifting_attempt(
     return dispatch_candidate, str(row["return_candidate_id"]), intelligence.span_id
 
 
-def accept_drift(
-    run_dir: Path,
-    *,
-    operation: str = "role.code-review",
-    attempt: int = 1,
-    cause: str = "a concurrent supervision session appended a lesson mid-dispatch",
-) -> subprocess.CompletedProcess[str]:
-    return run(
-        "accept-candidate-drift",
-        "--run-dir",
-        str(run_dir),
-        "--operation",
-        operation,
-        "--attempt",
-        str(attempt),
-        "--cause",
-        cause,
-    )
-
-
 def add_lesson(repository: Path) -> None:
     write_repo_file(repository, "lessons/silent-guard-drift.md", "# Lesson\n")
 
@@ -1412,34 +1386,75 @@ def stale_batch(tmp_path: Path, dispatch: str, name: str = "critic.md") -> Path:
     )
 
 
-def test_a_proven_disjoint_drift_is_accepted_and_recorded(repository: Path, tmp_path: Path) -> None:
-    """All three checks pass: a concurrent session's lesson file mid-dispatch."""
-    install_drift_policy(repository)
+def _assert_bookkeeping_review_custody(repository: Path, tmp_path: Path) -> None:
+    """Bookkeeping preserves review identity without an exception ledger."""
     run_dir = tmp_path / "run"
     initialize(repository, run_dir)
-
     dispatch, returned, span_id = drifting_attempt(repository, run_dir, add_lesson)
-
-    accepted = accept_drift(run_dir)
-
-    assert accepted.returncode == 0, accepted.stderr
-    record = drift_records(run_dir)[0]
-    assert record["operation"] == "role.code-review"
-    assert record["attempt"] == 1
-    assert record["dispatch_candidate_id"] == dispatch
-    assert record["return_candidate_id"] == returned
-    assert dispatch != returned
-    assert record["drifted_paths"] == ["lessons/silent-guard-drift.md"]
-    assert record["cause"].startswith("a concurrent supervision session")
+    assert dispatch == returned
+    assert not (run_dir / "candidate-drift.jsonl").exists()
     assert (
         ingest_artifact(run_dir, returned, stale_batch(tmp_path, dispatch), span_id).returncode == 0
     )
     assert run("validate", "--run-dir", str(run_dir)).returncode == 0
+    assert "accept-candidate-drift" not in run("--help").stdout
+    # The same pass cannot hide an active edit behind an old resolution stamp.
+    (repository / "code.py").write_text("VALUE = 2\n")
+    current = run(
+        "current-candidate", "--run-dir", str(run_dir), "--reason", "active edit"
+    ).stdout.strip()
+    assert current != returned
+    refused = ingest_artifact(run_dir, current, stale_batch(tmp_path, dispatch), span_id)
+    assert refused.returncode == 2
+    assert "resolved_in does not match" in refused.stderr
+    # Even bookkeeping is protected when it is explicitly reviewed.
+    captured = capture(repository, run_dir)
+    assert captured == current
+    reviewed = finding("CODE-F003", current, state="rejected-with-evidence", resolved_in=current)
+    reviewed["affected_paths"] = ["lessons/silent-guard-drift.md"]
+    assert ingest(run_dir, tmp_path, [reviewed], candidate=current).returncode == 0
+    (repository / "lessons/silent-guard-drift.md").write_text("changed after review\n")
+    protected = run("validate", "--run-dir", str(run_dir))
+    assert protected.returncode == 2
+    assert "reviewed bookkeeping changed" in protected.stderr
 
+    marked = run("mark-reviewed", "--run-dir", str(run_dir), "--expected-candidate", current)
+    assert marked.returncode == 2
+    assert "reviewed bookkeeping changed" in marked.stderr
 
-# --- The vocabulary's own fail-closed behaviour --------------------------------
-#
-# Sourcing the partition from a policy document rather than restating it in
-# code is only safe if the tool refuses when the document does not parse. Every
-# branch below is reachable: a `return DEFAULT_ENTRIES` in place of the
-# absent-block raise would pass the entire drift suite without these tests.
+    # A gate that changes only bookkeeping still fails its full-tree custody check.
+    (repository / "bin/check").write_text("#!/bin/sh\nprintf 'gate mutation\\n' >> LOG.md\n")
+    gate_dir = tmp_path / "mutating-gate"
+    gate_candidate = initialize(repository, gate_dir, evidence_lane="light")
+    gate_result = run(
+        "run-gate",
+        "--run-dir",
+        str(gate_dir),
+        "--candidate",
+        gate_candidate,
+        "--operation",
+        "gate.check-all",
+        "--attempt",
+        "1",
+        "--final",
+        "--selection-reason",
+        "prove bookkeeping cannot hide gate mutation",
+        "--warning-count",
+        "0",
+        "--",
+        "./bin/check",
+        "all",
+    )
+    assert gate_result.returncode == 2, gate_result.stderr
+    gate_row = json.loads((gate_dir / "gates.jsonl").read_text())
+    assert gate_row["candidate_id"] != gate_row["candidate_after_id"]
+    assert gate_row["product_candidate_id"] == gate_row["product_candidate_after_id"]
+
+    # Explicitly declared bookkeeping authority is independently protected.
+    authority_dir = tmp_path / "bookkeeping-authority"
+    initialize(repository, authority_dir, authorities=("phase.md", "LOG.md"))
+    with (repository / "LOG.md").open("a") as log:
+        log.write("changed declared authority\n")
+    refused_authority = run("validate", "--run-dir", str(authority_dir))
+    assert refused_authority.returncode == 2
+    assert "reviewed bookkeeping changed" in refused_authority.stderr

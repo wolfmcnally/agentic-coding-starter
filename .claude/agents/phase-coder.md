@@ -24,6 +24,8 @@ You will receive via your task prompt:
 - The evidence run directory, current candidate id, and any unresolved finding
   ledger/revision packet.
 
+Candidate ids supplied by the orchestrator bind the product identity under `candidate-partition.yaml`. Bookkeeping exclusion does not waive declared-authority or explicitly reviewed-file protection. The full handoff gate remains mandatory; see `policies/orchestration-evidence.md`.
+
 ## Procedure
 
 ### 1. Re-read the authorities you need
