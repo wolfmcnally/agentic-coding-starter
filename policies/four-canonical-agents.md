@@ -1,6 +1,6 @@
 # Policy: The Four Canonical Agents
 
-The methodology's orchestrator (`kickoff`) delegates one phase of work to four specialist agents. Their names are load-bearing: `kickoff` invokes them by name. A typo silently breaks the orchestration.
+The methodology's orchestrator (`kickoff`) delegates one phase of work to four specialist agents. Approved methodology improvements instead default to [direct implementation](review-lanes.md#methodology-improvements-direct-implementation-by-default), unless the operator explicitly requests this workflow. Their names are load-bearing: `kickoff` invokes them by name. A typo silently breaks the orchestration.
 
 ## The four roles
 
@@ -19,22 +19,11 @@ The roles, names, tool stances, and verdict headers above are fixed. The **execu
 
 Each invocation or revision round is also bounded by the role-specific first-event, idle-progress, and hard-deadline values in [`role-timeouts.md`](role-timeouts.md). Claude CLI roles additionally use its configured turn circuit breaker; Codex and native roles expose no equivalent flag. Those guards limit one run; the convergence rules below limit the number of runs.
 
-Research is a second role-bound axis governed by
-[`research-authority.md`](research-authority.md). Planner and reviewer may
-originate search and retrieval; coder and critic may retrieve approved
-authorities but may not originate discovery. Installed MCP servers and plugins
-are available by default unless a project or phase explicitly narrows them.
+Research is a second role-bound axis governed by [`research-authority.md`](research-authority.md). Planner and reviewer may originate search and retrieval; coder and critic may retrieve approved authorities but may not originate discovery. Installed MCP servers and plugins are available by default unless a project or phase explicitly narrows them.
 
 So do **not** assume any role runs as an in-harness subagent on the session model when reasoning about orchestration — check the resolved venue. The one invariant: **orchestration and build gates always run on the invoking session's model** and are never pinnable.
 
-Every lane closes with two orchestrator-owned gates. The
-**implementation-candidate gate** follows code-critic approval and binds the
-unchanged reviewed implementation. The bare **handoff gate** follows every
-tracked status, ripple, lesson, END, and report write; no tracked write follows
-it. Delivery — the ordinary commit and non-force push of gate-proved work
-([`human-in-the-loop.md`](human-in-the-loop.md)) — is likewise
-orchestrator-only: it happens after the handoff gate, and no delegated role
-ever commits or pushes.
+Every lane closes with two orchestrator-owned gates. The **implementation-candidate gate** follows code-critic approval and binds the unchanged reviewed implementation. The bare **handoff gate** follows every tracked status, ripple, lesson, END, and report write; no tracked write follows it. Delivery — the ordinary commit and non-force push of gate-proved work ([`human-in-the-loop.md`](human-in-the-loop.md)) — is likewise orchestrator-only: it happens after the handoff gate, and no delegated role ever commits or pushes.
 
 ## Execution cadence: review lanes
 
@@ -42,13 +31,21 @@ Whether *both* reviewer roles run on a phase's initial implementation is governe
 
 ## What each role does
 
-- **`phase-planner`** — Reads the phase file, the briefs it references, the policies, and the existing repo, and produces a concrete file-level implementation plan. Does not write code. Output: a markdown plan with named files, named types/functions, an Implementation Order, a Build Gate Sequence, Open Questions, and Process Observations.
+- **`phase-planner`** — Reads the phase file, the briefs it references, the policies, and the existing repo, and produces a concrete file-level implementation plan. Does not write code. Output: a markdown plan with named files, consequential interfaces and cited definitions, an Implementation Order, a Build Gate Sequence, Open Questions, and Process Observations.
 
 - **`plan-reviewer`** — Reads the same authorities plus the planner's output and may independently research uncertain or volatile claims. Issues a single verdict (`APPROVED` or `REVISE`) at the top of its response and records Process Observations separately from phase findings. May call `AskUserQuestion` to escalate decisions only the human can make.
 
-- **`phase-coder`** — Reads the approved plan and implements it. May retrieve resources the plan or briefs identify, but does not originate research. Runs the build gates. Reports files created/modified, the build-status block, Process Observations, and — on revision rounds — root-cause Failure Analysis in both its human report and Change Evidence.
+- **`phase-coder`** — Reads the approved plan and implements it. May retrieve resources the plan or briefs identify, but does not originate research. Runs focused iteration and revision-close checks; the orchestrator owns both full gates. Reports files created/modified, the build-status block, Process Observations, and — on revision rounds — root-cause Failure Analysis in both its human report and Change Evidence.
 
 - **`code-critic`** — Reads the approved plan, the briefs and policies it cites, and the code diff. May retrieve those authorities and their same-host structural neighbors, but does not originate research. Issues a single verdict (`APPROVED` or `REVISE`) and records Process Observations separately from code findings. Does not rewrite the implementation; only reviews it.
+
+## Planning and review boundaries
+
+Plans settle intended behavior, exclusions, invariants, consequential interfaces, prerequisites, acceptance and human stops. Every cited identifier is read at its definition; proposed consequential interfaces are named. Ordinary private helpers and local implementation choices belong to the coder, who may execute explicitly approved deletions but may not alter consequential scope or acceptance. Pseudocode and exhaustive internal naming are not prerequisites to approval.
+
+Initial review discovers broadly across the authorized outcome before classifying observations. Batch real required changes separately from optional advice. Each required finding names its violated requirement, concrete consequence, source evidence and testable resolution. Inspect search matches in context: examples, quotations and negative fixtures can contain a forbidden pattern without violating the rule, and a proxy can invert the meaning. Optional suggestions stay outside the unresolved finding ledger; approval carries no unresolved required finding. Revision findings retain their original identity, authority, evidence and required outcome as specified below; new objections get new ids.
+
+Independent review, the declared lane, empirical acceptance and both full gates remain mandatory regardless of model selection. Byte counts, link checks and first-cycle approval are evidence for their named structural or review properties, never proof of model capability or instruction adherence.
 
 ## Verdict headers
 
@@ -70,103 +67,35 @@ Followed in the `REVISE` case by a `### Required Changes` section listing specif
 
 ## Revision loops
 
-The first review batches every blocking finding. Plan-review findings receive
-stable `PLAN-FNNN` ids; code-review findings receive `CODE-FNNN` ids. Their
-states and candidate identities live in the finding ledger governed by
-[`orchestration-evidence.md`](orchestration-evidence.md).
+The first review batches every blocking finding. Plan-review findings receive stable `PLAN-FNNN` ids; code-review findings receive `CODE-FNNN` ids. Their states and candidate identities live in the finding ledger governed by [`orchestration-evidence.md`](orchestration-evidence.md).
 
-`kickoff` keeps iterating a review or fix loop only while it is **converging on
-approval**, and escalates to the human the moment it stalls or diverges. After
-each cycle the orchestrator evaluates exact finding transitions rather than
-reconstructing continuity from prose:
+`kickoff` keeps iterating a review or fix loop only while it is **converging on approval**, and escalates to the human the moment it stalls or diverges. After each cycle the orchestrator evaluates exact finding transitions rather than reconstructing continuity from prose:
 
-- **Converging — continue.** At least one blocking finding advances from
-  `open` toward `closed`, open severity or uncertainty falls, and no closed
-  finding reopens at equal or greater severity.
-- **Stalled or diverging — escalate.** A finding returns to `open`, a fix
-  creates an equal-or-higher-severity regression, the loop oscillates, a
-  finding rests on unresolved product/architecture authority, or two
-  consecutive rounds reduce neither open severity nor uncertainty. Surface
-  the ledger history and sticking point to the human.
+- **Converging — continue.** At least one blocking finding advances from `open` toward `closed`, open severity or uncertainty falls, and no closed finding reopens at equal or greater severity.
+- **Stalled or diverging — escalate.** A finding returns to `open`, a fix creates an equal-or-higher-severity regression, the loop oscillates, a finding rests on unresolved product/architecture authority, or two consecutive rounds reduce neither open severity nor uncertainty. Surface the ledger history and sticking point to the human.
 
-After the first full pass, a revision reviewer receives the prior ledger, the
-candidate-bound revision packet, mapped verification, and the new candidate
-id. It resolves prior findings first and then checks the causal change surface.
-New findings are classified `introduced-by-revision`,
-`newly-exposed-by-resolution`, or `missed-in-full-pass`. A prior finding that
-remains actionable keeps the evidence it was opened with; a reviewer that sees
-a further defect once the stated one is repaired opens a new id under one of
-those three classifications rather than re-aiming the old one, and
-`bin/kickoff-evidence` refuses the substitution. (Observed across three
-projects in one month: a stable id carrying a different objection in each of
-four rounds, every round classified `initial`, so the ledger showed one
-persistent finding where there were four consecutive misses.) A finding that
-rests on a decision only the operator can make — a product, architecture,
-authorization, or custody call — enters the ledger as `blocked-owner` and
-routes to the operator; sending it back to the planner as `REVISE` loops until
-someone notices.
+After the first full pass, a revision reviewer receives the prior ledger, the candidate-bound revision packet, mapped verification, and the new candidate id. It resolves prior findings first and then checks the causal change surface. New findings are classified `introduced-by-revision`, `newly-exposed-by-resolution`, or `missed-in-full-pass`. A prior finding that remains actionable keeps the evidence it was opened with; a reviewer that sees a further defect once the stated one is repaired opens a new id under one of those three classifications rather than re-aiming the old one, and `bin/kickoff-evidence` refuses the substitution. (Observed across three projects in one month: a stable id carrying a different objection in each of four rounds, every round classified `initial`, so the ledger showed one persistent finding where there were four consecutive misses.) A finding that rests on a decision only the operator can make — a product, architecture, authorization, or custody call — enters the ledger as `blocked-owner` and routes to the operator; sending it back to the planner as `REVISE` loops until someone notices.
 
 ### Failure-backed scope and the outward-spiral stop
 
-A defensive requirement, refusal, guard, compatibility behavior, or mandatory
-proof is in scope only when at least one authority names its basis: an observed
-failure with preserved incident evidence, an explicit operator decision, or a
-contract of a platform and operating mode the project actually targets. A
-reviewer's statement that something *could* happen is a proposal, not a
-blocking requirement. Put it in Open Questions or `blocked-owner`; do not make
-the planner or coder satisfy it merely to make review pass.
+A defensive requirement, refusal, guard, compatibility behavior, or mandatory proof is in scope only when at least one authority names its basis: an observed failure with preserved incident evidence, an explicit operator decision, or a contract of a platform and operating mode the project actually targets. A reviewer's statement that something *could* happen is a proposal, not a blocking requirement. Put it in Open Questions or `blocked-owner`; do not make the planner or coder satisfy it merely to make review pass.
 
-On every revision pass, the reviewer or critic makes a qualitative judgment
-before opening a new finding:
+On every revision pass, the reviewer or critic makes a qualitative judgment before opening a new finding:
 
 1. What documented failure or requirement justifies this change?
-2. Is it inside the authorized actors, platforms, concurrency model, and
-   deployment mode?
+2. Is it inside the authorized actors, platforms, concurrency model, and deployment mode?
 3. Does it move the fixed target closer, or move the target outward?
 
-If the answer depends on expanding an unsupported premise, stop the loop and
-route that premise to the operator as `blocked-owner` before another
-implementation pass. Finding counts and path counts are evidence about the
-loop; they never substitute for judgment. After any divergence, a request to
-extend the loop states the disputed premise in ordinary language; finding ids
-or counts alone are insufficient.
+If the answer depends on expanding an unsupported premise, stop the loop and route that premise to the operator as `blocked-owner` before another implementation pass. Finding counts and path counts are evidence about the loop; they never substitute for judgment. After any divergence, a request to extend the loop states the disputed premise in ordinary language; finding ids or counts alone are insufficient.
 
-This rule does not forbid a reviewer from discovering a real defect in the
-authorized target. It separates deeper discovery inside the target from an
-outward spiral that invents a larger target. (Observed in a derived project:
-a local, single-writer preview repair for three paths widened across successive
-reviews into Windows compatibility and arbitrary concurrent-filesystem
-mutation defenses, although the supported environments were single-writer
-macOS development and static read-only Linux deployment. Defensive machinery
-and blocking finding classes grew until the operator removed the unsupported
-premises.)
+This rule does not forbid a reviewer from discovering a real defect in the authorized target. It separates deeper discovery inside the target from an outward spiral that invents a larger target. (Observed in a derived project: a local, single-writer preview repair for three paths widened across successive reviews into Windows compatibility and arbitrary concurrent-filesystem mutation defenses, although the supported environments were single-writer macOS development and static read-only Linux deployment. Defensive machinery and blocking finding classes grew until the operator removed the unsupported premises.)
 
-The code loop adds four rules of the same kind, each from the month's
-code-review record:
+The code loop adds four rules of the same kind, each from the month's code-review record:
 
-- **The threat model is an authority, not a reviewer's imagination.** A
-  critic may require the code to withstand only the actors, failures, and
-  capabilities a phase file, brief, or policy names. A defense against
-  anything else — the repository's own code forging its evidence, a same-user
-  process ignoring the protocol lock — is an owner question recorded as
-  `blocked-owner`, never `blocking`. (Five blocking findings of this shape
-  survived attempts up to nine in one derived project before the owner
-  amended the threat model and all five were superseded.)
-- **A non-finding is not a finding.** "None required", "optional", and
-  "outside this phase" belong in Process Observations or a follow-up note;
-  the batch carries only findings with a required change.
-- **The coder may refuse with evidence.** A finding the coder can refute
-  returns as `rejected-with-evidence` with the refuting observation; the
-  critic accepts it or reopens with counter-evidence. In 328 findings over a
-  month the transition was used zero times while coders implemented
-  non-requirements to make findings go away.
-- **No unverified handoff.** The coder's Change Evidence states whether the
-  plan's focused sequence ran (`gate_status`); when it did not, the
-  orchestrator runs it natively before the critic is dispatched. Code whose
-  focused gate never ran anywhere is not reviewed. Authority/scope drift,
-a new risk class, public API or persisted-state changes, security, concurrency,
-irreversible-state boundaries, broad change dispersion, an invalidated
-acceptance claim, or lost trustworthy continuity rebases to a complete review.
+- **The threat model is an authority, not a reviewer's imagination.** A critic may require the code to withstand only the actors, failures, and capabilities a phase file, brief, or policy names. A defense against anything else — the repository's own code forging its evidence, a same-user process ignoring the protocol lock — is an owner question recorded as `blocked-owner`, never `blocking`. (Five blocking findings of this shape survived attempts up to nine in one derived project before the owner amended the threat model and all five were superseded.)
+- **A non-finding is not a finding.** "None required", "optional", and "outside this phase" belong in Process Observations or a follow-up note; the batch carries only findings with a required change.
+- **The coder may refuse with evidence.** A finding the coder can refute returns as `rejected-with-evidence` with the refuting observation; the critic accepts it or reopens with counter-evidence. In 328 findings over a month the transition was used zero times while coders implemented non-requirements to make findings go away.
+- **No unverified handoff.** The coder's Change Evidence states whether the plan's focused sequence ran (`gate_status`); when it did not, the orchestrator runs it natively before the critic is dispatched. Code whose focused gate never ran anywhere is not reviewed. Authority/scope drift, a new risk class, public API or persisted-state changes, security, concurrency, irreversible-state boundaries, broad change dispersion, an invalidated acceptance claim, or lost trustworthy continuity rebases to a complete review.
 
 The same judgment governs the full review loops:
 
@@ -182,14 +111,7 @@ Low-risk, bounded follow-up corrections do not enter a review loop by default. T
 
 These bounds are deliberate. The methodology assumes a human in the loop ([`human-in-the-loop.md`](human-in-the-loop.md)); the goal is to spend revision cycles only while they are buying convergence, and to hand a genuinely stuck decision to the human rather than grind identical objections — or burn the whole backstop — against a wall.
 
-**Plan growth is an earlier stop signal.** Before another plan-review dispatch,
-the deterministic pre-review checker measures the exact artifact history. A
-plan over 600 lines, a one-round increase greater than one third, or the second
-growth event stops the loop for decomposition or operator re-scoping. A review
-finding that introduces a mechanism outside the phase's named scope is routed
-to that same operator decision instead of being handed back as another planner
-revision. These plan-only bounds do not shorten the code-review convergence
-lease above.
+**Plan growth is an earlier stop signal.** Before another plan-review dispatch, the deterministic pre-review checker measures the exact artifact history. A plan over 600 lines, a one-round increase greater than one third, or the second growth event stops the loop. Remove redundant explanation before proposing decomposition or re-scoping to the operator; neither the size limit nor model reputation authorizes a split. A review finding that introduces a mechanism outside the phase's named scope is routed to that same operator decision instead of being handed back as another planner revision. These plan-only bounds do not shorten the code-review convergence lease above.
 
 ## Adding a fifth agent
 

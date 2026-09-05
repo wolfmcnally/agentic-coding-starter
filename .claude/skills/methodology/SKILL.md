@@ -3,12 +3,12 @@ name: methodology
 description: >-
   The eleven-step agentic coding methodology this repo implements: vague
   ideas → insights → brief → architecture → repo policies → phased plan →
-  sub-phase decomposition → orchestrated planner/reviewer/coder/critic loops
+  conditional child decomposition → orchestrated planner/reviewer/coder/critic loops
   → acceptance → log → human evaluation → stay agile. Invoke when scoping a
   new project, setting up a repo's planning structure, breaking a large
   initiative into phases, or reviewing the steps without reading the full
   brief. Invoke as /methodology in Claude Code or $methodology in Codex.
-last-reviewed: 2026-08-30
+last-reviewed: 2026-09-04
 ---
 
 # The Agentic Coding Methodology
@@ -19,16 +19,7 @@ The authoritative source is [`briefs/methodology.md`](../../../briefs/methodolog
 
 ## Rule One surrounds the sequence
 
-The eleven steps govern forward construction. Rule One governs what happens
-when any step—or any other kind of work—goes wrong or not as expected: treat
-the observed condition as a symptom, diagnose the causal contribution system
-proportionately, distinguish containment from correction and prevention, and
-persist any reusable lesson on a durable cross-harness surface. The operative
-skill is [`.claude/skills/rule-one/SKILL.md`](../rule-one/SKILL.md); the
-reasoning and open diagnostic questions live in
-[`briefs/rule-one-diagnostic-learning.md`](../../../briefs/rule-one-diagnostic-learning.md).
-They are one methodology unit and must travel together through `learn` and
-`teach`.
+The eleven steps govern forward construction. Rule One governs what happens when any step—or any other kind of work—goes wrong or not as expected: treat the observed condition as a symptom, diagnose the causal contribution system proportionately, distinguish containment from correction and prevention, and persist any reusable lesson on a durable cross-harness surface. The operative skill is [`.claude/skills/rule-one/SKILL.md`](../rule-one/SKILL.md); the reasoning and open diagnostic questions live in [`briefs/rule-one-diagnostic-learning.md`](../../../briefs/rule-one-diagnostic-learning.md). They are one methodology unit and must travel together through `learn` and `teach`.
 
 ## The eleven steps
 
@@ -42,30 +33,21 @@ They are one methodology unit and must travel together through `learn` and
 
 5. **Brief + architecture → phased plan.** Break the work down by phase. Each phase is independently testable and has a clearly defined goal and acceptance criteria. Lives under `plan/`; the spine is `plan/INDEX.md`.
 
-6. **Sub-phase breakdown at phase start.** At the start of every major phase, break it down into sub-phases. Resist decomposing future major phases at bootstrap. Bite size is capability-indexed: a coder model that routinely closes phases with first-cycle approvals can take bigger bites — see `briefs/methodology.md` §6.
+6. **Coherent outcomes; conditional children.** Apply the boundary test in `briefs/methodology.md` §6: an unresolved consequential decision, independently accepted prerequisite, deployment/migration/human seam or demonstrated coherence limit can justify decomposition. Keep coherent changes intact across modules, tests and docs; absent children, session length and model reputation are not triggers. Route consequential decisions to the operator. Once a split is authorized, draft children just in time, one at a time; do not pre-decompose future major phases.
 
-7. **Orchestrator-driven sub-phase execution.** Use the high-level `kickoff` orchestrator skill (`/kickoff` in Claude Code; `$kickoff` in Codex), which delegates the initial implementation. It:
+7. **Orchestrator-driven phase execution.** Use the high-level `kickoff` orchestrator skill (`/kickoff` in Claude Code; `$kickoff` in Codex), which delegates the initial implementation. It:
    - determines the current phase,
    - invokes a **planner agent**,
    - hands the plan to a **plan reviewer** (skipped when the phase declares the `light` review lane per `policies/review-lanes.md`),
    - hands the approved plan to a **coding agent**,
    - hands the result to a **code critic** (runs on every initial implementation; in `light`, it also guards the lane and can escalate back to `full`),
-   - on any critic's complaint, sends the work back to the relevant agent with
-     stable findings and a candidate-bound causal revision packet (bounded,
-     fail-closed loops).
+   - on any critic's complaint, sends the work back to the relevant agent with stable findings and a candidate-bound causal revision packet (bounded, fail-closed loops).
 
-8. **Acceptance check.** While work converges, the coder runs the smallest
-   behavioral and affected checks that can falsify the change. After critic
-   approval, the orchestrator runs the complete phase-prescribed sequence and
-   one authoritative full gate against the unchanged approved candidate.
-   Test- or user-driven follow-ups are routed by risk and size: direct fix,
-   coder only, or the full coder → critic cycle. A changed candidate
-   invalidates prior gate evidence; a failed lightweight route upgrades to the
-   full cycle.
+8. **Acceptance check.** While work converges, the coder runs the smallest behavioral and affected checks that can falsify the change. After critic approval, the orchestrator runs the complete phase-prescribed sequence and the implementation-candidate full gate against the unchanged approved candidate, followed after accepted close and all tracked bookkeeping by a second bare full handoff gate. No tracked write follows success. Test- or user-driven follow-ups are routed by risk and size: direct fix, coder only, or the full coder → critic cycle. A changed candidate invalidates prior gate evidence; a failed lightweight route upgrades to the full cycle.
 
 9. **Append-only phase log and lessons harvest.** `LOG.md` opens and closes work on every phase. Closing requires recorded evidence plus the mandatory lessons question: harvest role Process Observations, revision failure analyses, wall-clock observations, and relevant dispositions into `lessons/`; `None` is valid, omission is not.
 
-10. **Human evaluation where judgment is required.** Objective criteria may close autonomously after independent review and complete gates, and the phase is delivered. Named manual, subjective, product, custody, or owner-only criteria still park for the human, who evaluates each sub-phase at the seam. Delivery never substitutes for that judgment.
+10. **Human evaluation where judgment is required.** Objective criteria may close autonomously after independent review and complete gates, and the phase is delivered. Named manual, subjective, product, custody, or owner-only criteria still park for the human, who evaluates each phase at the seam. Delivery never substitutes for that judgment.
 
 11. **Stay agile.** Add new phases, or break existing phases into more sub-phases, as the problem and solution space become clearer.
 
@@ -74,8 +56,8 @@ They are one methodology unit and must travel together through `learn` and
 - If you have only a vague idea, push to step 1.
 - If a brief exists but no architecture, do step 3 and research BCPs.
 - If architecture exists but no phase plan, do step 5.
-- If a phase exists but no sub-phases, do step 6.
-- If a sub-phase is being executed, follow step 7's `kickoff` orchestrator pattern.
+- At phase entry, apply step 6’s boundary test; absent children alone require no action.
+- If a phase or authorized child is being executed, follow step 7's `kickoff` orchestrator pattern.
 - Whenever a phase opens or closes, write to the append-only log (step 9) with explicit evidence; at close, run the lessons harvest and surface graduation-ready candidates for human ratification.
 
 ## The four canonical agents
@@ -96,11 +78,11 @@ The orchestrator delegates to four specialist roles. Their names are load-bearin
 - **Every initial phase implementation passes the code critic; repeat review on follow-ups is risk- and size-based.**
 - **Review, findings, and gates are bound to exact candidate identity.**
 - **Revision rounds use causal packets and widen when continuity is uncertain.**
-- **The orchestrator, not the coder, owns the one complete acceptance-close gate.**
+- **The orchestrator owns both full close gates; the coder owns focused iteration.**
 - **The human owns subjective and owner-only acceptance; objective acceptance is independently reviewed and gate-proved.**
 - **The orchestrator writes code only for eligible small, low-risk follow-up corrections.**
 - **Closing a phase requires recorded evidence and a lessons-harvest answer.**
-- **Phases and sub-phases are mutable.**
+- **Unstarted phases and authorized children are mutable; completed phases stay completed.**
 
 ## Orchestration runtime doctrine
 
@@ -120,12 +102,7 @@ Hard-won rules for step 7 when the loop runs fail-closed and unattended:
 - **Preflight the environment before an unattended run** — a fail-closed probe ladder (repo baseline, identity, toolchain, platform capabilities, escalation mechanics, authoritative gate as pre-work baseline) runs before the tasking prompt; probes read-only or self-cleaning with a printed table; barriers surface one layer per round; fixes land as durable config, never session memory; after a green baseline, every failure is the run's own.
 - **Well-specified isolated tasks may run as goal-armed one-shots** instead of the four-role loop — complete operator-reviewed spec (substitutes for plan review), new-files-only write set with a park on widening, designed parks as satisfying stops, a durable goal carrying outcome + printed proof + park clause, independent verification against the recorded baseline before push. Goal durability is harness-specific — know whether compaction clears it before trusting continuation to it.
 - **Authoritative gates run in the native execution context** — sandboxed gate output can contain phantom failures in either direction; classify sandbox-vs-real with one native baseline before work; a gate that could not run is "not run," never "passed"; never cite in-sandbox gate output as evidence.
-- **Stop an outward spiral at its premise.** A defensive requirement joins the
-  target only when an observed failure, explicit operator decision, or
-  actually-targeted platform contract supports it. On revision, judge whether
-  a finding deepens the work inside the fixed target or invents a larger
-  target; unsupported premises park for the operator before another
-  implementation pass. Counts describe the trajectory but do not decide it.
+- **Stop an outward spiral at its premise.** A defensive requirement joins the target only when an observed failure, explicit operator decision, or actually-targeted platform contract supports it. On revision, judge whether a finding deepens the work inside the fixed target or invents a larger target; unsupported premises park for the operator before another implementation pass. Counts describe the trajectory but do not decide it.
 - **Doctrine and ceremony grow only against incidents, and every review prunes** — a new binding step enters only with its motivating incident cited and the park it prevents named; foresight proposals stay in the `lessons/` ledger, never become rules; every review pass (plan review, code review, `sweep`) treats steps whose failure families are structurally dead as deletion candidates, because fail-closed pressure ratchets ceremony and only deliberate pruning reverses it.
 
 ## Run-lifecycle vocabulary
@@ -141,7 +118,4 @@ Full statement: `briefs/methodology.md` § Run-lifecycle vocabulary.
 
 ## Source
 
-This skill restates [`briefs/methodology.md`](../../../briefs/methodology.md).
-If that brief changes, update this skill. Rule One's operative prescription is
-[`.claude/skills/rule-one/SKILL.md`](../rule-one/SKILL.md), with its rationale
-in [`briefs/rule-one-diagnostic-learning.md`](../../../briefs/rule-one-diagnostic-learning.md).
+This skill restates [`briefs/methodology.md`](../../../briefs/methodology.md). If that brief changes, update this skill. Rule One's operative prescription is [`.claude/skills/rule-one/SKILL.md`](../rule-one/SKILL.md), with its rationale in [`briefs/rule-one-diagnostic-learning.md`](../../../briefs/rule-one-diagnostic-learning.md).

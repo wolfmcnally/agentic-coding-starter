@@ -118,6 +118,7 @@ families:
   - bin/check-catalogs
   - tests/test_check_catalogs.py
   - '*.md'
+  - .claude/skills/kickoff/**
   - briefs/**
   - policies/**
   - plan/**
@@ -311,6 +312,12 @@ families:
   - tests/test_kickoff_evidence.py
   - policies/orchestration-evidence.md
   - briefs/incremental-orchestration.md
+  - bin/check-catalogs
+  - tests/test_check_catalogs.py
+  - .claude/skills/kickoff/**
+  - .claude/agents/**
+  - plan/**
+  - CLAUDE.md
   covers: *id013
   contract: Every review and gate remains bound to the exact candidate and declared authority.
   risk_class: orchestration-custody
@@ -427,6 +434,9 @@ families:
   - policies/**
   - .claude/skills/**
   - tests/test_methodology_toolchain_contract.py
+  - .claude/agents/**
+  - .agents/skills/**
+  - tests/test_check_catalogs.py
   covers: *id016
   contract: Universal machinery travels with every independent contract member named.
   risk_class: methodology-propagation
@@ -451,6 +461,7 @@ families:
   - .claude/skills/**
   - .agents/skills/**
   - tests/test_mirror_parity.py
+  - tests/test_check_catalogs.py
   covers: *id017
   contract: Supported harnesses expose one methodology without silent surface drift.
   risk_class: cross-harness

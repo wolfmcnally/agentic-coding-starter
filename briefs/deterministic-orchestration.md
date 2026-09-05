@@ -9,15 +9,11 @@ scope: Design and decision criteria for encoding kickoff's delegate → verdict 
 
 This brief proposes — and deliberately defers — moving `kickoff`'s control flow from prose executed by the orchestrating model to a deterministic workflow program executed by the harness. It exists so the decision can be made quickly when its trigger condition lands, rather than re-derived from scratch.
 
-The candidate-bound evidence plane in
-[`incremental-orchestration.md`](incremental-orchestration.md) is implemented
-independently of this deferral. Authority, change, finding, gate, packet, and
-protocol records are the data plane a future workflow program should consume;
-they do not require moving today's control flow out of prose.
+The candidate-bound evidence plane in [`incremental-orchestration.md`](incremental-orchestration.md) is implemented independently of this deferral. Authority, change, finding, gate, packet, and protocol records are the data plane a future workflow program should consume; they do not require moving today's control flow out of prose.
 
 ## 1. Problem
 
-`kickoff` is a state machine written in prose. The orchestrating model reads `.claude/skills/kickoff/SKILL.md` and *performs* the machine: classify initial work versus a follow-up correction, resolve venue (Step 0a), resolve phase and lane (Step 1), decompose (Step 1a), delegate to the needed roles, parse verdicts by string match, route follow-ups by risk and size, run convergence-based full revision loops (a judgment call — iterate while objections narrow, escalate on stall or divergence — bounded by a deterministic 10-cycle runaway backstop), run the cross-harness fallback state machine, run the ripple pass, assemble the END block.
+`kickoff` is a state machine written in prose. The orchestrating model reads the compact `.claude/skills/kickoff/SKILL.md` entry, then explicitly reads each linked adjacent resource before performing its stage: classify initial work versus a follow-up correction, resolve venue (Step 0a), resolve phase and lane (Step 1), apply the consequential outcome-boundary test and decompose only when authorized (`preflight.md` Step 1a), delegate to the needed roles, parse verdicts by string match, route follow-ups by risk and size, run convergence-based full revision loops (a judgment call — iterate while objections narrow, escalate on stall or divergence — bounded by a deterministic 10-cycle runaway backstop), run the cross-harness fallback state machine, run the ripple pass, assemble the END block.
 
 Field use across this template and its derived projects shows the prose machine executing faithfully — END blocks match status flips, revision caps hold, fallbacks degrade gracefully. But the state count has grown monotonically: venue resolution, per-stage fallback, turn-cap rescue, review lanes with escalation, proportional follow-up routing, AUTO/DECIDE ripple classification. Prose execution risk grows with the number of states the orchestrating model must track, and every addition is paid on every phase. The known failure classes — none yet observed at damaging scale, all structurally possible — are: a skipped step, a mis-parsed verdict (`## Verdict:` is matched by string, and any deviation from that exact header breaks orchestration), an under-classified follow-up, a forgotten ripple pass, a revision loop that loses count, venue thrash after a fallback.
 
@@ -27,9 +23,7 @@ Field use across this template and its derived projects shows the prose machine 
 - **Schema-validated verdicts.** A structured-output contract (`{verdict: "APPROVED" | "REVISE", required_changes: [...]}`) replaces string matching. The reviewer model is *forced* into the shape; malformed verdicts become retries at the tool layer instead of orchestration breaks.
 - **Resumability.** A journaled workflow re-runs from the first changed step after an interruption, instead of the human reconstructing where the prose machine stopped.
 - **Cheaper orchestration.** The orchestrating model spends judgment on content (what the critic found, what ripples mean) rather than bookkeeping (which step, which count, which venue).
-- **Native consumption of existing evidence.** The program validates and
-  routes the already-shipped candidate, finding, gate, and protocol records
-  instead of inventing a second workflow-specific state format.
+- **Native consumption of existing evidence.** The program validates and routes the already-shipped candidate, finding, gate, and protocol records instead of inventing a second workflow-specific state format.
 
 ## 3. What stays model-driven
 
@@ -47,11 +41,11 @@ The program orchestrates; it does not judge. These remain model (or human) work:
 
 Read that second bullet precisely, because it is the one a future session is most likely to misread: **subagent spawning is not the trigger.** Codex gained subagents between this brief's first draft and its 2026-08-25 re-check, and the deferral did not move — what §2 needs is a deterministic *control plane* (a script that holds the loop, the caps, and the routing), not the ability to delegate work to a child agent, which the prose loop already does.
 
-This asymmetry is the blocker. One canonical `kickoff` has to drive both harnesses; a deterministic path that exists on one harness only is acceptable **only** in the shape cross-harness review already proved out: a config-gated enhancement with graceful fallback to the prose path, where the canonical contract stays in `SKILL.md`.
+This asymmetry is the blocker. One canonical `kickoff` has to drive both harnesses; a deterministic path that exists on one harness only is acceptable **only** in the shape cross-harness review already proved out: a config-gated enhancement with graceful fallback to the prose path, where the canonical contract stays in the entry and its linked resources.
 
 ## 5. Design sketch (tentative — to be re-validated at implementation time)
 
-- `SKILL.md` remains the **canonical contract**: the steps, the policies they bind to, the END-block format. The workflow program is an *implementation* of that contract, not a second authority.
+- The compact `SKILL.md` entry and its seven adjacent resources remain the **canonical contract**: `preflight.md`, `dispatch.md`, `planning.md`, `implementation.md`, `acceptance.md`, `close.md` and `recovery.md`. The entry names when each must be read; the resources own the steps, policy bindings and END format. The workflow program is an *implementation* of that contract, not a second authority.
 - The program lives at a well-known repo path (e.g., `workflow/kickoff` in whatever format the harness requires) and is activated by a Project Context token — e.g., `deterministic-orchestration: enabled` — resolved in a Step 0b: token enabled **and** the current harness has the primitive → program path; otherwise → prose path, silently.
 - Step granularity maps 1:1 to today's Steps 0a–10, so the END block, LOG discipline, and status-marker transitions are byte-identical regardless of path. A human reading `LOG.md` cannot tell which path ran except by the venue/path line that reports it.
 - Verdicts move to the structured-output schema in the program path. **Open question (greenfield rule):** if the schema becomes the real contract, the prose path and the role files should adopt the same shape at the same time — one verdict contract everywhere, not a compat split. That migration touches `four-canonical-agents.md`, both reviewer role files, and `role-models.md`'s three-signal gate, and must land in the same phase that lands the program.

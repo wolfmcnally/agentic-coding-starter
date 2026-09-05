@@ -9,6 +9,41 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CHECKER = ROOT / "bin" / "check-catalogs"
 
+RESOURCES = (
+    "preflight.md",
+    "dispatch.md",
+    "planning.md",
+    "implementation.md",
+    "acceptance.md",
+    "close.md",
+    "recovery.md",
+)
+ZONE_MARKERS = (
+    "<!-- PROJECT_CONTEXT_START -->\n"
+    "<!-- PROJECT_CONTEXT_END -->\n"
+    "<!-- METHODOLOGY_CONTRACT_START -->\n"
+    "<!-- METHODOLOGY_CONTRACT_END -->\n"
+)
+
+
+def write_instruction_resources(root: Path) -> None:
+    """Independently construct the declared table, without copying the checker."""
+    skill = root / ".claude/skills/kickoff"
+    skill.mkdir(parents=True, exist_ok=True)
+    (skill / "SKILL.md").write_text(
+        "# Kickoff\n\n"
+        "| Execution condition | Direct resource | Load requirement |\n"
+        "|---|---|---|\n"
+        + "".join(
+            f"| Enter {name.removesuffix('.md')} | [{name}]({name}) | Read before this stage. |\n"
+            for name in RESOURCES
+        ),
+        encoding="utf-8",
+    )
+    for name in RESOURCES:
+        (skill / name).write_text(f"# {name}\n\n[Entry](SKILL.md)\n", encoding="utf-8")
+
+
 INDEX = """\
 # Plan
 
@@ -48,9 +83,10 @@ def fixture(tmp_path: Path, *, first: str = "⬅️", second: str = "⏳") -> Pa
     (root / "CLAUDE.md").write_text(
         "# Instructions\n\n"
         "- [`example.md`](policies/example.md) — an example policy.\n"
-        "- [`design.md`](briefs/design.md) — a design brief.\n",
+        "- [`design.md`](briefs/design.md) — a design brief.\n" + ZONE_MARKERS,
         encoding="utf-8",
     )
+    write_instruction_resources(root)
     (root / "plan").mkdir()
     (root / "plan" / "INDEX.md").write_text(
         INDEX.format(first=first, second=second),
@@ -79,9 +115,168 @@ def test_tracked_markdown_deleted_from_worktree_is_not_read_as_a_source(
     result = run(root)
 
     assert result.returncode == 0, result.stdout + result.stderr
+    _assert_instruction_delivery(root)
+    _assert_phase_entry_ledgers(root)
     _assert_child_close_requires_parent_close_or_another_drafted_child(tmp_path / "stranded-child")
     _assert_child_close_accepts_parent_close(tmp_path / "closed-parent")
     _assert_child_close_accepts_drafted_incomplete_sibling(tmp_path / "queued-sibling")
+
+
+def _assert_instruction_delivery(root: Path) -> None:
+    instructions = root / "CLAUDE.md"
+    entry = root / ".claude/skills/kickoff/SKILL.md"
+    for path, ceiling in ((instructions, 16384), (entry, 8192)):
+        original = path.read_bytes()
+        # Include multibyte prose and CRLF: the budget counts stored UTF-8 bytes.
+        padding = ceiling - len(original) - len("\r\né".encode())
+        boundary = original + "\r\né".encode() + b"x" * padding
+        try:
+            path.write_bytes(boundary)
+            accepted = run(root)
+            assert accepted.returncode == 0, accepted.stdout + accepted.stderr
+            path.write_bytes(boundary + b"x")
+            refused = run(root)
+            assert refused.returncode == 1
+            assert f"UTF-8 size {ceiling + 1} exceeds {ceiling} bytes" in refused.stdout
+        finally:
+            path.write_bytes(original)
+
+    original_root = instructions.read_text()
+    markers = ZONE_MARKERS.splitlines()
+    for changed, diagnostic in (
+        (original_root.replace(markers[0], "PROJECT_CONTEXT_START"), "exactly once"),
+        (original_root + markers[0], "exactly once"),
+        (
+            original_root.replace(ZONE_MARKERS, "\n".join(reversed(markers)) + "\n"),
+            "declared order",
+        ),
+    ):
+        try:
+            instructions.write_text(changed)
+            result = run(root)
+            assert result.returncode == 1
+            assert "instructions\tCLAUDE.md\tzone markers must" in result.stdout
+            assert diagnostic in result.stdout
+        finally:
+            instructions.write_text(original_root)
+
+    original_entry = entry.read_text()
+    first_row = next(line for line in original_entry.splitlines() if "](preflight.md)" in line)
+    for malformed in (
+        "<!--\n" + original_entry + "-->\n",
+        original_entry.replace("Execution condition", "Unrelated condition"),
+        original_entry.replace("|---|---|---|", "|---|---|"),
+        original_entry.replace(first_row, first_row + "\n" + first_row),
+        original_entry.replace("Enter preflight", ""),
+        original_entry.replace("[preflight.md](preflight.md)", "[preflight.md][resource]")
+        + "\n[resource]: preflight.md\n",
+    ):
+        try:
+            entry.write_text(malformed)
+            result = run(root)
+            assert result.returncode == 1
+            assert "preflight.md: expected one operative row" in result.stdout
+        finally:
+            entry.write_text(original_entry)
+    for name in RESOURCES:
+        resource = entry.parent / name
+        body = resource.read_bytes()
+        try:
+            resource.unlink()
+            missing = run(root)
+            assert missing.returncode == 1
+            assert f"kickoff/{name}\trequired resource is unreadable" in missing.stdout
+            resource.mkdir()
+            try:
+                not_a_file = run(root)
+                assert not_a_file.returncode == 1
+                assert f"kickoff/{name}\trequired resource is unreadable" in not_a_file.stdout
+            finally:
+                resource.rmdir()
+            resource.write_bytes(b"\xff")
+            unreadable = run(root)
+            assert unreadable.returncode == 1
+            assert f"kickoff/{name}\trequired resource is unreadable" in unreadable.stdout
+        finally:
+            resource.write_bytes(body)
+
+        row = next(line for line in original_entry.splitlines() if f"]({name})" in line)
+        absent = original_entry.replace(row + "\n", "")
+        # Other resources retain their loading phrases in every wrong control.
+        replacements = (
+            "",
+            "> " + row + "\n",
+            "```markdown\n" + row + "\n```\n",
+            "`" + row + "`\n",
+            f"[Navigation]({name})\nRead before this stage.\n",
+            row.replace(f"]({name})", "](indirect.md)") + "\n",
+            row.replace(f"]({name})", "](missing.md)") + "\n",
+        )
+        indirect = entry.parent / "indirect.md"
+        indirect.write_text(f"[Resource]({name})\n")
+        try:
+            for replacement in replacements:
+                entry.write_text(absent + replacement)
+                result = run(root)
+                assert result.returncode == 1
+                assert f"{name}: expected one operative row" in result.stdout
+            for requirement in (
+                "",
+                "Do not read before this stage.",
+                "Read after this stage.",
+                "`Read before this stage.`",
+                '"Read before this stage."',
+            ):
+                entry.write_text(
+                    original_entry.replace(row, row.replace("Read before this stage.", requirement))
+                )
+                result = run(root)
+                assert result.returncode == 1
+                assert f"{name}: row must declare Read before use" in result.stdout
+        finally:
+            entry.write_text(original_entry)
+            indirect.unlink()
+
+    try:
+        entry.unlink()
+        result = run(root)
+        assert result.returncode == 1
+        assert "kickoff/SKILL.md\trequired entry is unreadable" in result.stdout
+    finally:
+        entry.write_text(original_entry)
+    try:
+        instructions.unlink()
+        result = run(root)
+        assert result.returncode == 1
+        assert "instructions\tCLAUDE.md\t" in result.stdout
+    finally:
+        instructions.write_text(original_root)
+    restored = run(root)
+    assert restored.returncode == 0, restored.stdout + restored.stderr
+
+
+def _assert_phase_entry_ledgers(root: Path) -> None:
+    index = root / "plan/INDEX.md"
+    original = index.read_bytes()
+    try:
+        for first, second, diagnostic in (
+            ("⬅️", "⏳", None),  # Coherent major work needs no child files.
+            ("🚧", "⏳", None),  # Valid active ledger; selection remains explicit.
+            ("✅", "✅", None),
+            ("⏳", "⏳", "idle incomplete phase table"),
+            ("⬅️", "⬅️", "may carry at most one"),
+            ("🚧 ✅", "⏳", "exactly one status marker"),
+            ("", "⬅️", "exactly one status marker"),
+        ):
+            index.write_text(INDEX.format(first=first, second=second))
+            result = run(root, "--closing-phase", "1")
+            if diagnostic is None:
+                assert result.returncode == 0, result.stdout + result.stderr
+            else:
+                assert result.returncode == 1
+                assert diagnostic in result.stdout
+    finally:
+        index.write_bytes(original)
 
 
 def test_missing_internal_inline_and_reference_links_are_reported(

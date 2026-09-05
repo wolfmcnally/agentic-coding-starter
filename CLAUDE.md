@@ -1,10 +1,9 @@
 # CLAUDE.md
 
-This file provides guidance to coding agents (Claude Code, Codex CLI, and others that read top-level instruction files) when working in this repository.
-
-This file has two zones. **Project Context** is everything specific to *this* repo — the project's thesis, the deliverable's surface, the language conventions, the project-specific briefs and skills. `stamp` rewrites this zone when stamping out a new project. **Methodology Contract** is everything universal to the agentic methodology — methodology briefs, every policy, the phase-work protocol, universal conventions, the glossary. `stamp` copies this zone verbatim. The two zones are demarcated by HTML comment markers; both humans and `stamp` use the markers to find the boundary. Above both zones is a small **Hard rules** section that governs every action regardless of zone — these are too consequential to risk an agent missing them by reading top-down and stopping early.
+`AGENTS.md` points here. `stamp` rewrites Project Context and copies Methodology Contract except starter-only entries. Hard rules govern both.
 
 ## Hard rules — read these before any action
+
 
 These rules govern every action in this repo. They are placed above both zones so an agent reads them before doing anything irreversible. The full policy text for each is in `policies/`; consult that before bending the rule. Rules 1 and 2 are universal (apply to this template and to every project `stamp` derives from it). Rule 3 is **starter-only** — it does not propagate to derived projects.
 
@@ -22,56 +21,34 @@ If the user explicitly restricts or waives one of these rules for a named scope 
 
 ## This Repo is the Agentic Coding Starter Template
 
-A *master template* for projects built with AI coding agents under a structured planner → reviewer → coder → critic methodology. The entry-point brief is [`briefs/BRIEF.md`](briefs/BRIEF.md).
-
-This repo is also a working project in its own right. Open it in either supported harness and invoke the `kickoff` skill (`/kickoff` in Claude Code; `$kickoff` in Codex) to pick up Phase 1 from `plan/INDEX.md`.
+Master template for independently reviewed, evidence-bound development. `kickoff` selects work from `plan/INDEX.md`.
 
 ## Project briefs
 
-In addition to the universal methodology briefs (see Methodology Contract below):
-
-- [`BRIEF.md`](briefs/BRIEF.md) — entry-point brief for *this* repo: thesis, what the template provides, when to use it, the two operating modes (template-stamp vs. self-build), and acceptance criteria.
-- [`methodology-treatise.md`](briefs/methodology-treatise.md) — "Wolf's Agentic Coding Starter Kit": the canonical introduction to this repository for a general audience, from working engineers to readers who have never written code. Argues that an agent becomes reliable when the project holds the memory, the rules, and the evidence, and supports it with the ledger and append-only log, the four separated roles and the two-gate close (including the typed acceptance boundary and autonomous delivery), and the lessons ledger with human-only graduation. Carries the honest costs and the internal limits. Source of truth for every derivative rendering; corrections land here first per [`policies/treatise.md`](policies/treatise.md).
-- [`eacp-pattern-map.md`](briefs/eacp-pattern-map.md) — maps this repo's structures onto named patterns from the Encyclopedia of Agentic Coding Patterns, with file-level evidence: the orchestration spine, durable state, feedforward controls, feedback sensors, governance and provenance; plus the patterns deliberately declined, the antipatterns structurally guarded against, where the repo extends the corpus, and the gaps.
-
-- [`astra-era-development.md`](briefs/astra-era-development.md) — approved model routing, coherent phase sizing, instruction delivery, and bounded evaluation upgrade.
+- [Template thesis and acceptance](briefs/BRIEF.md)
+- [Canonical public explanation](briefs/methodology-treatise.md)
+- [Patterns and repository evidence](briefs/eacp-pattern-map.md)
+- [Approved workflow upgrade](briefs/astra-era-development.md)
 
 ## Project surfaces
 
-- `project/` — the deliverable: runtime pin, package metadata, source, tests,
-  and lockfile. Self-contained per
-  [`policies/project-isolation.md`](policies/project-isolation.md) — nothing
-  inside `project/` references anything above it. Currently holds a minimal
-  Python example so the toolchain contract has a real target from the first
-  session.
+`project/`: isolated Python example, source, tests, runtime pin, metadata and lockfile; no parent references.
 
 ## Project conventions
 
-- **Python 3.11+** is the supported range; `project/.python-version` selects
-  Python 3.11 as Starter's reproducible managed default. Type hints on all new
-  public functions; idiomatic stdlib where the difference is small.
-- **`uv` with `.python-version`, `pyproject.toml`, and `uv.lock`** owns the
-  example environment. `tool.uv.python-preference = "only-managed"` prevents
-  an ambient system interpreter from silently winning.
-- **The repository-owned toolchain contract is atomic.** `./bin/setup`
-  provisions the locked environment, `./bin/test [args...]` runs full,
-  explicitly focused, or governed vital/changed tests,
-  `./bin/check all` is the authoritative suite, and
-  `./bin/python` selects the project interpreter. Callers never assume
-  `python3.12` or another versioned binary is on `PATH`. Each wrapper uses the
-  shared real-dependency probe; `TOOLCHAIN_PYTHON=/absolute/path/to/python` is
-  an authoritative compatibility-test override and never falls back.
-- **`project/pyproject.toml` is the single source of truth** for Python tooling configuration (ruff, pytest, mypy if used) in this repo.
+Python 3.11+; `project/.python-version` pins managed 3.11. `uv`, `project/pyproject.toml` and `project/uv.lock` own tooling/dependencies; `tool.uv.python-preference = "only-managed"`. Type public functions; prefer stdlib.
+
+Use `./bin/setup`, `./bin/test [args...]`, `./bin/check all`, `./bin/python`. Real-dependency probes fail closed. `TOOLCHAIN_PYTHON` is an authoritative absolute-path test override; no PATH inference or fallback.
 
 ## Model & review venue
 
-Which model runs each `kickoff` role is set under `role_models` in human-editable `kickoff.yaml` (directly or via `roles`), scoped by which harness orchestrates. Model and effort are separate fields; the model implies its CLI. The shipped quality preset uses strong same-harness roles; balanced and economy presets reduce cost, and cross-vendor review is explicitly selectable. Presets expand into ordinary pins; there is no runtime preset router. Before phase state begins, `kickoff` live-validates every non-native target and aborts on any upstream failure. Governed by [`policies/role-models.md`](policies/role-models.md); invocation recipes in [`briefs/cross-agent-invocation.md`](briefs/cross-agent-invocation.md).
+`kickoff.yaml`: model/effort pins, timeouts, research budgets. `roles` edits pins or expands presets. Default: quality/same-harness; cross-vendor review is explicit. Live preflight precedes mutation.
 
 ## Project-specific skills
 
-In addition to the universal `kickoff`, `methodology`, `rule-one`, `learn`, `teach`, `roles`, `sweep`, `sweep-planning`, `sweep-coding`, `demo`, `treatise`, `plain`, and `ask` skills (carried into every derived project):
+See also [universal skills](#universal-skills).
 
-- **`stamp`** — starter-template-only bootstrapping skill. Stamps out a new project from this repo. Registered for Codex in this template repo only; not carried into derived projects. Source: `.claude/skills/stamp/SKILL.md`; Codex native skill: `.agents/skills/stamp`.
+- [stamp](.claude/skills/stamp/SKILL.md)
 
 <!-- PROJECT_CONTEXT_END -->
 
@@ -81,303 +58,140 @@ In addition to the universal `kickoff`, `methodology`, `rule-one`, `learn`, `tea
 
 ## Methodology briefs
 
-- [`methodology.md`](briefs/methodology.md) — the eleven-step pipeline: vague ideas → insights → brief → architecture → policies → phased plan → sub-phase decomposition → orchestrator-driven execution → acceptance → log → human evaluation → stay agile. Includes the orchestration runtime doctrine — seventeen fail-closed rules for unattended stretches (diagnosed self-resume, deterministic substitution, the single-message artifact ceiling, instrument qualification and altitude with its time axis, falsification-control satisfiability, advisory-when-human-shadowed, orientation-first ratification artifacts, contract embedding, designed stops, out-of-band supervision, the environment preflight ladder, the goal-armed one-shot lane, native-context gates, convergence-lease loop extensions, the failure-backed outward-spiral stop, incident-gated ceremony growth with pruning on every review) — and the run-lifecycle vocabulary (finalized / sealed / frozen / parked, with sealed as working shorthand for attestation). Doctrine now, mechanics deferred (self-resume budgets excepted — see `policies/fail-closed-resume.md`).
-- [`rule-one-diagnostic-learning.md`](briefs/rule-one-diagnostic-learning.md) — the reasoning companion to the `rule-one` skill: visible anomalies are symptoms rather than diagnoses; causal contribution is separated from blame; containment, correction, and prevention answer different questions; and reusable lessons reach durable cross-harness surfaces. The skill and brief are one portable methodology unit.
-- [`agentic-bootstrap.md`](briefs/agentic-bootstrap.md) — procedure for standing up a new project from this template: anatomy of the structure, what to transfer verbatim vs. rewrite vs. discard, step-by-step procedure, sanity-check protocol.
-- [`cross-agent-invocation.md`](briefs/cross-agent-invocation.md) — best current practices for invoking one coding-agent CLI from inside another (Claude Code ↔ Codex): headless flags, sandbox/permission posture, capture contracts, failure modes; rationale for cross-harness review.
-- [`incremental-orchestration.md`](briefs/incremental-orchestration.md) — implemented evidence plane for candidate-bound review, delta revision packets, focused iteration checks, separate implementation-candidate and post-bookkeeping handoff gates, recoverable incomplete event streams, and effectiveness-preserving attention to human wall-clock cost.
-- [`deterministic-orchestration-control-plane.md`](briefs/deterministic-orchestration-control-plane.md) — immutable exact-command manifests, real-read venue receipts, command-zero preflight, dual product/full-tree identity, deterministic append-only logging, and one bounded bookkeeping repair.
-- [`deterministic-orchestration.md`](briefs/deterministic-orchestration.md) — **draft.** Design and decision criteria for encoding `kickoff`'s delegate → verdict → route-back loop as a deterministic workflow program. Deferred until every supported harness ships a parity workflow primitive; the prose loop in `kickoff/SKILL.md` remains canonical until then.
-- [`harness-self-improvement.md`](briefs/harness-self-improvement.md) — the two-tier improvement flywheel: phase-scale lessons capture (roles emit Process Observations; `kickoff` harvests into the `lessons/` ledger; recurring lessons graduate under human ratification), the `sweep` maintenance pass, and repo-scale propagation (`stamp` ships the machinery, `teach` retrofits it, `learn` harvests `scope: methodology` lessons back). Records the declined patterns and the deferred contract-versioning DECIDE.
-- [`session-context-compaction.md`](briefs/session-context-compaction.md) — managing harness context compaction during long orchestration runs: verified harness facts (the model can neither invoke `/compact` nor see its own fill level), why mid-arc compaction severs evidence bindings, measured per-arc token economics, the safe-boundary pause protocol (a capacity pause must show its arithmetic), and an unimplemented hook-based automation option.
-- [`test-suite-value-governance.md`](briefs/test-suite-value-governance.md) — treats the test suite as an attributable proof estate: a recipient-local whole-estate reset with physical consolidation/deletion, 20% family/leaf ceilings, 80% historical and held-out effectiveness floors, direct critical-risk proofs, zero-net-growth, governed fast lanes, and full retained close gates.
-
-- [`mini-method.md`](briefs/mini-method.md) — the minimal subset for small development or knowledge-work projects: a verbatim fenced `CLAUDE.md` that idempotently provisions a git repo, `.gitignore`, `briefs/`, `policies/`, `docs/`, and `bin/` with per-directory catalogs and a short rule set; commits its scaffold and never pushes; graduates to the full methodology through `teach`.
+- [Eleven steps, doctrine and glossary](briefs/methodology.md)
+- [Diagnosis and durable learning](briefs/rule-one-diagnostic-learning.md)
+- [Portable bootstrap procedure](briefs/agentic-bootstrap.md)
+- [Cross-CLI invocation contracts](briefs/cross-agent-invocation.md)
+- [Candidate-bound incremental assurance](briefs/incremental-orchestration.md)
+- [Command authority and custody](briefs/deterministic-orchestration-control-plane.md)
+- [Draft deterministic workflow design](briefs/deterministic-orchestration.md)
+- [Lessons and maintenance flywheel](briefs/harness-self-improvement.md)
+- [Dated loading and continuity guidance](briefs/session-context-compaction.md)
+- [Proof-estate design](briefs/test-suite-value-governance.md)
+- [Minimal methodology scaffold](briefs/mini-method.md)
 
 ## Policies catalog
 
-Every file under `policies/`, indexed so agents see the catalog without an extra Read. A policy is a non-negotiable rule every phase honors.
+Every applicable policy binds.
 
-- [`README.md`](policies/README.md) — what `policies/` is and how it differs from `briefs/`.
-- [`briefs.md`](policies/briefs.md) — the brief-file lifecycle: frontmatter schema (`title`, `date`, `status`, `scope`), four-value status flow (`draft` / `methodology` / `implemented` / `historical`), filename conventions, when to write one, when to retire one.
-- [`briefs-and-policies.md`](policies/briefs-and-policies.md) — the contract: briefs describe, policies prescribe, plan sequences; `docs/` sits beneath all three and is cited by them.
-- [`docs.md`](policies/docs.md) — `docs/` holds pinned third-party reference material (vendor documentation, specifications, RFCs, license texts): verbatim or verbatim excerpt, never project-authored, never linking outside `docs/`. Cataloged only in `docs/README.md` with source, `As of`, `Retrieved`, and redistribution basis; briefs, policies, and the plan cite the local pin rather than the URL alone. Reading a pin is retrieval for every role. Enforced by `bin/check-catalogs`.
-- [`cross-harness-parity.md`](policies/cross-harness-parity.md) — keep Claude Code, Codex CLI, and any other supported harness in lockstep; canonical files vs. mirrors; onboarding a new harness.
-- [`four-canonical-agents.md`](policies/four-canonical-agents.md) — the four roles `kickoff` invokes by name; their tool stances; their verdict headers; failure-backed scope and the outward-spiral stop; convergence-bounded revision loops (iterate while converging, escalate on stall, 10-cycle runaway backstop, convergence-lease extension grants), with an earlier plan-only stop for excessive size or repeated growth.
-- [`role-models.md`](policies/role-models.md) — harness-aware per-role model/venue in `kickoff.yaml`, with separate model and effort fields. Direct edits and `roles` are both supported; `bin/kickoff-config` preserves comments and `extensions` data, preflights every non-native target before phase mutation, and owns governed runtime recovery and requested/observed reporting mechanics.
-- [`role-timeouts.md`](policies/role-timeouts.md) — first-event, idle-progress, and hard deadlines under `kickoff.yaml`'s `role_timeouts`. The unified manager enforces external calls, records gitignored telemetry, and recommends evidence-based recalibration without rewriting values automatically. Every dispatch must remain observable for the configured budget: use a durable foreground session when the harness provides one, otherwise tracked background work; diagnose an interruption at the caller before blaming the venue.
-- [`research-authority.md`](policies/research-authority.md) — role-based search and retrieval authority: planner/reviewer may search and retrieve; coder/critic retrieve plan- or brief-identified sources plus same-host structural neighbors; external research is GET-only; installed MCP servers and plugins are allow-by-default without assuming any named resource exists.
-- [`orchestration-evidence.md`](policies/orchestration-evidence.md) — binds review, revision, findings, and gates to exact candidate identities; separates integrity validation from acceptance and owns one idempotent accepted/parked/failed close; requires fresh run-scoped evidence, delta packets with fail-closed rebasing, a focused-to-final verification ladder, and explicit protocol recovery. Also the fail-closed recoveries: the acceptance-time unmeasured-review-pass latch; the derived-metrics overlay for a structurally refused review batch, recomputed from the ingest journal and stored artifacts; and a declared active/bookkeeping boundary: product-bound dispatch/review evidence, write-once manifests, independent authority and reviewed-bookkeeping checks, and complete-tree gate/delivery custody.
-- [`orchestration-control-plane.md`](policies/orchestration-control-plane.md) — requires immutable exact-command authority, cheap command-zero preflight, config-bound real-read venue receipts, dual product/full-tree candidate custody, exact-byte log construction, and at most one deterministic bookkeeping repair.
-- [`execution-telemetry.md`](policies/execution-telemetry.md) — requires one exact shared execution trace for stages, roles, waits, tools, and gates plus a separate operator-input park ledger; defines union-based timing metrics, exact same-boot and visibly non-exact cross-boot park durations, fail-closed joins/recovery, privacy projection, and deterministic offline end-of-phase HTML reports.
-- [`mechanistic-vs-intelligence.md`](policies/mechanistic-vs-intelligence.md) — the triage rule: route each repeatable task to a deterministic script in `bin/` (consistency, determinism, repeatability) or to intelligence (synthesis, judgment, generativity). Don't burn a model on what a script does better, or script what needs judgment; at automation boundaries, name the proxy and test whether false positives can invert the sign before mechanizing classification.
-- [`commit-staging.md`](policies/commit-staging.md) — treats every staging list as live-tree assertions: re-check immediately before committing, partition shared-file hunks, stage moved destinations, inspect the staged diff, and verify the resulting commit's file set.
-- [`build-gates.md`](policies/build-gates.md) — every repo owns an atomic,
-  cwd- and symlink-independent setup/test/check contract backed by its runtime pin,
-  committed metadata, lockfile, behavioral tests, callers, and durable
-  candidate-bound full-gate receipts; language values remain repo-specific,
-  failures stay visible, receipt misses fail closed, and hook installation is
-  opt-in.
-- [`test-suite-governance.md`](policies/test-suite-governance.md) — requires a recipient-local frozen baseline, complete proof dispositions, physical reset, family/leaf caps, effectiveness floors, direct critical-risk proof, zero-net-growth, executable reassessment, fail-closed fast lanes, and full retained close gates.
-- [`fail-closed-resume.md`](policies/fail-closed-resume.md) — mechanizes the doctrine's park/resume rules: fail closed first, five-part failure signatures with an append-only novelty ledger, the seven-condition diagnosed self-resume against `kickoff.yaml`'s `run_budgets.self_resume` budget, prelaunch-correction-is-not-a-resume, mechanistic substitution, sealing as a close-time act, instrument qualification, and the required park/resume record.
-- [`review-lanes.md`](policies/review-lanes.md) — risk-adaptive review intensity and proportional follow-up routing. A phase declares `review_lane: full` (default; all four roles) or `light` (mechanical initial work; plan review skipped); the invocation-only `one-shot` lane (coder → critic) runs well-specified isolated phases at the human's explicit token. The orthogonal `evidence_lane: full|light` axis scales candidate-bound ceremony, fail-closed against authority/irreversible/deploy triggers, with the close seal always mandatory. Every initial implementation gets a code critic; later test- or user-driven corrections use direct, coder-only, or full-cycle routing according to risk and size.
-- [`phase-status.md`](policies/phase-status.md) — status markers live only in `plan/INDEX.md`; no `status:` field in per-phase frontmatter; `kickoff` owns transitions; a child close must complete its parent or leave another drafted child queued under the in-progress parent.
-- [`phase-ripple.md`](policies/phase-ripple.md) — at phase close, pinned decisions from the closing phase propagate into downstream drafted phase files. AUTO ripples (mechanical) land in the same session; DECIDE ripples (judgment) surface as named follow-ups in the END block.
-- [`acceptance-empirical.md`](policies/acceptance-empirical.md) — every phase's Acceptance section lists verifiable shell commands or named manual checks. "It compiles" is not acceptance.
-- [`user-demo-protocols.md`](policies/user-demo-protocols.md) — when a phase touches a user-facing surface, Acceptance carries an interactive try-it-yourself protocol (entry point, suggested inputs, what to look for, variations). When there's nothing meaningful to demo, declare `User Demo: N/A` with a one-line reason instead. Silence is blocking; contrived demos are blocking.
-- [`treatise.md`](policies/treatise.md) — requires outward explanations to derive from canonical briefs/policies, lead with decisions rather than file inventories, preserve claim provenance and audience-specific disclosure, and stop at the two-part external publication gate. A treatise records its editorial intent in a `treatise:` frontmatter block on its own brief — purpose, audience, register, coverage, a dated log of operator directives, renderings, and external facts with retrieval dates — validated by `bin/treatise`.
-- [`verification-discipline.md`](policies/verification-discipline.md) — requires verification to name blind spots, treat grep as a lead rather than a finding, read every cited name from the authority that defines it rather than inferring it from convention, avoid blacklist-as-closed-world claims, test proxies for sign inversion, make material counts reproducible, and sweep every independent inventory that embodies a contract whose members a change makes required or whose enforcement it relaxes.
-- [`log-discipline.md`](policies/log-discipline.md) — `LOG.md` is append-only, written at true EOF by its owning skills through the deterministic writer, exact-prefix checked, and chronology checked. Never hand-edit historical entries.
-- [`user-actions.md`](policies/user-actions.md) — `user-actions/` at the repo root is the live queue of human-only action items, one file per action (`<slug>.md`, YAML frontmatter); closed actions move to `user-actions-archived/`; no index. Glob at session start; surface relevant items before doing dependent work.
-- [`lessons.md`](policies/lessons.md) — `lessons/` at the repo root is the ledger of candidate process lessons, one file per lesson (`<slug>.md`, YAML frontmatter, `scope: local | methodology`); graduated/rejected lessons move to `lessons-archived/`. Agents file and recur lessons; only the human graduates one into a policy, brief, skill, script, test, or invariant — at three occurrences or explicit approval. One occurrence row per observation (batched rows silently suppress the graduation trigger); rhyming diagnoses may be named as a family without merging. `bin/lessons` validates and tallies.
-- [`human-in-the-loop.md`](policies/human-in-the-loop.md) — where the human's judgment binds. Objective criteria (executable, independently reviewed, gate-proved, candidate-bound) close autonomously and the phase is delivered; subjective, manual, product, custody, and owner-only criteria always park. The orchestrator never advances past unresolved gates, never claims subjective acceptance the human owes, and never touches the destructive git surface.
-- [`repo-relative-paths.md`](policies/repo-relative-paths.md) — no absolute `/Users/...` paths in committed files. Bash commands may use absolute paths.
-- [`project-isolation.md`](policies/project-isolation.md) — when the repo has one primary deliverable, isolate it under `project/`; nothing in there references anything above it. Makes the deliverable submodule-ready.
-- [`simplicity-and-consolidation.md`](policies/simplicity-and-consolidation.md) — one count settles over-engineering and duplication alike: how many concrete, present-tense uses can you name? Zero or one, keep it concrete and write the note rather than the hook; three or more, give the knowledge one home and cite it from the others. Binds prose as it binds code. Enforced by review rather than by script, and explicitly not a license to under-build.
-- [`greenfield-until-released.md`](policies/greenfield-until-released.md) — a project is greenfield by default until first stable release. No backward-compatibility shims, legacy aliases, schema migrations, or transitional code paths. Replace old shapes directly.
-- [`anonymize-log-references.md`](policies/anonymize-log-references.md) — **starter-only** (not inherited by derived projects). Every committed file (not just `LOG.md`) that references a cross-repo operation must anonymize external project names, commit SHAs, and proprietary identifiers, because this repo will be public. Enforced mechanically by `bin/check-anonymization.sh`.
+- [Policy catalog](policies/README.md)
+- [Brief lifecycle](policies/briefs.md)
+- [Authority direction](policies/briefs-and-policies.md)
+- [Reference pins](policies/docs.md)
+- [Mirrors and loading](policies/cross-harness-parity.md)
+- [Roles and convergence](policies/four-canonical-agents.md)
+- [Role routing](policies/role-models.md)
+- [Role deadlines](policies/role-timeouts.md)
+- [Research authority](policies/research-authority.md)
+- [Evidence and close](policies/orchestration-evidence.md)
+- [Command custody](policies/orchestration-control-plane.md)
+- [Timing and reports](policies/execution-telemetry.md)
+- [Scripts versus judgment](policies/mechanistic-vs-intelligence.md)
+- [Staging](policies/commit-staging.md)
+- [Build gates](policies/build-gates.md)
+- [Test governance](policies/test-suite-governance.md)
+- [Park/resume](policies/fail-closed-resume.md)
+- [Review lanes](policies/review-lanes.md)
+- [Phase state](policies/phase-status.md)
+- [Ripple](policies/phase-ripple.md)
+- [Acceptance](policies/acceptance-empirical.md)
+- [User demos](policies/user-demo-protocols.md)
+- [Treatise](policies/treatise.md)
+- [Verification](policies/verification-discipline.md)
+- [Log](policies/log-discipline.md)
+- [User actions](policies/user-actions.md)
+- [Lessons](policies/lessons.md)
+- [Human judgment](policies/human-in-the-loop.md)
+- [Paths](policies/repo-relative-paths.md)
+- [Isolation](policies/project-isolation.md)
+- [Simplicity](policies/simplicity-and-consolidation.md)
+- [Greenfield](policies/greenfield-until-released.md)
+- [Anonymization](policies/anonymize-log-references.md)
 
 ## Universal repo layout
 
-- `briefs/` — durable design library. Each brief is markdown with YAML frontmatter (`title`, `date`, `status`, `scope`); brief-file lifecycle is governed by [`policies/briefs.md`](policies/briefs.md). See "Methodology briefs" above for the universal briefs, and "Project briefs" in Project Context for this repo's specifics.
-- `policies/` — non-negotiable rules. Full catalog above.
-- `docs/` — pinned third-party reference material the project depends on: vendor documentation, specifications, RFCs, license texts, kept verbatim so briefs and policies can cite exact text and every role can read it without network access. Nothing under it is written by the project or references the project; its only catalog is [`docs/README.md`](docs/README.md), which records source, `As of`, `Retrieved`, and redistribution basis per pin. Governed by [`policies/docs.md`](policies/docs.md).
-- `bin/` — the repo's deterministic executables: the mechanistic half of the
-  methodology. [`bin/README.md`](bin/README.md) is the operator index. This
-  repo ships the atomic `setup`/`test`/`check`/`python` toolchain interface,
-  opt-in `install-hooks` with its `check-hooks-installed` liveness witness;
-  universal `kickoff-config`, `kickoff-tree-id`, `check-candidate-partition`, `kickoff-command-zero`, `check-receipt`,
-  `test-governance`,
-  `kickoff-evidence`, `check-log`, deterministic log repair tools,
-  `execution-telemetry`, `lessons`, and `treatise` managers; the
-  `new-name` ledger-slug generator; deterministic dashboard, harness-parity,
-  caller-policy, shell-syntax, and catalog (`check-catalogs`) checkers; the
-  `check-plan-concreteness` mechanical pre-review `kickoff` runs over every
-  plan artifact before it reaches the reviewer and the `check-plan-delivery`
-  post-implementation check it runs before the critic; the `review-verdicts`
-  trace harvester behind `sweep-planning` and `sweep-coding`; and
-  the starter-only `check-anonymization.sh` leak guard.
-- `lib/agentic_starter/` — shared deterministic implementation for exact execution telemetry, evidence schemas, offline dashboard generation, and proof-estate governance.
-- `reports/execution/` — committed, privacy-safe, offline phase reports and aggregate index generated from sanitized telemetry handoffs.
-- `reports/test-governance/` — the local frozen baseline, complete reset ledger, append-only post-reset retirements and compensated admissions, effectiveness results, current inventory, and reset summary; each recipient regenerates its own contents.
-- `tests/` — tests for universal methodology machinery outside the isolated deliverable: gate/hook contracts, orchestration evidence, execution telemetry and reports, candidate identity, and `kickoff-config`. These are carried into derived projects and run in addition to the deliverable's own gates.
-- `.githooks/` — tracked optional lifecycle hooks. `bin/install-hooks` opts a checkout in; cloning or stamping never changes Git configuration silently; `bin/check-hooks-installed` is the opt-in-aware liveness witness (a set-but-wrong hooks path fails; an unset one passes as not opted in).
-- `plan/` — phased execution plan. Entry point [`plan/INDEX.md`](plan/INDEX.md) (dependency graph, status table, cross-cutting concerns, critical-files map). Each `plan/phase-*.md` holds Goal / Deliverables / Acceptance / brief refs. **When `plan/` and a brief disagree, `plan/` wins.**
-- `LOG.md` — append-only activity log. `kickoff` writes START on phase entry and END on phase completion. Do not hand-edit historical entries.
-- `user-actions/` — live queue of human-only action items, parallel to `LOG.md`. One file per action (`<slug>.md`, YAML frontmatter); closed actions move to `user-actions-archived/` as an audit trail. Governed by [`policies/user-actions.md`](policies/user-actions.md).
-- `lessons/` — ledger of candidate process lessons, parallel to `user-actions/`. One file per lesson (`<slug>.md`, YAML frontmatter, scope-classified); graduated/rejected lessons move to `lessons-archived/` as the audit trail linking rules to the incidents that earned them. Governed by [`policies/lessons.md`](policies/lessons.md).
-- `.claude/skills/` — canonical skill source and Claude Code's slash-command surface.
-  - `kickoff/SKILL.md` orchestrates one phase end-to-end.
-  - `methodology/SKILL.md` exposes the eleven steps as a skill.
-  - `rule-one/SKILL.md` turns corrections, failures, surprises, repeated work, and discarded effort into diagnosed, durable cross-harness learning; its rationale lives in `briefs/rule-one-diagnostic-learning.md` and the pair transfers atomically.
-  - `learn/SKILL.md` — explores another repo for patterns worth absorbing INTO this one, produces a plan, applies on approval.
-  - `teach/SKILL.md` — applies patterns FROM this repo to another repo, produces a plan, applies on approval.
-  - `roles/SKILL.md` — edits separate model/effort fields for any canonical role (thin wrapper over `bin/kickoff-config`); governed by [`policies/role-models.md`](policies/role-models.md).
-  - `sweep/SKILL.md` — recurring, user-gated maintenance pass over the rule surfaces: stale or contradictory policies, skills past review cadence, brief status transitions, aging ledger candidates, catalog drift. Judgment calls are settled with the user in conversation before the plan is composed. In a template repo it additionally audits the methodology corpus itself.
-  - `sweep-planning/SKILL.md` — longitudinal, user-gated sweep of the plan-review (and optionally code-review) verdicts harvested from every harness trace on the machine: categorizes why plans were sent back, attributes each category to a correctable planner defect or a reviewer false positive, and proposes persona, script, and policy changes as one plan the user ratifies. In a template repo the changes land here and propagate via `teach`; in a derived project they file as `scope: methodology` lessons for `learn`.
-  - `sweep-coding/SKILL.md` — the sibling sweep over the coder ↔ critic loop: harvests code-review verdicts and the coder's own failure analyses, categorizes why implementations were sent back, attributes each category to a coder defect, a critic habit, or a structural gap, and proposes corrections as one ratified plan. Follows the lifecycle `sweep-planning` defines; both enter plan mode first and present analysis and plan together, with a plain-register head.
-  - `demo/SKILL.md` — walks the user through an approved demo protocol one visible action at a time, answering questions without advancing.
-  - `treatise/SKILL.md` — builds an audience-specific outward explanation from canonical authority, maintains the brief's editorial record, and enforces the publication gate.
-  - `plain/SKILL.md` — the register for addressing the operator: lead with the consequence, carry every detail that would change their answer, leave the mechanism available on request. Followed without invocation whenever the audience is the operator.
-  - `ask/SKILL.md` — operator-invoked only: inventories every open loop in the current work (deferred decisions, forks, acted-on assumptions, owner-only blockers, missing information), puts them to the operator as batched concrete questions with a recommended option first, and records owner-only rulings where the repo tracks them. Never model-triggered, so it cannot block unattended work.
-  - (Project-specific skills live here too; see Project Context.)
-- `.claude/agents/` — canonical role definitions invoked by `kickoff`: `phase-planner.md`, `plan-reviewer.md`, `phase-coder.md`, `code-critic.md`. These are the four roles in the methodology's planner → reviewer → coder → critic loop; do not invoke them by hand for full-phase work unless deliberately bypassing orchestration.
-- `.codex/agents/` — Codex CLI mirrors of the four canonical roles (TOML).
-- `.agents/skills/` — Codex CLI's native project-skill discovery path ([developers.openai.com/codex/skills](https://developers.openai.com/codex/skills)). Each `<name>` is a **directory** symlink to the canonical `.claude/skills/<name>` directory (Codex doesn't follow file-level symlinks inside a skill dir per [#11314](https://github.com/openai/codex/issues/11314), but does traverse a symlinked skill directory). Template-only skills such as `stamp` are registered here only in repos that are themselves templates; ordinary derived projects omit them so template-bootstrapping commands do not propagate.
-- `AGENTS.md` — symlink → `CLAUDE.md`, so Codex/aider read the same source of truth.
+[docs catalog](docs/README.md): third-party pins; [bin catalog](bin/README.md): executables. `lib/agentic_starter/`: shared machinery; `tests/`: independent proofs. `.githooks/`: opt-in via `bin/install-hooks`, witnessed by `bin/check-hooks-installed`. `reports/execution/`: sanitized reports; `reports/test-governance/`: recipient-local proofs. `LOG.md`: history; `user-actions/` and `lessons/`: per-file queues with archive directories.
 
-The deliverable's directory (whatever the project calls it — `project/` when project-isolation is enabled, or sibling deliverable directories at the repo root when not) is described in Project Context.
+### Universal skills
+
+- [kickoff](.claude/skills/kickoff/SKILL.md)
+- [methodology](.claude/skills/methodology/SKILL.md)
+- [rule-one](.claude/skills/rule-one/SKILL.md)
+- [learn](.claude/skills/learn/SKILL.md)
+- [teach](.claude/skills/teach/SKILL.md)
+- [roles](.claude/skills/roles/SKILL.md)
+- [sweep](.claude/skills/sweep/SKILL.md)
+- [sweep-planning](.claude/skills/sweep-planning/SKILL.md)
+- [sweep-coding](.claude/skills/sweep-coding/SKILL.md)
+- [demo](.claude/skills/demo/SKILL.md)
+- [treatise](.claude/skills/treatise/SKILL.md)
+- [plain](.claude/skills/plain/SKILL.md)
+- [ask](.claude/skills/ask/SKILL.md)
+
+### Canonical roles and mirrors
+
+- [phase-planner](.claude/agents/phase-planner.md)
+- [plan-reviewer](.claude/agents/plan-reviewer.md)
+- [phase-coder](.claude/agents/phase-coder.md)
+- [code-critic](.claude/agents/code-critic.md)
+
+`.claude/` is canonical. `.agents/skills/<name>` → `../../.claude/skills/<name>` exposes all resources. `.codex/agents/<role>.toml` is a thin canonical pointer with matching description. Edit canonical sources. Product phases use `kickoff`; methodology follows the routing rule below.
 
 ## Phase work and the `kickoff` skill
 
-Work proceeds phase by phase under [`plan/`](plan/INDEX.md). `kickoff` orchestrates an initial implementation through plan → plan-review → code → code-review → acceptance (plan review is skipped for phases declaring the `light` review lane — [`policies/review-lanes.md`](policies/review-lanes.md); the initial code critic runs in every lane). First reviews are complete; later rounds use candidate-bound finding ledgers and causal revision packets, widening back to a complete pass when authority, risk, scope, or continuity changes. Iteration uses focused checks. Close runs the complete sequence and `./bin/check all` against the unchanged approved candidate, finalizes evidence and tracked bookkeeping, then runs a second bare `./bin/check all` against the actual handoff tree; no tracked write follows that handoff gate. One shared exact trace covers stage, role, wait, tool, and gate activity, while operator-input parks live in a separate phase ledger and report every interval plus their overlap-safe total. Phase close validates its joins, writes timing metrics into the END block, and generates a privacy-safe offline HTML report. Later test- or user-driven corrections are routed proportionally by risk and size. Canonical role definitions live in `.claude/agents/*.md` (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`); don't invoke them by hand for full-phase work unless deliberately bypassing the orchestration.
+Invoke `/kickoff` (Claude Code) or `$kickoff` (Codex). Read the [kickoff](.claude/skills/kickoff/SKILL.md) and each linked resource before its branch, including follow-ups/recovery; links do not prove reads. Limits: root 16384 UTF-8 bytes; entry 8192. Preserve obligations and catalogs; move explanation to its owner.
 
 ### Status markers
 
-Phase statuses live **only** in [`plan/INDEX.md`](plan/INDEX.md)'s phase table:
-
-- ⏳ Not Started
-- ⬅️ Next (at most one; required while idle and incomplete)
-- 🚧 In Progress
-- ✅ Completed
-
-`kickoff` flips `⬅️` → `🚧` on start, `🚧` → `✅` on completion, and advances `⬅️` per the dependency graph at the top of `plan/INDEX.md`.
-Every phase row carries exactly one recognized status. Active and complete
-projects may have zero `⬅️` rows; more than one is always invalid.
+Only [plan/INDEX.md](plan/INDEX.md) holds status: ⏳ not started, ⬅️ next, 🚧 in progress, ✅ completed. One marker per row; idle incomplete work has one arrow, active/complete work may have none; never multiple arrows. Explicitly select active work to resume. `kickoff` owns transitions; no per-phase `status`.
 
 ### Reading protocol for phase work
 
-1. Read [`plan/INDEX.md`](plan/INDEX.md) — cross-cutting concerns apply to every phase.
-2. Read the parent `plan/phase-N.md` to understand the larger context (if a sub-phase is targeted).
-3. Read the target `plan/phase-N.M.md` (or `plan/phase-N.md` when no sub-phase has been split out).
-4. Read every brief listed under "Brief refs". Briefs are the source of truth for *what* to build; the phase file specifies *how*. When a cited brief or policy rests on a file under `docs/`, read that pin too — it is the exact external text the claim was made against, and it outranks whatever the live URL says today.
-5. Read every file in the target's frontmatter `depends_on`.
-6. As a guard against missing `depends_on`, also read the immediately preceding completed phase (last `✅` row before the target).
-7. Do **not** slurp every `phase-*.md`. `depends_on` is the contract for which predecessors actually matter.
+1. Read `plan/INDEX.md` for dependencies and cross-cutting concerns.
+2. Read the parent phase if targeting a child, then the target phase.
+3. Read every Brief ref and every pinned document on which it depends.
+4. Read every `depends_on` file and the immediately preceding completed phase.
+5. Read applicable policies, root invariants and the stage resource. Read only required phase files.
 
 ### Architectural invariants (load-bearing — do not violate)
 
-These are the universals every project derived from this template inherits. The project may add more invariants of its own; it may not silently drop these.
+Rationale: [methodology](briefs/methodology.md#operating-invariants-and-vocabulary).
 
-- **Rules, not memory.** Anything that should bind future sessions — across harnesses (Claude Code, Codex, and others), across operators, across machines — belongs in this repo. Route by kind: a universal rule → `policies/` or `CLAUDE.md`; a scoped project detail → the surface's own instruction file; a per-action workflow → the owning skill; a tunable parameter → the policy that holds its tunables; longitudinal context or a pinned decision → a brief. Agent-side memory is local to one operator, one harness, one machine; it is the wrong place for engine knowledge — if a harness offers to save something to its memory, save it as a repo rule instead. When a learning is real but its surface is unknown — or it has been seen only once, and codifying now would lock in a rule its variations have not tested — file it in `lessons/`: the holding pen between noticing and knowing.
-- **Rule One surrounds the work.** A correction, failure, surprise, repeated explanation, discarded effort, or hard-won insight is a symptom to diagnose, not a remedy to infer from its visible shape. Distinguish containment, correction, and prevention; persist the smallest reusable lesson on the narrowest durable cross-harness surface. The operative workflow and its diagnostic rationale are the atomic pair [`.claude/skills/rule-one/SKILL.md`](.claude/skills/rule-one/SKILL.md) and [`briefs/rule-one-diagnostic-learning.md`](briefs/rule-one-diagnostic-learning.md).
-- **Lessons compound.** Every phase close asks what generalizable process lesson was learned and routes the answer — scope-classified `local` or `methodology` — into the `lessons/` ledger; "none" is a permitted, recorded answer, but the question is mandatory. Graduation of a recurring lesson into a durable surface is human-ratified, never agent-applied; the ledger is swept and pruned, not only grown. See [`policies/lessons.md`](policies/lessons.md).
-- **Monotonic progress — spiral in, never out.** Hold the authorized objective, scope, and completion criteria fixed unless the user explicitly changes them. Every action must serve that objective by either advancing a completion criterion or reducing uncertainty that directly blocks one; prerequisite work remains in scope only while that causal link is explicit. Record each material tangent once in the appropriate backlog or decision surface, then defer it. Do not investigate, design, implement, or promote it into a new phase or loop without explicit user authorization, and never move the finish line to justify opportunistic improvement. If successive iterations no longer materially shrink the remaining work or blocking uncertainty, stop and escalate. A deeper defect inside the authorized target may legitimately surface during revision; a new actor, platform, operating mode, or failure premise without documented authority moves the target outward and stops before another implementation pass. The qualitative judgment and its incident-backed rule live in [`policies/four-canonical-agents.md`](policies/four-canonical-agents.md) § "Failure-backed scope and the outward-spiral stop."
-- **A turn ends by dispatching or by stating a hold — never on a promise.** A session holding authorized, unblocked work does not end a turn describing what it is about to do: it either dispatches the next step or states an explicit hold and why. "Next: Phase N", "opening step 2 now", "I'll pick up the follow-up" are all the same defect — the work then sits idle until something external notices. Corollary on chaining: **a command whose refusal must be read gets its own block.** Never chain a validating command into a compound block that continues past its failure — `a && b`, `a; b`, or a block ending in a backgrounded dispatch. (Donor incidents: a failed close-out validation chained into a persist stamped a permanent false record; an ingest refusal chained behind a backgrounded dispatch was never read, leaving four review passes unmeasured — the incident behind the evidence plane's unmeasured-pass latch. Both rules graduated from a seven-occurrence donor lesson whose thesis is that a rule wired to nothing is a comment.)
-- **Route on the authoritative property, not a convenient stand-in.** Before shipping any dispatch, classification, or selection decision, name two things: what the code actually reads, and what actually determines the answer. If they differ, say why the stand-in is safe here — and if you cannot, read the real thing. (Donor worked case, graduated at three same-day occurrences: an extraction backend chose its engine on `path.suffix`, so valid PDFs whose archive members carried no extension were handed to a tool that cannot read PDF input and failed "for" a reason that was never the reason. A convenient property is convenient precisely because it is cheap to read, which is unrelated to whether it is true.)
-- **Name the second case; give knowledge one home.** One count settles both halves: how many concrete, present-tense uses can you name? Zero or one — keep the code concrete and write the note, not the hook; no abstraction, interface, parameter, base class, plugin slot, or mode flag ships without a nameable second use, and "extensible", "production-ready", or "we may need it later" is not one. Three or more — stop and give that rule, constant, procedure, or explanation a single home, with every other site citing it by file and section rather than paraphrasing it. This binds prose as it binds code: in this repo the rule surfaces *are* the deliverable, so a policy restated across three skills is the same defect as a constant hard-coded in three modules. Neither half licenses its opposite — a fix layered as a special case onto shared infrastructure is wrong-depth, not admirable smallness. See [`policies/simplicity-and-consolidation.md`](policies/simplicity-and-consolidation.md).
-- **A name you did not read is not a name.** An identifier that follows the naming conventions of a real one is evidence of nothing — convention-consistency is the mechanism that produces a plausible wrong name, not a defense against it. Before citing any function, flag, environment variable, config key, endpoint, package, schema field, or command, read it from the authority that *defines* it (the source, `--help`, the schema, the docs) or mark it unverified and say which. Another mention is not a definition, and an empty grep is a finding rather than a pattern to widen. See [`policies/verification-discipline.md`](policies/verification-discipline.md).
-- **Briefs are the contract.** Every phase points at files under `briefs/`. Phase files specify *how*, not *what*. Fix ambiguous briefs at the source. When `plan/` and a brief disagree, `plan/` wins; when two briefs disagree, fix the briefs.
-- **Policies are the law.** Every phase honors every file under `policies/`. A policy violation blocks acceptance.
-- **Status lives in one place.** `plan/INDEX.md`'s phase table is the single source of truth for which phase is `⬅️ / 🚧 / ✅`. Per-phase frontmatter never carries `status`.
-- **Acceptance is empirical.** Every phase's Acceptance section lists shell commands with verifiable results, named manual checks, or analyzer outputs that pass a quality gate. "The code compiles" is not acceptance.
-- **Assurance is candidate-bound.** Review, findings, revision packets, and
-  gates name the exact complete working-tree candidate they describe. Run the
-  smallest falsifying checks while work converges, then the complete
-  phase-prescribed sequence and authoritative full gate once against the
-  unchanged approved candidate. See
-  [`policies/orchestration-evidence.md`](policies/orchestration-evidence.md).
-- **Execution truth is trace-bound.** Stage, role, wait, tool, and gate timing
-  comes from one append-only trace joined fail-closed to evidence. Makespan is
-  a union of active intervals rather than a sum that double-counts overlap.
-  Operator-input parks are a separate phase-level ledger: every interval and
-  the union total are reported, same-boot duration is exact, and cross-boot
-  calendar duration is visibly non-exact. Every completed phase ends with a
-  sanitized, deterministic, offline HTML report. See
-  [`policies/execution-telemetry.md`](policies/execution-telemetry.md).
-- **Mechanistic vs. intelligence.** Triage every repeatable task. Deterministic, exact, repeatable work is a script under `bin/`; synthesis, judgment, and generative work is an agent. Don't burn a model on what a script does better (cheaper, exact, harness-portable, testable), and don't script what needs judgment. Split mixed tasks at the seam — the agent decides *what*, a deterministic script does the mechanical *how*. See [`policies/mechanistic-vs-intelligence.md`](policies/mechanistic-vs-intelligence.md).
-- **Human wall-clock efficiency.** Treat the operator's elapsed wait as a first-class development cost. Stay alert when gates, builds, indexing, generation, migrations, repeated setup, or other operations materially dominate the work and a substantial, low-risk reduction appears available. Prefer conspicuous gains—safe parallel execution of genuinely independent work, one-time invariant setup, focused iteration, or reuse with complete input identity—over heroic micro-optimization. Never trade away correctness, coverage, determinism, review independence, or either close gate, and never expand the active phase merely to chase speed.
-- **Repository-owned toolchain contract.** Setup, focused/full testing,
-  durable candidate-bound full-gate receipts, runtime selection, metadata,
-  locking, behavioral tests, and callers are one atomic bundle. Use
-  `./bin/setup`, `./bin/test`, and `./bin/check all`;
-  language profiles may add a runtime wrapper such as `./bin/python`. See
-  [`policies/build-gates.md`](policies/build-gates.md).
-- **Repo-relative paths only** in any file committed to this repo. Bash invocations may use absolute paths.
-- **Verification captures go to a scratch path, never a bare filename.** Screenshots, traces, probe output, and other verification artifacts are written to the session scratch directory or an explicitly gitignored path — never a bare filename resolved against the repo root. The load-bearing reason: `bin/kickoff-tree-id` hashes nonignored untracked files, so a stray capture landing in the tree moves the candidate id that the phase's plan, review, and gate evidence are bound to.
-- **`plan/` governs the product; methodology changes are operator-routed.** In a derived project, the plan ledger and the `kickoff` lifecycle govern the *deliverable*. Changes to the methodology machinery itself — the skills, canonical agents, orchestration policies, doctrine briefs, parity tooling — are not plan-routed: they run as operator-directed plan-mode → approve → implement cycles recorded by their commits, and are tracked in the plan ledger only as dated notes when they must be remembered. (In this template repo the deliverable *is* the methodology, so its plan legitimately carries methodology work; the rule binds the projects `stamp` derives.)
-- **Cross-harness parity.** Skills and agent definitions have one canonical home (`.claude/` / repo-root `CLAUDE.md`) and thin harness-specific pointers (`.codex/`, `.agents/`, `AGENTS.md`). Edit the canonical; `bin/check-harness-parity` rejects missing, copied, or orphaned mirrors.
-- **Autonomous delivery, human judgment.** `kickoff` commits and fast-forward-pushes work whose gates are all green; it never advances past an unresolved gate, never claims subjective acceptance, and never performs a destructive git operation. Every commit revalidates live-tree staging assertions and its resulting file set per [`policies/commit-staging.md`](policies/commit-staging.md). The human's gate is the seam: the END block and the `User Demo:` protocol, where they accept the phase, ask for revisions, or reject it. See [`policies/human-in-the-loop.md`](policies/human-in-the-loop.md).
-- **Greenfield until released.** No backward-compatibility shims, legacy aliases, or migration code paths are added unless the policy is explicitly amended. Wrong shapes get replaced directly. See [`policies/greenfield-until-released.md`](policies/greenfield-until-released.md).
+- **Rules, not memory; Rule One.** Keep durable cross-harness knowledge in its owning repo authority. Diagnose failures, corrections, surprises and discarded work; separate containment, correction and prevention. File unsettled learning in `lessons/` and harvest every END/PARK, including `none`; only the human graduates rules.
+- **Monotonic progress.** Hold authorized scope fixed; defer tangents once. Stop unsupported expansion. Dispatch authorized unblocked work or state the hold; inspect any command refusal before continuing.
+- **Evidence over proxies.** Name the authoritative property, proxy, innocent triggers and sign-inversion risk. Read cited identifiers at their definitions; grep is a lead. Recheck affected callers, fixtures, tests and independent inventories.
+- **Concrete uses; one home.** No speculative abstraction without a second present use. Consolidate at three copies; prefer fewer concepts. Use scripts for deterministic work and intelligence for contextual judgment.
+- **Authority direction.** Policies prevail; plans refine and outrank briefs. Fix ambiguity at its owner; briefs never cite policies or plans.
+- **Coherent outcomes.** Multiple surfaces and absent children do not require splitting. Split only at consequential decisions, independently accepted prerequisites, deployment/migration/human seams or demonstrated coherence limits. Ordinary internals belong to the coder; consequential scope stays approved. Never merge completed phases.
+- **Empirical acceptance and independent review.** Name falsifying checks and manual criteria. Discover broadly, batch evidenced blockers, separate optional advice, preserve stable findings; rebase on changed authority, scope, risk or lost continuity. Preserve the role policy’s 600-line/growth/stall/ten-cycle limits.
+- **Candidate-bound assurance.** Product identity binds review; full-tree identity binds gate non-mutation and delivery. Declared-authority and reviewed-bookkeeping checks remain independent. Unknown tracked classifications refuse; unknown nonignored untracked paths and `candidate-partition.yaml` itself stay active.
+- **Two full gates.** Focused iteration precedes critique. The orchestrator runs the full implementation-candidate sequence ending in `./bin/check all`; accepted major close precedes captured status mutation. After all bookkeeping, run the second bare full handoff gate; no tracked write follows success. Preserve the separate child-close refusal; waive no guard.
+- **Execution truth.** One append-only trace, exact joins and overlap-safe unions; separately report operator-input parks. Missing measurement is unknown, never zero. Finalize evidence before sanitized offline reports.
+- **Safe acceleration.** Use substantial, obvious low-risk time savings within scope, preserving correctness, coverage, determinism, independent review and both gates. No optimization tangents.
+- **Atomic toolchain.** Runtime, metadata, lockfile, setup, focused/full tests, receipts, proofs and callers move together. Use repository wrappers; bad overrides and failed probes never fall back. Keep scratch captures outside the reviewable tree or explicitly ignored.
+- **Methodology routing.** Approved improvements, including here: implement directly, independently review, run required checks. Full phase roles require operator direction. Read [review lanes](policies/review-lanes.md).
+- **Portable parity.** Canonical sources and thin mirrors; repo-relative committed paths; isolated deliverable. Greenfield replacement and delivery/human-judgment boundaries follow the hard rules.
 
 ### Activity log (`LOG.md`)
 
-`kickoff` appends a START block on `🚧` and an END block on `✅`. Format owned by `kickoff`. Do not hand-edit historical entries. If a phase pauses mid-way, leave it at `🚧` and note the pause reason in an END block.
+Owning skills append via the deterministic writer at true EOF; preserve bytes and chronology. Parks stay `🚧`; terminal records carry Lessons, evidence, remaining work and truthful outcomes.
 
 ### User actions (`user-actions/`)
 
-The [`user-actions/`](user-actions/) directory at the repo root is the live queue of action items only the human can perform — deploys, console / dashboard / GUI checks, manual reconciliations, third-party logins, pricing decisions, signups, anything outside an agent's reach. **One file per action**, named `<slug>.md`, with all metadata in YAML frontmatter; closed actions move to `user-actions-archived/`. There is deliberately **no index file** — a central list would be a contention point for concurrent agents, which is the whole reason for going per-file. Every agent must:
-
-1. **Glob `user-actions/*.md` at session start.** Read frontmatter; surface any open action that affects the current task before doing dependent work. If a task depends on an open action, flag and wait — don't proceed silently.
-2. **File new actions as they arise.** Any time a session hits a human-only wall, write a new `user-actions/<slug>.md` file before the session ends.
-3. **Name each file with a unique two-word slug** — the filename *is* the slug (`warping-butterfly.md`), for stable conversational reference (`close out warping-butterfly`). Recipe: `./bin/new-name` (filler-filtered, collision-checked against all four ledger directories); never reuse a basename.
-4. **Express dependencies in frontmatter** (`blocks:`), not in a shared ordering — files are self-contained.
-5. **Defer with frontmatter**, not section headings: `status: deferred` plus `needed_at:` (`now` | `"Phase 3"` | an absolute date). Convert relative dates ("Thursday") at write time.
-6. **Close by moving to the archive.** Set `status: done | closed | superseded` + a `closed:` date, add a `## Disposition` section when the resolution is non-obvious, and move the file to `user-actions-archived/`. The disposition also answers whether the resolution reveals a recurring learning — if so, file or recur a `lessons/<slug>.md` entry before archiving. Archived files stay on disk as a permanent audit trail.
-
-Checkoff discipline: an agent may close an action only when *it personally* did the underlying action (e.g., ran a smoke script clean, read CloudWatch logs directly). Console / dashboard / GUI / pricing / billing verification is **human-only checkoff**. Full contract: [`policies/user-actions.md`](policies/user-actions.md).
+Glob `user-actions/*.md` at session start; read frontmatter and surface dependencies before work. File human-only actions before ending; use `bin/new-name`, record dependencies/deferral and archive closed entries. Agents close only personally completed actions; GUI, console, pricing and billing checkoff stays human-only.
 
 ### Lessons (`lessons/`)
 
-[`lessons/`](lessons/) at the repo root is the ledger of candidate **process** lessons — what work in this repo keeps re-teaching us. It is the sibling of `user-actions/` (human-only *work*) and `LOG.md` (phase *history*): this directory holds durable *learnings* that have not yet earned a rule. One Markdown file per lesson, all metadata in YAML frontmatter, a two-word slug for a filename, no index file. Closed lessons move to `lessons-archived/` as the permanent trail linking every rule back to the incidents that earned it.
-
-The mechanics an agent needs:
-
-1. **`kickoff` harvests at every truthful close or park.** The sensor feed is each role's Process Observations, the coder's Failure Analysis from any revision round, verdict bodies, wall-clock observations, and `user-actions` dispositions. "No lessons" is a valid recorded answer; omitting the `Lessons:` field from an END or PARK block is not.
-2. **File or recur, never duplicate.** Check both directories first. If an entry already states the lesson, append an occurrence (`{date, ref}`) instead of filing a second file.
-3. **Classify the scope.** `local` binds only this project; `methodology` generalizes to the methodology itself and is a standing export upstream.
-4. **Filing and recurring are the only writes an agent performs.** Graduation — editing `policies/`, `briefs/`, `CLAUDE.md`, a skill, or an agent definition because of a lesson — is the human's ratified act. Surface it as a DECIDE item and stop.
-5. **Validate mechanically**: `./bin/lessons validate` (schema, enums, slug uniqueness) and `./bin/lessons candidates` (graduation-ready: three or more occurrences, still open). Both run inside `./bin/check all`.
-
-Full contract: [`policies/lessons.md`](policies/lessons.md); design rationale: [`briefs/harness-self-improvement.md`](briefs/harness-self-improvement.md). The `sweep` skill (`/sweep` in Claude Code; `$sweep` in Codex) runs the pruning half over policies, briefs, skills, catalogs, and the ledger.
+Read both lesson directories before filing/recurring; one row per observation. Run `./bin/lessons validate` and `./bin/lessons candidates`. Human ratification owns graduation/rejection. Harvest process observations and failure analysis at each close/park.
 
 ## Universal conventions
 
-- **Repo-relative paths only** in committed files (also load-bearing per the invariants).
-- **Never hard-wrap Markdown prose.** Do not reflow Markdown to a fixed column width. Write every prose paragraph as one physical line, including paragraphs inside list items and block quotes; use additional line breaks only where Markdown syntax or deliberate layout requires them, such as headings, separate list items, tables, fenced code, YAML, or intentional hard breaks.
-- **Harness-specific skill invocation.** In harness-neutral prose, name a skill without a command prefix (for example, "the `kickoff` skill"). When showing an invocation, always give both forms: `/kickoff` for Claude Code and `$kickoff` for Codex. Never present Claude Code's `/name` syntax as universal.
-- **The operator gets the `plain` register.** Every message addressed to the
-  operator — a decision request, a ratification question, a phase report or
-  END block, a status update, a failure report, demo narration, the plan body
-  at an approval gate — follows [`.claude/skills/plain/SKILL.md`](.claude/skills/plain/SKILL.md).
-  Agents follow it without being invoked; the operator types `/plain` (Claude
-  Code) or `$plain` (Codex) only to correct a message that missed it. The
-  register switches at the audience boundary, per message: agent-to-agent
-  traffic keeps full fidelity.
-- **Operator decisions have two directions.** Agent-initiated escalations go through the repo's own route — `kickoff`'s operator-input park and the `plan-reviewer`'s `blocked-owner` finding — and, while unattended, park in an artifact for the operator's return. The operator pulls the complete inventory of open loops by typing `/ask` (Claude Code) or `$ask` (Codex); because only the operator can invoke it, [`.claude/skills/ask/SKILL.md`](.claude/skills/ask/SKILL.md) raises the interactive question control directly. Both directions compose in the `plain` register and record owner-only rulings in the governing phase file or brief, with human-only work filed in `user-actions/`.
-- **One executable command per fenced code block** when a code block is meant to be copy-pasted into a shell, so the user can copy individual commands one at a time without breaking on multi-line clipboards.
-- **Toolchain commands belong to the repository.** Use `./bin/setup` for
-  provisioning, `./bin/test` for full or focused tests, and `./bin/check` for
-  the authoritative suite. The wrappers select the isolated deliverable's
-  pinned, locked environment; do not infer a runtime from host `PATH`.
+Never hard-wrap Markdown prose: one physical line per paragraph, including list-item prose. Preserve syntax-required breaks. Give one executable command per copyable shell fence. Use bare skill names in neutral prose and both harness invocation forms when showing commands. Follow `plain` for operator messages; peers retain full technical fidelity. Use User/operator/owner and they/them in durable role language; authorship credit is separate.
+
+Agent decisions use kickoff’s input-park/`blocked-owner` route; unattended decisions park in artifacts. Only the operator invokes `ask`. Record rulings at their authority and human work in `user-actions/`.
 
 ## Glossary
 
-Terms used consistently across briefs, skills, policies, and code. Mismatched usage is a bug — flag or fix.
-
-- **Brief.** A document under `briefs/` describing *what* to build, *why*, and *what was decided*. Briefs inform phases; phases reference briefs.
-- **Policy.** A short, prescriptive rule under `policies/` that every phase honors. Policies are the law of the repo.
-- **Pinned document.** A verbatim third-party document (or excerpt) under `docs/`, recorded in `docs/README.md` with its source, `As of` and `Retrieved` dates, and redistribution basis. Cited by briefs, policies, and the plan; cites nothing in the repo itself. Governed by `policies/docs.md`.
-- **Phase.** One unit of phased work. A phase file (`plan/phase-N.md`) holds Goal, Deliverables, Acceptance, and Brief refs. Status lives in `plan/INDEX.md`.
-- **Sub-phase.** A child of a major phase (`plan/phase-N.M.md`), produced by decomposing the parent at the moment the parent becomes the next phase to work.
-- **`kickoff`.** The orchestrator skill. Invoke it as `/kickoff` in Claude Code or `$kickoff` in Codex. Runs an initial phase implementation through planner → reviewer → coder → critic, retains candidate-bound evidence across revision rounds, closes through separate implementation-candidate and handoff gates, records exact execution and operator-park timing, generates the end-of-phase HTML report, then routes later corrections in proportion to risk and size. Writes START/END blocks to `LOG.md`; it may write code only for an eligible small, low-risk follow-up fix.
-- **`rule-one`.** Universal diagnostic-learning skill. Invoke it as `/rule-one` in Claude Code or `$rule-one` in Codex. Treats the observed problem as a symptom, diagnoses proportionately before deriving remediation, separates containment/correction/prevention, and persists reusable learning on a durable cross-harness surface. Its reasoning companion is [`briefs/rule-one-diagnostic-learning.md`](briefs/rule-one-diagnostic-learning.md); the two transfer as one unit.
-- **`learn`.** Universal cross-repo skill. Invoke it as `/learn` in Claude Code or `$learn` in Codex. Explores a donor repo and proposes which of its patterns to absorb into the current repo. Plan-first; user approves; then applies. The donor stays read-only.
-- **`teach`.** Universal cross-repo skill. Invoke it as `/teach` in Claude Code or `$teach` in Codex. Inverse of `learn`. Proposes which of the current repo's patterns to apply to a target repo. Plan-first; user approves; then applies to the target. The current repo stays read-only during teaching.
-- **`sweep`.** Universal maintenance skill. Invoke it as `/sweep` in Claude Code or `$sweep` in Codex. Audits the accumulated rule surfaces — policies, briefs, skills, the lessons ledger, catalogs — for staleness, contradiction, and drift, settles every judgment call with the user before composing the plan, and proposes retirements and graduations as one complete plan the user ratifies. The pruning half of the improvement flywheel; governed by `policies/lessons.md` and `briefs/harness-self-improvement.md`.
-- **`sweep-planning`.** Universal review-loop calibration skill. Invoke it as `/sweep-planning` in Claude Code or `$sweep-planning` in Codex. Harvests every genuine plan-review verdict from the machine's Claude Code and Codex traces (`bin/review-verdicts`), categorizes the rejection reasons longitudinally, attributes each to a planner defect or a reviewer false positive, and proposes the persona, script, and policy corrections as one user-ratified plan. Template mode lands corrections in the template; derived-project mode files them as `scope: methodology` lessons.
-- **`sweep-coding`.** Universal review-loop calibration skill for the coder ↔ critic loop. Invoke it as `/sweep-coding` in Claude Code or `$sweep-coding` in Codex. Same lifecycle as `sweep-planning` (plan mode first; analysis and plan presented together; plain-register head), harvesting `CODE-F` verdicts and coder failure analyses with `bin/review-verdicts --coder-evidence`.
-- **`demo`.** Universal interactive-evaluation skill. Invoke it as `/demo` in Claude Code or `$demo` in Codex. Runs an already approved `User Demo:` protocol one visible action per turn and preserves the resume point without repairing the product mid-demo.
-- **`treatise`.** Universal outward-explanation skill. Invoke it as `/treatise` in Claude Code or `$treatise` in Codex. Repairs the canonical brief first, renders for a named audience, and requires explicit authority plus a governing disclosure policy before external publication.
-- **`plain`.** Universal operator-register skill. Invoke it as `/plain` in Claude Code or `$plain` in Codex to recompose a message that missed the register; agents follow it unprompted for anything addressed to the operator. Two tests govern it: a detail belongs only if changing it would change the operator's answer, and every sentence must parse without the repo, the session, or the transcript open.
-- **`ask`.** Universal operator-pull skill. Invoke it as `/ask` in Claude Code or `$ask` in Codex, optionally scoped to a topic. Inventories the open loops in the current work, asks only what the agent cannot settle itself, batches the questions through the harness's structured ask-user control (numbered plain text where none is usable), and applies the answers. Operator-invoked only; agent-initiated escalation uses the operator-input park and `blocked-owner` routes instead.
-- **Operator.** The human who owns the project and makes its calls — whoever holds this checkout. Never a named individual in a committed file, and referred to as *they*.
-- **Research authority.** The per-role search/retrieval boundary in `policies/research-authority.md` and `kickoff.yaml`: planner/reviewer search and retrieve; coder/critic retrieve approved authorities and same-host structural neighbors; installed resources are allow-by-default but never presumed present.
-- **Operator-input park.** A phase-level interval during which progress is waiting on a human decision or action. It is measured outside execution traces, reports every span plus an overlap-safe total, and fails closed while any interval remains open.
-- **Lessons ledger.** The `lessons/` + `lessons-archived/` directories: one file per candidate process lesson with scope, provenance, and occurrence history. Validated and tallied by `bin/lessons`; graduation is human-only. Governed by `policies/lessons.md`.
-- **Editorial record.** The `treatise:` mapping in a treatise brief's frontmatter. `audience`, `register`, and `coverage` are current state; `directives` is the dated provenance log of the operator's rulings; `renderings` and `external_facts` carry locations and retrieval dates. Its presence marks the brief as a treatise; `bin/treatise` validates its shape. Governed by `policies/treatise.md`.
-- **Process observations.** The structured output field each canonical role emits for friction or ambiguity in briefs, policies, plans, or tooling — the raw sensor feed `kickoff` distills at every truthful close or park. "None" is a valid value.
-- **The four canonical agents.** `phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`. Their names are load-bearing — `kickoff` invokes them by name. Their definitions live in `.claude/agents/` (canonical) and `.codex/agents/` (mirror).
-- **Repository-owned toolchain contract.** The atomic setup, focused/full test,
-  runtime-selection, full-gate, durable receipt, proof-governance, metadata,
-  lockfile, tests, and caller bundle.
-  The authoritative full sequence is `./bin/check all`; focused tests use
-  `./bin/test`.
-- **Proof estate.** The recipient-local frozen inventory of collapsed families,
-  expanded leaves, and gate/hook proofs, with complete dispositions, compensated
-  admissions, direct critical-risk witnesses, and local effectiveness evidence.
-  `bin/test-governance` validates the reset and zero-growth budget, runs assays,
-  and selects vital/changed feedback; uncertainty widens to the full retained
-  estate, which remains authoritative for close gates.
-- **Full-gate receipt.** The gitignored durable log, terminal run metadata, and
-  success record managed by `bin/check-receipt`, bound to one exact candidate
-  and environment. The environment fingerprint comes through the
-  repository-selected runtime and includes its actual executable and
-  base-executable identity; it is not inferred from the receipt helper or a
-  version file. The opt-in pre-push hook reuses it only for the clean current
-  `HEAD`; every miss or error runs the authoritative full gate.
-- **Candidate id.** The SHA-256 identity emitted by `bin/kickoff-tree-id` for
-  the complete reviewable working tree: tracked content, deletions, modes,
-  symlink targets, and nonignored untracked files. Staging alone does not
-  change it.
-- **Orchestration evidence.** Run-scoped authority, change, finding, packet,
-  and gate records managed by `bin/kickoff-evidence`. These records index
-  authoritative sources and bind later review to exact candidates; they do
-  not replace the underlying plan, briefs, policies, or repository files.
-- **Revision packet.** A deterministic projection for a later review round:
-  unresolved stable findings, the causal candidate or plan delta, authority
-  drift, risk and test-selection facts, prior gates, and disclosed omissions.
-- **Mechanistic vs. intelligence triage.** The decision, made per repeatable task, between a deterministic script (mechanistic — consistency, determinism, repeatability) and an agent (intelligence — synthesis, judgment, generativity). Mechanistic code lives in `bin/`. Governed by `policies/mechanistic-vs-intelligence.md`.
-- **`bin/`.** The repo's home for deterministic executables — the mechanistic half of the methodology. Indexed by `bin/README.md`; one concern per script.
-- **Role-model pinning / cross-harness invocation.** `kickoff.yaml`'s `role_models` section selects separate model and effort fields per role and orchestrating harness. The model implies its CLI. `roles` is an optional validated editor; direct edits are supported. `bin/kickoff-config` resolves and fail-closed preflights non-native targets. Governed by `policies/role-models.md`.
-- **Role execution budget.** `kickoff.yaml`'s `role_timeouts` section defines first-event, idle-progress, and hard deadlines per invocation. `bin/kickoff-config` enforces external calls and writes gitignored telemetry for evidence-based recalibration. Governed by `policies/role-timeouts.md`.
-- **Self-resume budget.** `kickoff.yaml`'s `run_budgets.self_resume` key (shipped default 3; `0` pins every park to the human): how many diagnosed, novel-signature self-resumes a phase may take between operator contacts. Any operator relay restores it. Governed by `policies/fail-closed-resume.md`.
-- **Review lane.** A phase's declared initial review intensity: `full` (default — all four roles), `light` (mechanical phases only — plan review skipped; the initial code critic still runs, guards the lane, and can escalate back to full), or the invocation-only `one-shot` (coder → critic for well-specified isolated phases; never declarable in frontmatter). Declared as optional `review_lane:` frontmatter in the phase file. Governed by `policies/review-lanes.md`.
-- **Evidence lane.** The orthogonal axis to the review lane: `evidence_lane: full` (default — the complete candidate-bound apparatus) or `light` (role registration, span joins, and stage envelopes validated-if-present; the close seal stays mandatory). Fail-closed ineligible over authority surfaces, irreversible or external state, and deploy seams. Governed by `policies/review-lanes.md`.
-- **Follow-up route.** The correction path selected after initial code review: `direct fix` for a small low-risk edit, `coder only` for low-risk delegated implementation, or `full cycle` when risk is high or the change is large/cross-cutting. Every route includes empirical validation. Governed by `policies/review-lanes.md`.
-- **Acceptance.** The empirical criteria the phase declares for being "done." May include shell-command checks and named manual checks. The human signs off.
-- **START / END block.** The two entries `kickoff` appends to `LOG.md` per phase — one when the phase is taken up (`🚧`) and one when it is closed (`✅` or paused).
-
-The root `candidate-partition.yaml` declares active and bookkeeping paths under `policies/orchestration-evidence.md`. Its own bytes remain active; unknown tracked files refuse classification, and unknown nonignored untracked files stay included in product identity. Stamped projects regenerate their own explicit path inventory.
+Use the canonical [glossary](briefs/methodology.md#glossary); flag terminology mismatches.
 
 <!-- METHODOLOGY_CONTRACT_END -->

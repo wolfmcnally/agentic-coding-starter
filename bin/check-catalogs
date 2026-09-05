@@ -76,6 +76,94 @@ def check_catalog(directory: str, instructions: str) -> None:
         report(directory, f"{directory}/{name}", "CLAUDE.md references a missing file")
 
 
+def check_instruction_delivery(instructions: str) -> None:
+    """Check the declared instruction form, not the meaning or model adherence."""
+    entry_relative = ".claude/skills/kickoff/SKILL.md"
+    entry = ROOT / entry_relative
+    try:
+        entry_text = entry.read_bytes().decode("utf-8")
+    except (OSError, UnicodeError) as exc:
+        report("instructions", entry_relative, f"required entry is unreadable: {exc}")
+        entry_text = ""
+    for relative, text, ceiling in (
+        ("CLAUDE.md", instructions, 16384),
+        (entry_relative, entry_text, 8192),
+    ):
+        size = len(text.encode("utf-8"))
+        if size > ceiling:
+            report("instructions", relative, f"UTF-8 size {size} exceeds {ceiling} bytes")
+
+    markers = [
+        f"<!-- {name} -->"
+        for name in (
+            "PROJECT_CONTEXT_START",
+            "PROJECT_CONTEXT_END",
+            "METHODOLOGY_CONTRACT_START",
+            "METHODOLOGY_CONTRACT_END",
+        )
+    ]
+    if any(instructions.count(marker) != 1 for marker in markers):
+        report("instructions", "CLAUDE.md", "zone markers must each occur exactly once")
+    elif [instructions.index(marker) for marker in markers] != sorted(
+        instructions.index(marker) for marker in markers
+    ):
+        report("instructions", "CLAUDE.md", "zone markers must occur in declared order")
+
+    # Only rows of the declared table can discharge a resource's loading duty.
+    # A navigation link, quoted example, or instruction elsewhere cannot do so.
+    rows: dict[str, list[str]] = {}
+    in_table = False
+    separator_pending = False
+    operative_text = re.sub(r"<!--.*?-->", "", entry_text, flags=re.DOTALL)
+    for _, line in markdown_prose_lines(operative_text):
+        if not re.match(r"^ {0,3}\|", line):
+            in_table = False
+            separator_pending = False
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if cells == ["Execution condition", "Direct resource", "Load requirement"]:
+            separator_pending = True
+            in_table = False
+            continue
+        if separator_pending:
+            in_table = len(cells) == 3 and all(re.fullmatch(r":?-{3,}:?", cell) for cell in cells)
+            separator_pending = False
+            continue
+        if not in_table or len(cells) != 3:
+            continue
+        condition, resource, requirement = cells
+        direct = re.fullmatch(r"\[[^\]\n]+\]\(([^)\n]+)\)", resource)
+        if direct is None or not CODE_SPAN_PATTERN.sub("", condition).strip():
+            continue
+        destination = link_destination(direct.group(1))
+        if destination is not None:
+            rows.setdefault(destination, []).append(requirement)
+
+    for name in (
+        "preflight.md",
+        "dispatch.md",
+        "planning.md",
+        "implementation.md",
+        "acceptance.md",
+        "close.md",
+        "recovery.md",
+    ):
+        relative = entry.parent.relative_to(ROOT) / name
+        try:
+            (ROOT / relative).read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            report("instructions", relative.as_posix(), f"required resource is unreadable: {exc}")
+        requirements = rows.get(name, [])
+        if len(requirements) != 1:
+            report(
+                "instructions",
+                entry_relative,
+                f"{name}: expected one operative row with a direct resource link",
+            )
+        elif not re.fullmatch(r"Read before \S.*", CODE_SPAN_PATTERN.sub("", requirements[0])):
+            report("instructions", entry_relative, f"{name}: row must declare Read before use")
+
+
 def phase_rows(lines: list[str]) -> list[str]:
     in_phase_table = False
     table_started = False
@@ -527,7 +615,7 @@ def check_markdown_links() -> None:
     for source in candidate_markdown_files():
         try:
             text = source.read_text(encoding="utf-8")
-        except OSError as exc:
+        except (OSError, UnicodeError) as exc:
             report("links", source.relative_to(ROOT).as_posix(), str(exc))
             continue
         for line_number, raw_line in markdown_prose_lines(text):
@@ -549,10 +637,11 @@ def main() -> int:
     parser.add_argument("--closing-phase")
     arguments = parser.parse_args()
     try:
-        instructions = (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
-    except OSError as exc:
+        instructions = (ROOT / "CLAUDE.md").read_bytes().decode("utf-8")
+    except (OSError, UnicodeError) as exc:
         report("instructions", "CLAUDE.md", str(exc))
         instructions = ""
+    check_instruction_delivery(instructions)
     if instructions:
         for directory in CATALOGED_DIRECTORIES:
             check_catalog(directory, instructions)

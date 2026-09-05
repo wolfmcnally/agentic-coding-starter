@@ -11,24 +11,9 @@ A methodology for writing software with AI coding agents in a way that scales be
 
 ## Rule One surrounds the sequence
 
-The eleven steps describe how construction advances. **Rule One** is the
-ambient anomaly-response and learning discipline around those steps, and
-around other project work as well. When something goes wrong or not as
-expected, the visible condition is treated as a symptom rather than a
-diagnosis. The response moves through proportionate causal diagnosis,
-including a contribution-system map when causes interact; separates
-containment, correction, and prevention; and does not call the lesson learned
-until the reusable change has been persisted on a durable cross-harness
-surface.
+The eleven steps describe how construction advances. **Rule One** is the ambient anomaly-response and learning discipline around those steps, and around other project work as well. When something goes wrong or not as expected, the visible condition is treated as a symptom rather than a diagnosis. The response moves through proportionate causal diagnosis, including a contribution-system map when causes interact; separates containment, correction, and prevention; and does not call the lesson learned until the reusable change has been persisted on a durable cross-harness surface.
 
-The operative skill is
-[`.claude/skills/rule-one/SKILL.md`](../.claude/skills/rule-one/SKILL.md). It is
-repository-owned and does not depend on a machine-global copy. The reasoning,
-limits, and open diagnostic questions behind it live in
-[`rule-one-diagnostic-learning.md`](rule-one-diagnostic-learning.md). The two
-travel together through `learn`, `teach`, and `stamp`: the skill supplies the
-prescription, while the brief preserves the discernment needed to revise and
-apply it without turning every surprise into a mechanical rule.
+The operative skill is [`.claude/skills/rule-one/SKILL.md`](../.claude/skills/rule-one/SKILL.md). It is repository-owned and does not depend on a machine-global copy. The reasoning, limits, and open diagnostic questions behind it live in [`rule-one-diagnostic-learning.md`](rule-one-diagnostic-learning.md). The two travel together through `learn`, `teach`, and `stamp`: the skill supplies the prescription, while the brief preserves the discernment needed to revise and apply it without turning every surprise into a mechanical rule.
 
 ## The eleven steps
 
@@ -42,44 +27,34 @@ apply it without turning every surprise into a mechanical rule.
 
 5. **Brief + architecture → phased plan.** Break the work down by phase. Each phase is independently testable, mostly independently deliverable, and has a clearly defined goal and acceptance criteria. Phases live under `plan/`; the spine is `plan/INDEX.md`. Major phases are written *after* the brief (step 2) and architecture (step 3) exist — without those, the phase plan is speculation. If you find yourself wanting to plan phases before there's a primary brief, go back to step 2.
 
-6. **Major phases up front, sub-phases just-in-time, ripple at every close.** Two scales, two rules:
+6. **Coherent outcomes, conditional children, ripple at every close.** Draft major phases up front to general specificity from the brief and architecture: frontmatter, Goal, Deliverables, Acceptance and Brief refs, with the dependency graph visible from bootstrap. Keep one coherent outcome intact even when it spans modules, tests and documentation.
 
-   - **Major phases are drafted up front** to *general specificity* from the brief and architecture. Same shape as a full phase file (frontmatter + Goal + Deliverables + Acceptance + brief refs), at lower fidelity than the in-flight phase. The dependency graph in `plan/INDEX.md` enumerates them from the start. Some major phases stay monolithic — small phases that fit one session never need sub-phase decomposition.
-   - **Sub-phases are JIT, one at a time.** At the start of a major phase, decompose only `phase-N.1` in full. Subsequent sub-phases (`phase-N.2`, `phase-N.3`, …) get drafted at *close* of the previous one, with the benefit of its outcomes. Pre-decomposed sub-phases lock in premature assumptions and resist the very revisions that doing the work earlier reveals.
-   - **Bite size is capability-indexed.** Size sub-phases to the executing coder model's demonstrated coherence, not to a fixed calendar. Acceptance criteria, not session length, define a bite. The signal to coarsen: a model class that routinely closes phases of the current size with first-cycle approvals and green gates can safely take bigger bites — fewer, larger sub-phases, more major phases left monolithic. The signal to split finer: revision loops stalling instead of converging, build-gate fix cycles recurring. Per-phase ceremony (planning, review, logging) is a fixed cost; over-fine decomposition under a strong coder pays that cost more often than the work needs.
-   - **Ripple propagation at every phase close.** When a phase (sub or major) closes, pinned decisions and surfaced concerns from its END block — plan-reviewer Observations, code-critic findings, deliberate scope changes — are propagated into downstream drafted phase files. Mechanical edits (renaming a path the closing phase pinned; adding a brief ref it introduced; tightening an Acceptance criterion to a now-pinned value) land automatically (AUTO). Judgment-level changes (a downstream Goal needs revision; a Deliverable becomes obsolete; the dependency graph shifts) surface to the user as named follow-ups (DECIDE). The orchestrator executes that classification at each phase close, and a DECIDE item left unresolved is an open gate, not a note.
+   Decompose only at an unresolved consequential decision, an independently accepted prerequisite, a deployment/migration/human seam, or a demonstrated model-coherence limit. A missing child file, multiple surfaces, session length, model reputation or first-cycle approval does not establish that boundary. Settle a consequential decision with the operator; do not silently turn it into coder discretion or authorize a split. Remove redundant plan explanation before proposing decomposition under the existing size/growth/stall limits.
 
-   Net effect: the major-phase roadmap is visible at bootstrap; the orchestrator works one sub-phase at a time with each predecessor's outcomes baked in; the downstream sketches stay fresh as work proceeds rather than diverging from reality.
+   Once a child boundary is authorized, draft only the first child in full at parent entry. Draft the next at its predecessor’s close using the actual outcome; do not pre-decompose later major phases. Completed phases remain completed. Plans settle consequential behavior, exclusions, interfaces, invariants, prerequisites, acceptance and human stops while leaving ordinary local implementation choices to the coder.
 
-7. **Orchestrator-driven sub-phase execution.** Use a high-level orchestrator skill (`kickoff`) that delegates the initial implementation and owns candidate-bound evidence. It:
+   Ripple at every close: propagate pinned decisions into drafted downstream phases. Apply mechanical changes as AUTO; route changed goals, deliverables or dependencies as DECIDE to the operator. An unresolved DECIDE remains an open gate. The roadmap stays visible and current without making child phases mandatory.
+
+7. **Orchestrator-driven phase execution.** Use a high-level orchestrator skill (`kickoff`) that delegates the initial implementation and owns candidate-bound evidence. It:
    - determines the current phase,
-   - invokes a **planning agent** to turn the current sub-phase into a file-level plan,
+   - invokes a **planning agent** to turn the current phase into a file-level plan,
    - hands the plan to a **plan-reviewer agent**,
    - hands the (possibly revised) plan to a **coding agent**,
    - hands the result to a **code-critic agent**,
-   - on any critic's complaint, assigns stable finding ids and sends the work
-     back to the relevant agent with a deterministic revision packet;
+   - on any critic's complaint, assigns stable finding ids and sends the work back to the relevant agent with a deterministic revision packet;
    - binds review and gate records to the exact candidate tree.
 
    *One step, a lot happening. Each of those four roles is a specialist with its own tool stance, reading protocol, and verdict format.*
 
    Review intensity is risk-adaptive: a phase may declare a **review lane** in its frontmatter. The default `full` lane runs all four roles; a `light` lane — mechanical phases only — skips initial plan review while keeping the initial code critic, who also guards the lane and escalates back to `full` when the work exceeded mechanical scope.
 
-8. **Acceptance check.** During convergence, the coder runs the smallest
-   falsifying tests and affected revision-close gates. After code-critic
-   approval, the orchestrator runs the complete phase-prescribed sequence and
-   `./bin/check all` once against the unchanged candidate. A failure or
-   concrete user correction is routed proportionally: the orchestrator may
-   apply a small low-risk fix directly, use the coder alone for a low-risk
-   delegated fix, or repeat the coder → critic cycle when risk is high or the
-   change is large/cross-cutting. A failed lightweight attempt upgrades to the
-   full cycle; every relevant change invalidates prior gate evidence.
+8. **Acceptance check.** During convergence, the coder runs the smallest falsifying tests and affected revision-close gates. After code-critic approval, the orchestrator runs the complete phase-prescribed sequence and `./bin/check all` against the unchanged candidate. After accepted close and all tracked status, ripple, lessons, END and report writes, the orchestrator runs a second bare `./bin/check all` handoff gate; no tracked write follows success. A failure or concrete user correction is routed proportionally: the orchestrator may apply a small low-risk fix directly, use the coder alone for a low-risk delegated fix, or repeat the coder → critic cycle when risk is high or the change is large/cross-cutting. A failed lightweight attempt upgrades to the full cycle; every relevant change invalidates prior gate evidence.
 
 9. **Append-only phase log and lessons harvest.** Use an append-only log (`LOG.md`) to **open, park, and close** work on every phase. Every block is appended at true EOF; committed bytes are an exact prefix, and chronology corrections are later authenticated records rather than historical edits. END and PARK both harvest every role's Process Observations, revision failure analyses, wall-clock observations, and relevant dispositions into the `lessons/` ledger — filing a new scope-classified lesson or appending an occurrence to an existing one. `None` is valid; skipping the question is not. After the handoff gate, the orchestrator ordinarily commits and fast-forward-pushes the accepted tree; the terminal block remains the human's compact audit surface, read at the seam rather than before the commit.
 
-10. **Human evaluation where judgment is required.** Objective criteria — executable, independently reviewed, proved by a complete gate against the exact candidate — close autonomously, and the phase is delivered. Every named manual, subjective, product, custody, or owner-only criterion still parks for the human, who evaluates the sub-phase at the seam (the END block and the demo protocol) and re-invokes the orchestrator to refine or fix anything found. This is where the human exercises engineering, UX, and product judgment. **The orchestrator never fabricates that acceptance, and delivery never substitutes for it.**
+10. **Human evaluation where judgment is required.** Objective criteria — executable, independently reviewed, proved by a complete gate against the exact candidate — close autonomously, and the phase is delivered. Every named manual, subjective, product, custody, or owner-only criterion still parks for the human, who evaluates the phase at the seam (the END block and the demo protocol) and re-invokes the orchestrator to refine or fix anything found. This is where the human exercises engineering, UX, and product judgment. **The orchestrator never fabricates that acceptance, and delivery never substitutes for it.**
 
-11. **Stay agile.** Add new phases, or break existing phases into more sub-phases, as the problem and solution space become clearer. The phase plan is mutable. Phases that turn out to be wrong are split, merged, or rewritten.
+11. **Stay agile.** Add new phases, or break existing phases into more sub-phases, as the problem and solution space become clearer. The phase plan is mutable. Unstarted work may be split, merged or rewritten when the consequential boundary is authorized; completed phases are never merged or reopened as new scope.
 
 ## How to apply this methodology
 
@@ -88,8 +63,8 @@ When you're starting or scoping a coding project, work through these steps in or
 - If you have only a vague idea, push to step 1: surface insights and do competitive analysis before committing to a brief.
 - If a brief exists but no architecture, do step 3 and research BCPs.
 - If architecture exists but no phase plan, do step 5.
-- If a phase exists but no sub-phases, do step 6.
-- If a sub-phase is being executed, follow step 7's orchestrator pattern (planner → planning critic → coder → coding critic, with revision loops).
+- At phase entry, apply step 6’s outcome-boundary test; absent children alone require no action.
+- If a phase or authorized child is being executed, follow step 7's orchestrator pattern (planner → planning critic → coder → coding critic, with revision loops).
 - Whenever a phase opens or closes, write to the append-only log (step 9) with explicit evidence; at close, also run the mandatory lessons harvest and surface graduation-ready candidates for human ratification.
 
 ## The four canonical agents
@@ -103,11 +78,7 @@ The methodology's orchestrator delegates to four specialist roles. Their names a
 | `phase-coder` | Briefs, plan, repo, approved plan | Yes | Implement the approved plan and run focused/revision-close gates |
 | `code-critic` | Briefs, plan, repo, code diff | No | Approve the code or send it back for revision |
 
-The orchestrator (`kickoff`) is the fifth participant. It delegates initial
-implementation; owns authority, change, finding, and gate evidence; handles
-verdicts, the implementation-candidate and handoff gates, the lessons harvest,
-and `LOG.md`; and may write code only for a small,
-low-risk follow-up correction whose intended shape is already determined.
+The orchestrator (`kickoff`) is the fifth participant. It delegates initial implementation; owns authority, change, finding, and gate evidence; handles verdicts, the implementation-candidate and handoff gates, the lessons harvest, and `LOG.md`; and may write code only for a small, low-risk follow-up correction whose intended shape is already determined.
 
 ## Non-negotiables
 
@@ -117,15 +88,9 @@ low-risk follow-up correction whose intended shape is already determined.
 - **The human owns subjective and owner-only acceptance; objective acceptance is independently reviewed and gate-proved** (steps 4, 8, 10).
 - **The orchestrator writes code only for eligible small, low-risk follow-up corrections** (step 8).
 - **Closing a phase requires recorded evidence and a lessons-harvest answer**, not just a green test run (step 9).
-- **Research authority follows the role across harnesses.** Planner and
-  reviewer may originate search and retrieve; coder and critic retrieve only
-  plan- or brief-identified sources and same-host structural neighbors. The
-  ambient resource set is allow-by-default, but no named MCP server or plugin
-  is presumed available.
-- **Closing has two gates.** The complete candidate-bound sequence runs before
-  evidence finalization and tracked bookkeeping; a second bare full gate runs
-  on the resulting handoff tree, after which no tracked write is permitted.
-- **Phases and sub-phases are mutable**; refactor the plan as understanding grows (step 11).
+- **Research authority follows the role across harnesses.** Planner and reviewer may originate search and retrieve; coder and critic retrieve only plan- or brief-identified sources and same-host structural neighbors. The ambient resource set is allow-by-default, but no named MCP server or plugin is presumed available.
+- **Closing has two gates.** The complete candidate-bound sequence runs before evidence finalization and tracked bookkeeping; a second bare full gate runs on the resulting handoff tree, after which no tracked write is permitted.
+- **Unstarted phases and authorized children are mutable**; preserve completed history while revising future work (step 11).
 
 ## Orchestration runtime doctrine
 
@@ -146,41 +111,8 @@ Hard-won rules for step 7 when the loop runs fail-closed and unattended. Distill
 - **Preflight the environment before staking an unattended run on it.** A fail-closed probe ladder — repository baseline, committer identity, toolchain launch, temp and platform capabilities (file clones, database journaling, sniffing backends), permission-escalation mechanics, and the authoritative gate as a pre-work baseline — runs *before* the tasking prompt, with every probe read-only or self-cleaning and a printed PASS/FAIL table. Environment barriers come in layers, and each probing round surfaces exactly one (observed: three distinct sandbox boundaries in three successive rounds — a direct write denial, a cache-initialization denial, and a platform-API panic). Fixes land as durable configuration, never session memory, and the green baseline doubles as the classifier for every later failure: after a green baseline, every failure is the run's own.
 - **A well-specified isolated task may run as a goal-armed one-shot** instead of the full four-role loop: a complete binding spec that already passed operator review (which substitutes for plan review), a new-files-only write set with a park on any widening, designed parks enumerated as satisfying stops, a durable goal whose compact objective carries the outcome, the printed proof, and the park-satisfying clause, authoritative gates as the external verifier, and independent verification against the recorded baseline before push. Goal durability is harness-specific: one harness lets the agent arm its own goal from the tasking prompt and persists it as database state across compaction; another's goal is context-fragile and silently cleared by compaction — know which you have before trusting continuation to it. Role machinery at this scale is ceremony; an observed cost profile of roughly 2:1 environment-proving to implementation was worth every minute.
 - **Authoritative gates run in the native execution context.** Sandboxed gate output can contain phantom failures — and therefore phantom evidence in either direction. Classify sandbox-vs-real with one native baseline run before work begins; a gate that could not run is "not run," never "passed"; route gate and commit commands through the proven native or escalated mechanism; and never cite in-sandbox gate output as evidence. (Observed twice in one day: a coder's hundred-plus in-sandbox test failures that were all phantoms save one real regression, and a preflight's in-sandbox gate failing while the native run of the same gate was green.)
-- **Scope loop-extension grants by convergence, not counts.** The runaway
-  backstop's default count stands for ungoverned loops, but an explicit
-  extension grant is a *convergence lease*: continue while each cycle
-  strictly shrinks the open-finding set, nothing closed reopens at
-  equal-or-worse severity, no new defect class appears, and the touched
-  surface stays within named bounds — park on first violation, any guard
-  trip, or an operator-only hard ceiling. Counts measure effort, not
-  health; count-scoped grants expire mid-convergence and page the operator
-  to re-authorize work that never stopped working. An out-of-band
-  supervisor may judge the lease's invariants and, below the ceiling,
-  decides whether another cycle is worth the effort (operator directive in
-  a derived project, 2026-08-13 — the ceiling, raised 5 → 10 the same day,
-  is a circuit breaker against runaway iteration, not a work quota); a
-  *tripped* backstop and the ceiling itself remain operator-only.
-  (Observed 2026-08-11 in the same project: three count-scoped
-  micro-grants in one day on a strictly-converging loop, each an operator
-  round-trip during their absence; two of the phase's three parks and three
-  relays traced to count expiry rather than any defect.) Mechanized in
-  `policies/four-canonical-agents.md § Convergence-lease grants`.
-- **Stop an outward spiral at its premise.** A defensive requirement,
-  refusal, guard, compatibility behavior, or mandatory proof joins the target
-  only when it is backed by an observed failure, an explicit operator
-  decision, or the contract of an actually targeted platform and operating
-  mode. On every revision, the reviewer asks what failure justifies the
-  change, whether it stays inside the authorized actors and environments, and
-  whether it moves the fixed target closer or moves the target outward. An
-  unsupported premise becomes an owner question before another implementation
-  pass; counts may describe divergence but do not decide it. (Observed in a
-  derived project: a single-writer macOS preview repair widened into Windows
-  compatibility and arbitrary concurrent-filesystem mutation defenses, even
-  though deployment was a static read-only Linux artifact. Repeated reviews
-  added machinery and new blocking classes until the operator removed the
-  invented premises.) This is a judgment protocol, not a semantic detector:
-  the reviewer explains the failure basis, operating envelope, and direction
-  of travel in the verdict, and an unsupported premise parks for the operator.
+- **Scope loop-extension grants by convergence, not counts.** The runaway backstop's default count stands for ungoverned loops, but an explicit extension grant is a *convergence lease*: continue while each cycle strictly shrinks the open-finding set, nothing closed reopens at equal-or-worse severity, no new defect class appears, and the touched surface stays within named bounds — park on first violation, any guard trip, or an operator-only hard ceiling. Counts measure effort, not health; count-scoped grants expire mid-convergence and page the operator to re-authorize work that never stopped working. An out-of-band supervisor may judge the lease's invariants and, below the ceiling, decides whether another cycle is worth the effort (operator directive in a derived project, 2026-08-13 — the ceiling, raised 5 → 10 the same day, is a circuit breaker against runaway iteration, not a work quota); a *tripped* backstop and the ceiling itself remain operator-only. (Observed 2026-08-11 in the same project: three count-scoped micro-grants in one day on a strictly-converging loop, each an operator round-trip during their absence; two of the phase's three parks and three relays traced to count expiry rather than any defect.) Mechanized in `policies/four-canonical-agents.md § Convergence-lease grants`.
+- **Stop an outward spiral at its premise.** A defensive requirement, refusal, guard, compatibility behavior, or mandatory proof joins the target only when it is backed by an observed failure, an explicit operator decision, or the contract of an actually targeted platform and operating mode. On every revision, the reviewer asks what failure justifies the change, whether it stays inside the authorized actors and environments, and whether it moves the fixed target closer or moves the target outward. An unsupported premise becomes an owner question before another implementation pass; counts may describe divergence but do not decide it. (Observed in a derived project: a single-writer macOS preview repair widened into Windows compatibility and arbitrary concurrent-filesystem mutation defenses, even though deployment was a static read-only Linux artifact. Repeated reviews added machinery and new blocking classes until the operator removed the invented premises.) This is a judgment protocol, not a semantic detector: the reviewer explains the failure basis, operating envelope, and direction of travel in the verdict, and an unsupported premise parks for the operator.
 - **Doctrine and ceremony grow only against incidents, and every review prunes.** A new binding rule or protocol step enters only with its motivating incident cited inline; foresight proposals remain candidates (the `lessons/` ledger is the holding pen), never rules. Every binding step names the park it prevents. Every review pass — plan review, code review, `sweep` — treats steps whose failure families are structurally dead as deletion candidates, because fail-closed pressure ratchets ceremony (every defect adds rigor; nothing subtracts) and only deliberate pruning reverses it. This generalizes the instrument-retirement rule above from measuring instruments to every binding step of the protocol itself. The worked form is a **ceremony audit**: walk every binding step of an orchestration protocol, require each to name the park it prevents or cite its motivating incident, and delete or demote the rest. (Observed in a donor repo: a full audit under this rule deleted or demoted four binding steps, including a strictness family whose every production firing was a comparator false positive and a per-fix reseal duty — roughly twenty-seven whole-repository reseal cycles in one phase, each invalidated by the next one-line fix — judged pure ceremony in the phase's own closing verdict.)
 
 ## Run-lifecycle vocabulary
@@ -206,11 +138,67 @@ What you get in exchange: each phase leaves a reviewable artifact pair (END bloc
 
 ## Related skills
 
-- **`rule-one`** — runs the symptom → diagnosis → response → persistence
-  discipline; its rationale and diagnostic research live in
-  [`rule-one-diagnostic-learning.md`](rule-one-diagnostic-learning.md).
+- **`rule-one`** — runs the symptom → diagnosis → response → persistence discipline; its rationale and diagnostic research live in [`rule-one-diagnostic-learning.md`](rule-one-diagnostic-learning.md).
 - **`kickoff`** — runs steps 7–9 for one sub-phase, end-to-end.
 - **`stamp`** — runs the bootstrap procedure described in [`agentic-bootstrap.md`](agentic-bootstrap.md) to stand up a new repo under this methodology.
 - **`methodology`** — re-states this brief as a skill, invoked as `/methodology` in Claude Code or `$methodology` in Codex, for sessions that need a reminder without reading the whole file.
 - **`learn` / `teach`** — move ratified methodology patterns and scope-classified lessons between the starter hub and project repos under explicit user approval.
 - **`sweep`** — audits policies, briefs, skills, agents, catalogs, and the lessons ledger; proposes pruning and graduation decisions for human ratification.
+
+## Operating invariants and vocabulary
+
+The compact root retains the operative obligations; these explanations preserve why durable state, execution continuity and scope boundaries matter.
+
+- **Rules, not memory.** Anything that should bind future sessions — across harnesses (Claude Code, Codex, and others), across operators, across machines — belongs in this repo. Route by kind: a universal rule → `policies/` or `CLAUDE.md`; a scoped project detail → the surface's own instruction file; a per-action workflow → the owning skill; a tunable parameter → the policy that holds its tunables; longitudinal context or a pinned decision → a brief. Agent-side memory is local to one operator, one harness, one machine; it is the wrong place for engine knowledge — if a harness offers to save something to its memory, save it as a repo rule instead. When a learning is real but its surface is unknown — or it has been seen only once, and codifying now would lock in a rule its variations have not tested — file it in `lessons/`: the holding pen between noticing and knowing.
+
+- **A turn ends by dispatching or by stating a hold — never on a promise.** A session holding authorized, unblocked work does not end a turn describing what it is about to do: it either dispatches the next step or states an explicit hold and why. "Next: Phase N", "opening step 2 now", "I'll pick up the follow-up" are all the same defect — the work then sits idle until something external notices. Corollary on chaining: **a command whose refusal must be read gets its own block.** Never chain a validating command into a compound block that continues past its failure — `a && b`, `a; b`, or a block ending in a backgrounded dispatch. (Donor incidents: a failed close-out validation chained into a persist stamped a permanent false record; an ingest refusal chained behind a backgrounded dispatch was never read, leaving four review passes unmeasured — the incident behind the evidence plane's unmeasured-pass latch. Both rules graduated from a seven-occurrence donor lesson whose thesis is that a rule wired to nothing is a comment.)
+
+- **Route on the authoritative property, not a convenient stand-in.** Before shipping any dispatch, classification, or selection decision, name two things: what the code actually reads, and what actually determines the answer. If they differ, say why the stand-in is safe here — and if you cannot, read the real thing. (Donor worked case, graduated at three same-day occurrences: an extraction backend chose its engine on `path.suffix`, so valid PDFs whose archive members carried no extension were handed to a tool that cannot read PDF input and failed "for" a reason that was never the reason. A convenient property is convenient precisely because it is cheap to read, which is unrelated to whether it is true.)
+
+- **Verification captures go to a scratch path, never a bare filename.** Screenshots, traces, probe output, and other verification artifacts are written to the session scratch directory or an explicitly gitignored path — never a bare filename resolved against the repo root. The load-bearing reason: `bin/kickoff-tree-id` hashes nonignored untracked files, so a stray capture landing in the tree moves the candidate id that the phase's plan, review, and gate evidence are bound to.
+
+- **`plan/` governs the product; methodology changes are operator-routed.** In a derived project, the plan ledger and the `kickoff` lifecycle govern the *deliverable*. Changes to the methodology machinery itself — the skills, canonical agents, orchestration policies, doctrine briefs, parity tooling — are not plan-routed: they run as operator-directed plan-mode → approve → implement cycles recorded by their commits, and are tracked in the plan ledger only as dated notes when they must be remembered. (In this template repo the deliverable *is* the methodology, so its plan legitimately carries methodology work; the rule binds the projects `stamp` derives.)
+
+## Glossary
+
+Terms used consistently across briefs, skills, policies, and code. Mismatched usage is a bug — flag or fix.
+
+- **Brief.** A document under `briefs/` describing *what* to build, *why*, and *what was decided*. Briefs inform phases; phases reference briefs.
+- **Policy.** A short, prescriptive rule under `policies/` that every phase honors. Policies are the law of the repo.
+- **Pinned document.** A verbatim third-party document (or excerpt) under `docs/`, recorded in `docs/README.md` with its source, `As of` and `Retrieved` dates, and redistribution basis. Cited by briefs, policies, and the plan; cites nothing in the repo itself.
+- **Phase.** One unit of phased work. A phase file (`plan/phase-N.md`) holds Goal, Deliverables, Acceptance, and Brief refs. Status lives in `plan/INDEX.md`.
+- **Sub-phase.** An authorized child outcome separated at a consequential boundary; drafted just in time, one at a time. Missing children or multiple surfaces alone do not require decomposition.
+- **`kickoff`.** The orchestrator skill. Invoke it as `/kickoff` in Claude Code or `$kickoff` in Codex. Runs an initial phase implementation through planner → reviewer → coder → critic, retains candidate-bound evidence across revision rounds, closes through separate implementation-candidate and handoff gates, records exact execution and operator-park timing, generates the end-of-phase HTML report, then routes later corrections in proportion to risk and size. Writes START/END blocks to `LOG.md`; it may write code only for an eligible small, low-risk follow-up fix.
+- **`rule-one`.** Universal diagnostic-learning skill. Invoke it as `/rule-one` in Claude Code or `$rule-one` in Codex. Treats the observed problem as a symptom, diagnoses proportionately before deriving remediation, separates containment/correction/prevention, and persists reusable learning on a durable cross-harness surface. Its reasoning companion is [`briefs/rule-one-diagnostic-learning.md`](rule-one-diagnostic-learning.md); the two transfer as one unit.
+- **`learn`.** Universal cross-repo skill. Invoke it as `/learn` in Claude Code or `$learn` in Codex. Explores a donor repo and proposes which of its patterns to absorb into the current repo. Plan-first; user approves; then applies. The donor stays read-only.
+- **`teach`.** Universal cross-repo skill. Invoke it as `/teach` in Claude Code or `$teach` in Codex. Inverse of `learn`. Proposes which of the current repo's patterns to apply to a target repo. Plan-first; user approves; then applies to the target. The current repo stays read-only during teaching.
+- **`sweep`.** Universal maintenance skill. Invoke it as `/sweep` in Claude Code or `$sweep` in Codex. Audits the accumulated rule surfaces — policies, briefs, skills, the lessons ledger, catalogs — for staleness, contradiction, and drift, settles every judgment call with the user before composing the plan, and proposes retirements and graduations as one complete plan the user ratifies. The pruning half of the improvement flywheel.
+- **`sweep-planning`.** Universal review-loop calibration skill. Invoke it as `/sweep-planning` in Claude Code or `$sweep-planning` in Codex. Harvests every genuine plan-review verdict from the machine's Claude Code and Codex traces (`bin/review-verdicts`), categorizes the rejection reasons longitudinally, attributes each to a planner defect or a reviewer false positive, and proposes the persona, script, and policy corrections as one user-ratified plan. Template mode lands corrections in the template; derived-project mode files them as `scope: methodology` lessons.
+- **`sweep-coding`.** Universal review-loop calibration skill for the coder ↔ critic loop. Invoke it as `/sweep-coding` in Claude Code or `$sweep-coding` in Codex. Same lifecycle as `sweep-planning` (plan mode first; analysis and plan presented together; plain-register head), harvesting `CODE-F` verdicts and coder failure analyses with `bin/review-verdicts --coder-evidence`.
+- **`demo`.** Universal interactive-evaluation skill. Invoke it as `/demo` in Claude Code or `$demo` in Codex. Runs an already approved `User Demo:` protocol one visible action per turn and preserves the resume point without repairing the product mid-demo.
+- **`treatise`.** Universal outward-explanation skill. Invoke it as `/treatise` in Claude Code or `$treatise` in Codex. Repairs the canonical brief first, renders for a named audience, and requires explicit authority plus a governing disclosure policy before external publication.
+- **`plain`.** Universal operator-register skill. Invoke it as `/plain` in Claude Code or `$plain` in Codex to recompose a message that missed the register; agents follow it unprompted for anything addressed to the operator. Two tests govern it: a detail belongs only if changing it would change the operator's answer, and every sentence must parse without the repo, the session, or the transcript open.
+- **`ask`.** Universal operator-pull skill. Invoke it as `/ask` in Claude Code or `$ask` in Codex, optionally scoped to a topic. Inventories the open loops in the current work, asks only what the agent cannot settle itself, batches the questions through the harness's structured ask-user control (numbered plain text where none is usable), and applies the answers. Operator-invoked only; agent-initiated escalation uses the operator-input park and `blocked-owner` routes instead.
+- **Operator.** The human who owns the project and makes its calls — whoever holds this checkout. Never a named individual in a committed file, and referred to as *they*.
+- **Research authority.** The per-role search/retrieval boundary in `kickoff.yaml`: planner/reviewer search and retrieve; coder/critic retrieve approved authorities and same-host structural neighbors; installed resources are allow-by-default but never presumed present.
+- **Operator-input park.** A phase-level interval during which progress is waiting on a human decision or action. It is measured outside execution traces, reports every span plus an overlap-safe total, and fails closed while any interval remains open.
+- **Lessons ledger.** The `lessons/` + `lessons-archived/` directories: one file per candidate process lesson with scope, provenance, and occurrence history. Validated and tallied by `bin/lessons`; graduation is human-only.
+- **Editorial record.** The `treatise:` mapping in a treatise brief's frontmatter. `audience`, `register`, and `coverage` are current state; `directives` is the dated provenance log of the operator's rulings; `renderings` and `external_facts` carry locations and retrieval dates. Its presence marks the brief as a treatise; `bin/treatise` validates its shape.
+- **Process observations.** The structured output field each canonical role emits for friction or ambiguity in briefs, policies, plans, or tooling — the raw sensor feed `kickoff` distills at every truthful close or park. "None" is a valid value.
+- **The four canonical agents.** `phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`. Their names are load-bearing — `kickoff` invokes them by name. Their definitions live in `.claude/agents/` (canonical) and `.codex/agents/` (mirror).
+- **Repository-owned toolchain contract.** The atomic setup, focused/full test, runtime-selection, full-gate, durable receipt, proof-governance, metadata, lockfile, tests, and caller bundle. The authoritative full sequence is `./bin/check all`; focused tests use `./bin/test`.
+- **Proof estate.** The recipient-local frozen inventory of collapsed families, expanded leaves, and gate/hook proofs, with complete dispositions, compensated admissions, direct critical-risk witnesses, and local effectiveness evidence. `bin/test-governance` validates the reset and zero-growth budget, runs assays, and selects vital/changed feedback; uncertainty widens to the full retained estate, which remains authoritative for close gates.
+- **Full-gate receipt.** The gitignored durable log, terminal run metadata, and success record managed by `bin/check-receipt`, bound to one exact candidate and environment. The environment fingerprint comes through the repository-selected runtime and includes its actual executable and base-executable identity; it is not inferred from the receipt helper or a version file. The opt-in pre-push hook reuses it only for the clean current `HEAD`; every miss or error runs the authoritative full gate.
+- **Candidate id.** The SHA-256 identity emitted by `bin/kickoff-tree-id` for the complete reviewable working tree: tracked content, deletions, modes, symlink targets, and nonignored untracked files. Staging alone does not change it.
+- **Orchestration evidence.** Run-scoped authority, change, finding, packet, and gate records managed by `bin/kickoff-evidence`. These records index authoritative sources and bind later review to exact candidates; they do not replace the underlying plan, briefs, policies, or repository files.
+- **Revision packet.** A deterministic projection for a later review round: unresolved stable findings, the causal candidate or plan delta, authority drift, risk and test-selection facts, prior gates, and disclosed omissions.
+- **Mechanistic vs. intelligence triage.** The decision, made per repeatable task, between a deterministic script (mechanistic — consistency, determinism, repeatability) and an agent (intelligence — synthesis, judgment, generativity). Mechanistic code lives in `bin/`.
+- **`bin/`.** The repo's home for deterministic executables — the mechanistic half of the methodology. Indexed by `bin/README.md`; one concern per script.
+- **Role-model pinning / cross-harness invocation.** `kickoff.yaml`'s `role_models` section selects separate model and effort fields per role and orchestrating harness. The model implies its CLI. `roles` is an optional validated editor; direct edits are supported. `bin/kickoff-config` resolves and fail-closed preflights non-native targets.
+- **Role execution budget.** `kickoff.yaml`'s `role_timeouts` section defines first-event, idle-progress, and hard deadlines per invocation. `bin/kickoff-config` enforces external calls and writes gitignored telemetry for evidence-based recalibration.
+- **Self-resume budget.** `kickoff.yaml`'s `run_budgets.self_resume` key (shipped default 3; `0` pins every park to the human): how many diagnosed, novel-signature self-resumes a phase may take between operator contacts. Any operator relay restores it.
+- **Review lane.** A phase's declared initial review intensity: `full` (default — all four roles), `light` (mechanical phases only — plan review skipped; the initial code critic still runs, guards the lane, and can escalate back to full), or the invocation-only `one-shot` (coder → critic for well-specified isolated phases; never declarable in frontmatter). Declared as optional `review_lane:` frontmatter in the phase file.
+- **Evidence lane.** The orthogonal axis to the review lane: `evidence_lane: full` (default — the complete candidate-bound apparatus) or `light` (role registration, span joins, and stage envelopes validated-if-present; the close seal stays mandatory). Fail-closed ineligible over authority surfaces, irreversible or external state, and deploy seams.
+- **Follow-up route.** The correction path selected after initial code review: `direct fix` for a small low-risk edit, `coder only` for low-risk delegated implementation, or `full cycle` when risk is high or the change is large/cross-cutting. Every route includes empirical validation.
+- **Acceptance.** The empirical criteria the phase declares for being "done." May include shell-command checks and named manual checks. The human signs off.
+- **START / END block.** The two entries `kickoff` appends to `LOG.md` per phase — one when the phase is taken up (`🚧`) and one when it is closed (`✅` or paused).

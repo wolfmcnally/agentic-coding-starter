@@ -1,6 +1,18 @@
 # Policy: Review Lanes and Proportional Follow-ups
 
-Every phase pays for the review it needs, not the review some other phase needed. The four-role loop ([`four-canonical-agents.md`](four-canonical-agents.md)) is the default initial pipeline and the right shape for any phase that makes decisions; for purely mechanical phases, a first-cycle `APPROVED` with zero findings is review that found nothing — pure cost. This policy adapts both the initial lane and later correction route, with empirical validation as the backstop.
+Review intensity follows authorized scope and risk. Approved methodology improvements use direct implementation below; other phase work defaults to the four-role loop ([four-canonical-agents.md](four-canonical-agents.md)), with an explicit light lane for mechanical phases. First-cycle approval records that review’s outcome, not proof of wasted effort, model capability or permission to skip future review. Both full close gates remain unchanged.
+
+## Methodology improvements: direct implementation by default
+
+Operator-ratified 2026-09-05. After the operator approves the intended methodology change, the invoking agent implements the complete coherent change directly, then obtains one independent review of the complete change and runs the required checks. Do not create phases, delegate planning or implementation, or repeat plan review merely because the work improves methodology. This applies in the starter template as well as derived projects, including methodology instructions, policies, skills, role definitions, orchestration code and their tests. Product work remains governed by the project's phase workflow; labeling a product change “methodology” does not change its route.
+
+This is a default outside `kickoff`, not its invocation-only `one-shot` lane or a new lane value. Explicit operator requests for `kickoff`, phase roles or a different review process override it for their named scope. An already approved improvement plan supplies scope; unresolved consequential decisions still go to the operator. File count, authority edits and the fact that methodology is this template's product do not themselves require the four-role loop. The observed failure was repeated planning and authority recapture while changing the workflow's own instructions; approval of improvements must not silently become approval of that overhead.
+
+Independent review uses a separate context and examines the complete implementation against the approved outcome and applicable rules. The invoking agent runs focused checks first, addresses all required findings directly and obtains review of those corrections as needed. “One independent review” means one initial comprehensive pass, not permission to ship unresolved findings or forbid necessary verification of a fix. Reopen planning only for a consequential scope or design decision; do not regenerate an unchanged plan to carry a correction.
+
+Preserve both full gates: after independent approval, run the required implementation-candidate sequence ending in `./bin/check all`; after all log, status, lesson and report writes, run the second bare `./bin/check all`, with no tracked write afterward. Record the approved scope, actual changed paths, independent verdict and resolutions, exact reviewed candidate, gate commands/results and remaining human criteria. Existing hard rules, delivery authority, test governance and human acceptance remain binding. Do not fabricate phase-role attempts, command receipts or an accepted `kickoff` run for direct work. When changing routes during an existing run, close that run truthfully, preserve its artifacts and completed work, and verify the complete resulting change under the newly approved route.
+
+Kickoff locations: [preflight](../.claude/skills/kickoff/preflight.md) owns Steps 0–2 and lane selection; [planning](../.claude/skills/kickoff/planning.md) owns Steps 3–4; [implementation](../.claude/skills/kickoff/implementation.md) owns Steps 5–6; [recovery](../.claude/skills/kickoff/recovery.md) owns follow-ups and escalation; [acceptance](../.claude/skills/kickoff/acceptance.md) and [close](../.claude/skills/kickoff/close.md) retain the two-gate close. Read each resource before its branch.
 
 ## The three initial lanes
 
@@ -117,11 +129,7 @@ A full coder → critic cycle is required when **either** dimension is high:
 - **High risk:** the correction touches a public API, schema or persisted state, concurrency or ordering, security-sensitive behavior, an architectural boundary, or ambiguous product behavior; weak or missing test coverage also makes the correction high risk.
 - **Large or cross-cutting:** the correction spans multiple subsystems or user-visible surfaces, forces a broad call-site update, or produces a diff too large to inspect confidently as one focused change.
 
-Risk tags are recorded in the candidate-bound change manifest governed by
-[`orchestration-evidence.md`](orchestration-evidence.md). A revision that adds
-a risk tag not present in the reviewed snapshot rebases to a complete review;
-it is not eligible for a delta-only pass. Authority or scope drift, lost
-review continuity, or indeterminate impact has the same fail-closed result.
+Risk tags are recorded in the candidate-bound change manifest governed by [`orchestration-evidence.md`](orchestration-evidence.md). A revision that adds a risk tag not present in the reviewed snapshot rebases to a complete review; it is not eligible for a delta-only pass. Authority or scope drift, lost review continuity, or indeterminate impact has the same fail-closed result.
 
 When neither condition holds, use the least ceremony that safely completes the correction:
 
@@ -129,49 +137,23 @@ When neither condition holds, use the least ceremony that safely completes the c
 2. **Coder only** — for a low-risk correction that benefits from implementation delegation but is not large or cross-cutting. Invoke `phase-coder`; do not invoke `code-critic` merely because a coder ran.
 3. **Full cycle** — for any high-risk or large/cross-cutting correction. Invoke `phase-coder`, then `code-critic`, using the normal revision loop.
 
-Validation is never proportionalized away. Every route reruns the failing
-check first, then the focused tests and affected revision-close gates. After
-code-critic approval, the orchestrator runs the complete
-implementation-candidate sequence against the unchanged candidate, then the
-bare handoff gate after tracked close writes. If a
-direct or coder-only correction grows beyond its classification, exposes an
-architectural question, or lacks convincing validation, upgrade it immediately
-to the full cycle.
+Validation is never proportionalized away. Every route reruns the failing check first, then the focused tests and affected revision-close gates. After code-critic approval, the orchestrator runs the complete implementation-candidate sequence against the unchanged candidate, then the bare handoff gate after tracked close writes. If a direct or coder-only correction grows beyond its classification, exposes an architectural question, or lacks convincing validation, upgrade it immediately to the full cycle.
 
 The orchestrator reports the selected route, the risk/size reason, files changed, and validation evidence. This is a routing decision, not a new `review_lane:` value and not permission to skip the initial code review.
 
-## Why this is capability-indexed
+## Scope and risk determine the lane
 
-The stronger the coder model, the larger the fraction of mechanical phases whose initial reviews approve first-cycle with nothing to say — and the more the uniform four-role loop overpays. Lanes recover that cost at phase scale; proportional follow-up routing recovers it at correction scale. Work that makes decisions or carries significant blast radius still gets independent review. See also [`briefs/methodology.md`](../briefs/methodology.md) §6 on capability-indexed phase sizing — the same calibration, applied to bite size instead of review depth.
+Lane eligibility and follow-up classification use the work’s actual decisions, boundaries and affected behavior. They do not follow model reputation or a count of first-cycle approvals. A coherent phase may span multiple surfaces while still requiring full independent review; smaller phases do not waive either full gate. Outcome-based phase sizing is described in [methodology](../briefs/methodology.md) §6.
 
 ## Containment-claim review checklist
 
-Whenever the work under review asserts an **isolation, containment, or
-firewall property** — a sweep can't reach X, a lane is self-contained, a
-surface is withheld — the critic reads the claim against this five-entry
-catalogue and, for each claim, asks which entry it is most likely to be.
-Every entry was observed surviving at least one real review in the donor
-project before being caught; several arrived through locally-correct work.
-(Graduated there from a three-occurrence lesson, owner-ratified 2026-08-17.)
+Whenever the work under review asserts an **isolation, containment, or firewall property** — a sweep can't reach X, a lane is self-contained, a surface is withheld — the critic reads the claim against this five-entry catalogue and, for each claim, asks which entry it is most likely to be. Every entry was observed surviving at least one real review in the donor project before being caught; several arrived through locally-correct work. (Graduated there from a three-occurrence lesson, owner-ratified 2026-08-17.)
 
-1. **A fix aimed at availability silently spends isolation.** The fix's
-   success criterion (it runs) and the property's (it contains) are
-   different criteria — check both are being watched.
-2. **It holds at the level it was checked.** The assertion tests the
-   mechanism the author was thinking about, not the path the runtime takes
-   (an env var asserted absent while a symlink reaches the same store).
-   The repo's own policy prose is a review input here.
-3. **It holds at the scale it was checked.** Controls that pass only at
-   fixture size; wall time is a first-class gate result — a pass count
-   over unbounded runtime is a verification that can only say "good."
-4. **It holds at the top level and fails one level down.** State
-   containment transitively (*no path reachable from the lane resolves
-   outside it*) — that phrasing admits a test; "the directory is
-   lane-owned" does not.
-5. **A reordering turns a real control vacuous.** A control that names a
-   guard must match *that guard's refusal*, not any refusal —
-   `pytest.raises(SomeError)` without a message predicate is a control
-   waiting to be reassigned by a correct refactor.
+1. **A fix aimed at availability silently spends isolation.** The fix's success criterion (it runs) and the property's (it contains) are different criteria — check both are being watched.
+2. **It holds at the level it was checked.** The assertion tests the mechanism the author was thinking about, not the path the runtime takes (an env var asserted absent while a symlink reaches the same store). The repo's own policy prose is a review input here.
+3. **It holds at the scale it was checked.** Controls that pass only at fixture size; wall time is a first-class gate result — a pass count over unbounded runtime is a verification that can only say "good."
+4. **It holds at the top level and fails one level down.** State containment transitively (*no path reachable from the lane resolves outside it*) — that phrasing admits a test; "the directory is lane-owned" does not.
+5. **A reordering turns a real control vacuous.** A control that names a guard must match *that guard's refusal*, not any refusal — `pytest.raises(SomeError)` without a message predicate is a control waiting to be reassigned by a correct refactor.
 
 ## Relationship to other policies
 

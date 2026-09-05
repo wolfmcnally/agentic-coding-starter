@@ -38,7 +38,7 @@ Committed documentation must use the bare skill name in harness-neutral prose (f
 
 1. **Edit canonical files only.**
    - Top-level instruction changes go in `CLAUDE.md`.
-   - Skill changes go in `.claude/skills/<name>/SKILL.md`.
+   - Skill changes go in `.claude/skills/<name>/SKILL.md` and its canonical adjacent resources.
    - Agent role body changes go in `.claude/agents/<role>.md`.
    - Never edit `AGENTS.md`, the contents of any `.agents/skills/<name>/` (those files live in the canonical `.claude/skills/<name>/` and are reached through a directory symlink), or any `.codex/agents/<role>.toml` body directly without making the corresponding canonical change in the same commit.
 
@@ -63,6 +63,28 @@ Committed documentation must use the bare skill name in harness-neutral prose (f
 
 6. **Briefs, policies, and plan files are not duplicated.**
    - Both harnesses read the same files. There is no `.codex/briefs/` mirror; both `claude` and `codex` invocations read `briefs/`, `policies/`, and `plan/` directly.
+
+## Instruction delivery
+
+`CLAUDE.md` must not exceed 16384 UTF-8 bytes and `.claude/skills/kickoff/SKILL.md` must not exceed 8192 UTF-8 bytes. Preserve the root hard-rule clauses and restriction/waiver paragraph, essential invariants, complete concise brief/policy/skill/role catalogs, reading order and toolchain/delivery boundaries. Its four zone markers occur exactly once in order: `PROJECT_CONTEXT_START`, `PROJECT_CONTEXT_END`, `METHODOLOGY_CONTRACT_START`, `METHODOLOGY_CONTRACT_END`, each in an HTML comment. Remove repetition before moving extended explanations to existing canonical owners; a byte ceiling never authorizes deleting an obligation.
+
+The kickoff entry directly links all seven adjacent resources and explicitly orders reading each before executing its branch:
+
+| Resource | Read before |
+|---|---|
+| `preflight.md` | phase selection, lane decisions, startup and evidence initialization |
+| `dispatch.md` | every role registration or invocation |
+| `planning.md` | planning and independent plan review |
+| `implementation.md` | coding and independent code review |
+| `acceptance.md` | acceptance, implementation-candidate gate and accepted major close |
+| `close.md` | preparing END, status/ripple/lessons/report bookkeeping, handoff gate and delivery |
+| `recovery.md` | operator decisions, refusals, recovery, continuity and follow-ups |
+
+A skill discovery event, root injection, canonical role retrieval and stage-resource retrieval are distinct. A link supplies navigation, not proof of retrieval. Every branch, including recovery and follow-up paths, must explicitly load its directly linked resource before execution. Generated research directives, access controls, schemas and invocation settings retain their executable owners; do not recreate them from memory or add a loader, router or automatic permission change.
+
+`stamp`, `learn` and `teach` transfer the complete canonical kickoff directory and its directory symlink, preserving resource-relative link depth and updating actual consumers of moved sections. Codex role wrappers remain thin; directory symlinks already expose the resources.
+
+The existing catalog checker owns structural enforcement of byte ceilings, unique ordered markers, required resources, direct live links and explicit load-before-use entries. Structural verification measures file budgets, reachability and instruction form; it cannot prove that a model read or followed the content. Qualify its proxies with missing, oversized, broken-link and malformed-entry controls and review their meaning independently. Dated harness facts and evidence limits live in [the context brief](../briefs/session-context-compaction.md).
 
 ## Editorial parity
 
@@ -100,7 +122,4 @@ Run the deterministic checker from any directory:
 ./bin/check-harness-parity
 ```
 
-It fails on a copied or misdirected `AGENTS.md`, missing/orphan/wrong-target
-skill symlinks, missing/orphan agent wrappers, mismatched names or descriptions,
-and wrappers without the exact canonical pointer. `./bin/check policy` and the
-opt-in pre-commit hook invoke it automatically.
+It fails on a copied or misdirected `AGENTS.md`, missing/orphan/wrong-target skill symlinks, missing/orphan agent wrappers, mismatched names or descriptions, and wrappers without the exact canonical pointer. `./bin/check policy` and the opt-in pre-commit hook invoke it automatically.

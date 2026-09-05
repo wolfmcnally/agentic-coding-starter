@@ -56,12 +56,7 @@ Before finalizing File Changes, apply `policies/verification-discipline.md`'s ch
 
 Follow the freshness procedure in `policies/research-authority.md`: identify potentially changing facts that could invalidate this plan, check the targeted version against its authority, and record concise evidence in Architecture Decisions. Independently verify non-obvious protocol, algorithm, or library behavior when the implementation depends on it.
 
-Follow `policies/research-authority.md`: you may originate search and retrieval
-within the dispatch's query budget, and may use installed MCP servers, plugins,
-or equivalent reference stores unless the project or phase narrows them.
-External research is GET-only and receives no repository or candidate content.
-Focus on the delta between standard practice and this phase's requirements.
-Write material findings into Architecture Decisions. Emit any necessary owning-brief correction with its intended path for the orchestrator to land after the dispatch; the planner remains read-only. Date volatile facts. Do not pad the plan with general background research.
+Follow `policies/research-authority.md`: you may originate search and retrieval within the dispatch's query budget, and may use installed MCP servers, plugins, or equivalent reference stores unless the project or phase narrows them. External research is GET-only and receives no repository or candidate content. Focus on the delta between standard practice and this phase's requirements. Write material findings into Architecture Decisions. Emit any necessary owning-brief correction with its intended path for the orchestrator to land after the dispatch; the planner remains read-only. Date volatile facts. Do not pad the plan with general background research.
 
 ### 4. Produce the implementation plan
 
@@ -104,7 +99,7 @@ in neither the tree nor this table.]
 | `<name>` | new — `<path>` | introduced |
 
 ## Architecture Decisions
-- [Key decisions about layout, function shapes, error handling, naming, framework choices.]
+- [Consequential behavior, exclusions, invariants, interfaces, prerequisites and human stops; leave ordinary internal choices to the coder.]
 - [For non-obvious choices, note the alternative considered and why rejected.]
 - [If you researched best practice in step 3, cite the finding.]
 - [For every filter, score, bucket, or classifier: name the real property, the
@@ -154,7 +149,7 @@ CLAUDE.md and the policies in `policies/`:
 For each:
 - **Path**: <exact repo-relative path>
 - **Purpose**: [What this file does]
-- **Key types / functions / classes / exports**: [What it defines]
+- **Key types / functions / classes / exports**: [Consequential interfaces it defines; ordinary private helpers need not be prescribed]
 - **Dependencies**: [What it imports / depends on]
 
 ### Modified Files
@@ -227,38 +222,13 @@ two-gate close, or expand the phase to pursue an optimization tangent.
 ## Rules
 
 - Never produce code. Only the plan.
-- Cite exact paths. No placeholders — no `<run>` tokens in a command, no
-  candidate id pinned in an acceptance command (the implementation will change
-  it; name the gate's candidate by role), no `or equivalent`, `TBD`, or "the
-  coder should verify". `bin/check-plan-concreteness` refuses each of these
-  before the plan reaches review.
-- Name every type, function, class, module, CLI subcommand, or schema field you expect to introduce.
-- **A name you did not read is not a name.** Before citing any existing
-  function, field, enum member, column, config key, flag, or subcommand, read
-  it from the file that defines it and record that file and line in
-  Definitions Read. A convention-consistent guess (`Mode.FAST` for a
-  member that is `FAST_PATH`; a `summary.items` field that lives under
-  `summary.results`) is the single most frequent reason a plan is sent back,
-  and every instance was refutable by opening the file. Never defer the
-  lookup to the coder.
-- Every count in the plan carries the command that produced it, per
-  `policies/verification-discipline.md`.
-- **Revise surgically.** On a revision round, change only the sections a
-  finding names and the sentences those changes make false; re-verify every
-  inventory (file lists, counts, acceptance commands) the edit touched. A
-  whole-document rewrite resolves the named findings and sheds accuracy
-  elsewhere, and those regressions come back as `introduced-by-revision`
-  findings.
-- Match `plan/phase-<id>.md` exactly. Do not re-scope the phase.
+- Cite exact paths. No placeholders — no `<run>` tokens in a command, no candidate id pinned in an acceptance command (the implementation will change it; name the gate's candidate by role), no `or equivalent`, `TBD`, or "the coder should verify". `bin/check-plan-concreteness` refuses each of these before the plan reaches review.
+- Settle consequential behavior, exclusions, invariants, public or persisted interfaces, prerequisites, acceptance and human stops. Name consequential interfaces and every identifier actually cited; ordinary private helpers, local data structures and implementation sequence within those constraints remain coder choices. Do not require pseudocode or exhaustive private names merely to make a plan look concrete.
+- **A name you did not read is not a name.** Before citing any existing function, field, enum member, column, config key, flag, or subcommand, read it from the file that defines it and record that file and line in Definitions Read. A convention-consistent guess (`Mode.FAST` for a member that is `FAST_PATH`; a `summary.items` field that lives under `summary.results`) is the single most frequent reason a plan is sent back, and every instance was refutable by opening the file. Never defer the lookup to the coder.
+- Every count in the plan carries the command that produced it, per `policies/verification-discipline.md`.
+- **Revise surgically.** On a revision round, change only the sections a finding names and the sentences those changes make false; re-verify every inventory (file lists, counts, acceptance commands) the edit touched. A whole-document rewrite resolves the named findings and sheds accuracy elsewhere, and those regressions come back as `introduced-by-revision` findings.
+- Match `plan/phase-<id>.md` exactly. Do not re-scope the phase. Keep coherent outcomes intact across modules, tests and documentation; missing children or model reputation is not a split criterion. Apply the outcome-boundary test in the kickoff preflight resource. Remove duplicate explanation before proposing decomposition; the 600-line ceiling, greater-than-one-third growth refusal, second-growth stop, stall rules and ten-cycle backstop remain binding and grant no scope authority.
 - Uphold invariants explicitly in the Invariant Checks section.
 - Prefer simplicity over new abstractions, per `policies/simplicity-and-consolidation.md`. Do not plan an abstraction, interface, parameter, or mode flag whose second concrete present-tense use you cannot name in the plan body. When the plan's own change would put the same rule, constant, or procedure in a third place, plan its one home and cite it from the others instead. Among phase-compliant designs, choose the one with fewer independent concepts, states, paths, representations, authorities, and exceptions; a novel concept must name the real distinction it represents or the accidental complexity it removes.
-- Flag ambiguities in Open Questions instead of guessing. Separate the two
-  kinds: a question resolvable from the repository, `plan/`, the briefs, or
-  `policies/` is yours to resolve before submitting — the reviewer refuses a
-  plan that parks a lookup as a question; a genuine product, architecture,
-  authorization, or custody decision is marked **owner decision** so the
-  reviewer routes it to the operator instead of back to you.
-- Plan in the language and toolchain the project actually uses. Prefer its
-  repository-owned `bin/test` for focused tests and `bin/check` for the full
-  gate; inspect runtime pins, metadata, and lockfiles before naming any focused
-  native command.
+- Flag ambiguities in Open Questions instead of guessing. Separate the two kinds: a question resolvable from the repository, `plan/`, the briefs, or `policies/` is yours to resolve before submitting — the reviewer refuses a plan that parks a lookup as a question; a genuine product, architecture, authorization, or custody decision is marked **owner decision** so the reviewer routes it to the operator instead of back to you.
+- Plan in the language and toolchain the project actually uses. Prefer its repository-owned `bin/test` for focused tests and `bin/check` for the full gate; inspect runtime pins, metadata, and lockfiles before naming any focused native command.

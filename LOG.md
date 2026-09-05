@@ -1359,3 +1359,120 @@ env KICKOFF_CONFIG_FILE="$astra_demo_dir/kickoff.yaml" ./bin/kickoff-config rese
 Remaining:
 - Phase 3: coherent phases and reliable instruction delivery. Phase 4: integrated qualification and bounded evaluation.
 - The live comparative batch remains unrun and requires separate pricing and operator authorization. The broader approved implementation remains authorized.
+
+## 2026-09-04 22:44 — START
+Phase 3 — Coherent phases and reliable instruction delivery
+
+Execution trace: f9bfeb964e6b47ae88961e1c488d423d
+
+Planned work:
+- Make decomposition conditional on real acceptance or decision boundaries and preserve larger coherent implementation assignments.
+- Deliver concise root and kickoff entry points with explicit stage resources, canonical authority, and cross-harness/stamp parity.
+- Improve planner, coder, reviewer, and critic guidance while preserving review independence, evidence continuity, and both close gates.
+- Qualify structural instruction budgets and phase-selection behavior with retained proofs.
+
+The operator approved phases 2–4 together. Phase 3 stays monolithic. Full review and evidence lanes, both full close gates, and explicit-path delivery remain required. Following the already-diagnosed lifecycle ordering, the in-progress ledger marker is set before capturing its authority hash. Governing prose is prepared under review before a fresh capture for remaining executable qualification; this separates editable requirements from frozen acceptance authority without waiving either.
+
+Environment preflight: the old Codex CLI 0.151.0 was rejected by the provider because Astra requires a newer CLI. The CLI's own updater installed 0.153.4, and fresh Astra/high real-read probes passed for all roles. The coder's sandbox cannot reach the managed Python cache; the orchestrator will run every required focused sequence on coder return under the existing unverified-handoff guard. No model or effort substitution occurred. As of and retrieved 2026-09-04: the official changelog at https://learn.chatgpt.com/docs/changelog records Astra support in the 0.153 series. No phase state was created by the failed preflight.
+
+## 2026-09-04 23:33 — PARK
+Phase 3 — Coherent phases and reliable instruction delivery (preparation)
+
+The independently approved preparation is complete: root instructions and kickoff entry meet their budgets, stage resources are explicitly linked, and role and transfer guidance is updated. Executable enforcement, retained test updates, independent whole-phase critique and both full gates remain pending. No phase acceptance or delivery is claimed.
+
+Execution trace: f9bfeb964e6b47ae88961e1c488d423d
+Candidate lineage: e9867b6d90a5fe3168ec0c01198aff36cab8314a6f74bfd79a85b1f0d8532a3c → 4f3c7f613c2e8b96c5024d9f369f8fa7b6361547edc618330f6df143f038497b. Prepared changes remain in the tree; restoration would discard approved work. The watcher-owned planner, reviewer and coder artifacts and the run directory are preserved.
+
+The preparation cannot pass acceptance because its approved governing-prose changes alter captured whole-file authority. The diagnosed correction is fresh capture of the final authority and already-in-progress status, followed by genuine remaining checker, fixture and test work. This is the first signature recorded in this phase. Under the approved plan and policies/fail-closed-resume.md, the fresh run consumes one of three self-resume units, leaving two. The root and implementation spans ended interrupted; the trace is finalized. All three delegated roles exited successfully, the focused runner exited with recorded test failures, and no delegated process remains active. No permission or authority guard was weakened.
+
+Focused verification: eight of nine commands passed. The instruction-contract group reported three failures and six passes; all three failures inspect the old single-file layout. The research and material-count obligations remain in directly linked resources, and bootstrap transfers the complete directory. The separate regression group passed sixteen tests; the smoke passed one. Catalogs, harness parity, toolchain callers, formatting, lint and proof governance passed without warnings. Full diagnostics are retained in the local preparation artifacts. Root size is 16,342 bytes and kickoff entry 7,833 bytes; the saved hard-rule text is unchanged. These structural observations do not establish live instruction loading or model adherence.
+
+Fresh independent planning and review will bind to the prepared requirements. Final critique will cover the complete phase diff, including this preparation. Both full gates and the user clarity demo remain pending; the existing separate child-close refusal remains unchanged.
+
+Lessons:
+- The production-authority lifecycle diagnosis remains recorded in lessons/classy-kangaroo.md; this planned preparation transition is not a new incident or graduation.
+- The coder corrected a scratch verifier against the real source and repeated its checks. Existing verification-discipline rules cover the observation; no duplicate rule was added.
+
+## 2026-09-04 23:34 — START
+Phase 3 — Coherent phases and reliable instruction delivery (resumed)
+
+Execution trace: d4bcc4b9d98f456e968d21cd05ee44f2
+
+Planned work:
+- Make decomposition conditional on real acceptance or decision boundaries and preserve larger coherent implementation assignments.
+- Deliver concise root and kickoff entry points with explicit stage resources, canonical authority, and cross-harness/stamp parity.
+- Improve planner, coder, reviewer, and critic guidance while preserving review independence, evidence continuity, and both close gates.
+- Qualify structural instruction budgets and phase-selection behavior with retained proofs.
+
+Prepared governing instructions are captured as final authority with the phase already in progress. Fresh planning and review precede genuine remaining enforcement and test work. Final critique covers the complete phase diff. The prior preparation remains parked; this diagnosed fresh run leaves two self-resume units. Astra/high and the successful topology receipt remain unchanged.
+
+## 2026-09-04 23:47 — PARK
+Phase 3 — Coherent phases and reliable instruction delivery (qualification prerequisite)
+
+Fresh planning found that incidental reformatting broke the operative context of a frozen mutation patch. The required effectiveness assay cannot run on that candidate. No implementation, independent plan approval, full gate or accepted close occurred in this run.
+
+Execution trace: d4bcc4b9d98f456e968d21cd05ee44f2
+Candidate lineage: unchanged product 4f3c7f613c2e8b96c5024d9f369f8fa7b6361547edc618330f6df143f038497b. The planner exited successfully; its exact plan and probe evidence remain preserved. No delegated process remains active. The planning and root spans ended interrupted and the trace is finalized.
+
+Diagnosis: only line wrapping differs between the prepared stamp preflight paragraph and its existing HEAD form. In a disposable copy, the frozen required-gate-inventory patch fails against the prepared form and applies against an exact restoration of the original paragraph. Words are identical and every byte outside that paragraph is unchanged. All twenty-four frozen patches were checked; only this patch failed against the prepared tree. The corpus and its digests remain untouched.
+
+Correction: remove the incidental formatting change by restoring that pre-existing paragraph exactly, then verify every frozen patch applies before fresh authority capture. This restores existing content rather than authors new wrapped prose or introduces a formatting rule. The planner proposed treating that restoration as a new formatting exception; the orchestrator resolved it as removal of its own unnecessary edit within the operator's diagnose-and-fix authorization. Independent review will receive the complete containment proof. No test, source requirement, corpus or permission is waived.
+
+This signature is novel for the phase and distinct from the planned governing-prose preparation boundary. The qualified correction is inside the approved file set and substance. Under policies/fail-closed-resume.md, the next fresh run consumes the second of three self-resume units, leaving one. Final whole-phase planning/review, real checker/test work, assay regeneration, independent critique and both full gates remain pending. Any recurrence of this generator requires the operator.
+
+Lessons:
+- The existing changed-contract sweep in policies/verification-discipline.md already covers mutation-patch context. It was not applied before declaring prepared authority ready. The corrected sequence checks all frozen patches before recapture, rather than adding a duplicate rule.
+- The planner's read-only shell probe failure was corrected without changing the repository; existing shell guidance covers the local execution detail.
+
+## 2026-09-04 23:47 — START
+Phase 3 — Coherent phases and reliable instruction delivery (resumed)
+
+Execution trace: 21542b44814f4fcd95d09a5a7f70c65e
+
+Planned work:
+- Make decomposition conditional on real acceptance or decision boundaries and preserve larger coherent implementation assignments.
+- Deliver concise root and kickoff entry points with explicit stage resources, canonical authority, and cross-harness/stamp parity.
+- Improve planner, coder, reviewer, and critic guidance while preserving review independence, evidence continuity, and both close gates.
+- Qualify structural instruction budgets and phase-selection behavior with retained proofs.
+
+Prepared governing instructions are captured as final authority with the phase already in progress. Fresh planning and review precede genuine remaining enforcement and test work. Final critique covers the complete phase diff. The prior preparation remains parked; this diagnosed fresh run leaves one self-resume unit. Astra/high and the successful topology receipt remain unchanged.
+
+## 2026-09-05 00:03 — PARK
+Phase 3 — Coherent phases and reliable instruction delivery (glossary correction)
+
+Independent review found one blocking documentation defect: relocated glossary definitions still cite governing policies. Those citations were valid in root instructions but violate the destination brief's citation direction. The planned checker and retained qualification work are otherwise implementable; no implementation or acceptance gate ran here.
+
+Execution trace: 21542b44814f4fcd95d09a5a7f70c65e
+Candidate lineage: unchanged product 133ffba0de84e3200441835ea5113559c4f539f515ecc1fe19e5d4e52065cd1b. The planner and reviewer exited successfully. The exact REVISE verdict and PLAN-F001 remain preserved with the measured review span; the reviewed plan is bound. No delegated process remains active. The planning and root spans ended interrupted and the trace is finalized.
+
+Correction is a bounded deletion of governing-policy citation clauses in the relocated Glossary only, retaining its definitions and constraints. The original root policy catalog remains the navigation authority. The exact before/after transform and unchanged-prefix proof are retained for independent review. Governing bytes change only after this truthful park and are captured in a fresh run. Earlier mutation-context repair and all frozen corpus files remain intact.
+
+The signature is novel and causally distinct from prior phase parks. The operator's intervening progress request restored the configured three-unit budget under policies/fail-closed-resume.md; this fresh corrective run consumes one, leaving two. Scope, model/effort, permissions, proof identities, review independence and both full gates remain unchanged. Preserve PLAN-F001 across rebinding; only independent review may verify the correction. Checker/test implementation, actual assay, final whole-phase critique, both gates and the user demo remain pending.
+
+Lessons:
+- Existing policies/briefs-and-policies.md expressly distinguishes governing citations from inventory/evidence mentions, including bare filenames. The correction applies that existing rule to the moved prose; no new rule or weaker token filter is added.
+
+## 2026-09-05 00:04 — START
+Phase 3 — Coherent phases and reliable instruction delivery (resumed)
+
+Execution trace: 050f162f4cd344f49e5b23bc834b5360
+
+Planned work:
+- Make decomposition conditional on real acceptance or decision boundaries and preserve larger coherent implementation assignments.
+- Deliver concise root and kickoff entry points with explicit stage resources, canonical authority, and cross-harness/stamp parity.
+- Improve planner, coder, reviewer, and critic guidance while preserving review independence, evidence continuity, and both close gates.
+- Qualify structural instruction budgets and phase-selection behavior with retained proofs.
+
+Prepared governing instructions are captured as final authority with the phase already in progress. Fresh planning and review precede genuine remaining enforcement and test work. Final critique covers the complete phase diff. The prior preparation remains parked; this diagnosed fresh run leaves two self-resume units. Astra/high and the successful topology receipt remain unchanged.
+
+## 2026-09-05 00:36 — PARK
+Phase 3 — Coherent phases and reliable instruction delivery (methodology routing decision)
+
+The operator ratified direct implementation of approved methodology improvements, followed by one independent review of the complete change and required checks, as the future default. The full phase workflow remains an explicit option. The invoking agent's earlier choice of the full workflow contributed repeated planning and authority recapture overhead while changing that workflow's own instructions.
+
+The coder exited successfully with the six assigned checker and test files changed. Its report records syntax checks and frozen patch applicability; the focused behavioral sequence, actual assay, final independent critique, both full gates and human demo remain unrun. No acceptance or delivery is claimed. The implementation and root spans ended interrupted at this operator-directed transition; earlier successful role spans and their artifacts remain unchanged. Execution trace: 050f162f4cd344f49e5b23bc834b5360.
+
+Preserve all completed implementation and historical evidence. Record the approved routing rule in the shared policy and root instructions. Further verification must review the complete current change, including this decision, without treating an earlier review as approval of new authority. Phase status remains in progress; the approved improvement plan remains unfinished.
+
+Lessons:
+- The operator explicitly approved a permanent methodology-routing correction: direct implementation after scope approval, one independent review, focused corrections and required full gates. Persist it at policies/review-lanes.md and link it from entry instructions; do not add a new orchestration mechanism to implement this routing decision.

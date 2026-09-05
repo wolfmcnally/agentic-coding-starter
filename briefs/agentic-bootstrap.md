@@ -226,9 +226,7 @@ A project derived from this template contains the following **portable structure
 ⏳ Not Started    ⬅️ Next (at most one)    🚧 In Progress    ✅ Completed
 ```
 
-Every phase row carries exactly one recognized status. The initial idle ledger
-has exactly one `⬅️`; active and complete ledgers may have zero; more than one
-is always invalid.
+Every phase row carries exactly one recognized status. The initial idle ledger has exactly one `⬅️`; active and complete ledgers may have zero; more than one is always invalid.
 
 **The four canonical agents** — exact names matter; `kickoff` invokes them by name:
 
@@ -251,10 +249,9 @@ The template's contents fall into three categories.
 
 These files encode the methodology itself, not any particular product. Copy them; replace any "Agentic Coding Starter Template" project-name references with the new project's name. Otherwise leave the structure intact.
 
-- `.claude/skills/kickoff/SKILL.md`
+- `.claude/skills/kickoff/` in full: `SKILL.md` plus `preflight.md`, `dispatch.md`, `planning.md`, `implementation.md`, `acceptance.md`, `close.md` and `recovery.md`
 - `.claude/skills/methodology/SKILL.md`
-- `.claude/skills/rule-one/SKILL.md` (universal diagnostic-learning workflow;
-  travels atomically with its reasoning brief)
+- `.claude/skills/rule-one/SKILL.md` (universal diagnostic-learning workflow; travels atomically with its reasoning brief)
 - `.claude/skills/learn/SKILL.md` (universal cross-repo skill)
 - `.claude/skills/teach/SKILL.md` (universal cross-repo skill)
 - `.claude/skills/roles/SKILL.md` (universal — per-role model/effort editing; wraps `bin/kickoff-config`)
@@ -287,83 +284,33 @@ These files encode the methodology itself, not any particular product. Copy them
 - `AGENTS.md` symlink → `CLAUDE.md`
 - Every file under `policies/` (these are universal by design)
 - `docs/README.md` — the pinned-document catalog shape (header and column contract) with every row dropped; pinned content is project state and never transfers
-- `policies/test-suite-governance.md` and
-  `briefs/test-suite-value-governance.md` (the universal proof-estate contract;
-  recipient-local values are generated later)
+- `policies/test-suite-governance.md` and `briefs/test-suite-value-governance.md` (the universal proof-estate contract; recipient-local values are generated later)
 - `bin/kickoff-config` (universal Python/uv round-trip config manager, fail-closed venue preflight, execution watchdog, research-budget authority, and telemetry calibrator), plus human-editable `kickoff.yaml` seeded via `bin/kickoff-config reset all`
 - `tests/test_kickoff_config.py` (universal manager/watchdog behavioral coverage; run independently of the deliverable's language)
-- `bin/kickoff-tree-id` and `bin/kickoff-evidence` (universal candidate
-  identity and run-evidence managers)
-- `tests/test_kickoff_tree_id.py` and `tests/test_kickoff_evidence.py`
-  (universal behavioral coverage for candidate/evidence mechanics)
-- `bin/kickoff-command-zero`, `bin/check-log`, `bin/check-log-prefix`,
-  `bin/check-log-monotonic`, `bin/log-append`, `bin/log-relocate`, and
-  `bin/normalize-final-newline`, together with
-  `lib/agentic_starter/candidate_boundaries.py`,
-  `lib/agentic_starter/kickoff_runbook.py`, and
-  `lib/agentic_starter/log_blocks.py` (the universal executable-authority,
-  dual-identity, append-only log, and bounded-repair control plane)
-- `tests/test_kickoff_control_plane.py` and `tests/test_log_control_plane.py`
-  (behavioral coverage for exact command admission, command zero, log custody,
-  and the single-repair boundary)
-- `bin/check-receipt` and `tests/test_check_receipt.py` (universal durable
-  full-gate records and exact, fail-closed pre-push reuse)
-- `bin/test-governance`, `lib/agentic_starter/test_governance.py`,
-  `tests/test_test_governance.py`, `tests/test_pre_commit.py`, and
-  `reports/test-governance/README.md` (universal proof-estate mechanics and
-  behavioral contract; the destination supplies its own manifest, assay
-  cases, and report bodies)
-- `bin/lessons` and `bin/check-catalogs` (universal lessons-ledger,
-  document-link, and phase-ledger fitness managers)
-- `tests/test_lessons.py` and `tests/test_check_catalogs.py` (universal
-  behavioral coverage for those managers)
-- `bin/execution-telemetry`, `bin/check-execution-dashboards`, and
-  `bin/serve-execution-dashboard`, together with `lib/agentic_starter/` (the
-  shared deterministic library the first two import) and `reports/execution/`
-  with its `index.html`, `index-data.js`, and vendored offline `assets/`. The
-  new project's archive starts empty, which the checker reports as
-  `EXECUTION DASHBOARDS PASS (0 phases)`
-- `tests/test_execution_telemetry.py`, `tests/test_execution_dashboard.py`,
-  `tests/render_execution_dashboard_fixture.py`, and `tests/fixtures/`
-  (universal behavioral coverage for telemetry and offline report rendering)
-- `bin/check-harness-parity`, `bin/check-toolchain-callers`,
-  `bin/check-shell-syntax`, `bin/new-name`, `bin/check-plan-concreteness`
-  (which `kickoff` runs over every plan artifact before plan review, covered
-  by `tests/test_check_plan_concreteness.py`), `bin/check-plan-delivery`
-  (which `kickoff` runs before every code review, covered by
-  `tests/test_check_plan_delivery.py`; both share
-  `lib/agentic_starter/plan_artifact.py`), `bin/review-verdicts` (the
-  `sweep-planning` / `sweep-coding` trace harvester, covered by
-  `tests/test_review_verdicts.py`),
-  and `bin/treatise` (the
-  universal deterministic checkers and the ledger-slug generator), with
-  `tests/test_mirror_parity.py`, `tests/test_toolchain_callers.py`,
-  `tests/test_shell_syntax.py`, `tests/test_new_name.py`, and
-  `tests/test_treatise.py`
-- `tests/test_research_authority.py` (universal coverage for the per-role
-  search/retrieval boundary)
-- `.gitattributes` (line-ending normalization that keeps cross-harness mirrors
-  byte-identical across platforms)
+- `bin/kickoff-tree-id` and `bin/kickoff-evidence` (universal candidate identity and run-evidence managers)
+- `tests/test_kickoff_tree_id.py` and `tests/test_kickoff_evidence.py` (universal behavioral coverage for candidate/evidence mechanics)
+- `bin/kickoff-command-zero`, `bin/check-log`, `bin/check-log-prefix`, `bin/check-log-monotonic`, `bin/log-append`, `bin/log-relocate`, and `bin/normalize-final-newline`, together with `lib/agentic_starter/candidate_boundaries.py`, `lib/agentic_starter/kickoff_runbook.py`, and `lib/agentic_starter/log_blocks.py` (the universal executable-authority, dual-identity, append-only log, and bounded-repair control plane)
+- `tests/test_kickoff_control_plane.py` and `tests/test_log_control_plane.py` (behavioral coverage for exact command admission, command zero, log custody, and the single-repair boundary)
+- `bin/check-receipt` and `tests/test_check_receipt.py` (universal durable full-gate records and exact, fail-closed pre-push reuse)
+- `bin/test-governance`, `lib/agentic_starter/test_governance.py`, `tests/test_test_governance.py`, `tests/test_pre_commit.py`, and `reports/test-governance/README.md` (universal proof-estate mechanics and behavioral contract; the destination supplies its own manifest, assay cases, and report bodies)
+- `bin/lessons` and `bin/check-catalogs` (universal lessons-ledger, document-link, and phase-ledger fitness managers)
+- `tests/test_lessons.py` and `tests/test_check_catalogs.py` (universal behavioral coverage for those managers)
+- `bin/execution-telemetry`, `bin/check-execution-dashboards`, and `bin/serve-execution-dashboard`, together with `lib/agentic_starter/` (the shared deterministic library the first two import) and `reports/execution/` with its `index.html`, `index-data.js`, and vendored offline `assets/`. The new project's archive starts empty, which the checker reports as `EXECUTION DASHBOARDS PASS (0 phases)`
+- `tests/test_execution_telemetry.py`, `tests/test_execution_dashboard.py`, `tests/render_execution_dashboard_fixture.py`, and `tests/fixtures/` (universal behavioral coverage for telemetry and offline report rendering)
+- `bin/check-harness-parity`, `bin/check-toolchain-callers`, `bin/check-shell-syntax`, `bin/new-name`, `bin/check-plan-concreteness` (which `kickoff` runs over every plan artifact before plan review, covered by `tests/test_check_plan_concreteness.py`), `bin/check-plan-delivery` (which `kickoff` runs before every code review, covered by `tests/test_check_plan_delivery.py`; both share `lib/agentic_starter/plan_artifact.py`), `bin/review-verdicts` (the `sweep-planning` / `sweep-coding` trace harvester, covered by `tests/test_review_verdicts.py`), and `bin/treatise` (the universal deterministic checkers and the ledger-slug generator), with `tests/test_mirror_parity.py`, `tests/test_toolchain_callers.py`, `tests/test_shell_syntax.py`, `tests/test_new_name.py`, and `tests/test_treatise.py`
+- `tests/test_research_authority.py` (universal coverage for the per-role search/retrieval boundary)
+- `.gitattributes` (line-ending normalization that keeps cross-harness mirrors byte-identical across platforms)
 - `briefs/methodology.md`
-- `briefs/rule-one-diagnostic-learning.md` (Rule One's portable diagnostic
-  rationale; required companion to its skill)
+- `briefs/rule-one-diagnostic-learning.md` (Rule One's portable diagnostic rationale; required companion to its skill)
 - `briefs/agentic-bootstrap.md` (this file, so the next bootstrap is possible)
 - `briefs/cross-agent-invocation.md` (the cross-CLI invocation BCPs cited by `policies/role-models.md`)
-- `briefs/incremental-orchestration.md` (candidate-bound review, revision,
-  verification, and protocol-recovery design)
-- `briefs/deterministic-orchestration-control-plane.md` (implemented command
-  authority, venue qualification, dual identity, log custody, and bounded
-  repair design)
+- `briefs/incremental-orchestration.md` (candidate-bound review, revision, verification, and protocol-recovery design)
+- `briefs/deterministic-orchestration-control-plane.md` (implemented command authority, venue qualification, dual identity, log custody, and bounded repair design)
 - `briefs/deterministic-orchestration.md` (draft universal brief: decision criteria for a deterministic kickoff loop, so the derived project can act when its harnesses gain parity workflow primitives)
-- `briefs/harness-self-improvement.md` (phase-scale lessons capture,
-  rule-surface pruning, and cross-repo propagation)
-- `briefs/session-context-compaction.md` (managing harness context compaction
-  during long orchestration runs)
-- `briefs/mini-method.md` (the minimal subset a derived project can hand to
-  its own small sub-projects; such a sub-project graduates back through
-  `teach`)
-- `briefs/test-suite-value-governance.md` (proof attribution, recipient-local
-  assays, and governed fast-feedback lanes)
+- `briefs/harness-self-improvement.md` (phase-scale lessons capture, rule-surface pruning, and cross-repo propagation)
+- `briefs/session-context-compaction.md` (managing harness context compaction during long orchestration runs)
+- `briefs/mini-method.md` (the minimal subset a derived project can hand to its own small sub-projects; such a sub-project graduates back through `teach`)
+- `briefs/test-suite-value-governance.md` (proof attribution, recipient-local assays, and governed fast-feedback lanes)
 - The skeletal headings/structure of `plan/INDEX.md`
 - The skeletal frontmatter shape for `plan/phase-*.md` (`id`, `title`, `depends_on`, `informs`, optional `review_lane` per `policies/review-lanes.md`)
 - The START/END block format for `LOG.md`
@@ -376,15 +323,11 @@ These files have a stable shape and a project-specific body. Mirror the shape; w
 - `README.md` — preserve the front-door job, not an exhaustive inventory. Write project-specific sections that tell a human reader what the project is, why it exists, who made or maintains it when the source material supplies that fact, how the methodology works at a high level, how to get started through `kickoff`, which other skills are essential, where the essential directories lead, and where the full documentation lives. Do not reproduce catalogs, status protocol, role tool matrices, or harness-mirror mechanics in the README; link to their authoritative homes. Judge completeness by what the newcomer needs to understand and act, not by whether every repository member appears. Never invent missing authorship or copy the Starter Kit author's identity into a derived project.
 - `CLAUDE.md` — uses a two-zone structure delimited by HTML comment markers, with a **Hard rules** section above both. The `Methodology Contract` zone (between `<!-- METHODOLOGY_CONTRACT_START -->` and `<!-- METHODOLOGY_CONTRACT_END -->`) is copied verbatim — methodology briefs catalog, policies catalog, universal repo layout, phase-work protocol, status markers, reading protocol, architectural invariants, activity-log contract, universal conventions, glossary — **except for the starter-only members its catalogs name**. That zone lists what exists in *this* repository, so any entry pointing at a file the new project will not have (today: the `anonymize-log-references.md` policy bullet, and the `check-anonymization.sh` clause in the `bin/` layout bullet) comes out; left in, it is a `CLAUDE.md` reference to a missing file, which `bin/check-catalogs` fails closed on. The Hard rules section above the zones drops **Hard rule 3**, the starter-only anonymization rule, and the sentence introducing the rules is repaired to say the two survivors are universal. The `Project Context` zone (between `<!-- PROJECT_CONTEXT_START -->` and `<!-- PROJECT_CONTEXT_END -->`) is rewritten for the new project — the project's thesis, project-specific briefs list, project surfaces description, project conventions, and any project-specific skills.
 - `briefs/BRIEF.md` — the entry-point brief for the new project. Pick a shape:
-  - **Thesis-stub.** One short paragraph plus a pointer to `../CLAUDE.md#briefs-catalog`. Use when the project will quickly grow many topic briefs.
-  - **Full single-document brief.** Opens with thesis + a catalog pointer, then continues with the long-form spec under H2 sections. Use when the project's brief is comprehensive and fits in one document.
-  In both shapes the catalog itself lives in `CLAUDE.md`, not here.
+  - **Thesis-stub.** One short paragraph plus a pointer to `../CLAUDE.md#project-briefs`. Use when the project will quickly grow many topic briefs.
+  - **Full single-document brief.** Opens with thesis + a catalog pointer, then continues with the long-form spec under H2 sections. Use when the project's brief is comprehensive and fits in one document. In both shapes the catalog itself lives in `CLAUDE.md`, not here.
 - `briefs/<topic>.md` — written from the new project's spec, when the project is using the multi-file shape.
 - `plan/INDEX.md` body — phase graph and table reflect the new project's phasing.
-- `tests/proof-estate.yaml`, `tests/fixtures/test_governance/`, and
-  `reports/test-governance/` bodies — preserve the universal schema and README,
-  but generate every family, selector, tier, timing, assay case, and judgment
-  from the new project's own proof inventory.
+- `tests/proof-estate.yaml`, `tests/fixtures/test_governance/`, and `reports/test-governance/` bodies — preserve the universal schema and README, but generate every family, selector, tier, timing, assay case, and judgment from the new project's own proof inventory.
 - `plan/phase-1.md` — fresh, project-specific. (Do not pre-build phases 2+. Decompose them when they become the next phase.)
 
 ### 2c. Do not transfer (template-specific)
@@ -395,11 +338,8 @@ These files have a stable shape and a project-specific body. Mirror the shape; w
 - The starter template's `example/` Python package and `tests/test_cli.py` — replace with the new project's surface, in whatever language(s) the project uses.
 - `policies/anonymize-log-references.md`, `bin/check-anonymization.sh`, and `bin/anonymization-denylist.local.example` — starter-only: the rule exists because *this* template is public, not because of any methodology principle. Also drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`, delete the `### check-anonymization.sh` entry from `bin/README.md`, remove its call from `bin/check`, and delete the "External / private-repo references" bullet from the copied `.claude/agents/code-critic.md`, which names both.
 - `tests/test_methodology_toolchain_contract.py` — asserts on the `stamp` skill and the anonymization policy, neither of which the new project has.
-- Starter's `tests/proof-estate.yaml`, `tests/fixtures/test_governance/corpus.yaml`,
-  `tests/fixtures/test_governance/{historical_defect,holdout_mutant}/`, and
-  generated files under `reports/test-governance/` — these are local inventory,
-  effectiveness, reset, and assay state, not methodology content.
-- `briefs/eacp-pattern-map.md` and `briefs/methodology-treatise.md` — both are *about this repository*: one maps its structures onto a named pattern corpus, the other is its outward explanation. A derived project writes its own if it wants them.
+- Starter's `tests/proof-estate.yaml`, `tests/fixtures/test_governance/corpus.yaml`, `tests/fixtures/test_governance/{historical_defect,holdout_mutant}/`, and generated files under `reports/test-governance/` — these are local inventory, effectiveness, reset, and assay state, not methodology content.
+- `briefs/eacp-pattern-map.md`, `briefs/astra-era-development.md` and `briefs/methodology-treatise.md` — local pattern evidence, workflow-upgrade authority and outward explanation for this repository. A derived project writes its own if it wants them.
 - `LICENSE` and `.vscode/` — the new repository's licensing and editor settings belong to whoever owns it.
 - Every pinned document under this repository's `docs/` and every row of its `docs/README.md` catalog — pins are the template's own dependencies, not the new project's. The catalog file itself transfers with its header and no rows.
 - This repository's `lessons/`, `lessons-archived/`, `user-actions/`, and `user-actions-archived/` entries — every ledger starts empty, with only a `.gitkeep` in each of the four so the directories survive the first commit.
@@ -461,7 +401,7 @@ Do not gitignore the `.claude/` or `.codex/` *directories* themselves — the sk
 Then create the empty directory shape:
 
 ```text
-.claude/skills/kickoff/
+.claude/skills/kickoff/  # SKILL.md plus seven adjacent resources listed in Step 5
 .claude/skills/methodology/
 .claude/skills/rule-one/
 .claude/skills/learn/
@@ -523,7 +463,7 @@ In this exact order (each feeds the next):
 
 Copy verbatim, then adapt project names and surface-specific build-gate commands:
 
-- `.claude/skills/kickoff/SKILL.md`
+- `.claude/skills/kickoff/` in full: `SKILL.md` plus `preflight.md`, `dispatch.md`, `planning.md`, `implementation.md`, `acceptance.md`, `close.md` and `recovery.md`
 - `.claude/skills/methodology/SKILL.md`
 - `.claude/skills/rule-one/SKILL.md`
 - `.claude/skills/learn/SKILL.md`
@@ -558,36 +498,21 @@ Port the self-improvement machinery as the same atomic bundle:
 - `policies/lessons.md`
 - `bin/lessons` and `bin/check-catalogs`
 - `tests/test_lessons.py` and `tests/test_check_catalogs.py`
-- empty `lessons/` and `lessons-archived/` directories, each retained by a
-  `.gitkeep`
+- empty `lessons/` and `lessons-archived/` directories, each retained by a `.gitkeep`
 
-Do not seed a new project's ledger with the template's lesson entries. Ledger
-content is project state; only the schema, empty directories, capture loop, and
-fitness checks transfer.
+Do not seed a new project's ledger with the template's lesson entries. Ledger content is project state; only the schema, empty directories, capture loop, and fitness checks transfer.
 
 Port the deterministic orchestration control plane as one atomic bundle:
 
-- `briefs/deterministic-orchestration-control-plane.md` and
-  `policies/orchestration-control-plane.md`
-- `bin/kickoff-command-zero`, `bin/check-log`, `bin/check-log-prefix`,
-  `bin/check-log-monotonic`, `bin/log-append`, `bin/log-relocate`, and
-  `bin/normalize-final-newline`
-- `lib/agentic_starter/candidate_boundaries.py`,
-  `lib/agentic_starter/kickoff_runbook.py`, and
-  `lib/agentic_starter/log_blocks.py`
+- `briefs/deterministic-orchestration-control-plane.md` and `policies/orchestration-control-plane.md`
+- `bin/kickoff-command-zero`, `bin/check-log`, `bin/check-log-prefix`, `bin/check-log-monotonic`, `bin/log-append`, `bin/log-relocate`, and `bin/normalize-final-newline`
+- `lib/agentic_starter/candidate_boundaries.py`, `lib/agentic_starter/kickoff_runbook.py`, and `lib/agentic_starter/log_blocks.py`
 - `tests/test_kickoff_control_plane.py` and `tests/test_log_control_plane.py`
-- its `kickoff-evidence`, `kickoff-config`, `kickoff-tree-id`, `bin/check`,
-  pre-commit, catalog, and skill integrations
+- its `kickoff-evidence`, `kickoff-config`, `kickoff-tree-id`, `bin/check`, pre-commit, catalog, and skill integrations
 
-The destination regenerates its own exact command manifest, selector dry-runs,
-venue set, inert bookkeeping vocabulary, and proof-estate admissions. Copying
-the template's local values would turn examples into authority.
+The destination regenerates its own exact command manifest, selector dry-runs, venue set, inert bookkeeping vocabulary, and proof-estate admissions. Copying the template's local values would turn examples into authority.
 
-The executable transfer skills, this manual procedure, its acceptance
-checklist, the methodology narrative, role-output contracts, catalogs, and
-contract tests form one propagation boundary. Whenever a universal bundle
-grows, update every path in the same change; leaving one path stale makes
-derived repositories depend on which bootstrap procedure happened to run.
+The executable transfer skills, this manual procedure, its acceptance checklist, the methodology narrative, role-output contracts, catalogs, and contract tests form one propagation boundary. Whenever a universal bundle grows, update every path in the same change; leaving one path stale makes derived repositories depend on which bootstrap procedure happened to run.
 
 Adaptations to make in each:
 
@@ -607,7 +532,7 @@ The spine. Lay it down before any phase files exist:
 - `# Phased Execution Plan — <Project>` heading.
 - One-paragraph statement of what `plan/` covers and what it doesn't.
 - `## Reading protocol` — copy from template, lightly adapted.
-- `## Phase Dependency Graph` — a Mermaid `graph TD` block. At bootstrap, this contains a single Phase 1 node. It grows as phases are decomposed.
+- `## Phase Dependency Graph` — a Mermaid `graph TD` block. At bootstrap, enumerate every major phase surfaced by the brief; add authorized child nodes just in time.
 - `## Phase Table` — the canonical status ledger. Columns: `Phase | Title | Status`. Initially:
 
   ```markdown
@@ -621,7 +546,7 @@ The spine. Lay it down before any phase files exist:
 
 ### Step 8 — Write Phase 1 in full; sketch Phase 2+ to general specificity
 
-Write Phase 1 in full, then sketch every other major phase the brief surfaces. Major phases are enumerated up front — that's the project's roadmap. Only their sub-phases are JIT (drafted at parent open via the orchestrator's Step 1a). See [`methodology.md`](methodology.md) §6.
+Write Phase 1 in full, then sketch every other major phase the brief surfaces. Major phases are enumerated up front — that's the project's roadmap. Children are conditional: apply the outcome-boundary test in `.claude/skills/kickoff/preflight.md` Step 1a; draft authorized children just in time. See [`methodology.md`](methodology.md) §6.
 
 `plan/phase-1.md` frontmatter:
 
@@ -637,21 +562,21 @@ informs: []        # filled in as later phases are added
 Body sections, in order:
 
 - **Goal** — one paragraph. What the user can do or observe at the end of Phase 1 that they cannot do now.
-- **Decomposition** — if Phase 1 warrants sub-phases (multi-surface, multi-session), list the ones you can see at bootstrap; sub-phases beyond `phase-1.1` are JIT. If Phase 1 fits one session, declare "Monolithic (no sub-phase decomposition)" and skip this section.
+- **Decomposition** — keep a coherent outcome intact across modules, tests and docs. A consequential decision, independently accepted prerequisite, deployment/migration/human seam or demonstrated coherence limit may justify an operator-approved split. Missing children, surface counts, session length and model reputation do not. If no boundary applies, declare a coherent major phase with no children; otherwise leave child drafting to kickoff at entry.
 - **Phase-level acceptance** — concrete, empirical, observable.
 - **Brief refs** — links to every brief under `briefs/` that this phase implements.
 
-Sub-phase files (`plan/phase-1.1.md`, etc.) follow the same frontmatter shape with `id: "1.1"` and `depends_on: ["1"]` (or sibling sub-phases). Bodies: Goal / Deliverables / Acceptance / Brief refs. **Only draft `phase-1.1.md` at bootstrap** if Phase 1 needs sub-phases at all; remaining sub-phases (`phase-1.2`, `phase-1.3`, …) get drafted at the close of their predecessor.
+Sub-phase files (`plan/phase-1.1.md`, etc.) follow the same frontmatter shape with `id: "1.1"` and `depends_on: ["1"]` (or sibling sub-phases). Bodies: Goal / Deliverables / Acceptance / Brief refs. Do not draft child files at bootstrap. Once a boundary is authorized, kickoff drafts the first at parent entry and each successor at its predecessor’s close.
 
 **Phase 2+ at bootstrap.** For every major phase the brief surfaces beyond Phase 1, draft a sketched `plan/phase-N.md` at lower fidelity:
 
 - Frontmatter: same shape (`id`, `title`, `depends_on`, `informs`).
 - **Goal** — one paragraph from the brief.
 - **Deliverables** — a high-level list (the surfaces this phase will produce). May shift as upstream phases close and ripple their pinned decisions downstream — mechanical edits land in the same session, judgment-level ones surface as named follow-ups.
-- **Acceptance** — scaffold-level criteria. Tighten at phase start via Step 1a; pinned values from upstream phases ripple in automatically.
+- **Acceptance** — scaffold-level criteria. Tighten at phase start via `.claude/skills/kickoff/preflight.md` Step 1a; pinned values from upstream phases ripple in automatically.
 - **Brief refs** — links to the briefs this phase implements.
 
-**Do not draft sub-phases of Phase 2+ at bootstrap.** Sub-phase decomposition is JIT, one parent at a time. The sketched parent file is enough; its sub-phases appear when its row enters `⬅️`.
+**Do not draft sub-phases of Phase 2+ at bootstrap.** Sub-phase decomposition is JIT, one parent at a time. The sketched parent file is enough; children appear only after a consequential boundary is authorized at entry.
 
 If the brief surfaces only Phase 1 (a small, single-phase project), no sketches are required. The dependency graph in `plan/INDEX.md` then contains a single node.
 
@@ -659,125 +584,49 @@ If the brief surfaces only Phase 1 (a small, single-phase project), no sketches 
 
 The template's example is Python. The new project may be Python, TypeScript, Rust, Go, Swift, Kotlin, a polyglot, or pure documentation.
 
-**Decide first whether to adopt the `project/` convention** — isolating the
-deliverable so that nothing inside it references anything above it. The
-default for a single-deliverable project is opt-in: the artifact goes under
-`project/` and the repository-owned toolchain wrappers select it internally.
-The default for polyglot or multi-deliverable repos is opt-out: deliverable
-directories live at the repo root as siblings.
+**Decide first whether to adopt the `project/` convention** — isolating the deliverable so that nothing inside it references anything above it. The default for a single-deliverable project is opt-in: the artifact goes under `project/` and the repository-owned toolchain wrappers select it internally. The default for polyglot or multi-deliverable repos is opt-out: deliverable directories live at the repo root as siblings.
 
 Lay down (paths assume `project_isolation` enabled — prefix with `project/`; drop the prefix when disabled):
 
-- The runtime/toolchain version declaration, package-manager file
-  (`pyproject.toml`, `package.json`, `Cargo.toml`, `go.mod`, etc.), and
-  lockfile with pinned tooling and minimum dependencies.
+- The runtime/toolchain version declaration, package-manager file (`pyproject.toml`, `package.json`, `Cargo.toml`, `go.mod`, etc.), and lockfile with pinned tooling and minimum dependencies.
 - A concise `README.md` for the artifact (self-contained, no `..` references).
 - The package directory with empty modules.
 - The test directory with one trivial test that passes (so the build gate has something to run on first kickoff).
 - A `.gitignore` clause at the repo root for the language's build artifacts.
 
-The repository owns setup, focused/full testing, runtime selection,
-authoritative gates, and durable full-gate receipts as one bundle. Generate
-`bin/setup`, `bin/test`, `bin/check`, and `bin/check-receipt` with the universal
-interface — cwd- and symlink-independent, atomic, and never inferring a runtime
-from the host `PATH`; add a runtime wrapper such as `bin/python` when appropriate. Back them with the target's
-version declaration, committed manifest, lockfile, and behavioral tests. A
-profile that permits an explicit runtime override treats it as authoritative:
-the override either passes a target-adapted dependency-chain load/run probe or
-the command fails without fallback. Default and override paths apply identical
-runtime selection to the probe and the real command. A mutable environment must
-reject an override that points inside itself, because synchronization may
-replace that interpreter while selecting it.
+The repository owns setup, focused/full testing, runtime selection, authoritative gates, and durable full-gate receipts as one bundle. Generate `bin/setup`, `bin/test`, `bin/check`, and `bin/check-receipt` with the universal interface — cwd- and symlink-independent, atomic, and never inferring a runtime from the host `PATH`; add a runtime wrapper such as `bin/python` when appropriate. Back them with the target's version declaration, committed manifest, lockfile, and behavioral tests. A profile that permits an explicit runtime override treats it as authoritative: the override either passes a target-adapted dependency-chain load/run probe or the command fails without fallback. Default and override paths apply identical runtime selection to the probe and the real command. A mutable environment must reject an override that points inside itself, because synchronization may replace that interpreter while selecting it.
 
-`bin/check` preserves `all|lint|format|test|policy` and delegates `test` to
-`bin/test`. Immutable ecosystem modes include `uv --locked
---managed-python`, frozen Node installs, Cargo `--locked`, Go `-mod=readonly`,
-or their equivalent. Make `kickoff`, the canonical agents, CLAUDE.md, and phase
-acceptance use `./bin/test ...` for focused tests and `./bin/check all` for the
-full claim; callers do not duplicate the command mappings.
-Every `all` run captures a complete log and terminal metadata under the
-gitignored `.kickoff/check-all/` tree. A success receipt is bound to the exact
-candidate and environment fingerprint. The fingerprint is obtained through the
-repository-selected runtime path and records the implementation, actual
-version, resolved executable and base-executable identity and file digests,
-machine, platform, and package-manager version; it never substitutes the
-receipt helper's runtime or the declared version file. Candidate hashing stays
-separate and does not absorb a venv or external runtime tree. The pre-push hook
-reuses the receipt only for a clean current `HEAD`, and fails closed by running
-the full gate on every miss, descriptor failure, or query error.
+`bin/check` preserves `all|lint|format|test|policy` and delegates `test` to `bin/test`. Immutable ecosystem modes include `uv --locked --managed-python`, frozen Node installs, Cargo `--locked`, Go `-mod=readonly`, or their equivalent. Make `kickoff`, the canonical agents, CLAUDE.md, and phase acceptance use `./bin/test ...` for focused tests and `./bin/check all` for the full claim; callers do not duplicate the command mappings. Every `all` run captures a complete log and terminal metadata under the gitignored `.kickoff/check-all/` tree. A success receipt is bound to the exact candidate and environment fingerprint. The fingerprint is obtained through the repository-selected runtime path and records the implementation, actual version, resolved executable and base-executable identity and file digests, machine, platform, and package-manager version; it never substitutes the receipt helper's runtime or the declared version file. Candidate hashing stays separate and does not absorb a venv or external runtime tree. The pre-push hook reuses the receipt only for a clean current `HEAD`, and fails closed by running the full gate on every miss, descriptor failure, or query error.
 
-Generate the recipient's proof estate only after its real tests, gates, and
-hooks exist. `bin/test-governance inventory` supplies the local baseline;
-`tests/proof-estate.yaml` then declares the recipient-local families and
-gate/hook surfaces. Freeze the whole baseline, run the local Pareto assay,
-physically remove dominated proofs, and disposition every baseline proof before
-adoption completes. Target no more than 20% of both frozen family and leaf
-counts while retaining at least 80% historical and held-out recall and direct
-proof for every applicable critical risk. Park when those requirements cannot
-coexist. Do not copy the template's survivors, selectors, tiers, risk judgments,
-timings, assay cases, reports, or dispositions. Default later growth to zero,
-run `reassess` during sweeps, and widen indeterminate changed selection to full.
-Policy and pre-commit validate structure; both close gates and pre-push remain
-full over the retained estate. The pinned environment includes the YAML parser.
+Generate the recipient's proof estate only after its real tests, gates, and hooks exist. `bin/test-governance inventory` supplies the local baseline; `tests/proof-estate.yaml` then declares the recipient-local families and gate/hook surfaces. Freeze the whole baseline, run the local Pareto assay, physically remove dominated proofs, and disposition every baseline proof before adoption completes. Target no more than 20% of both frozen family and leaf counts while retaining at least 80% historical and held-out recall and direct proof for every applicable critical risk. Park when those requirements cannot coexist. Do not copy the template's survivors, selectors, tiers, risk judgments, timings, assay cases, reports, or dispositions. Default later growth to zero, run `reassess` during sweeps, and widen indeterminate changed selection to full. Policy and pre-commit validate structure; both close gates and pre-push remain full over the retained estate. The pinned environment includes the YAML parser.
 
-**A non-Python deliverable makes this a two-runtime contract, not a one-line
-substitution.** The universal managers under `bin/` and the whole root `tests/`
-suite are Python, so a TypeScript, Rust, or Go project carries a second,
-committed governance environment — conventionally `tooling/`: runtime pin,
-manifest, lockfile, and no source of its own. Everything above then doubles.
-`bin/setup` provisions both from their lockfiles and probes both before
-reporting success. `bin/test` routes by path prefix — the deliverable's path to
-its own runner with the prefix stripped, `tests/...` to pytest — and refuses an
-invocation that mixes the two rather than guessing. `bin/check` splits `lint`
-and `format` per runtime while still emitting exactly one `CHECK <mode> PASS`
-line per mode, the way the policy lane emits one after its sub-gates. Each
-language gets a helper beside `bin/_python-toolchain` with the same contract —
-prerequisite check, contract members, an authoritative absolute-path override
-that never falls back, and a real dependency probe — and each helper takes its
-own root variable, because a single `project_root` no longer says enough. Pin
-the package manager in the manifest and invoke it through the launcher that
-honors the pin, so no caller depends on what happens to be installed. And pin
-the language version to what the *lint stack* supports rather than to the newest
-release: a type-checker release its linter has not adopted yet turns the lint
-gate into a load-time crash, which reads as a broken repository rather than as a
-version conflict.
+**A non-Python deliverable makes this a two-runtime contract, not a one-line substitution.** The universal managers under `bin/` and the whole root `tests/` suite are Python, so a TypeScript, Rust, or Go project carries a second, committed governance environment — conventionally `tooling/`: runtime pin, manifest, lockfile, and no source of its own. Everything above then doubles. `bin/setup` provisions both from their lockfiles and probes both before reporting success. `bin/test` routes by path prefix — the deliverable's path to its own runner with the prefix stripped, `tests/...` to pytest — and refuses an invocation that mixes the two rather than guessing. `bin/check` splits `lint` and `format` per runtime while still emitting exactly one `CHECK <mode> PASS` line per mode, the way the policy lane emits one after its sub-gates. Each language gets a helper beside `bin/_python-toolchain` with the same contract — prerequisite check, contract members, an authoritative absolute-path override that never falls back, and a real dependency probe — and each helper takes its own root variable, because a single `project_root` no longer says enough. Pin the package manager in the manifest and invoke it through the launcher that honors the pin, so no caller depends on what happens to be installed. And pin the language version to what the *lint stack* supports rather than to the newest release: a type-checker release its linter has not adopted yet turns the lint gate into a load-time crash, which reads as a broken repository rather than as a version conflict.
 
 ### Step 10 — Sanity-check the bootstrap
+
+Check the instruction capability as a whole: root at most 16384 UTF-8 bytes, kickoff entry at most 8192, the hard clauses and waiver intact, four unique ordered zone markers, and concise complete brief/policy/skill/role catalogs. Read the entry and all seven adjacent resources; verify direct live links and explicit read-before-branch instructions, including recovery and follow-ups, through both canonical and Codex directory paths. Directory transfer preserves relative link depth; update every actual consumer of moved sections. Structural reachability does not prove live loading or adherence. Local Astra authority and template docs pins remain excluded.
+
 
 Before declaring the bootstrap complete, verify:
 
 - `readlink AGENTS.md` returns `CLAUDE.md`.
-- `bin/check-catalogs` accepts the initial idle ledger with exactly one `⬅️`
-  and resolves every current-candidate internal Markdown link.
+- `bin/check-catalogs` accepts the initial idle ledger with exactly one `⬅️` and resolves every current-candidate internal Markdown link.
 - `head -1 LOG.md` is `# Activity Log`.
 - `ls .claude/agents/` lists exactly the four canonical role files.
-- Each of `.claude/skills/{kickoff,methodology,rule-one,learn,teach,roles,sweep,sweep-planning,sweep-coding,demo,treatise,plain,ask}/`
-  contains `SKILL.md`, and each corresponding `.agents/skills/<name>` entry
-  is a directory symlink to `../../.claude/skills/<name>`.
+- Each of `.claude/skills/{kickoff,methodology,rule-one,learn,teach,roles,sweep,sweep-planning,sweep-coding,demo,treatise,plain,ask}/` contains `SKILL.md`, and each corresponding `.agents/skills/<name>` entry is a directory symlink to `../../.claude/skills/<name>`.
 - `briefs/rule-one-diagnostic-learning.md` exists alongside the Rule One skill.
-- `bin/lessons validate`, `bin/check-catalogs`, and their behavioral tests
-  pass against the empty initial ledger and Phase 1 status table.
+- `bin/lessons validate`, `bin/check-catalogs`, and their behavioral tests pass against the empty initial ledger and Phase 1 status table.
 - `bin/kickoff-config show` succeeds and `kickoff.yaml` contains valid `role_models`, `role_timeouts`, and `research_budgets` sections.
 - `.claude/settings.json` sets `worktree.bgIsolation` to `none`; explicitly requested worktrees remain available.
-- `bin/setup` works from outside the repository and provisions only the
-  committed runtime and dependencies, then passes a real deliverable-and-tool
-  dependency-chain probe.
-- `bin/test` runs deliverable and universal tooling tests; a focused
-  repo-relative selection runs only that selection.
-- `bin/test-governance validate` and `bin/test-governance reassess` pass against
-  a recipient-local frozen baseline, complete disposition ledger, both 20%
-  ceilings, both 80% effectiveness floors, and direct applicable-risk proofs.
+- `bin/setup` works from outside the repository and provisions only the committed runtime and dependencies, then passes a real deliverable-and-tool dependency-chain probe.
+- `bin/test` runs deliverable and universal tooling tests; a focused repo-relative selection runs only that selection.
+- `bin/test-governance validate` and `bin/test-governance reassess` pass against a recipient-local frozen baseline, complete disposition ledger, both 20% ceilings, both 80% effectiveness floors, and direct applicable-risk proofs.
 - `bin/check test` delegates to `bin/test` before any live venue probe.
-- A valid explicit runtime override drives setup, probing, testing, gates, and
-  the runtime wrapper; an invalid or probe-failing override exits nonzero
-  without trying the repository default or an ambient runtime.
-- The new `CLAUDE.md` catalogs are bidirectionally complete, and every tracked
-  repository-internal Markdown link resolves.
+- A valid explicit runtime override drives setup, probing, testing, gates, and the runtime wrapper; an invalid or probe-failing override exits nonzero without trying the repository default or an ambient runtime.
+- The new `CLAUDE.md` catalogs are bidirectionally complete, and every tracked repository-internal Markdown link resolves.
 - `plan/phase-1.md`'s `Brief refs` section lists at least one brief, and each listed brief exists.
 - `bin/check all` runs from outside the repository root and passes on the trivial seeded code, including the universal methodology tests.
-- A successful full gate leaves a verifiable candidate/environment receipt and
-  complete log; dirty, changed, corrupt, non-`HEAD`, and query-error pre-push
-  cases all run the full gate.
+- A successful full gate leaves a verifiable candidate/environment receipt and complete log; dirty, changed, corrupt, non-`HEAD`, and query-error pre-push cases all run the full gate.
 
 The first `kickoff` invocation should pick up Phase 1's `⬅️` row, flip it to `🚧`, and append a START block to `LOG.md`. If any of those three actions fails, the bootstrap is incomplete — a path mismatch or a missing skill is the typical culprit.
 
@@ -801,15 +650,9 @@ When adapting, edit these files (and only these) to reflect those choices:
 
 - `CLAUDE.md` — reflects all of them.
 - `plan/INDEX.md` Cross-Cutting Concerns — duplicates the invariants from `CLAUDE.md`.
-- `bin/setup`, `bin/test`, `bin/check`, `bin/check-receipt`, runtime wrapper,
-  version declaration, manifest, lockfile, and their behavioral tests — one
-  atomic implementation.
-- `.claude/skills/kickoff/SKILL.md` and the four canonical agents — call the
-  canonical focused/full mappings.
-- `bin/kickoff-tree-id`, `bin/kickoff-evidence`, and
-  `policies/orchestration-evidence.md` — preserve candidate-bound review,
-  revision packets, implementation-final-gate evidence, and the separate
-  post-bookkeeping handoff gate.
+- `bin/setup`, `bin/test`, `bin/check`, `bin/check-receipt`, runtime wrapper, version declaration, manifest, lockfile, and their behavioral tests — one atomic implementation.
+- `.claude/skills/kickoff/` in full: `SKILL.md` plus `preflight.md`, `dispatch.md`, `planning.md`, `implementation.md`, `acceptance.md`, `close.md` and `recovery.md` and the four canonical agents — call the canonical focused/full mappings.
+- `bin/kickoff-tree-id`, `bin/kickoff-evidence`, and `policies/orchestration-evidence.md` — preserve candidate-bound review, revision packets, implementation-final-gate evidence, and the separate post-bookkeeping handoff gate.
 
 Anything else that needs to change probably indicates a bootstrap deviation that should be questioned, not normalized.
 
@@ -820,9 +663,7 @@ Anything else that needs to change probably indicates a bootstrap deviation that
 These bite every bootstrap; flag them before they happen.
 
 - **Status markers in two places.** The status of a phase lives in `plan/INDEX.md`'s phase table and **nowhere else**. Per-phase frontmatter is `id / title / depends_on / informs` — no `status` field.
-- **Document drift.** `CLAUDE.md`'s catalogs must be bidirectionally complete,
-  and current-candidate internal Markdown links must resolve. Catalog membership alone
-  does not prove that links inside transferred documents survived adaptation.
+- **Document drift.** `CLAUDE.md`'s catalogs must be bidirectionally complete, and current-candidate internal Markdown links must resolve. Catalog membership alone does not prove that links inside transferred documents survived adaptation.
 - **`AGENTS.md` as a real file instead of a symlink.** A duplicate file drifts. Make it a symlink and verify with `readlink`.
 - **Reusing template-specific invariants.** "The example Python project must lint clean" is a template rule. Don't carry it into a project that has no Python.
 - **Filling in Phase 2+ at bootstrap.** Tempting and wrong. Phase 1 reality is the input to Phase 2's design.
@@ -857,10 +698,8 @@ Bootstrap is complete when **all** of the following hold:
     Deliverables + scaffold Acceptance + Brief refs). If the brief surfaces
     only Phase 1, no sketches are required.
 [ ] Only the in-flight major phase has sub-phase files drafted, and only as
-    many as the orchestrator's Step 1a/9a have produced so far. At bootstrap
-    that's `plan/phase-1.1.md` only (when Phase 1 warrants sub-phases) — no
-    `phase-1.2.md`, no `phase-2.1.md`. Subsequent sub-phases are JIT.
-[ ] .claude/skills/kickoff/SKILL.md exists, adapted for this project's
+    many as `.claude/skills/kickoff/preflight.md` Step 1a and `.claude/skills/kickoff/close.md` Step 9a have produced so far. At bootstrap there are no child files. Authorized children are JIT; coherent major phases need none.
+[ ] The complete .claude/skills/kickoff/ directory exists, entry and seven resources, adapted for this project’s
     surfaces and build gates
 [ ] .claude/skills/methodology/SKILL.md exists (verbatim from template)
 [ ] .claude/skills/rule-one/SKILL.md exists (verbatim from template)

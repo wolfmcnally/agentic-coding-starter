@@ -10,7 +10,7 @@ description: >-
   /teach <target-dir> [<desc>] in Claude Code or $teach <target-dir> [<desc>]
   in Codex.
 argument-hint: "<target-dir> [<desc>]"
-last-reviewed: 2026-08-25
+last-reviewed: 2026-09-04
 ---
 
 # Teach — Apply patterns from this repo to another repo
@@ -32,7 +32,7 @@ If the target is empty or doesn't exist, refuse and suggest the `stamp` skill in
 
 ## Parse arguments
 
-Raw arguments: `!{ARGUMENTS}`
+Raw arguments: `$ARGUMENTS`
 
 - `<target-dir>` — the directory to teach. May be absolute, tilde-expanded, or relative to the CWD. Must exist and have content.
 - `<desc>` (optional) — narrows intent ("just bring the policies up to date", "add the kickoff skill", "modernize the four agents"). When absent, do the broader assessment with **generality preference enabled**.
@@ -44,18 +44,12 @@ If `<target-dir>` is missing or is an empty/non-existent directory, refuse with 
 1. **This repo follows the methodology.** Verify the universal invariants:
    - `AGENTS.md` is a symlink to `CLAUDE.md` (or both files exist and have identical content).
    - `.claude/agents/` contains the four canonical roles (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`).
-   - `.claude/skills/kickoff/SKILL.md`,
-     `.claude/skills/methodology/SKILL.md`,
-     `.claude/skills/rule-one/SKILL.md`, and
-     `briefs/rule-one-diagnostic-learning.md` exist. Rule One's skill and brief
-     are one required methodology pair; either missing member fails pre-flight.
+   - `.claude/skills/kickoff/SKILL.md` and its seven directly linked execution resources, `.claude/skills/methodology/SKILL.md`, `.claude/skills/rule-one/SKILL.md`, and `briefs/rule-one-diagnostic-learning.md` exist. Rule One's skill and brief are one required methodology pair; either missing member fails pre-flight.
    - `bin/kickoff-config` and `kickoff.yaml` exist; `show` validates role models, role timeouts, and research budgets.
    - `.claude/settings.json` exists and sets `worktree.bgIsolation` to `none`.
-   - `bin/kickoff-tree-id` and `bin/kickoff-evidence` exist, are executable,
-     and have behavioral tests.
+   - `bin/kickoff-tree-id` and `bin/kickoff-evidence` exist, are executable, and have behavioral tests.
    - `briefs/`, `policies/`, `plan/` directories are present and non-empty.
-   - `LOG.md` exists.
-   If any fail, refuse before touching anything.
+   - `LOG.md` exists. If any fail, refuse before touching anything.
 
 2. **Target is reachable and non-empty.** `ls -la <target-dir>` returns at least one substantive file (anything beyond `.git/`, `.DS_Store`, or empty marker files).
 
@@ -84,31 +78,12 @@ Build a structural map of the target. Mirror Stage 1 of `learn`, but from the op
    **Mini-method target.** If the target's `CLAUDE.md` carries the `<!-- mini-method: agentic-coding-starter -->` marker (see `briefs/mini-method.md`), classify the run as a **graduation**, not divergence: `briefs/`, `policies/`, `docs/`, and `bin/` transfer as they stand; the `briefs/README.md` and `policies/README.md` catalogs fold into the new `CLAUDE.md`'s catalogs while `docs/README.md` and `bin/README.md` remain the catalog files the full methodology also uses; the mini `CLAUDE.md` is replaced wholesale by the two-zone form, carrying its "Project" paragraph into the Project Context zone; and the absence of `plan/`, `LOG.md`, the ledgers, roles, skills, and gates is absent-by-design — every one of them is an ordinary Tier-1/Tier-2 addition, not a drift finding.
 3. **What the target already has from the template.** If any file in the target matches (by name and content shape) a file in this starter, mark it as "in sync," "diverged," or "absent." This is the structural diff that drives the plan.
 4. **What the target has that the starter doesn't.** Custom skills, custom agents, project-specific briefs and policies, domain conventions. **These are the target's specializations.** Treat them as load-bearing: never propose to remove or flatten them.
-5. **Rule One pair.** Inspect the target for both its Rule One skill and its
-   diagnostic-learning brief. Classify the pair as absent, complete,
-   incomplete, or divergent. If either member exists, assess both together;
-   never propose a standalone skill or standalone brief transfer.
+5. **Rule One pair.** Inspect the target for both its Rule One skill and its diagnostic-learning brief. Classify the pair as absent, complete, incomplete, or divergent. If either member exists, assess both together; never propose a standalone skill or standalone brief transfer.
 6. **Phase plan shape.** If the target has a `plan/INDEX.md`, read it. Note which phase is `⬅️` (in-flight work the teaching must not stomp on).
-7. **Repository-owned toolchain contract.** Inspect the target's `bin/setup`,
-   `bin/test`, `bin/check`, any runtime wrapper, runtime-version file, language
-   metadata, lockfile, behavioral tests, hooks, and workflow callers as one
-   bundle. The apply step preserves the target's primary language, supported
-   runtime range, selected default runtime, package manager, dependencies, and
-   lock resolution; it never imports Starter's Python values as defaults.
-   Inspect whether any explicit runtime override is authoritative and whether
-   selection is proven with a target-specific dependency-chain load/run probe.
-   Inventory dependency-bearing operational callers, generated commands,
-   tracked hooks, and active instructions; verify format coverage includes
-   staged, unstaged, and nonignored untracked candidates; and identify hot
-   loops, mutation gates, and detached processes that must resolve the selected
-   interpreter once.
+7. **Repository-owned toolchain contract.** Inspect the target's `bin/setup`, `bin/test`, `bin/check`, any runtime wrapper, runtime-version file, language metadata, lockfile, behavioral tests, hooks, and workflow callers as one bundle. The apply step preserves the target's primary language, supported runtime range, selected default runtime, package manager, dependencies, and lock resolution; it never imports Starter's Python values as defaults. Inspect whether any explicit runtime override is authoritative and whether selection is proven with a target-specific dependency-chain load/run probe. Inventory dependency-bearing operational callers, generated commands, tracked hooks, and active instructions; verify format coverage includes staged, unstaged, and nonignored untracked candidates; and identify hot loops, mutation gates, and detached processes that must resolve the selected interpreter once.
 8. **Active work signals.** Read the target's `LOG.md` if present. A phase in `🚧` is a clear "do not stomp" signal — the teaching apply step waits for that phase or limits itself to additive, non-conflicting changes.
-9. **Kickoff configuration contract.** Inspect `kickoff.yaml`, `bin/kickoff-config`, `tests/test_kickoff_config.py`, the role, timeout, and research-authority policies, `roles`, `kickoff` Steps 0a–0c and invocation call sites, `.gitignore`, and the invocation brief as one bundle. Note target model, timeout, and research-budget values; comments; `extensions` data; and local `.kickoff/` telemetry as preservation-only state. Never read or transfer raw telemetry. Research resources are allow-by-default; do not invent a global MCP-server or plugin denylist, and do not assume any named server exists.
-10. **Candidate-bound orchestration evidence.** Inspect the target's candidate
-   identity, evidence schemas, role JSON blocks, revision packets,
-   focused/final verification split, watcher protocol outcomes, docs, and
-   tests as one atomic bundle. Preserve project-defined risk tags and
-   assurance additions; never read or transfer run-scoped evidence.
+9. **Kickoff configuration contract.** Inspect `kickoff.yaml`, `bin/kickoff-config`, `tests/test_kickoff_config.py`, the role, timeout, and research-authority policies, `roles`, `.claude/skills/kickoff/preflight.md` Steps 0a–0c and `.claude/skills/kickoff/dispatch.md` and invocation call sites, `.gitignore`, and the invocation brief as one bundle. Note target model, timeout, and research-budget values; comments; `extensions` data; and local `.kickoff/` telemetry as preservation-only state. Never read or transfer raw telemetry. Research resources are allow-by-default; do not invent a global MCP-server or plugin denylist, and do not assume any named server exists.
+10. **Candidate-bound orchestration evidence.** Inspect the target's candidate identity, evidence schemas, role JSON blocks, revision packets, focused/final verification split, watcher protocol outcomes, docs, and tests as one atomic bundle. Preserve project-defined risk tags and assurance additions; never read or transfer run-scoped evidence.
 
 11. **Mechanical parity-heal scan.** Walk the target's cross-harness parity surfaces and detect every shape that has *one canonical correct form and no judgment call*. These are auto-healable independent of whatever else this teach pass is carrying. **Always run this scan, regardless of `<desc>` scope.** The catalog of mechanical violations is:
 
@@ -125,9 +100,7 @@ Output of Stage 1 is internal. The user sees Stage 3's plan.
 
 ## Stage 2 — Assess (categorize and tier)
 
-When a transferable skill is a thin wrapper around a policy or brief, read the
-owning authority in full before classifying or adapting it. The wrapper alone
-is not the behavior being taught.
+When a transferable skill is a thin wrapper around a policy or brief, read the owning authority in full before classifying or adapting it. The wrapper alone is not the behavior being taught.
 
 For each file or pattern in *this* starter, evaluate against the target. Use the same two-axis classification as `learn`:
 
@@ -148,13 +121,7 @@ For each candidate file or pattern, compare bidirectionally: starter → target 
 Same tiers as `learn`:
 
 - **Tier 1 — Methodology-level.** The four canonical agents, the orchestrator skill, the briefs/policies/plan triplet, the LOG.md contract, and Rule One's skill-plus-diagnostic-brief pair.
-- **Tier 2 — Universal template content.** Every file under `policies/`
-  (including both role policies and orchestration evidence), the universal
-  briefs, `.claude/settings.json`, `bin/kickoff-config`, `bin/kickoff-tree-id`,
-  `bin/kickoff-evidence`, `bin/check-receipt`, human-editable `kickoff.yaml` schema and seed
-  defaults, and cross-harness symlink conventions. The mechanics are
-  universal; target values, comments, extensions, telemetry, and run evidence
-  are not.
+- **Tier 2 — Universal template content.** Every file under `policies/` (including both role policies and orchestration evidence), the universal briefs, `.claude/settings.json`, `bin/kickoff-config`, `bin/kickoff-tree-id`, `bin/kickoff-evidence`, `bin/check-receipt`, human-editable `kickoff.yaml` schema and seed defaults, and cross-harness symlink conventions. The mechanics are universal; target values, comments, extensions, telemetry, and run evidence are not.
 - **Tier 3 — Language/platform specializations.** Build-gate command lists for the target's language.
 - **Tier 4 — Domain specializations.** Only if a domain-specific extension lives in this starter (uncommon; this template aims to stay general).
 
@@ -177,120 +144,25 @@ For each proposed addition or update, ask:
 - **Cross-reference drift.** Does the target's `plan/INDEX.md` "Critical-Files Map" (or equivalent) reference policies and briefs? Every new universal policy and brief added by this teach pass should appear there.
 - **Naming drift.** Does the target use a name or path the new content replaces? Update every call site.
 - **Phase-roadmap drift.** Does the target's `plan/INDEX.md` show every major phase the target's brief surfaces, each with a corresponding `plan/phase-N.md` sketch (per [`policies/phase-ripple.md`](../../../policies/phase-ripple.md) and [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md) §8)? If the target has only Phase 1 drafted while the brief surfaces more major phases, the gap is real but drafting them is an owner-level decision — surface as DECIDE with the list of missing sketches.
-- **Ripple-contract adoption.** Does the target's `kickoff` SKILL.md have a Step 9a *and* Step 9b with the AUTO/DECIDE ripple sub-step? If only Step 9a exists (today's earlier teach), the target needs Step 9b added and Step 9a's ripple sub-step appended. Mechanical — surface as AUTO.
-- **Unified kickoff-config adoption.** Treat `kickoff.yaml`, `bin/kickoff-config`, `tests/test_kickoff_config.py`, the role, timeout, and research-authority policies, `roles`, `kickoff` Steps 0a–0c plus every initial/resume/rescue call site, `.gitignore`, `bin/README.md`, the invocation brief, and CLAUDE catalog/glossary as one atomic contract. If absent, port the bundle and seed it with `reset all`. If present, round-trip-upgrade schema/mechanics and tests while preserving the target's model choices, separate effort fields, timeout values, research budgets, comments, `extensions` data, overrides, and telemetry. Never copy or open raw telemetry. Preserve allow-by-default resource discovery: no global MCP/plugin denylist and no assumption that a particular server exists. Partial adoption is stale and blocking.
+- **Instruction-delivery and ripple adoption.** Read the target’s kickoff entry and its actual stage resources as one capability. In the current layout, `preflight.md` owns startup/lane decisions, `dispatch.md` shared invocation, `planning.md` plan/review, `implementation.md` code/critique, `acceptance.md` the candidate gate and major accepted close, `close.md` Steps 9a/9b AUTO/DECIDE ripple plus lessons/reports/handoff, and `recovery.md` parks/follow-ups. Older layouts may keep these in the entry; inspect meaning before classifying a gap. Missing resource, broken navigation or missing ripple behavior is stale; a moved Step alone is not. Apply the approved resource extraction atomically with the entry, all seven resources and the directory symlink, preserving local additions and relative links. Verify root/entry byte ceilings, complete catalogs, ordered zone markers and explicit read-before-branch directives under `policies/cross-harness-parity.md`. Do not replace this inspection with concatenated token-presence checks.
+- **Unified kickoff-config adoption.** Treat `kickoff.yaml`, `bin/kickoff-config`, `tests/test_kickoff_config.py`, the role, timeout, and research-authority policies, `roles`, `.claude/skills/kickoff/preflight.md` Steps 0a–0c and `.claude/skills/kickoff/dispatch.md` plus every initial/resume/rescue call site, `.gitignore`, `bin/README.md`, the invocation brief, and CLAUDE catalog/glossary as one atomic contract. If absent, port the bundle and seed it with `reset all`. If present, round-trip-upgrade schema/mechanics and tests while preserving the target's model choices, separate effort fields, timeout values, research budgets, comments, `extensions` data, overrides, and telemetry. Never copy or open raw telemetry. Preserve allow-by-default resource discovery: no global MCP/plugin denylist and no assumption that a particular server exists. Partial adoption is stale and blocking.
 - **Background-isolation default.** Transfer `.claude/settings.json`'s `worktree.bgIsolation: none` as a portable default, merging around target-owned settings. It disables automatic worktree creation for background agents while retaining explicit, user-selected worktrees. A conflicting explicit target value is DECIDE, not an automatic overwrite.
-- **Repository-owned toolchain adoption.** Treat `bin/setup`, `bin/test`,
-  `bin/check`, `bin/check-receipt`, `bin/install-hooks`,
-  `bin/check-hooks-installed`, runtime wrappers, the runtime pin, manifest,
-  lockfile, `tests/test_check_receipt.py`, `tests/test_install_hooks.py`,
-  `tests/test_check_hooks_installed.py`, the other behavioral tests,
-  `policies/build-gates.md`, `.githooks/pre-push`, and every workflow caller
-  as one atomic contract. If any member is proposed, enumerate the whole
-  bundle in the stale sweep. Preserve target-owned language/version/package
-  choices and adapt the universal interface to them. Any explicit runtime
-  override is authoritative, and a target-adapted dependency-chain load/run
-  probe validates the selected runtime before success. The adapted behavioral
-  suite must execute every supported entrypoint mode and override branch with
-  controlled toolchain stubs; source-text assertions alone do not meet the
-  coverage floor. Every dependency-bearing caller, generated command, hook,
-  and active instruction uses the target runtime; format mode covers staged,
-  unstaged, and nonignored untracked candidates; hot loops, mutation gates, and
-  detached processes resolve the underlying interpreter once. Partial adoption
-  is stale and blocking. Any durable full-gate receipt reuse preserves the
-  complete log and terminal metadata, binds the receipt to the exact candidate
-  and environment fingerprint, and fails closed to the full gate on every miss
-  or query error. For a Python target, the fingerprint is emitted through the
-  repository-selected runtime path and includes the actual implementation,
-  version, resolved executable and base-executable identities and file digests,
-  machine, platform, and uv version—not the receipt helper's runtime or a
-  version-file proxy. Candidate hashing stays separate from the venv and
-  external runtime tree.
-- **Review-lane and follow-up-routing adoption.** Does the target's `kickoff` SKILL.md carry the Step 1 lane resolution, the Step 4 light-lane skip, the Step 6 lane-fit input and `Escalate: full lane` handling, Step 7's direct/coder-only/full correction routing, and the END-block `Review lane:` plus `Follow-up route:` lines — with `policies/review-lanes.md` in its `policies/` and the lane-fit duty in its `.claude/agents/code-critic.md`? Porting is mechanical — AUTO. **No phase-file migration is needed**: absent `review_lane:` frontmatter means `full`, so every existing drafted phase keeps its current initial-review behavior; follow-up routing is runtime classification, not frontmatter.
-- **Lessons-ledger adoption.** Treat `lessons/` + `lessons-archived/` (with `.gitkeep`s), `policies/lessons.md`, `bin/lessons`, `tests/test_lessons.py`, `bin/check-catalogs`, `tests/test_check_catalogs.py`, the `bin/check` registrations, `.claude/skills/sweep/SKILL.md` (with its `.agents/skills/sweep` symlink), `kickoff` Step 9c plus the END-block `Lessons:` field and `log-discipline.md`'s minimum-contract line, the four roles' Process Observations sections, the coder/evidence `failure_analysis` chain, `briefs/harness-self-improvement.md`, and the CLAUDE.md invariant/catalog/glossary entries as **one atomic contract**. If absent, port the bundle with an empty ledger — never seed the target's ledger with starter lessons. If partially present, partial adoption is stale and blocking. The target's existing ledger *content* is target state: preserve it untouched.
+- **Repository-owned toolchain adoption.** Treat `bin/setup`, `bin/test`, `bin/check`, `bin/check-receipt`, `bin/install-hooks`, `bin/check-hooks-installed`, runtime wrappers, the runtime pin, manifest, lockfile, `tests/test_check_receipt.py`, `tests/test_install_hooks.py`, `tests/test_check_hooks_installed.py`, the other behavioral tests, `policies/build-gates.md`, `.githooks/pre-push`, and every workflow caller as one atomic contract. If any member is proposed, enumerate the whole bundle in the stale sweep. Preserve target-owned language/version/package choices and adapt the universal interface to them. Any explicit runtime override is authoritative, and a target-adapted dependency-chain load/run probe validates the selected runtime before success. The adapted behavioral suite must execute every supported entrypoint mode and override branch with controlled toolchain stubs; source-text assertions alone do not meet the coverage floor. Every dependency-bearing caller, generated command, hook, and active instruction uses the target runtime; format mode covers staged, unstaged, and nonignored untracked candidates; hot loops, mutation gates, and detached processes resolve the underlying interpreter once. Partial adoption is stale and blocking. Any durable full-gate receipt reuse preserves the complete log and terminal metadata, binds the receipt to the exact candidate and environment fingerprint, and fails closed to the full gate on every miss or query error. For a Python target, the fingerprint is emitted through the repository-selected runtime path and includes the actual implementation, version, resolved executable and base-executable identities and file digests, machine, platform, and uv version—not the receipt helper's runtime or a version-file proxy. Candidate hashing stays separate from the venv and external runtime tree.
+- **Review-lane and follow-up-routing adoption.** Does the target’s kickoff entry lead explicitly to Step 1 lane resolution in `preflight.md`, Step 4 light-lane skip in `planning.md`, Step 6 lane-fit input and `Escalate: full lane` handling in `implementation.md`, Step 7 correction routing in `acceptance.md` and `recovery.md`, and END-block `Review lane:` plus `Follow-up route:` lines in `close.md` — with `policies/review-lanes.md` in its `policies/` and the lane-fit duty in its `.claude/agents/code-critic.md`? Porting is mechanical — AUTO. **No phase-file migration is needed**: absent `review_lane:` frontmatter means `full`, so every existing drafted phase keeps its current initial-review behavior; follow-up routing is runtime classification, not frontmatter.
+- **Lessons-ledger adoption.** Treat `lessons/` + `lessons-archived/` (with `.gitkeep`s), `policies/lessons.md`, `bin/lessons`, `tests/test_lessons.py`, `bin/check-catalogs`, `tests/test_check_catalogs.py`, the `bin/check` registrations, `.claude/skills/sweep/SKILL.md` (with its `.agents/skills/sweep` symlink), `.claude/skills/kickoff/close.md` Step 9c plus the END-block `Lessons:` field and `log-discipline.md`'s minimum-contract line, the four roles' Process Observations sections, the coder/evidence `failure_analysis` chain, `briefs/harness-self-improvement.md`, and the CLAUDE.md invariant/catalog/glossary entries as **one atomic contract**. If absent, port the bundle with an empty ledger — never seed the target's ledger with starter lessons. If partially present, partial adoption is stale and blocking. The target's existing ledger *content* is target state: preserve it untouched.
 - **Pinned-documentation adoption.** Check for `<target>/docs/README.md` and `policies/docs.md`. If absent, port `policies/docs.md`, the `docs/README.md` catalog shape (header, no rows), the `docs/` checks in `bin/check-catalogs` with their `tests/test_check_catalogs.py` coverage, and the CLAUDE.md layout, catalog, reading-protocol, and glossary entries as one contract — AUTO. Never seed the target's `docs/` with this repository's pins; and if the target already keeps third-party text pasted inside briefs, moving it under `docs/` is a DECIDE item for the target's owner, listed by brief.
-- **Candidate-bound evidence adoption.** Treat
-  `briefs/incremental-orchestration.md`,
-  `policies/orchestration-evidence.md`, `bin/kickoff-tree-id`,
-  `bin/kickoff-evidence`, `tests/test_kickoff_tree_id.py`,
-  `tests/test_kickoff_evidence.py`, `kickoff`, all four roles, `bin/check`,
-  `bin/README.md`, and the CLAUDE/plan catalogs and glossary as one atomic
-  contract. Preserve target-defined risk tags and stricter assurance layers.
-  Never transfer run directories or their findings, candidates, hashes, gate
-  artifacts, or telemetry. Partial adoption is stale and blocking.
+- **Candidate-bound evidence adoption.** Treat `briefs/incremental-orchestration.md`, `policies/orchestration-evidence.md`, `bin/kickoff-tree-id`, `bin/kickoff-evidence`, `tests/test_kickoff_tree_id.py`, `tests/test_kickoff_evidence.py`, `kickoff`, all four roles, `bin/check`, `bin/README.md`, and the CLAUDE/plan catalogs and glossary as one atomic contract. Preserve target-defined risk tags and stricter assurance layers. Never transfer run directories or their findings, candidates, hashes, gate artifacts, or telemetry. Partial adoption is stale and blocking.
 
-- **Deterministic orchestration-control adoption.** Treat
-  `briefs/deterministic-orchestration-control-plane.md`,
-  `policies/orchestration-control-plane.md`, `bin/kickoff-command-zero`,
-  `bin/check-log`, `bin/check-log-prefix`, `bin/check-log-monotonic`,
-  `bin/log-append`, `bin/log-relocate`, `bin/normalize-final-newline`,
-  `lib/agentic_starter/candidate_boundaries.py`,
-  `lib/agentic_starter/kickoff_runbook.py`,
-  `lib/agentic_starter/log_blocks.py`,
-  `tests/test_kickoff_control_plane.py`, and
-  `tests/test_log_control_plane.py` with their `kickoff-config`,
-  `kickoff-evidence`, `kickoff-tree-id`, `bin/check`, hook, skill, catalog,
-  bootstrap, and proof-estate integrations as one contract. The target defines
-  its exact command rows, selector dry-runs, venue inventory, inert paths,
-  manifests, receipts, and proof exchanges from local evidence; never seed
-  them from Starter. Partial adoption is stale and blocking.
+- **Deterministic orchestration-control adoption.** Treat `briefs/deterministic-orchestration-control-plane.md`, `policies/orchestration-control-plane.md`, `bin/kickoff-command-zero`, `bin/check-log`, `bin/check-log-prefix`, `bin/check-log-monotonic`, `bin/log-append`, `bin/log-relocate`, `bin/normalize-final-newline`, `lib/agentic_starter/candidate_boundaries.py`, `lib/agentic_starter/kickoff_runbook.py`, `lib/agentic_starter/log_blocks.py`, `tests/test_kickoff_control_plane.py`, and `tests/test_log_control_plane.py` with their `kickoff-config`, `kickoff-evidence`, `kickoff-tree-id`, `bin/check`, hook, skill, catalog, bootstrap, and proof-estate integrations as one contract. The target defines its exact command rows, selector dry-runs, venue inventory, inert paths, manifests, receipts, and proof exchanges from local evidence; never seed them from Starter. Partial adoption is stale and blocking.
 
-- **Execution-telemetry and dashboard adoption.** Treat
-  `policies/execution-telemetry.md`, `lib/agentic_starter/`,
-  `bin/execution-telemetry`, `bin/check-execution-dashboards`,
-  `bin/serve-execution-dashboard`, `reports/execution/` (with `index.html`,
-  `index-data.js`, and the vendored offline `assets/`),
-  `tests/test_execution_telemetry.py`, `tests/test_execution_dashboard.py`,
-  `tests/render_execution_dashboard_fixture.py`, `tests/fixtures/`, the
-  `bin/check` registrations, and the CLAUDE.md layout/invariant/glossary entries
-  as one atomic contract. `bin/execution-telemetry` and
-  `bin/check-execution-dashboards` import `lib/agentic_starter/`; porting either
-  script without the library leaves `bin/check` failing at startup. Never
-  transfer this repository's own phase reports — the target's archive starts
-  empty, which the checker reports as `EXECUTION DASHBOARDS PASS (0 phases)`.
-  Partial adoption is stale and blocking.
+- **Execution-telemetry and dashboard adoption.** Treat `policies/execution-telemetry.md`, `lib/agentic_starter/`, `bin/execution-telemetry`, `bin/check-execution-dashboards`, `bin/serve-execution-dashboard`, `reports/execution/` (with `index.html`, `index-data.js`, and the vendored offline `assets/`), `tests/test_execution_telemetry.py`, `tests/test_execution_dashboard.py`, `tests/render_execution_dashboard_fixture.py`, `tests/fixtures/`, the `bin/check` registrations, and the CLAUDE.md layout/invariant/glossary entries as one atomic contract. `bin/execution-telemetry` and `bin/check-execution-dashboards` import `lib/agentic_starter/`; porting either script without the library leaves `bin/check` failing at startup. Never transfer this repository's own phase reports — the target's archive starts empty, which the checker reports as `EXECUTION DASHBOARDS PASS (0 phases)`. Partial adoption is stale and blocking.
 
-- **Review-loop sweeps.** `.claude/skills/sweep-planning/SKILL.md` and
-  `.claude/skills/sweep-coding/SKILL.md` (with their `.agents/skills`
-  symlinks) travel together: the second cites the first for its lifecycle.
-- **Deterministic-checker adoption.** Treat `bin/check-harness-parity`,
-  `bin/check-toolchain-callers`, `bin/check-shell-syntax`, `bin/new-name`,
-  `bin/check-plan-concreteness` (the `kickoff` pre-review over plan artifacts,
-  with `tests/test_check_plan_concreteness.py`), `bin/check-plan-delivery`
-  (the pre-critic delivery check, with `tests/test_check_plan_delivery.py`;
-  both import `lib/agentic_starter/plan_artifact.py`), `bin/review-verdicts`
-  (the `sweep-planning` / `sweep-coding` trace harvester, with
-  `tests/test_review_verdicts.py`),
-  `bin/treatise`, and their behavioral tests
-  (`tests/test_mirror_parity.py`, `tests/test_toolchain_callers.py`,
-  `tests/test_shell_syntax.py`, `tests/test_new_name.py`,
-  `tests/test_treatise.py`) plus their `bin/check policy` registrations and
-  `bin/README.md` entries as one atomic contract with the policies they enforce
-  (`cross-harness-parity.md`, `build-gates.md`, `treatise.md`,
-  `mechanistic-vs-intelligence.md`). `bin/check` refuses to run a single gate
-  while any of these executables is missing, so a partial port is not a smaller
-  transfer — it is a broken target.
+- **Review-loop sweeps.** `.claude/skills/sweep-planning/SKILL.md` and `.claude/skills/sweep-coding/SKILL.md` (with their `.agents/skills` symlinks) travel together: the second cites the first for its lifecycle.
+- **Deterministic-checker adoption.** Treat `bin/check-harness-parity`, `bin/check-toolchain-callers`, `bin/check-shell-syntax`, `bin/new-name`, `bin/check-plan-concreteness` (the `kickoff` pre-review over plan artifacts, with `tests/test_check_plan_concreteness.py`), `bin/check-plan-delivery` (the pre-critic delivery check, with `tests/test_check_plan_delivery.py`; both import `lib/agentic_starter/plan_artifact.py`), `bin/review-verdicts` (the `sweep-planning` / `sweep-coding` trace harvester, with `tests/test_review_verdicts.py`), `bin/treatise`, and their behavioral tests (`tests/test_mirror_parity.py`, `tests/test_toolchain_callers.py`, `tests/test_shell_syntax.py`, `tests/test_new_name.py`, `tests/test_treatise.py`) plus their `bin/check policy` registrations and `bin/README.md` entries as one atomic contract with the policies they enforce (`cross-harness-parity.md`, `build-gates.md`, `treatise.md`, `mechanistic-vs-intelligence.md`). `bin/check` refuses to run a single gate while any of these executables is missing, so a partial port is not a smaller transfer — it is a broken target.
 
-- **Two-runtime toolchain adoption.** A target whose deliverable is not Python
-  needs a committed governance environment (conventionally `tooling/`: runtime
-  pin, manifest, lockfile, no source) for the universal `bin/` managers and the
-  root `tests/` suite, plus a per-language helper beside `bin/_python-toolchain`
-  with the same override-and-probe contract. `bin/setup` provisions and probes
-  both; `bin/test` routes by path prefix and refuses a mixed invocation;
-  `bin/check` splits lint and format per runtime while still emitting one
-  `CHECK <mode> PASS` line per mode. Treat the governance environment, the
-  helpers, the entry points, and their behavioral tests as one atomic contract —
-  porting the managers without the environment that runs them leaves the target's
-  gate unable to start.
+- **Two-runtime toolchain adoption.** A target whose deliverable is not Python needs a committed governance environment (conventionally `tooling/`: runtime pin, manifest, lockfile, no source) for the universal `bin/` managers and the root `tests/` suite, plus a per-language helper beside `bin/_python-toolchain` with the same override-and-probe contract. `bin/setup` provisions and probes both; `bin/test` routes by path prefix and refuses a mixed invocation; `bin/check` splits lint and format per runtime while still emitting one `CHECK <mode> PASS` line per mode. Treat the governance environment, the helpers, the entry points, and their behavioral tests as one atomic contract — porting the managers without the environment that runs them leaves the target's gate unable to start.
 
-- **Operator-register adoption.** `.claude/skills/plain/SKILL.md` and its
-  `.agents/skills/plain` directory symlink travel together with the CLAUDE.md
-  convention that every message addressed to the operator follows it. The
-  operator-invoked `.claude/skills/ask/SKILL.md` and its `.agents/skills/ask`
-  symlink travel the same way, with the CLAUDE.md convention that names the
-  two directions of operator decisions.
-  `bin/check-harness-parity` fails closed on a canonical skill with no mirror,
-  so a skill copied without its symlink breaks the target's gate.
+- **Operator-register adoption.** `.claude/skills/plain/SKILL.md` and its `.agents/skills/plain` directory symlink travel together with the CLAUDE.md convention that every message addressed to the operator follows it. The operator-invoked `.claude/skills/ask/SKILL.md` and its `.agents/skills/ask` symlink travel the same way, with the CLAUDE.md convention that names the two directions of operator decisions. `bin/check-harness-parity` fails closed on a canonical skill with no mirror, so a skill copied without its symlink breaks the target's gate.
 
 Each stale item gets one of three classifications:
 
@@ -300,23 +172,14 @@ Each stale item gets one of three classifications:
 
 ### Decision dialogue before the final plan
 
-Identify every proposal, conflict, stale migration, or user-added request that
-requires judgment. Work through them **one at a time**:
+Identify every proposal, conflict, stale migration, or user-added request that requires judgment. Work through them **one at a time**:
 
-1. Explain one decision in the [`plain`](../../../.claude/skills/plain/SKILL.md) register: what changes, why it
-   matters, what breaks if the call is wrong, the realistic options, and your
-   recommendation.
-2. Stop for the user's decision. Answer questions about that decision without
-   advancing to the next one.
+1. Explain one decision in the [`plain`](../../../.claude/skills/plain/SKILL.md) register: what changes, why it matters, what breaks if the call is wrong, the realistic options, and your recommendation.
+2. Stop for the user's decision. Answer questions about that decision without advancing to the next one.
 3. Advance only after the user gives an explicit decision.
-4. If a rendered question appears to have been swallowed, interrupted, or
-   answered ambiguously, re-present the entire decision—including its context,
-   options, and recommendation—rather than referring to a missing question.
+4. If a rendered question appears to have been swallowed, interrupted, or answered ambiguously, re-present the entire decision—including its context, options, and recommendation—rather than referring to a missing question.
 
-User-added requests during the dialogue join the same queue and are decided
-before the plan. If no judgment calls exist, skip directly to the final plan.
-The dialogue remains read-only; an individual "yes" adopts that decision, not
-the write set.
+User-added requests during the dialogue join the same queue and are decided before the plan. If no judgment calls exist, skip directly to the final plan. The dialogue remains read-only; an individual "yes" adopts that decision, not the write set.
 
 ### Critical "do not stomp" rules during assessment
 
@@ -330,11 +193,7 @@ the write set.
 
 ## Stage 3 — Plan (present to user)
 
-Immediately before composing the final plan, re-read the target's git HEAD (or
-mtime fingerprint). If it changed since preflight, inspect the delta and reopen
-every affected decision; do not silently bind the plan to a moving target.
-Then regenerate the **complete** plan from the resolved decisions. Do not offer
-an incremental patch or assume the user can reconstruct it from the dialogue.
+Immediately before composing the final plan, re-read the target's git HEAD (or mtime fingerprint). If it changed since preflight, inspect the delta and reopen every affected decision; do not silently bind the plan to a moving target. Then regenerate the **complete** plan from the resolved decisions. Do not offer an incremental patch or assume the user can reconstruct it from the dialogue.
 
 Produce a structured plan inline in the conversation. Use this exact format:
 
@@ -422,21 +281,13 @@ If the target's parity surfaces are all clean, declare "None identified" rather 
 
 ```
 ## <YYYY-MM-DD HH:MM> — TAUGHT FROM TEMPLATE
-Source: <this-repo-name> @ <sha or fp>
-Items applied: <count>, by tier T1=<n>/T2=<n>/T3=<n>/T4=<n>
-Parity heals applied: <count> (AUTO); <count> surfaced as DECIDE
-Stale-in-light-of-teaching migrations: <count> (AUTO); <count> DECIDE; <count> DEFER
-Unharvested methodology lessons surfaced for `learn`: <count>
-Files touched in target: <count>
+Source: <this-repo-name> @ <sha or fp> Items applied: <count>, by tier T1=<n>/T2=<n>/T3=<n>/T4=<n> Parity heals applied: <count> (AUTO); <count> surfaced as DECIDE Stale-in-light-of-teaching migrations: <count> (AUTO); <count> DECIDE; <count> DEFER Unharvested methodology lessons surfaced for `learn`: <count> Files touched in target: <count>
 ```
 ```
 
 End the plan with one line: **"Approve this plan to apply to the target, ask for revisions, or reject."**
 
-A Rule One proposal names both `.claude/skills/rule-one/SKILL.md` and
-`briefs/rule-one-diagnostic-learning.md`, including an explicit `UNCHANGED`
-compatibility finding when one target member requires no write. An incomplete
-target pair is one coupled proposal, not two independently approvable items.
+A Rule One proposal names both `.claude/skills/rule-one/SKILL.md` and `briefs/rule-one-diagnostic-learning.md`, including an explicit `UNCHANGED` compatibility finding when one target member requires no write. An incomplete target pair is one coupled proposal, not two independently approvable items.
 
 ## Stage 4 — Approve (gate)
 
@@ -460,52 +311,17 @@ Once approved, apply the approved items to the target. Order:
    - **Top-level instructions** — `CLAUDE.md` ↔ `AGENTS.md` symlink. If a fresh `CLAUDE.md` was created in step 2, also create the `AGENTS.md → CLAUDE.md` symlink (the parity-heal pass in step 1 only repairs existing-`CLAUDE.md` mismatches).
    - **Skills — Codex native skill-discovery surface** — `.claude/skills/<name>/` ↔ `.agents/skills/<name>` (directory symlink). For every universal skill added or modified (kickoff, methodology, rule-one, learn, teach, roles, sweep, sweep-planning, sweep-coding, demo, treatise, plain, ask — *not* `stamp`): `mkdir -p <target>/.agents/skills && ln -s ../../.claude/skills/<name> <target>/.agents/skills/<name>`. Directory-level, not file-level — per [openai/codex#11314](https://github.com/openai/codex/issues/11314).
    - **Agent roles** — `.claude/agents/<role>.md` ↔ `.codex/agents/<role>.toml` (thin wrapper TOML). For every agent .md added or modified, generate or refresh the .toml as a thin pointer: a `description` field plus a `developer_instructions` body that just says "Read .claude/agents/<role>.md and follow it."
+   - **Kickoff resources** — whenever the capability is adopted, transfer the complete approved canonical directory and verify `preflight.md`, `dispatch.md`, `planning.md`, `implementation.md`, `acceptance.md`, `close.md` and `recovery.md` through both canonical and Codex directory paths. Keep target proof-estate judgments, configuration and docs pins local; transferring the structure never copies their values or evidence.
 5. Update the target's `CLAUDE.md` catalogs (briefs catalog, policies catalog, critical-files map) so every new file is indexed. Add the catalog as a new section when the target lacks it.
-6. If Rule One is approved, transfer or update
-   `.claude/skills/rule-one/SKILL.md` and
-   `briefs/rule-one-diagnostic-learning.md` as one transaction. The resulting
-   target must contain both compatible members, the Codex directory symlink,
-   and both catalog entries; an already-current member is recorded as
-   `UNCHANGED`, not omitted from the pair assessment.
+6. If Rule One is approved, transfer or update `.claude/skills/rule-one/SKILL.md` and `briefs/rule-one-diagnostic-learning.md` as one transaction. The resulting target must contain both compatible members, the Codex directory symlink, and both catalog entries; an already-current member is recorded as `UNCHANGED`, not omitted from the pair assessment.
 7. Substitute names in transferred files: `Agentic Coding Starter Template` → target's project name; `agentic-coding-starter-template` → target's slug; references to this template's `example/` package → target's primary surface.
-8. **Adapt the repository-owned toolchain contract.** If the approved teaching
-   includes `policies/build-gates.md` or any contract member, create or update
-   the target's cwd- and symlink-independent `bin/setup`, `bin/test`, `bin/check`, and
-   `bin/check-receipt`, plus
-   an appropriate runtime wrapper when the target exposes one. Reconcile the
-   target's runtime pin, manifest, lockfile, behavioral tests, hook, `kickoff`,
-   and four canonical agents in the same step. `bin/check test` delegates to
-   `bin/test`; no caller assumes a versioned runtime binary on `PATH`. Adapt
-   the source profile's shared resolver/probe to the target's ecosystem and
-   real dependency chain; preserve fail-closed authoritative overrides without
-   copying Starter's interpreter path, package names, or dependency list, and
-   reject overrides inside an environment the target's package manager may
-   replace. Migrate every dependency-bearing operational caller, generated
-   command, tracked hook, and active instruction to the target runtime. Make
-   format checking deterministic across staged, unstaged, and nonignored
-   untracked candidates. Resolve the selected underlying interpreter once for
-   hot loops, mutation gates, generated multi-command workflows, and detached
-   processes. Adapt behavioral tests by executing the target entrypoints with
-   controlled stubs; do not reduce them to source-text checks.
-   Preserve complete durable logs, terminal run metadata, exact
-   candidate/environment receipt binding, and fail-closed pre-push reuse; adapt
-   `tests/test_check_receipt.py` with the rest of the behavioral suite.
-   Otherwise preserve the complete target-owned bundle and adapt only stale
-   copied examples. Never replace target language/version/package-manager
-   choices with this template's Python values.
+8. **Adapt the repository-owned toolchain contract.** If the approved teaching includes `policies/build-gates.md` or any contract member, create or update the target's cwd- and symlink-independent `bin/setup`, `bin/test`, `bin/check`, and `bin/check-receipt`, plus an appropriate runtime wrapper when the target exposes one. Reconcile the target's runtime pin, manifest, lockfile, behavioral tests, hook, `kickoff`, and four canonical agents in the same step. `bin/check test` delegates to `bin/test`; no caller assumes a versioned runtime binary on `PATH`. Adapt the source profile's shared resolver/probe to the target's ecosystem and real dependency chain; preserve fail-closed authoritative overrides without copying Starter's interpreter path, package names, or dependency list, and reject overrides inside an environment the target's package manager may replace. Migrate every dependency-bearing operational caller, generated command, tracked hook, and active instruction to the target runtime. Make format checking deterministic across staged, unstaged, and nonignored untracked candidates. Resolve the selected underlying interpreter once for hot loops, mutation gates, generated multi-command workflows, and detached processes. Adapt behavioral tests by executing the target entrypoints with controlled stubs; do not reduce them to source-text checks. Preserve complete durable logs, terminal run metadata, exact candidate/environment receipt binding, and fail-closed pre-push reuse; adapt `tests/test_check_receipt.py` with the rest of the behavioral suite. Otherwise preserve the complete target-owned bundle and adapt only stale copied examples. Never replace target language/version/package-manager choices with this template's Python values.
 9. **Apply the stale-in-light-of-teaching migrations.** Walk the "Stale-in-light-of-teaching" section of the approved plan and execute every AUTO item (catalog entries, link additions, header restructures, file-shape migrations to richer conventions established by newly-added policies). DECIDE items get listed in the LOG entry as a manual follow-up for the target's owner. DEFER items get listed with their deferral condition.
    - For unified kickoff configuration, verify the final write set is atomic and all target-owned fields, comments, `extensions` data, and telemetry remain untouched. A new target gets seed defaults; an existing config changes values only when the approved plan explicitly names a human choice.
-   - For candidate-bound evidence, validate the complete transferred bundle,
-     confirm candidate identity covers tracked and nonignored-untracked state,
-     and keep all target run evidence untouched.
+   - For candidate-bound evidence, validate the complete transferred bundle, confirm candidate identity covers tracked and nonignored-untracked state, and keep all target run evidence untouched.
 10. Run the parity verification sweep from `policies/cross-harness-parity.md` §Verification against the target. **Expected outcome: clean** — only `AGENTS.md OK` printed, because parity heals ran first (step 1) and any new content was wired up correctly (step 4). Any remaining "not a symlink" / "wrong target" / "missing peer" line indicates either a heal that was downgraded to DECIDE and skipped, a violation discovered post-Apply that the scan in Stage 1 missed (file a lesson in Starter's `lessons/` — `source: teach`, proposing the heal-catalog extension — in a later session against Starter, since this repo is read-only during `teach`), or a regression in step 4. Re-confirm catalog and stale-sweep coverage at the same time.
-11. Run the target's `./bin/setup`, focused behavioral tests through
-    `./bin/test`, and canonical full gate (`./bin/check all`) when the contract
-    is present. Otherwise run the exact setup/test/gate commands declared by
-    its current package metadata and flag every missing contract member.
-12. Independently search the target for stale operational caller commands and
-    prove that staged, unstaged, and nonignored untracked format failures are
-    meet the target's 80% historical-defect and held-out-mutant recall floors.
+11. Run the target's `./bin/setup`, focused behavioral tests through `./bin/test`, and canonical full gate (`./bin/check all`) when the contract is present. Otherwise run the exact setup/test/gate commands declared by its current package metadata and flag every missing contract member.
+12. Independently search the target for stale operational caller commands and prove that staged, unstaged, and nonignored untracked format failures are meet the target's 80% historical-defect and held-out-mutant recall floors.
 13. Append the TAUGHT FROM TEMPLATE entry to the target's `LOG.md` (create the file with the standard header if it doesn't exist). When the target has `bin/log-append`, construct the complete block in a temporary file and append it through that tool; never bypass its log custody with a contextual edit. The entry lists the transferred items, the **parity heals applied** (separately from transferred items), the stale items migrated, the parity-heal and stale-sweep items surfaced for user decision, and the patterns to feed back via `learn`. Follow the target's LOG/provenance policy and the approved teaching-plan template. Starter's starter-only anonymization policy governs writes to Starter, not writes to the target.
 
 **Follow the target's delivery policy.** After the unchanged target candidate passes its full gate and every approved manual step is closed, use the target's standing commit/push authority if it has one; a target that still requires its owner to commit gets the file list and nothing more. Re-check the live tree, stage explicit target paths, inspect the staged diff, verify the resulting commit's file set, never force or select an ambiguous remote, and verify clean aligned tips after any push (`policies/commit-staging.md`). Report the file list, build-gate status, and any unresolved manual steps regardless.
@@ -516,48 +332,11 @@ Once approved, apply the approved items to the target. Order:
 
 - **Improvements only.** Every proposed change must be a strict improvement to the target. Never replace target content with source content that is less elaborated, less specialized, or less capable. When the target has surpassed the source, the right move is to surface it for a future `learn`, not to drag the target backward.
 - **Stale sweep is acceptance, not follow-up.** A `teach` run is not done when the new files have been copied in. It is done when every file in the target that went stale *because of* the apply has been migrated (AUTO), surfaced for a user decision (DECIDE), or named with a deferral reason (DEFER). Empty catalogs, orphan policies, and existing-file shapes that the new policies supersede are all stale-sweep targets.
-- **Rule One teaching is atomic.** The portable prescription at
-  `.claude/skills/rule-one/SKILL.md` and the diagnostic rationale at
-  `briefs/rule-one-diagnostic-learning.md` are one transfer unit. Whenever
-  either is proposed, assess and deliver both as a compatible pair, preserve
-  target-owned improvements, create the Codex directory symlink, update both
-  catalogs, and never leave one member absent.
+- **Rule One teaching is atomic.** The portable prescription at `.claude/skills/rule-one/SKILL.md` and the diagnostic rationale at `briefs/rule-one-diagnostic-learning.md` are one transfer unit. Whenever either is proposed, assess and deliver both as a compatible pair, preserve target-owned improvements, create the Codex directory symlink, update both catalogs, and never leave one member absent.
 - **Kickoff-config transfer is atomic and state-preserving.** Never teach only one config section, policy, manager, test, skill, or invocation recipe. Transfer/update the bundle together, preserve target-local values, comments, `extensions` data, and telemetry, and validate with `bin/kickoff-config show`, the behavioral suite, scoped-reset preservation tests, and a bounded watchdog smoke test.
-- **Orchestration-evidence transfer is atomic and state-preserving.** Transfer
-  or update the candidate identity, evidence manager, policy, brief,
-  role/orchestrator contracts, gate integration, docs/catalogs, and behavioral
-  tests together. Preserve target risk extensions and stricter assurance
-  rules; never read or copy target run evidence. Candidate mismatch,
-  indeterminate impact, and incomplete candidate-gate or handoff-gate evidence fail closed.
-- **Toolchain transfer is atomic and target-preserving.** Never teach only a
-  gate wrapper or raw setup/test command. Transfer or update the setup, test,
-  full-gate, runtime-selection, metadata/lock, behavioral-test, policy, hook,
-  and caller bundle together. Preserve target-owned language, runtime,
-  package-manager, dependency, and lock choices. Validate focused routing from
-  outside the repo, execute behavioral coverage for every supported check mode
-  and runtime-selection branch, then run the target's full gate. Source-text
-  tests are supplemental only. Every dependency-bearing operational caller,
-  generated command, hook, and active instruction uses the target runtime;
-  format covers staged, unstaged, and nonignored untracked candidates; hot
-  loops, mutation gates, and detached processes resolve the selected
-  interpreter once and reuse it.
-- **Test-governance transfer is atomic and target-owned.** Transfer or update
-  `briefs/test-suite-value-governance.md`,
-  `policies/test-suite-governance.md`, `tests/proof-estate.yaml`,
-  `bin/test-governance`, `lib/agentic_starter/test_governance.py`,
-  `tests/test_test_governance.py`, `tests/test_pre_commit.py`, and
-  `reports/test-governance/README.md` with their lane/gate/hook integration,
-  behavioral fixtures, catalogs, and transfer rules together.
-  Never seed the target with this repository's families, selectors, risk
-  labels, timings, thresholds, defect or mutation cases, survivors, reports, or
-  audit decisions. Preserve an existing target estate only when it already
-  satisfies the reset contract. First adoption freezes and assays the target's
-  whole estate, physically removes dominated proofs, and dispositions every
-  baseline proof. The target owns the 20% family/leaf reset, 80% historical and
-  held-out floors, direct critical-risk inventory, zero-net-growth budget, and
-  periodic reassessment. If those conditions cannot coexist, park for the
-  owner. Invalid or unmapped selection widens to full; both close gates remain
-  full over the retained estate.
+- **Orchestration-evidence transfer is atomic and state-preserving.** Transfer or update the candidate identity, evidence manager, policy, brief, role/orchestrator contracts, gate integration, docs/catalogs, and behavioral tests together. Preserve target risk extensions and stricter assurance rules; never read or copy target run evidence. Candidate mismatch, indeterminate impact, and incomplete candidate-gate or handoff-gate evidence fail closed.
+- **Toolchain transfer is atomic and target-preserving.** Never teach only a gate wrapper or raw setup/test command. Transfer or update the setup, test, full-gate, runtime-selection, metadata/lock, behavioral-test, policy, hook, and caller bundle together. Preserve target-owned language, runtime, package-manager, dependency, and lock choices. Validate focused routing from outside the repo, execute behavioral coverage for every supported check mode and runtime-selection branch, then run the target's full gate. Source-text tests are supplemental only. Every dependency-bearing operational caller, generated command, hook, and active instruction uses the target runtime; format covers staged, unstaged, and nonignored untracked candidates; hot loops, mutation gates, and detached processes resolve the selected interpreter once and reuse it.
+- **Test-governance transfer is atomic and target-owned.** Transfer or update `briefs/test-suite-value-governance.md`, `policies/test-suite-governance.md`, `tests/proof-estate.yaml`, `bin/test-governance`, `lib/agentic_starter/test_governance.py`, `tests/test_test_governance.py`, `tests/test_pre_commit.py`, and `reports/test-governance/README.md` with their lane/gate/hook integration, behavioral fixtures, catalogs, and transfer rules together. Never seed the target with this repository's families, selectors, risk labels, timings, thresholds, defect or mutation cases, survivors, reports, or audit decisions. Preserve an existing target estate only when it already satisfies the reset contract. First adoption freezes and assays the target's whole estate, physically removes dominated proofs, and dispositions every baseline proof. The target owns the 20% family/leaf reset, 80% historical and held-out floors, direct critical-risk inventory, zero-net-growth budget, and periodic reassessment. If those conditions cannot coexist, park for the owner. Invalid or unmapped selection widens to full; both close gates remain full over the retained estate.
 - **Lessons-ledger transfer is atomic, and ledger content is target state.** Port the whole lessons bundle or none of it (per the stale-sweep bullet); ship an empty ledger to a target that lacks one; never seed it with Starter's lessons, never resolve or transfer the target's `scope: local` entries, and surface — never harvest — its `scope: methodology` candidates (harvest belongs to a `learn` run against the target).
 - **Mechanical parity heals always run, independent of `<desc>` scope.** Every `teach` invocation scans the target's parity surfaces and surfaces known-broken shapes (per the catalog in Stage 1 step 11) for repair. Even a narrow `teach` pass — "just bring policies up to date" — heals an `AGENTS.md`-as-file, a file-level `.agents/skills/<name>/SKILL.md`, or a stray `.agents/skills/stamp` it finds along the way. This is what closes the gap where broken parity shapes lingered because the teach pass didn't otherwise touch them.
 - **This repo is read-only.** Never write to this repository during `teach`. The starter learns via `learn`, not as a side effect of `teach`.
@@ -567,11 +346,7 @@ Once approved, apply the approved items to the target. Order:
 - **Cross-harness parity carries to the target.** Any agent or skill transfer updates both surfaces in the target's tree.
 - **Adapt to the target's language.** Build-gate commands, language metadata, surface names — all get rewritten to the target's stack before the apply finishes.
 - **Catalog drift is forbidden.** Target's `CLAUDE.md` catalogs reflect every file in the target's `briefs/` and `policies/` after apply, and the target's `docs/README.md` links every entry under its `docs/`.
-- **One LOG entry per `teach` run.** Aggregate, in the target's `LOG.md`, using
-  its governed append tool when present and the target's approved
-  provenance/count template and disclosure policy. This
-  repo's `LOG.md` is not touched, so Starter's starter-only anonymization
-  policy does not rewrite target provenance.
+- **One LOG entry per `teach` run.** Aggregate, in the target's `LOG.md`, using its governed append tool when present and the target's approved provenance/count template and disclosure policy. This repo's `LOG.md` is not touched, so Starter's starter-only anonymization policy does not rewrite target provenance.
 - **Refuse on active-phase conflicts.** If a proposed change touches a file the target's plan marks `🚧`, drop it from the apply set and report it as a manual follow-up the target's owner should resolve via `kickoff` first.
 - **`stamp` and the starter template's `example/` are never taught.** They live only in the starter template. The corresponding `.agents/skills/stamp` mirror is also starter-only — if a target somehow acquired it (e.g., from a buggy Codex import), remove it as part of the apply. The twelve universal skills — including `rule-one`, `learn`, `teach`, `sweep-planning`, `sweep-coding`, `demo`, `treatise`, and `plain` — may be transferred to a target that lacks them, with the user's approval.
 

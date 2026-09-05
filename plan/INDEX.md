@@ -42,7 +42,7 @@ Status legend: ⏳ Not Started · ⬅️ Next (at most one) · 🚧 In Progress 
 |------------------------|--------------------------------------|--------|
 | [Phase 1](phase-1.md)  | Adopt the template for your project  | ⏳     |
 | [Phase 2](phase-2.md) | Model support and portable role presets | ✅ |
-| [Phase 3](phase-3.md) | Coherent phases and reliable instruction delivery | ⬅️ |
+| [Phase 3](phase-3.md) | Coherent phases and reliable instruction delivery | 🚧 |
 | [Phase 4](phase-4.md) | Integrated qualification and bounded evaluation | ⏳ |
 
 `kickoff` flips `⬅️` → `🚧` on start, `🚧` → `✅` on completion, and advances the next `⏳` row to `⬅️` per this dependency graph. Status does not live in per-phase frontmatter.
@@ -113,6 +113,8 @@ These are the universals the template ships with. A project derived from this te
   graduation into a binding rule remains human-ratified.
 
 ## Critical-Files Map
+
+Kickoff navigation: [entry](../.claude/skills/kickoff/SKILL.md), [phase entry](../.claude/skills/kickoff/preflight.md), [dispatch](../.claude/skills/kickoff/dispatch.md), [planning](../.claude/skills/kickoff/planning.md), [implementation](../.claude/skills/kickoff/implementation.md), [acceptance](../.claude/skills/kickoff/acceptance.md), [close](../.claude/skills/kickoff/close.md), [recovery](../.claude/skills/kickoff/recovery.md). Read each resource before its branch. Coherent phases need no children unless a consequential boundary justifies an authorized split.
 
 Shipped files are linked. A file a future phase will create may also appear, as plain text annotated with its phase — e.g. `daemons/watch/` (Phase 6) — so the map is a forward-looking contract, not just an index of what exists.
 

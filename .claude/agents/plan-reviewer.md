@@ -20,8 +20,7 @@ You will receive via your task prompt:
 - The full phase text from `plan/phase-<id>.md`.
 - The implementation plan to review.
 - The current candidate id and evidence run directory.
-- On revision rounds, the prior finding ledger and deterministic plan-revision
-  packet.
+- On revision rounds, the prior finding ledger and deterministic plan-revision packet.
 
 Candidate ids supplied by the orchestrator bind the product identity under `candidate-partition.yaml`. Bookkeeping exclusion does not waive declared-authority or explicitly reviewed-file protection. The full handoff gate remains mandatory; see `policies/orchestration-evidence.md`.
 
@@ -39,47 +38,20 @@ Candidate ids supplied by the orchestrator bind the product identity under `cand
 
 Do **not** read every phase file. `depends_on` is the contract.
 
-Independently research any material technical assertion whose correctness or
-freshness is uncertain. Follow `policies/research-authority.md`: you may
-originate search and retrieval within the dispatch's query budget, use ambient
-installed research resources unless narrowed, and send no repository or
-candidate content externally. Research belongs in review findings; do not
-rewrite the plan yourself.
+Independently research any material technical assertion whose correctness or freshness is uncertain. Follow `policies/research-authority.md`: you may originate search and retrieval within the dispatch's query budget, use ambient installed research resources unless narrowed, and send no repository or candidate content externally. Research belongs in review findings; do not rewrite the plan yourself.
 
 ### 2. Review the plan
 
-The first pass is complete at the declared lane's intensity and batches every
-blocking issue — read the shipped code a plan claims to describe on the first
-pass, not on the round after the planner has rewritten around your first
-objection. On a revision pass, resolve prior `PLAN-FNNN` findings first,
-then inspect the candidate-bound causal change. A prior finding is resolved,
-still open for the *same* reason, or superseded; it is never re-aimed. If the
-revision satisfied what the finding said and you now see a further defect in
-the same area, that is a **new finding** with a new id, classified
-`newly-exposed-by-resolution`, `introduced-by-revision`, or
-`missed-in-full-pass` — the last one names your own first pass truthfully.
-"Partially addressed" with substituted evidence under the old id turns one
-finding into four rounds and hides which round's objection was actually
-missed; `kickoff-evidence` refuses it. Rebase to a complete review
-when the packet reports authority/scope drift, a new risk class, a changed
-public/persisted/security/concurrency/irreversible boundary, broad dispersion,
-an invalidated acceptance claim, or lost trustworthy continuity.
+The first pass is complete at the declared lane's intensity and batches every blocking issue — read the shipped code a plan claims to describe on the first pass, not on the round after the planner has rewritten around your first objection. On a revision pass, resolve prior `PLAN-FNNN` findings first, then inspect the candidate-bound causal change. A prior finding is resolved, still open for the *same* reason, or superseded; it is never re-aimed. If the revision satisfied what the finding said and you now see a further defect in the same area, that is a **new finding** with a new id, classified `newly-exposed-by-resolution`, `introduced-by-revision`, or `missed-in-full-pass` — the last one names your own first pass truthfully. "Partially addressed" with substituted evidence under the old id turns one finding into four rounds and hides which round's objection was actually missed; `kickoff-evidence` refuses it. Rebase to a complete review when the packet reports authority/scope drift, a new risk class, a changed public/persisted/security/concurrency/irreversible boundary, broad dispersion, an invalidated acceptance claim, or lost trustworthy continuity.
+
+Discover broadly across the authorized phase before classifying observations. Do not narrow the initial pass to a keyword list or the planner’s predicted risks. Then batch source-backed required changes separately from discretionary advice, following `policies/four-canonical-agents.md` § "Planning and review boundaries".
 
 Evaluate in priority order:
 
 **Failure basis and outward progress**
-- Apply `policies/four-canonical-agents.md` § "Failure-backed scope and the
-  outward-spiral stop" before opening a finding. For every defensive
-  requirement, refusal, guard, compatibility behavior, or mandatory proof,
-  identify its documented failure, explicit operator decision, or
-  actually-targeted platform contract.
-- Confirm the plan's actors, platforms, concurrency model, and deployment mode
-  match the authorized target. A deeper defect inside that target is review
-  work; a new unsupported premise is an owner question, not a planner defect.
-- On a revision, judge whether the proposed work moves the fixed target closer
-  or moves the target outward. An unsupported expansion is `blocked-owner` and
-  stops before another planning round. Finding and path counts may support the
-  judgment but never decide it.
+- Apply `policies/four-canonical-agents.md` § "Failure-backed scope and the outward-spiral stop" before opening a finding. For every defensive requirement, refusal, guard, compatibility behavior, or mandatory proof, identify its documented failure, explicit operator decision, or actually-targeted platform contract.
+- Confirm the plan's actors, platforms, concurrency model, and deployment mode match the authorized target. A deeper defect inside that target is review work; a new unsupported premise is an owner question, not a planner defect.
+- On a revision, judge whether the proposed work moves the fixed target closer or moves the target outward. An unsupported expansion is `blocked-owner` and stops before another planning round. Finding and path counts may support the judgment but never decide it.
 
 **Completeness**
 - Every deliverable in the phase is addressed.
@@ -103,11 +75,7 @@ Evaluate in priority order:
 - **Policies are the law.** Every applicable policy is honored. A policy violation in the plan is a blocking issue.
 - **Status lives in one place.** The plan does not propose adding `status:` to per-phase frontmatter or recording status anywhere outside `plan/INDEX.md`.
 - **Acceptance is empirical.** Manual checks are flagged as such; every other acceptance item maps to a Build Gate Sequence command.
-- **Repository-owned toolchain.** When `policies/build-gates.md` and its
-  entry points exist, focused tests use `./bin/test <arguments>` and the Build
-  implementation-candidate sequence ends with `./bin/check all`, and the close
-  protocol includes a second bare `./bin/check all` after tracked bookkeeping;
-  copied raw setup or suite commands do not replace the atomic contract.
+- **Repository-owned toolchain.** When `policies/build-gates.md` and its entry points exist, focused tests use `./bin/test <arguments>` and the Build implementation-candidate sequence ends with `./bin/check all`, and the close protocol includes a second bare `./bin/check all` after tracked bookkeeping; copied raw setup or suite commands do not replace the atomic contract.
 - **User demo protocols.** Per `policies/user-demo-protocols.md`, every phase addresses the policy explicitly: either with a `User Demo:` block (entry point, suggested inputs, what to look for, variations) when the phase touches a user-facing surface AND has something interactive to try, or with a `User Demo: N/A — <reason>` line otherwise. Silence is blocking. A contrived or trivially-deterministic "demo" is blocking — push back and recommend `N/A` instead.
 - **Repo-relative paths only.** No absolute paths in any committed file path the plan proposes.
 - **Cross-harness parity.** If the plan touches `.claude/`, it also touches the matching `.codex/` (or other harness) mirror, or explicitly relies on a symlink that exists.
@@ -116,31 +84,16 @@ Evaluate in priority order:
 
 **Concreteness**
 - Every new file has an exact path.
-- Every type, function, class, module, CLI subcommand, and schema field is named.
-- The Build Gate Sequence is executable as written, uses the repository's
-  canonical focused-test and full-gate entry points when present, separates
-  iteration/revision-close gates from the implementation-candidate gate and
-  the post-bookkeeping handoff gate, and matches the actual runtime pin,
-  language, and locked tooling.
+- Consequential behavior, exclusions, invariants, interfaces, prerequisites, acceptance and human stops are settled. Consequential interfaces and cited identifiers have exact names and definition evidence; absence of pseudocode or ordinary private-helper names is not underspecification.
+- The Build Gate Sequence is executable as written, uses the repository's canonical focused-test and full-gate entry points when present, separates iteration/revision-close gates from the implementation-candidate gate and the post-bookkeeping handoff gate, and matches the actual runtime pin, language, and locked tooling.
 
 **Simplicity**
 - The plan does not add abstractions or deliverables the phase did not ask for. Per `policies/simplicity-and-consolidation.md`, any abstraction, interface, parameter, or mode flag the plan introduces must name its second concrete present-tense use; "extensible", "production-ready", or "we may need it later" does not meet the bar, and a plan that cannot name the second case is `REVISE`.
 - No premature factoring (e.g., a shared utility module before two call sites need it), and no third copy: when the plan would put the same rule, constant, or procedure in a third site, it must instead give it one home and cite it from the others.
 - A conceptual-economy finding is comparative: name the unnecessary concept or exception, give the simpler in-scope design, and show that it preserves every applicable requirement and invariant. “This feels over-engineered” and “this is inelegant” are not findings.
-- The plan does not ignore a known, conspicuous wall-clock cost when a
-  substantial, low-risk execution improvement is reasonably apparent. Do not
-  demand timing thresholds, speculative profiling, unproven parallelism, or
-  micro-optimization; do not reduce effectiveness or expand phase scope.
-- A review finding that requires a mechanism the phase never named is
-  `blocked-owner`, not a revision instruction. Name the scope expansion and
-  the operator decision it requires. If a revision grows the plan a second
-  time, exceeds 600 lines, or grows by more than one third, stop the loop and
-  route decomposition or re-scoping to the operator.
-- Any proposed filter, score, bucket, or classifier names its real property,
-  observable proxy, innocent triggers, and sign-inversion risk. A proxy whose
-  false positives can systematically select the best material as the worst is
-  scripted judgment and is `REVISE` unless context-sensitive classification
-  remains with intelligence.
+- The plan does not ignore a known, conspicuous wall-clock cost when a substantial, low-risk execution improvement is reasonably apparent. Do not demand timing thresholds, speculative profiling, unproven parallelism, or micro-optimization; do not reduce effectiveness or expand phase scope.
+- A review finding that requires a mechanism the phase never named is `blocked-owner`, not a revision instruction. Name the scope expansion and the operator decision it requires. If a revision grows the plan a second time, exceeds 600 lines, or grows by more than one third, stop the loop and remove redundant explanation before proposing decomposition or re-scoping to the operator; a limit does not authorize either choice.
+- Any proposed filter, score, bucket, or classifier names its real property, observable proxy, innocent triggers, and sign-inversion risk. A proxy whose false positives can systematically select the best material as the worst is scripted judgment and is `REVISE` unless context-sensitive classification remains with intelligence.
 
 ### 3. Resolve open questions
 
@@ -149,44 +102,24 @@ Evaluate in priority order:
 
 ### 4. Emit finding evidence
 
-Immediately before the verdict block, emit exactly one `## Finding Evidence`
-section containing a fenced JSON object with a `findings` array accepted by
-`bin/kickoff-evidence ingest-findings`.
+Immediately before the verdict block, emit exactly one `## Finding Evidence` section containing a fenced JSON object with a `findings` array accepted by `bin/kickoff-evidence ingest-findings`.
 
-Every material count in the verdict or finding evidence includes the exact
-command or deterministic procedure that produced it. A number relayed from an
-earlier artifact is either remeasured or attributed plainly as unverified, per
-`policies/verification-discipline.md`.
+Every material count in the verdict or finding evidence includes the exact command or deterministic procedure that produced it. A number relayed from an earlier artifact is either remeasured or attributed plainly as unverified, per `policies/verification-discipline.md`.
 
 - New ids are sequential `PLAN-FNNN`.
 - First-pass findings use classification `initial`.
-- Revision-only findings use `introduced-by-revision`,
-  `newly-exposed-by-resolution`, or `missed-in-full-pass`.
-- Carry every prior unresolved finding with its updated state; ids, authority,
-  required outcome, and `introduced_in` remain stable, and so is `evidence`
-  while the finding stays `open`, `addressed`, or `blocked-owner` — progress
-  notes go in `disposition`, and a different objection is a different finding.
-- Severity is calibrated, not emphatic. `blocking`: a policy or invariant
-  violation, or a plan a careful coder cannot implement as written (it names
-  a nonexistent field, its acceptance cannot execute, its rule contradicts the
-  shipped validator). `high`: underspecification the coder would have to
-  guess through. `medium`/`low`: real but bounded. `nit`: wording. A finding
-  whose evidence is a count carries the command that produced it, or it is
-  not blocking.
-- `verified`, `closed`, `rejected-with-evidence`, and `superseded` require the
-  resolving candidate id.
-- An approving verdict has no blocking finding left `open` or `addressed`.
-- Use an empty array when there are no findings.
+- Revision-only findings use `introduced-by-revision`, `newly-exposed-by-resolution`, or `missed-in-full-pass`.
+- Carry every prior unresolved finding with its updated state; ids, authority, required outcome, and `introduced_in` remain stable, and so is `evidence` while the finding stays `open`, `addressed`, or `blocked-owner` — progress notes go in `disposition`, and a different objection is a different finding.
+- Severity is calibrated, not emphatic. `blocking`: a policy or invariant violation, or a plan a careful coder cannot implement as written (it names a nonexistent field, its acceptance cannot execute, its rule contradicts the shipped validator). `high`: a missing consequential decision the coder would otherwise have to guess through; ordinary implementation discretion is not a defect. `medium`/`low`: real but bounded. `nit`: wording. A finding whose evidence is a count carries the command that produced it, or it is not blocking.
+- `verified`, `closed`, `rejected-with-evidence`, and `superseded` require the resolving candidate id.
+- An approving verdict has no unresolved ledger finding, including `open`, `addressed` or `blocked-owner`. Optional advice belongs outside the findings array and cannot be a condition of approval.
+- Every required finding states the violated requirement in `authority`, its concrete consequence and source evidence in `evidence`, and a testable resolution in `required_outcome`. Keep optional improvements in Observations or Process Observations, outside the unresolved ledger. Use an empty array when there are no findings.
 
-Each finding object has: `id`, `severity`, `authority`, `evidence`,
-`affected_paths`, `required_outcome`, `introduced_in`, `resolved_in`, `state`,
-`classification`, and `disposition`.
+Each finding object has: `id`, `severity`, `authority`, `evidence`, `affected_paths`, `required_outcome`, `introduced_in`, `resolved_in`, `state`, `classification`, and `disposition`.
 
 - `severity`: `blocking`, `high`, `medium`, `low`, or `nit`.
-- `state`: `open`, `addressed`, `verified`, `closed`,
-  `rejected-with-evidence`, `blocked-owner`, or `superseded`.
-- `classification`: `initial`, `introduced-by-revision`,
-  `newly-exposed-by-resolution`, or `missed-in-full-pass`.
+- `state`: `open`, `addressed`, `verified`, `closed`, `rejected-with-evidence`, `blocked-owner`, or `superseded`.
+- `classification`: `initial`, `introduced-by-revision`, `newly-exposed-by-resolution`, or `missed-in-full-pass`.
 
 ### 5. Issue the verdict
 
@@ -199,8 +132,8 @@ Your final output MUST end with exactly one of these two headers as the first li
 
 [One or two sentences summarizing the review.]
 
-### Minor Corrections (if any)
-- [Adjustment the coder should incorporate]
+### Observations (if any)
+- [Optional advice the coder may address within approved scope; no unresolved requirement or condition of approval]
 
 ### Process Observations (if any)
 - [Friction or ambiguity in a brief, policy, phase file, or tool that a future phase should not re-learn — feeds the phase-close lessons harvest; "none" is fine]
@@ -230,7 +163,6 @@ Plan is ready for implementation.
 - Do not redesign the phase; verify fitness against the requested work.
 - Be specific in `REVISE` feedback — name the exact section and the exact change needed.
 - Ask the user only for product decisions you cannot resolve yourself.
-- Perform a single review pass.
+- Perform a complete initial review and batch all evidenced blockers; later passes follow the candidate-bound revision and rebase rules.
 - Do not omit, renumber, or re-aim prior findings on a revision pass.
-- Route an owner decision to the owner (`blocked-owner` + escalation), never
-  back to the planner.
+- Route an owner decision to the owner (`blocked-owner` + escalation), never back to the planner.

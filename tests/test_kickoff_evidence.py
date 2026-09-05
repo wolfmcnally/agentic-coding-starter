@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from test_check_catalogs import ZONE_MARKERS, write_instruction_resources
 
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / "bin" / "kickoff-evidence"
@@ -779,13 +780,73 @@ def _assert_failed_close_is_truthful_terminal_and_idempotent(
 def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
     repository: Path, tmp_path: Path
 ) -> None:
+    child_repository = tmp_path / "child-repo"
+    shutil.copytree(repository, child_repository, symlinks=True)
+    _assert_complete_synthetic_kickoff(repository, tmp_path / "major", phase="1")
+    _assert_complete_synthetic_kickoff(child_repository, tmp_path / "child", phase="1.1")
+
+
+def _assert_complete_synthetic_kickoff(repository: Path, tmp_path: Path, *, phase: str) -> None:
+    tmp_path.mkdir()
+    write_instruction_resources(repository)
+    (repository / "briefs").mkdir()
+    (repository / "briefs/design.md").write_text("# Design\n\nDeliver VALUE = 2.\n")
+    (repository / "policies/delivery.md").write_text(
+        "# Delivery\n\nKeep governing bytes unchanged through accepted close.\n"
+    )
+    (repository / "CLAUDE.md").write_text(
+        "# Synthetic engine\n\n"
+        "[Design](briefs/design.md)\n[Delivery](policies/delivery.md)\n" + ZONE_MARKERS
+    )
+    (repository / "plan").mkdir()
+    (repository / "plan/phase-0.md").write_text("# Prepared dependency\n")
+    (repository / "plan/phase-1.md").write_text(
+        '---\nid: "1"\ndepends_on: ["plan/phase-0.md"]\n---\n'
+        "# Qualification\n\n## Acceptance\n\nDeliver VALUE = 2 under frozen authorities.\n"
+        "\n## Brief refs\n\n[Design](../briefs/design.md)\n"
+    )
+    child_row = ""
+    if phase == "1.1":
+        (repository / "plan/phase-1.1.md").write_text(
+            "# Child qualification\n\n[Parent](phase-1.md)\n"
+        )
+        child_row = "| [Phase 1.1](phase-1.1.md) | Qualification child | 🚧 |\n"
+    index = repository / "plan/INDEX.md"
+    index.write_text(
+        "# Plan\n\n## Phase Table\n\n| Phase | Title | Status |\n|---|---|---|\n"
+        "| [Phase 0](phase-0.md) | Prepared dependency | ✅ |\n"
+        "| [Phase 1](phase-1.md) | Qualification | 🚧 |\n"
+        + child_row
+        + "\n## Cross-cutting concerns\n\nRetain both close gates.\n"
+    )
+    captured_index = index.read_bytes()
+    shutil.copy2(ROOT / "bin/check-catalogs", repository / "bin/check-catalogs")
+    # The final synthetic gate exercises the product and the real catalog checker.
+    (repository / "bin/check").write_text(
+        '#!/bin/sh\nset -eu\ntest "$1" = all\n'
+        'test "$(cat code.py)" = "VALUE = 2"\nexec ./bin/check-catalogs\n'
+    )
+    partition = repository / "candidate-partition.yaml"
+    partition.write_text(
+        partition.read_text().replace("active:\n", 'active:\n  - "/.claude/**"\n  - "/briefs/**"\n')
+    )
+    authorities = (
+        "plan/INDEX.md",
+        f"plan/phase-{phase}.md",
+        *(("plan/phase-1.md",) if phase == "1.1" else ()),
+        "briefs/design.md",
+        "plan/phase-0.md",
+        "CLAUDE.md",
+        "policies/delivery.md",
+    )
+    governing_bytes = {name: (repository / name).read_bytes() for name in authorities}
     root = start_trace(
         engine_root=repository,
         scope_root=repository,
         scope="engine",
         scope_id="engine",
         run_type="kickoff",
-        operation="phase.1.1",
+        operation=f"phase.{phase}",
     )
     setup = start_span(
         engine_root=repository,
@@ -816,9 +877,8 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
         "--root",
         str(repository),
         "--phase",
-        "1.1",
-        "--authority",
-        "phase.md",
+        phase,
+        *[item for authority in authorities for item in ("--authority", authority)],
         "--telemetry-trace-id",
         root.trace_id,
         "--telemetry-root-span-id",
@@ -835,6 +895,13 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
         "initial",
     )
     assert initialized.returncode == 0, initialized.stderr
+    initial_product = initialized.stdout.strip()
+    authority = json.loads((run_dir / "authority.json").read_text())["authorities"]
+    assert [item["path"] for item in authority] == list(authorities)
+    assert all(item["locator"] is None for item in authority)
+    for item in authority:
+        assert item["content_sha256"] == hashlib.sha256(governing_bytes[item["path"]]).hexdigest()
+    assert index.read_bytes() == captured_index and "🚧" in captured_index.decode()
     gate_manifest = tmp_path / "gate-manifest.json"
     gate_manifest.write_text(
         json.dumps(
@@ -941,7 +1008,7 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
                 "--effort",
                 effort or "default",
                 "--phase",
-                "1.1",
+                phase,
                 "--prompt-file",
                 str(prompt),
                 artifact_flag,
@@ -992,6 +1059,8 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
         )
         opened = open_role_dispatch(run_dir, handoff, intelligence.span_id)
         assert opened.returncode == 0, opened.stderr
+        if role == "coder":
+            (repository / "code.py").write_text("VALUE = 2\n")
         wait = start_span(
             engine_root=repository,
             trace_id=root.trace_id,
@@ -1054,6 +1123,11 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
     )
     role_attempt("role.plan-review", "reviewer", "native", 1, "initial")
     role_attempt("role.implement", "coder", "native", 1, "initial")
+    implemented = capture(repository, run_dir)
+    assert implemented != initial_product
+    change = json.loads((run_dir / "change.json").read_text())
+    assert [item["path"] for item in change["changed_files"]] == ["code.py"]
+    assert change["authority_drift"] == []
     role_attempt(
         "role.code-review",
         "critic",
@@ -1082,6 +1156,9 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
     assert sum(item["idle_telemetry"] == "available" for item in dispatches) == 3
     assert sum(item["idle_telemetry"] == "unavailable" for item in dispatches) == 2
     candidate = tree_manifest_for_test(repository)
+    assert candidate == implemented
+    reviewed = run("mark-reviewed", "--run-dir", str(run_dir), "--expected-candidate", candidate)
+    assert reviewed.returncode == 0, reviewed.stderr
     focused = run(
         "run-gate",
         "--run-dir",
@@ -1118,7 +1195,8 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
         str(artifact),
         "--final",
         "--",
-        "/usr/bin/true",
+        "./bin/check",
+        "all",
         cwd=repository,
     )
     assert final.returncode == 0, final.stderr
@@ -1132,7 +1210,7 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
         "--level",
         "acceptance",
         "--required-final-command",
-        "/usr/bin/true",
+        "./bin/check all",
     )
     assert validated.returncode == 0, validated.stderr
     finish_span(
@@ -1151,7 +1229,10 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
     for slow in projection["slowest_spans"]:
         assert slow["operation"] in markdown.stdout
 
-    close_text = "## 2026-01-01 10:00 — END\n\nPhase 1.1 — accepted\n"
+    close_text = (
+        f"## 2026-01-01 10:00 — END\n\nPhase {phase} — accepted implementation\n"
+        "\nStatus bookkeeping and handoff remain pending.\n"
+    )
     close_block = tmp_path / "accepted-close.md"
     close_block.write_text(close_text)
     close_arguments = (
@@ -1165,16 +1246,64 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
         "--log-block",
         str(close_block),
         "--required-final-command",
-        "/usr/bin/true",
+        "./bin/check all",
     )
+    for relative, replacement, diagnostic in (
+        (
+            "policies/delivery.md",
+            b"# Delivery\n\nGoverning edits are now permitted.\n",
+            "declared authority changed; re-review in a fresh evidence run",
+        ),
+        (
+            "plan/INDEX.md",
+            captured_index.replace(b"Retain both close gates.", b"Omit the handoff gate."),
+            "reviewed bookkeeping changed; capture and re-review: plan/INDEX.md",
+        ),
+    ):
+        target = repository / relative
+        try:
+            target.write_bytes(replacement)
+            refused = run(*close_arguments)
+            assert refused.returncode == 2, refused.stdout + refused.stderr
+            assert diagnostic in refused.stderr
+            assert not (run_dir / "closure.json").exists()
+        finally:
+            target.write_bytes(governing_bytes[relative])
+    assert all((repository / name).read_bytes() == body for name, body in governing_bytes.items())
+    if phase == "1.1":
+        refused = run(*close_arguments)
+        assert refused.returncode == 2
+        assert "phase ledger refuses close" in refused.stderr
+        assert "closing child Phase 1.1 must exist and be marked ✅" in refused.stderr
+        # Satisfying child-close's marker requirement still drifts its captured authority.
+        index.write_bytes(captured_index.replace("🚧".encode(), "✅".encode()))
+        refused = run(*close_arguments)
+        assert refused.returncode == 2
+        assert (
+            "reviewed bookkeeping changed; capture and re-review: plan/INDEX.md" in refused.stderr
+        )
+        assert not (run_dir / "closure.json").exists()
+        index.write_bytes(captured_index)
+        return
     closed = run(*close_arguments)
     repeated = run(*close_arguments)
     assert closed.returncode == repeated.returncode == 0, closed.stderr + repeated.stderr
     assert (repository / "LOG.md").read_text().count(close_text) == 1
     closure = json.loads((run_dir / "closure.json").read_text())
     assert closure["status"] == "complete" and closure["outcome"] == "accepted"
+    assert index.read_bytes() == captured_index
+    index.write_bytes(captured_index.replace("🚧".encode(), "✅".encode()))
+    handoff = subprocess.run(
+        [str(repository / "bin/check"), "all"],
+        cwd=repository,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert handoff.returncode == 0, handoff.stdout + handoff.stderr
+    assert "CATALOGS OK" in handoff.stdout
 
-    (repository / "code.py").write_text("VALUE = 2\n")
+    (repository / "code.py").write_text("VALUE = 3\n")
     stale = run(
         "record-gate",
         "--run-dir",
