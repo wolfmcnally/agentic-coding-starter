@@ -28,11 +28,9 @@ If you are working on a phase:
 ```mermaid
 graph TD
     P1[Phase 1<br/>Adopt the template for your project]
-    P2[Phase 2<br/>Model support and portable role presets] --> P3[Phase 3<br/>Coherent phases and instruction delivery]
-    P3 --> P4[Phase 4<br/>Qualification and evaluation]
 ```
 
-The adoption placeholder remains available; the operator approved the three sequential template-improvement outcomes on 2026-09-04. Phase 2 does not depend on adopting the template as another product. These phases remain monolithic unless an actual decision or acceptance boundary requires decomposition. **Derived projects** stamped from this template via `stamp` enumerate every major phase the brief surfaces at bootstrap (each as a sketched `plan/phase-N.md` file at lower fidelity), per [`../briefs/methodology.md`](../briefs/methodology.md) §6 and [`../briefs/agentic-bootstrap.md`](../briefs/agentic-bootstrap.md) §8. Sub-phases stay JIT (drafted at parent open via `kickoff` Step 1a) and ripple at every phase close per [`../policies/phase-ripple.md`](../policies/phase-ripple.md).
+The adoption placeholder is this template's only phase. Improving the methodology this repository ships is not phase work and never enters `plan/` — it routes through direct implementation under [`../policies/review-lanes.md`](../policies/review-lanes.md). **Derived projects** stamped from this template via `stamp` enumerate every major phase the brief surfaces at bootstrap (each as a sketched `plan/phase-N.md` file at lower fidelity), per [`../briefs/methodology.md`](../briefs/methodology.md) §6 and [`../briefs/agentic-bootstrap.md`](../briefs/agentic-bootstrap.md) §8. Sub-phases stay JIT (drafted at parent open via `kickoff` Step 1a) and ripple at every phase close per [`../policies/phase-ripple.md`](../policies/phase-ripple.md).
 
 ## Phase Table
 
@@ -40,10 +38,7 @@ Status legend: ⏳ Not Started · ⬅️ Next (at most one) · 🚧 In Progress 
 
 | Phase                  | Title                                | Status |
 |------------------------|--------------------------------------|--------|
-| [Phase 1](phase-1.md)  | Adopt the template for your project  | ⏳     |
-| [Phase 2](phase-2.md) | Model support and portable role presets | ✅ |
-| [Phase 3](phase-3.md) | Coherent phases and reliable instruction delivery | 🚧 |
-| [Phase 4](phase-4.md) | Integrated qualification and bounded evaluation | ⏳ |
+| [Phase 1](phase-1.md)  | Adopt the template for your project  | ⬅️     |
 
 `kickoff` flips `⬅️` → `🚧` on start, `🚧` → `✅` on completion, and advances the next `⏳` row to `⬅️` per this dependency graph. Status does not live in per-phase frontmatter.
 
@@ -51,13 +46,15 @@ Every phase row carries exactly one recognized status. An idle incomplete
 project has exactly one `⬅️`; active work may have zero while its executable
 row is `🚧`; a complete project has zero; more than one is always invalid.
 
-## Approved improvement work
+## Methodology work is not phase work
 
-Operator decision, 2026-09-04: implement the [Astra-era development workflow](../briefs/astra-era-development.md) through phases 2–4. Model routing precedes instruction delivery; integrated qualification follows both. Phase 1 remains the adoption example, not a prerequisite to template maintenance.
+Improving the methodology this template ships — its instructions, policies, briefs, skills, role definitions, orchestration code and their proofs — does not belong in `plan/`. It routes through direct implementation, one independent review and the required checks, per [`../policies/review-lanes.md`](../policies/review-lanes.md). `plan/` is for product work: the thing the template is being used to build. In this repository that surface is `project/`, and Phase 1 is the placeholder that hands it to you.
+
+That methodology is this template's subject matter does not make it this template's product. The distinction is what keeps a derived project's plan legible after `stamp`.
 
 ## Decomposition ledger (convention)
 
-As a plan grows, this file also records the *why* of its own shape, in prose near the phase table: when a sub-phase is inserted, note when it was drafted, at whose close, what it carved off, what invariant it must preserve, and why the numbering is what it is; when phases are renumbered or reordered, record the event and what it did (and did not) change in the dependency structure; and precede a large phase table with a short critical-path narrative — ordering rationale, parallelism opportunities, and any ratified reversals with their dates. Sub-phase insertion mechanics are governed by [`../policies/phase-ripple.md`](../policies/phase-ripple.md); this ledger is where their rationale survives. A one-phase plan (like this template's) has nothing to record yet.
+As a plan grows, this file also records the *why* of its own shape, in prose near the phase table: when a sub-phase is inserted, note when it was drafted, at whose close, what it carved off, what invariant it must preserve, and why the numbering is what it is; when phases are renumbered or reordered, record the event and what it did (and did not) change in the dependency structure; and precede a large phase table with a short critical-path narrative — ordering rationale, parallelism opportunities, and any ratified reversals with their dates. Sub-phase insertion mechanics are governed by [`../policies/phase-ripple.md`](../policies/phase-ripple.md); this ledger is where their rationale survives. Retirement record, 2026-09-05 (operator-directed): phases 2, 3 and 4 were removed. Drafted 2026-09-04 to implement the [Astra-era development workflow](../briefs/astra-era-development.md), all three carried methodology work — routing configuration, kickoff and root instructions, canonical role definitions, policies and their proofs — and none touched `project/`. They were phase-shaped because "methodology is this template's product" was mistaken for "methodology is phase work". The route was corrected in policy on 2026-09-05, one day after the phases were drafted, but the rows survived the correction and Phase 3 still held `🚧`; this record closes that gap. The three rows ended differently and the record should not flatten them. Phase 2 closed with an END block and its work is delivered. Phase 3's implementation is delivered and was closed under the direct-implementation route, not under the phase workflow its own PARK record was written for. Phase 4 never started; its qualification and evaluation batches are prepared, unrun and separately priced, and they are listed under "What remains explicitly pending" in the [Astra-era development workflow](../briefs/astra-era-development.md) brief, which is now their home. `LOG.md` is append-only and unedited — no completed work was reverted and no completed phase was merged. In notes dated before 2026-09-05, "Phase 2", "Phase 3" and "Phase 4" refer to those retired methodology rows, not to any product phase a reader will find in this table.
 
 A mature plan's ledger converges on a small vocabulary of **typed, dated, operator-attributed notes** (observed across ~30 phases in a donor project); use these forms rather than inventing new ones:
 

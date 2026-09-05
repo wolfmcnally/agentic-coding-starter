@@ -124,7 +124,7 @@ Four words with exact meanings, evolved in fail-closed orchestration practice. T
 - **Frozen** — tooling (not evidence) made byte-identical and read-only under a recorded manifest, so later runs provably execute the qualified instrument rather than a drifted copy.
 - **Parked** — the run-level stop discipline defined in the doctrine above: a deliberate, orderly stop with a written causal account, nothing disturbed, a clean proven scene, and explicit resume conditions. Distinct from the field's *interrupt/pause* (designed suspension awaiting input), *checkpoint* (the state snapshot that makes resuming cheap — machinery, not discipline), and *halt* (ending execution with no promises at all).
 
-**Enforcement status:** these are doctrine, not yet mechanics. Self-resume budgets in `kickoff`, delta-merge tooling, and instrument-qualification harnesses are not yet mechanized in this template; until they land, the `kickoff` prose loop and the human relay carry these rules.
+**Enforcement status:** mostly doctrine. Self-resume budgets are mechanized — the `run_budgets.self_resume` key in `kickoff.yaml`, read and enforced by `bin/kickoff-config` — and convergence-lease grants are mechanized in the role policy named above. Delta-merge tooling and instrument-qualification harnesses are not yet mechanized in this template; until they land, the `kickoff` prose loop and the human relay carry those rules.
 
 ## What this methodology gives up
 

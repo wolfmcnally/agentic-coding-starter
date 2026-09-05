@@ -1,6 +1,6 @@
 ---
 title: "Wolf's Agentic Coding Starter Kit"
-date: 2026-08-25
+date: 2026-09-05
 status: implemented
 scope: Canonical primer on this repository for a general audience, from working engineers to readers who have never written code. Explains what the repository is for and how its parts work. Source of truth for every derivative rendering.
 
@@ -8,7 +8,7 @@ scope: Canonical primer on this repository for a general audience, from working 
 # The presence of this block is what marks the brief as a treatise.
 # `directives` is append-only: a reversal is a new dated entry, never an edit.
 treatise:
-  updated: 2026-08-25
+  updated: 2026-09-05
 
   purpose: >-
     Explain what this repository is for and how its parts work, to a reader who
@@ -155,6 +155,17 @@ treatise:
         Retitled the piece and its rendering; masthead restructured as title,
         subtitle, byline, with the fuller author note kept beneath. Opening
         sentence reworded to hub framing.
+    - date: 2026-09-05
+      ruling: >-
+        "Clean up the phase rows that never should have been there and
+        implement the rest of the methodology work yourself now."
+      effect: >-
+        Refreshed the piece against the repository as it now stands: corrected
+        the stale verification counts, which had drifted a full test-estate
+        reset out of date; completed the skills table with rule-one, plain,
+        ask, and the two review sweeps; and added the routing distinction, that
+        changes to the method itself are implemented directly and independently
+        reviewed rather than run through the four-role loop.
 
   renderings:
     - format: artifact
@@ -176,8 +187,10 @@ treatise:
       source: https://aipatternbook.com
       retrieved: 2026-08-24
       volatility: >-
-        The entry count moves; briefs/eacp-pattern-map.md recorded 295 articles
-        on 2026-07-23. Re-check before republishing.
+        The entry count moves. briefs/eacp-pattern-map.md recorded 295 articles
+        on 2026-07-23 and 316 when last checked on 2026-08-25, so the prose
+        figure is a dated snapshot, not a current count. Re-check before
+        republishing.
     - claim: The repository is public at github.com/wolfmcnally/agentic-coding-starter.
       source: git remote of this checkout
       retrieved: 2026-08-24
@@ -294,6 +307,8 @@ Work on a phase passes through four specialists, each with a narrow job. A plann
 
 No role reviews its own output. Round-trips between them are bounded: the loop continues while each pass shrinks the list of open problems, and stops for a human when the same complaint keeps returning, which means the fix is not reaching whatever generates the problem.
 
+The four-role loop is for building the product. Changes to the method itself take a shorter route: once a person has approved what the change should accomplish, it is implemented directly and then read once by an independent reviewer, with the same tests and the same closing paperwork. The reason is practical. Running the full loop over the instructions that define the loop means planning a change to the planner's own brief, which produces rounds of paperwork about paperwork and very little work. Independent review is what actually catches the defect, so that is the part kept.
+
 Every test result is stamped with a fingerprint of the exact version of the project it ran against. Change any relevant file and the old result stops counting, because it was evidence about a version that no longer exists.
 
 This is why a phase ends with the full test suite running **twice**. The first run proves the code the critic approved. Then the orchestrator writes the closing paperwork: flip the status, append the log entry, file the lessons, generate the report. Those writes change the project. So the suite runs again against the version actually being handed over, and after that, nothing may be written at all.
@@ -344,7 +359,7 @@ It gives up unattended autonomy at the end. Work that can be proved gets deliver
 
 It gives up wandering mid-flight. Once a phase starts, the orchestrator follows the plan. Explore before it starts, or between phases.
 
-And the enforcement is uneven in one area. Sixteen rules govern what happens when a long automated run hits trouble: when it may recover on its own, when it must stop and wait, how it proves its instruments before trusting them. Some of those rules are enforced by machinery. The rest are written guidance that the orchestrator and the human carry between them. The repository says which is which rather than leaving a reader to find out.
+And the enforcement is uneven in one area. Eighteen rules govern what happens when a long automated run hits trouble: when it may recover on its own, when it must stop and wait, how it proves its instruments before trusting them. Some of those rules are enforced by machinery. The rest are written guidance that the orchestrator and the human carry between them. The repository says which is which rather than leaving a reader to find out.
 
 ## Where to find it, and how to start
 
@@ -372,6 +387,10 @@ a leading slash; in Codex, a dollar sign. The set is small on purpose.
 | `roles` | Changes which model runs which of the four roles. |
 | `treatise` | Produces an explanation like this one from the repository's own authority. |
 | `methodology` | Restates the eleven steps, for a session that needs the reminder without reading the whole brief. |
+| `rule-one` | Turns a correction, failure, or surprise into a durable lesson instead of a repeated mistake. |
+| `plain` | Rewrites a message meant for you into plain terms: what happened and what it costs, not how the machinery works. |
+| `ask` | Puts a decision in front of you with real options. Only you can start it; no agent may. |
+| `sweep-planning`, `sweep-coding` | Read months of past reviews to find why plans and code kept getting sent back, then propose fixes to the roles themselves. |
 
 `learn`, `teach`, and `sweep` are the machinery behind the evolving half of the
 opening claim. They are how a practice discovered in one project reaches the
@@ -379,7 +398,7 @@ others.
 
 ## Checking any of this
 
-None of the above has to be taken on faith. From a copy of the project, one command runs every check the method claims to run: twelve categories, 572 tests, all passing as of 24 August 2026. Other commands verify that the rules are indexed, that no duplicated instruction file has drifted from its original, that the lessons ledger is well formed, and that no private path or outside project name has leaked into a public repository.
+None of the above has to be taken on faith. From a copy of the project, one command runs every check the method claims to run: sixteen in all, being code style, formatting, the test suite, and thirteen separate rule checks, all passing as of 5 September 2026. Behind them sits a governed collection of 126 executable proofs, 103 of which are tests. That collection is capped and audited rather than left to grow: a new proof has to name the risk it covers and either claim approved room or retire an older proof to make space, because a suite nobody prunes eventually costs more to maintain than the defects it catches. Other commands verify that the rules are indexed, that no duplicated instruction file has drifted from its original, that the lessons ledger is well formed, and that no private path or outside project name has leaked into a public repository.
 
 One check needs no command. Read a phase's closing entry, then read the change it delivered. The two should agree.
 

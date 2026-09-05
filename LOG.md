@@ -1476,3 +1476,29 @@ Preserve all completed implementation and historical evidence. Record the approv
 
 Lessons:
 - The operator explicitly approved a permanent methodology-routing correction: direct implementation after scope approval, one independent review, focused corrections and required full gates. Persist it at policies/review-lanes.md and link it from entry instructions; do not add a new orchestration mechanism to implement this routing decision.
+
+## 2026-09-05 15:37 — END — Methodology routing correction and Astra-era completion
+
+Direct implementation under the methodology-improvement route ratified 2026-09-05. No phase, no phase roles, one independent review.
+
+**Approved scope (operator, 2026-09-05).** Two instructions: "Clean up the phase rows that never should have been there" and "implement the rest of the methodology work yourself now", with commit and push authority granted for the session.
+
+**Diagnosis.** Phases 2, 3 and 4 were drafted 2026-09-04 to implement the Astra-era development brief. All three carried methodology work — routing configuration, kickoff and root instructions, canonical role definitions, policies, briefs and their proofs — and none touched `project/`, this repository's product surface. The routing error was reasoned from "methodology is this template's product", which the corrective policy now rebuts by name. That correction was ratified 2026-09-05, one day after the rows were drafted, but the rows survived it and Phase 3 still held an in-progress marker, so the retired route stayed live and selectable. A rule adopted mid-task does not retire what the previous rule produced; that is filed as `lessons/effective-asp.md`.
+
+**Changed paths.** Deleted `plan/phase-2.md`, `plan/phase-3.md`, `plan/phase-4.md`. Rewrote `plan/INDEX.md` — dependency graph, single-row phase table with Phase 1 marked next, a new section stating that methodology work never enters `plan/`, and a dated retirement record carrying a decoder-ring note for pre-2026-09-05 phase numbers. Expanded the qualification and evaluation section of `briefs/astra-era-development.md` and moved its status from draft to implemented. Corrected the enforcement-status sentence in `briefs/methodology.md`. Refreshed `briefs/methodology-treatise.md` — verification counts, skills table, the routing distinction, external-fact volatility pointer, and an appended editorial-record directive. Filed `lessons/effective-asp.md`, `lessons/strategic-jaguarundi.md`, `lessons/imperial-eel.md` and `lessons/indefinable-numbat.md`.
+
+**Qualification outcome.** Offline qualification is complete and is now audited in a citation table a reader can check row by row. No proof family was admitted: coverage was reached by widening existing families, which the zero post-reset budget requires. The live qualification batch and the four-task twelve-run comparative batch are written, prepared and unrun; both remain separately priced and operator-authorized. No performance claim, no cost-per-outcome figure and no preset comparison exists in this repository, and none may be written until those batches run.
+
+**Independent review.** One review of the complete change, covering both the kickoff-decomposition commit already delivered earlier the same day and the uncommitted work, since that commit's final critique never ran and its delivery is not approval. Initial verdict REVISE with five findings, each independently confirmed at its definition before any fix: a stale rule count in the treatise that survived the pass made to correct the other stale counts; an audit row citing a file that could not support it; an enforcement-status sentence contradicted by three lines of its own brief and by its derivative skill; a retirement record that flattened three different phase outcomes into one delivery claim; and an introductory sentence quantifying over more surfaces than its table enumerated. All five resolved and verified. Final verdict APPROVED at candidate `e5db7ad8826a39df560397a8a3d2cf2be4eb048e27e14d276d92195789f19e40`.
+
+Two reviewer observations were routed rather than implemented, because each would add mechanism the approved scope never named: the root instruction file sits at 16376 bytes against a 16384-byte ceiling while every new brief or policy requires a catalog row there, and the direct-implementation route has no scope artifact its independent reviewer can read, so this review reconstructed the approved outcome from the dispatching agent's own account. Both are lessons for operator ruling.
+
+**Gates.** `./bin/check all` green on the reviewed candidate `e5db7ad8826a39df560397a8a3d2cf2be4eb048e27e14d276d92195789f19e40`; the second bare handoff gate follows this bookkeeping. Gate results are the orchestrator's measurement; the reviewer was read-only and did not re-run them.
+
+**Remaining human criteria.** Whether the two routed observations become work. Whether the private treatise artifact rendering is refreshed from the updated brief. Authorization and pricing for both prepared batches. None of these is claimed here.
+
+Lessons:
+- A ratified correction does not retire the artifacts the previous rule produced; enumerate and dispose of them explicitly, watching for live markers rather than historical records (`lessons/effective-asp.md`).
+- A gate enforcing a byte budget should report remaining headroom, not only pass or fail (`lessons/strategic-jaguarundi.md`).
+- A direct-implementation route needs a scope artifact written before the work, so the independent reviewer measures against something the implementer did not author (`lessons/imperial-eel.md`).
+- A committed snapshot that no gate regenerates is a dated observation, not a live measurement, and must not be the only source for a durable claim (`lessons/indefinable-numbat.md`).
