@@ -1165,3 +1165,47 @@ The new gate and staged hook were exercised with a real refusal in an isolated f
 Lessons: [smoky-jackrabbit](lessons/smoky-jackrabbit.md) records the assessment's omitted configuration dependency; [macho-collie](lessons-archived/macho-collie.md) records the application recurrence involving independent gate and hook fixture inventories. No new rule was derived from these destination findings. The Rule One diagnostic brief and Codex pointer wrappers remain compatible without edits. Donor-specific operational settings, private evidence, proof judgments, and domain code were not transferred; the donor remained read-only.
 
 Final-gate correction: the first full run exposed a stale per-kind test inventory assertion. It now names 85 behavioral families and 103 behavioral leaves, plus 23 gate/hook proofs, preserving the 108-family and 126-leaf totals. The full gate is rerun against this corrected uncommitted close per the handoff rule.
+
+## 2026-09-04 20:56 — END (correction)
+Preflight read-access challenge repair before Astra-era implementation
+
+Follow-up route:
+- Bounded user-authorized repair after the configured reviewer preflight failed; the improvement phases had not started. The operator instructed: "Proceed to diagnose and fix, then commit and restart."
+
+Diagnosis:
+- The retained provider response reported that the binary file could not be recovered exactly by Read and the requested SHA-256 shell command was denied. The challenge required capabilities outside the role's tool stance.
+- The repair uses unpredictable ASCII readback; the host validates exact content and computes the receipt hash. Read-only permissions and receipt schema remain unchanged.
+
+Role model/venue:
+- Planner review, coder, and code critic: independent native contexts; these artifacts were not produced by the configured Opus review venue.
+- Live repaired preflight: configured Opus high reviewer and critic both passed. No phase-role execution or model-performance comparison is claimed.
+
+Files changed:
+- bin/kickoff-config — readable challenge and host-side verification.
+- tests/test_kickoff_config.py — strengthened retained proof across both provider paths.
+- policies/role-models.md and policies/orchestration-control-plane.md — corrected read-access contract.
+- briefs/cross-agent-invocation.md, briefs/deterministic-orchestration-control-plane.md, briefs/eacp-pattern-map.md, and .claude/skills/kickoff/SKILL.md — matching probe documentation.
+- lessons/divided-magpie.md — recorded the tool-capability contradiction recurrence.
+
+Build status:
+- Focused configuration tests: 8 passed, warning-free; explicit-config lint and format passed.
+- Independent plan review and code critique: APPROVED; no blocking findings.
+- Product reviewed: 25fe0ce8066c7bdd97b2792e5bc78d375938933bae7928ee72afc19ae52d527d.
+- Implementation full gate: 103 tests passed; lint, format, policy, and anonymization passed without warnings. Receipt binds the reviewed implementation tree.
+- Proof estate remains 108 families and 126 leaves; no new proof family was admitted. Existing effectiveness report validated; no new effectiveness assay is claimed.
+- Handoff gate: runs after this tracked block; completion is contingent on the final bare full-gate receipt.
+
+Acceptance:
+- Objective: exact readback rejects incorrect challenges, obsolete digest responses, malformed or extra-text replies, and prompt echoes; failure prevents toolchain continuation and receipt creation. Host receipt digest and stale-configuration refusal are exercised.
+- Parked for the user: None for this repair. The approved improvement plan remains to be implemented, and paid experiments remain separately budgeted.
+
+Delivery:
+- default — commit + fast-forward push after the handoff gate.
+
+Lessons:
+- divided-magpie recurred: qualify a role's challenge using the capabilities actually granted to it.
+- The diagnostic wrapper initially selected an unsupported ambient Python; rerunning with the declared supported runtime corrected it. Existing toolchain guidance already covers the failure; no duplicate rule added.
+- graduation DECIDE: none.
+
+Remaining:
+- Restart the approved Astra-era improvement work after delivery.

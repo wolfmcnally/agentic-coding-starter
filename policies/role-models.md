@@ -97,9 +97,7 @@ Before phase identification, decomposition, status mutation, log writes, or agen
 ```
 
 The manager probes every non-native role target with its resolved `(CLI, model,
-effort, access mode, research capability)`. It writes unpredictable bytes to an
-isolated local file and requires the venue to read them and return their exact
-SHA-256 beside `KICKOFF_PREFLIGHT_OK`; echoing a prompt sentinel is insufficient.
+effort, access mode, research capability)`. It writes unpredictable ASCII text to an isolated local file and requires the venue to read and return that exact text beside `KICKOFF_PREFLIGHT_OK`. The text is absent from the prompt; echoing a prompt sentinel is insufficient. The manager validates the response and computes the SHA-256 of the file bytes for the receipt, so read-only roles need no hashing tool or shell permission.
 The receipt binds the configuration digest, harness, resolved targets, and
 shared probe digest. All-native routing writes the same schema with no targets.
 Production credential scrubs, model/effort and research flags, stdin closure,

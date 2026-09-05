@@ -948,14 +948,17 @@ def diagnostic(process: subprocess.CompletedProcess[str]) -> str:
 
 def preflight_prompt(probe_name: str) -> str:
     return (
-        f"Read the local file {probe_name}, compute the SHA-256 digest of its exact "
-        f"bytes, and reply with exactly: {PREFLIGHT_SENTINEL} <sha256>"
+        f"Read the exact text of the local file {probe_name} and reply with exactly: "
+        f"{PREFLIGHT_SENTINEL} <file text>"
     )
 
 
 def validate_preflight_answer(answer: str, expected_digest: str) -> None:
-    if answer.strip() != f"{PREFLIGHT_SENTINEL} {expected_digest}":
-        raise RuntimeError("capability response did not contain the local probe digest")
+    match = re.fullmatch(rf"{PREFLIGHT_SENTINEL} ([0-9a-f]{{64}})", answer.strip())
+    if match is None:
+        raise RuntimeError("malformed capability response: expected sentinel and file text")
+    if hashlib.sha256(match.group(1).encode("ascii")).hexdigest() != expected_digest:
+        raise RuntimeError("capability response did not match the local probe challenge")
 
 
 def run_claude_preflight(
@@ -1136,7 +1139,7 @@ def preflight(section: MutableMapping[str, Any], *, receipt: Path | None = None)
     results: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(prefix="kickoff-preflight-workdir-") as workdir:
         probe_name = ".kickoff-capability-probe"
-        probe_bytes = os.urandom(64)
+        probe_bytes = os.urandom(32).hex().encode("ascii")
         Path(workdir, probe_name).write_bytes(probe_bytes)
         expected_digest = hashlib.sha256(probe_bytes).hexdigest()
         if not targets:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -370,32 +371,97 @@ def _coder_pinned_config(tmp_path: Path) -> Path:
 
 
 def test_preflight_still_aborts_on_a_failed_sentinel(tmp_path: Path) -> None:
-    config = _coder_pinned_config(tmp_path)
-    broken = fake_cli(tmp_path, "claude", """printf '%s\\n' '{"result":"nope"}'""")
-    result = run_manager(config, "preflight", cli=broken)
-    assert result.returncode != 0
-    assert "preflight failed" in result.stderr
-    assert "toolchain" not in result.stdout
+    for venue in ("claude", "codex"):
+        work = tmp_path / venue
+        work.mkdir()
+        config = _coder_pinned_config(work)
+        if venue == "codex":
+            config.write_text(config.read_text().replace("model: opus", "model: sol"))
+        observed = work / "observed.txt"
+        toolchain = work / "toolchain.txt"
+        executable = work / venue
+        executable.write_text(
+            f"#!{sys.executable}\n"
+            + r"""import hashlib
+import json
+import os
+import sys
+from pathlib import Path
 
-    working = fake_cli(
-        tmp_path,
-        "claude",
-        """if [ -f .kickoff-capability-probe ]; then
-  digest=$(shasum -a 256 .kickoff-capability-probe | awk '{print $1}')
-  printf '{"result":"KICKOFF_PREFLIGHT_OK %s"}\\n' "$digest"
-else
-  printf '%s\\n' '{"result":"KICKOFF_TOOLCHAIN_OK"}'
-fi""",
-    )
-    receipt = tmp_path / "preflight.json"
-    result = run_manager(config, "preflight", "--receipt", str(receipt), cli=working)
-    assert result.returncode == 0, result.stderr
-    assert receipt.is_file()
-    verified = run_manager(config, "verify-preflight-receipt", "--receipt", str(receipt))
-    assert verified.returncode == 0, verified.stderr
-    assert "PREFLIGHT RECEIPT VALID" in verified.stdout
+probe = Path(".kickoff-capability-probe")
+if probe.is_file():
+    token = probe.read_text(encoding="ascii")
+    assert len(token) == 64 and all(c in "0123456789abcdef" for c in token)
+    prompt = sys.argv[sys.argv.index("-p") + 1] if "-p" in sys.argv else sys.argv[-1]
+    assert token not in prompt
+    assert "sha" not in prompt.lower() and "digest" not in prompt.lower()
+    Path(os.environ["PROBE_OBSERVED"]).write_text(token)
+    mode = os.environ["PROBE_RESPONSE"]
+    answer = "KICKOFF_PREFLIGHT_OK " + token
+    if mode == "wrong":
+        answer = "KICKOFF_PREFLIGHT_OK " + ("0" if token[0] != "0" else "1") + token[1:]
+    elif mode == "digest":
+        answer = "KICKOFF_PREFLIGHT_OK " + hashlib.sha256(token.encode("ascii")).hexdigest()
+    elif mode == "sentinel":
+        answer = "KICKOFF_PREFLIGHT_OK"
+    elif mode == "extra":
+        answer += " extra text"
+    elif mode == "malformed":
+        answer = "nope"
+else:
+    Path(os.environ["PROBE_TOOLCHAIN"]).write_text("called")
+    answer = "KICKOFF_TOOLCHAIN_OK"
+if "--output-last-message" in sys.argv:
+    Path(sys.argv[sys.argv.index("--output-last-message") + 1]).write_text(answer)
+else:
+    print(json.dumps({"result": answer}))
+"""
+        )
+        executable.chmod(0o755)
+        for mode in ("malformed", "wrong", "digest", "sentinel", "extra", "readback"):
+            receipt = work / f"{mode}.json"
+            result = run_manager(
+                config,
+                "preflight",
+                "--receipt",
+                str(receipt),
+                cli=executable,
+                extra_env={
+                    "PROBE_OBSERVED": str(observed),
+                    "PROBE_TOOLCHAIN": str(toolchain),
+                    "PROBE_RESPONSE": mode,
+                    "PATH": str(work) + os.pathsep + os.environ["PATH"],
+                },
+            )
+            token = observed.read_text()
+            if mode != "readback":
+                assert result.returncode != 0
+                assert "preflight failed" in result.stderr
+                expected = (
+                    "local probe challenge"
+                    if mode in ("wrong", "digest")
+                    else "malformed capability response"
+                )
+                assert expected in result.stderr
+                assert token not in result.stderr
+                assert hashlib.sha256(token.encode("ascii")).hexdigest() not in result.stderr
+                assert "toolchain" not in result.stdout
+                assert not receipt.exists()
+                assert not toolchain.exists()
+                continue
+            assert result.returncode == 0, result.stderr
+            assert toolchain.is_file()
+            document = json.loads(receipt.read_text())
+            assert document["targets"]
+            assert all(
+                target["probe_sha256"] == hashlib.sha256(token.encode("ascii")).hexdigest()
+                for target in document["targets"]
+            )
+            verified = run_manager(config, "verify-preflight-receipt", "--receipt", str(receipt))
+            assert verified.returncode == 0, verified.stderr
+            assert "PREFLIGHT RECEIPT VALID" in verified.stdout
 
-    config.write_text(config.read_text() + "\n# routing configuration changed\n")
-    stale = run_manager(config, "verify-preflight-receipt", "--receipt", str(receipt))
-    assert stale.returncode != 0
-    assert "stale routing configuration" in stale.stderr
+            config.write_text(config.read_text() + "\n# routing configuration changed\n")
+            stale = run_manager(config, "verify-preflight-receipt", "--receipt", str(receipt))
+            assert stale.returncode != 0
+            assert "stale routing configuration" in stale.stderr

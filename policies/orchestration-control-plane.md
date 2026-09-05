@@ -32,8 +32,7 @@ authoritative local inventory rather than a hand-maintained approximation.
 
 ## Venue receipt
 
-Preflight must require each non-native target to read unpredictable local bytes
-and return their exact SHA-256. The receipt records the routing-configuration
+Preflight must require each non-native target to read unpredictable ASCII text from a local file and return it exactly. The text must not appear in the prompt. The manager validates the response and computes the SHA-256 of the file bytes for the receipt; the model is not required to hash or use tools outside its declared stance. The receipt records the routing-configuration
 digest, harness, resolved target descriptors, and shared probe digest. An
 all-native run records the same schema with no targets. A stale, missing,
 malformed, or incomplete receipt refuses initialization or final acceptance.
