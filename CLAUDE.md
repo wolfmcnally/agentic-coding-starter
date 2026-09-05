@@ -139,7 +139,7 @@ Every applicable policy binds.
 
 ## Phase work and the `kickoff` skill
 
-Invoke `/kickoff` (Claude Code) or `$kickoff` (Codex). Read the [kickoff](.claude/skills/kickoff/SKILL.md) and each linked resource before its branch, including follow-ups/recovery; links do not prove reads. Limits: root 16384 UTF-8 bytes; entry 8192. Preserve obligations and catalogs; move explanation to its owner.
+Invoke `/kickoff` (Claude Code) or `$kickoff` (Codex). Read the [kickoff](.claude/skills/kickoff/SKILL.md) and each linked resource before its branch, including follow-ups/recovery; links do not prove reads. Limits: root 20480 UTF-8 bytes; entry 10240. Preserve obligations and catalogs; move explanation to its owner.
 
 ### Status markers
 
@@ -174,7 +174,7 @@ Rationale: [methodology](briefs/methodology.md#operating-invariants-and-vocabula
 
 ### Activity log (`LOG.md`)
 
-Owning skills append via the deterministic writer at true EOF; preserve bytes and chronology. Parks stay `🚧`; terminal records carry Lessons, evidence, remaining work and truthful outcomes.
+Owning writers append via the deterministic writer at true EOF; preserve bytes and chronology. Parks stay `🚧`; terminal records carry Lessons, evidence, remaining work and truthful outcomes.
 
 ### User actions (`user-actions/`)
 

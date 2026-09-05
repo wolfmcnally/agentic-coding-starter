@@ -1502,3 +1502,43 @@ Lessons:
 - A gate enforcing a byte budget should report remaining headroom, not only pass or fail (`lessons/strategic-jaguarundi.md`).
 - A direct-implementation route needs a scope artifact written before the work, so the independent reviewer measures against something the implementer did not author (`lessons/imperial-eel.md`).
 - A committed snapshot that no gate regenerates is a dated observation, not a live measurement, and must not be the only source for a durable claim (`lessons/indefinable-numbat.md`).
+
+## 2026-09-05 16:23 — METHODOLOGY SCOPE — Instruction budgets, route scope records, and log-writer authority
+
+**Written at close, not at start, and this block says so rather than implying otherwise.** The rule requiring a scope record before work begins was created by this change, and the `LOG.md` surface it mandates became an authorized option only through this change's own amendment to the log-writer table. The scope below was recorded before the work started, as the dispatch handed to the independent reviewer; it is transcribed here unaltered because the mandated surface did not exist when it was written. Every later change under this route writes its scope block first, in the ordinary way.
+
+Approved scope (operator, 2026-09-05, four ratified decisions):
+
+1. Amend the direct-implementation route so it requires a written scope record before work starts — the independent reviewer's finding on the previous change, ratified.
+2. Recover headroom in the root instruction file. The operator was shown the byte breakdown and that relocating the catalogs would require amending the parity policy, and chose to raise the ceiling rather than trim prose or relocate.
+3. Label the test-governance report in the canonical public explanation rather than mechanizing a freshness check.
+4. Leave the treatise's private artifact rendering stale — explicitly declined.
+
+Surfaces in scope: the review-lanes policy, the cross-harness parity policy, the log-discipline policy, the root instruction file, the bootstrap and Astra-era briefs, the treatise brief, the stamp skill, the catalog checker and its proofs, and the lessons ledger.
+
+Explicitly excluded: trimming any instruction prose, relocating the brief and policy catalogs, adding a freshness gate for the governance report, and republishing the artifact.
+
+Two rulings were taken mid-work and are recorded at their authorities rather than only here: the root ceiling stands at 20480 after the operator was shown that it spends 62.5% of a documented 32 KiB combined project-instruction budget, and the direct-implementation route gains a row in the log-writer table as its one non-skill writer.
+
+## 2026-09-05 16:23 — METHODOLOGY — Instruction budgets, route scope records, and log-writer authority
+
+Direct-implementation route. Scope block above; four operator decisions and two mid-work rulings, all ratified the same day.
+
+**Changed paths.** `policies/review-lanes.md` — the route now requires a scope record written before work starts, on a named surface, handed to the reviewer, written once and not revised to match what was built; the close records delivered scope against it and states any departure. `policies/log-discipline.md` — a `METHODOLOGY SCOPE` / `METHODOLOGY` row added by operator amendment, plus the eight statements of writer authority across that file and the root instructions brought into agreement. `policies/cross-harness-parity.md` — ceilings raised with the external budget they spend named. `bin/check-catalogs`, `tests/test_check_catalogs.py`, `briefs/agentic-bootstrap.md`, `.claude/skills/stamp/SKILL.md`, `CLAUDE.md`, `briefs/astra-era-development.md` — the raised ceilings at every enforcement site. `briefs/methodology-treatise.md` — the governance report labeled as a stored, non-refreshing measurement. `lessons/flashy-stoat.md` filed; `lessons/imperial-eel.md` graduated to the review-lanes policy and archived.
+
+**Instruction budgets.** Root 16384 to 20480 bytes, kickoff entry 8192 to 10240 — a uniform 25%. Nine sites carry the numbers or delegate to them, verified by searching numerically and by phrase. The root ceiling spends a documented external budget: a 32 KiB default combined project-instruction budget of which this repository's file is one contribution, so the retired ceiling was exactly half and the new one is 62.5%, leaving 12288 bytes for every other source in the chain including ones this repository cannot see or bound. The operator ratified 20480 knowing that arithmetic, and the parity policy records that any further raise re-opens the question rather than inheriting the answer. The entry ceiling is outside that budget, since skill bodies are progressively disclosed.
+
+**What the raise did not do.** Nothing reports headroom, so the next occupant meets the same wall at 20480 with the same eight bytes of warning. The lesson proposing that the gate report its margin remains an open candidate; the raise moved the wall and did not install the warning.
+
+**Independent review.** One review of the complete change across four rounds. Initial verdict REVISE with three findings: a ceiling raised without naming the external budget it spends, a snapshot label crediting the artifact with a date it does not carry, and the route having no authorized log entry kind. The third was routed to the operator rather than self-amended, as the log-discipline policy reserves table amendments to them. A fourth finding was introduced by the fix for the third — the writer amendment reached the table but not the numbered rule — and closing it properly took two further rounds, ending at eight agreeing statements across two files. Final verdict APPROVED at candidate `6219bd5ad084b1ec36b62553719d6be47288c5b7320514e8446180847627b291`.
+
+Two review judgments were overturned during the work, both recorded because they bear on the route's review quality. The reviewer's occurrence count of three included a sweep that had succeeded, and was corrected to two on its own re-examination. And a paragraph it verified as correct contained an exclusivity claim scoped to skills in the file's most-read position, which would have preserved the exact misreading the amendment existed to fix; the implementer overruled that verification and the reviewer agreed on re-reading.
+
+**Gates.** `./bin/check all` green on the reviewed candidate `6219bd5ad084b1ec36b62553719d6be47288c5b7320514e8446180847627b291`; the bare handoff gate follows this bookkeeping. Gate results are the orchestrator's measurement; the reviewer was read-only throughout and re-ran nothing.
+
+**Remaining human criteria.** Whether the headroom-reporting lesson and the one-constraint-many-registers lesson become work, and in the second case whether to collapse the restatements rather than add a sweep step. Whether the treatise artifact is ever refreshed. Authorization and pricing for the prepared qualification and comparative batches, which this change did not touch. None is claimed here.
+
+Lessons:
+- A constraint restated across registers has no single home; an amendment reaches the register the author was looking at and the document then disagrees with itself. Grep the bare noun in the owning file, then ask why the constraint has so many statements — consolidation removes the sweep rather than automating it (`lessons/flashy-stoat.md`).
+- Occurrences count per amendment, not per missed site. One lapse touching many places is one observation with wide blast radius; counting sites would trip the threshold on how verbose a document is, which is a property of the document rather than of the habit (recorded in the same lesson).
+- Requiring a scope record before the work is now the route's rule, graduated from candidate the day it was filed (`lessons-archived/imperial-eel.md`). Its first application showed the difference immediately: the reviewer could rule on whether raising a second ceiling was in scope instead of guessing.

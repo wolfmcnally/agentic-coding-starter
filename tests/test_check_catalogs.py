@@ -125,7 +125,7 @@ def test_tracked_markdown_deleted_from_worktree_is_not_read_as_a_source(
 def _assert_instruction_delivery(root: Path) -> None:
     instructions = root / "CLAUDE.md"
     entry = root / ".claude/skills/kickoff/SKILL.md"
-    for path, ceiling in ((instructions, 16384), (entry, 8192)):
+    for path, ceiling in ((instructions, 20480), (entry, 10240)):
         original = path.read_bytes()
         # Include multibyte prose and CRLF: the budget counts stored UTF-8 bytes.
         padding = ceiling - len(original) - len("\r\né".encode())

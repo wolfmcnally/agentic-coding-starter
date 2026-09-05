@@ -1,17 +1,17 @@
 # Policy: Activity Log Discipline
 
-`LOG.md` is the **append-only** record of what has been done to this repository. It is written by skills, never by hand. Do not hand-edit historical entries.
+`LOG.md` is the **append-only** record of what has been done to this repository. It is written by the writers named in the table below, never by hand. Do not hand-edit historical entries.
 
 ## What `LOG.md` is
 
-`LOG.md` carries two kinds of entry, and every entry belongs to exactly one skill.
+`LOG.md` carries two kinds of entry, and every entry belongs to exactly one named writer.
 
 **Phase entries**, written by `kickoff`:
 
 - A START/END pair per phase, plus append-only `END (correction)` blocks when explicit user feedback corrects an already closed phase.
 - The primary artifact the human reviews after `kickoff` finishes.
 
-**Repository-operation entries**, written by the skill that performed the operation. These record work done *to* the repository rather than *through* the plan, which is why they carry no phase id and no status transition:
+**Repository-operation entries**, written by the writer that performed the operation. These record work done *to* the repository rather than *through* the plan, which is why they carry no phase id and no status transition:
 
 | Entry heading | Written by | Records |
 |---|---|---|
@@ -20,10 +20,11 @@
 | `SWEEP (<focus>)` | `sweep` | A maintenance pass over the rule surfaces: what was retired, graduated, and left open. |
 | `SWEEP-CODING (<kind>)` | `sweep-coding` | The same longitudinal pass over the coder ↔ critic loop: harvested code-review verdicts and coder failure analyses, reason categories, attributions, corrections. Reads its latest entry the same way. |
 | `SWEEP-PLANNING (<kind>)` | `sweep-planning` | A longitudinal pass over harvested review verdicts: window, coverage, reason categories with counts, attributions, and the corrections applied or filed. The next run reads the latest entry to set its window and compute deltas. |
+| `METHODOLOGY SCOPE` / `METHODOLOGY` | the agent invoking the direct-implementation route ([review-lanes.md](review-lanes.md) § Methodology improvements) | The paired records of one direct methodology change: the scope block written before the work — approved outcome, surfaces in scope, explicit exclusions — and the terminal block written at close, carrying changed paths, independent verdict and resolutions, reviewed candidate, gate results and remaining human criteria. |
 
-The `Only finalized evidence may claim exact timing` rule and the START/END formats below govern phase entries. A repository-operation entry has no fixed schema beyond a `## <YYYY-MM-DD HH:MM> — <HEADING>` line and the same append-only, no-back-dating, no-fabrication rules; each owning skill defines its own body.
+The `Only finalized evidence may claim exact timing` rule and the START/END formats below govern phase entries. A repository-operation entry has no fixed schema beyond a `## <YYYY-MM-DD HH:MM> — <HEADING>` line and the same append-only, no-back-dating, no-fabrication rules; each owning writer defines its own body.
 
-A skill that is not in that table does not write to `LOG.md`. Adding a row is a policy amendment, not a skill author's decision — the point of the table is that a reader can tell, from this file alone, whether an entry had authority to exist.
+A writer that is not in that table does not write to `LOG.md`. Adding a row is a policy amendment, not a skill author's decision — the point of the table is that a reader can tell, from this file alone, whether an entry had authority to exist. The `METHODOLOGY` row is the one non-skill writer, added by operator amendment on 2026-09-05 because the direct-implementation route is a route rather than a skill and its close still owes a terminal record. That route's first close, written the same day under an `END —` heading before this row existed, is authorized by this amendment and is not rewritten; append-only means the heading it carries stands.
 
 ## What `LOG.md` is not
 
@@ -148,7 +149,7 @@ This block records a correction to an already authorized goal; it does not reope
 ## Rules
 
 1. **Append-only by exact bytes.** New blocks enter through `bin/log-append` at true EOF. The working and staged candidates must begin with the exact committed bytes; a semantically equivalent rewrite is still a violation. A committed mistake gets a later correction block. An uncommitted block may be relocated only by one unique content digest through `bin/log-relocate`, which preserves the committed prefix and every block identity.
-2. **Skills write; humans read.** Only the skills named in the table above append to `LOG.md`, each writing only its own entry kind. Humans don't write to it directly. The exceptions are bootstrapping (creating the initial `# Activity Log` header) and recovery (when a skill failed partway and left an inconsistent state).
+2. **Named writers only; humans read.** Only the writers named in the table above append to `LOG.md`, each writing only its own entry kind: the skills listed there, plus the direct-implementation route's `METHODOLOGY SCOPE` and `METHODOLOGY` blocks, which are the one non-skill writer. Humans don't write to it directly. The exceptions are bootstrapping (creating the initial `# Activity Log` header) and recovery (when a writer failed partway and left an inconsistent state).
 3. **Timestamps are real.** Use the orchestrator's actual wall-clock time when the block was written. Do not back-date.
 4. **The END block is a contract.** When the orchestrator writes an END block claiming the phase is done, the human is entitled to expect that every claim in the block is true. Fabricated evidence is the most dangerous failure mode this policy guards against; the orchestrator must never claim a build gate passed when it didn't, never claim a manual check was performed by the orchestrator, never embellish the file list.
 5. **The handoff gate closes the current block.** The active uncommitted END and

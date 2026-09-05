@@ -604,7 +604,7 @@ Generate the recipient's proof estate only after its real tests, gates, and hook
 
 ### Step 10 — Sanity-check the bootstrap
 
-Check the instruction capability as a whole: root at most 16384 UTF-8 bytes, kickoff entry at most 8192, the hard clauses and waiver intact, four unique ordered zone markers, and concise complete brief/policy/skill/role catalogs. Read the entry and all seven adjacent resources; verify direct live links and explicit read-before-branch instructions, including recovery and follow-ups, through both canonical and Codex directory paths. Directory transfer preserves relative link depth; update every actual consumer of moved sections. Structural reachability does not prove live loading or adherence. Local Astra authority and template docs pins remain excluded.
+Check the instruction capability as a whole: root at most 20480 UTF-8 bytes, kickoff entry at most 10240, the hard clauses and waiver intact, four unique ordered zone markers, and concise complete brief/policy/skill/role catalogs. Read the entry and all seven adjacent resources; verify direct live links and explicit read-before-branch instructions, including recovery and follow-ups, through both canonical and Codex directory paths. Directory transfer preserves relative link depth; update every actual consumer of moved sections. Structural reachability does not prove live loading or adherence. Local Astra authority and template docs pins remain excluded.
 
 
 Before declaring the bootstrap complete, verify:

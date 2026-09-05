@@ -86,8 +86,8 @@ def check_instruction_delivery(instructions: str) -> None:
         report("instructions", entry_relative, f"required entry is unreadable: {exc}")
         entry_text = ""
     for relative, text, ceiling in (
-        ("CLAUDE.md", instructions, 16384),
-        (entry_relative, entry_text, 8192),
+        ("CLAUDE.md", instructions, 20480),
+        (entry_relative, entry_text, 10240),
     ):
         size = len(text.encode("utf-8"))
         if size > ceiling:
