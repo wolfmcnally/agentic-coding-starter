@@ -116,6 +116,20 @@ The generator filters connective filler tokens and checks the candidate against 
 
 Archived files **stay on disk** — they are the audit trail linking every rule back to the incidents that earned it, and the record of what was considered and declined.
 
+### The second-instance test — state the rule, not the example
+
+A rule graduated from an incident **must name one other instance it also catches**, and that instance must differ from the originating one in tool, surface, or subject matter. If no second instance can be named, the text is stated at its example rather than at its class, and it does not graduate in that form.
+
+The test exists because a rule written at its example is true, reads as sufficient, and does not fire. The evidence is a donor project's eight sightings of one species — a check, count, control, proof, or report that succeeded while proving less than its name claimed — where each narrow rule failed to catch the next member. One of those rules ("never truncate the field you reason from") was written mid-phase and violated hours later, on different output, by the reader who had cited it that same day. The rule was correct. It named a command instead of a class, so nobody recognised the next instance as the same thing.
+
+Applying the test is cheap and its failures are informative:
+
+- **Two instances that differ in tool, surface, or subject while sharing one diagnosis** mean the rule is already at its class; state it there and cite both.
+- **A second instance that requires stretching** means the class is not yet identified. File the occurrence and wait rather than graduating the stretch.
+- **No second instance** means one observation. Per the threshold above, that is a candidate, not a rule.
+
+This test is the reason a family's covering sentence usually cannot graduate while its members can: the covering sentence catches every member by construction, so the second-instance test is trivially satisfied and tells you nothing, which is the same abstraction failure § Named families forbids. Graduate members on their own evidence; graduate a family-level rule only when it is checkable against work in hand, not merely descriptive of work already done.
+
 ## Named families
 
 A family is a set of open lessons whose **diagnoses rhyme**. Naming one does not

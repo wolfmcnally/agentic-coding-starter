@@ -79,6 +79,16 @@ had been running the whole time. The third was committed by a reader who had cit
 the first earlier that same day, which is the argument for stating this at its
 class rather than at any one command.
 
+## Name the repository you are asking about
+
+Every verification-grade repository command names its target explicitly — `git -C <repo-path> …` — regardless of where the shell believes it is. The same applies to any tool whose executable path and target repository are independent quantities: set or verify its working directory explicitly rather than inheriting one.
+
+The reason is the failure mode, not tidiness. Almost every directory of interest on a working machine sits inside *some* repository, so a query run from the wrong place does not error — it returns a well-formed, plausible answer about a different tree. That answer survives review, reads as evidence, and points every downstream conclusion at the wrong repository. A command that fails loudly is strictly safer than one that succeeds against the wrong subject.
+
+Four sightings in a donor project, differing in tool and subject: a history query that read a different repository twice in one night after an earlier directory change in the same shell; a probe that ran against the recipient's object database instead of the named source, making an existing commit appear absent; two probes that inherited a run-artifact directory and reported not-a-repository; and a manager invocation whose absolute executable path was correct while the repository it measured was not, yielding a plausible identity for the wrong tree.
+
+This is the same species as § Never reason over output you truncated yourself: in both, the instrument answers confidently about something other than the subject, and the reader cannot tell from the answer. There the reader removed part of the evidence; here the reader pointed the instrument somewhere else.
+
 ## Blacklists do not prove a closed world
 
 A denylist can establish that named bad cases were absent. It cannot establish

@@ -47,6 +47,16 @@ Initial review discovers broadly across the authorized outcome before classifyin
 
 Independent review, the declared lane, empirical acceptance and both full gates remain mandatory regardless of model selection. Byte counts, link checks and first-cycle approval are evidence for their named structural or review properties, never proof of model capability or instruction adherence.
 
+## A role never writes its own output file
+
+The orchestrator gives an external venue a file to receive that role's last message, and it is the same path the role is told its report goes to. The venue writes that file when the turn ends. A role that writes its report there during the turn has it overwritten by the terminal summary — typically a few lines linking to the file the summary just destroyed.
+
+So the report is the role's terminal message, not a file the role writes. Role prompts state this explicitly, because nothing about the path itself reveals that the harness owns it, and a role that helpfully saves its work to the location it was given destroys that work.
+
+Three sightings in a donor project across two weeks, each losing a complete handoff report, one of them 10.7 KB. All three were noticed only because the orchestrator had read the report minutes before it vanished; read after turn completion instead, the loss is silent and the change evidence is unrecoverable. Recovery cost a resume dispatch to a distinct output path and worked only because the provider session was still resumable.
+
+Whether the watcher should additionally *refuse* such a write, rather than relying on the instruction, is an open operator decision recorded in the human-only action queue. Until it is settled, the instruction is the whole control, which is why it is stated in every role definition rather than only here.
+
 ## Verdict headers
 
 Both reviewers (`plan-reviewer` and `code-critic`) end with a verdict block whose first line is exactly one of:

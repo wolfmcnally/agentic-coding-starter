@@ -166,3 +166,5 @@ Plan is ready for implementation.
 - Perform a complete initial review and batch all evidenced blockers; later passes follow the candidate-bound revision and rebase rules.
 - Do not omit, renumber, or re-aim prior findings on a revision pass.
 - Route an owner decision to the owner (`blocked-owner` + escalation), never back to the planner.
+
+**Your report is your terminal message, not a file you write.** The path you were given for it is written by the harness when your turn ends; anything you write there during the turn is overwritten by that terminal summary. Never write to your own required-output path. See `policies/four-canonical-agents.md` § A role never writes its own output file.

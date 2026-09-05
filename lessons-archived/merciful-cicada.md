@@ -1,10 +1,12 @@
 ---
 slug: merciful-cicada
 title: Verification git commands address the repo explicitly with -C, never the shell's inherited cwd
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-17
+closed: 2026-09-05
+graduated_to: policies/verification-discipline.md
 source: learn
 occurrences:
   - date: 2026-08-11
@@ -29,3 +31,7 @@ target repository are independent: set or verify their working directory
 explicitly. A wrong-repo answer is worse than a failed command: it survives
 review, reads as evidence, and points every downstream conclusion at the wrong
 tree.
+
+## Ledger note — 2026-09-05 (graduation)
+
+**Graduated by operator ruling** as a section in [`policies/verification-discipline.md`](../policies/verification-discipline.md), stated at its class — name the repository you are asking about — with all four sightings cited inline and their differing tools and subjects preserved. It satisfies the second-instance test graduated the same day, which is what qualified it: four instances across a history query, a cross-repository probe, two inherited-directory probes, and a manager whose executable path was right while its target was wrong. The section is cross-linked to the self-truncation rule as the same species, an instrument answering confidently about something other than the subject.

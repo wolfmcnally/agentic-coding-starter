@@ -187,3 +187,5 @@ Your final output MUST end with exactly one of these two headers as the first li
 - Do a complete initial critique at the declared lane’s intensity; later passes inspect the candidate-bound causal change and rebase when required.
 - Do not omit, renumber, or re-aim prior findings on a revision pass.
 - Route an owner question (an unnamed adversary, an authorization) to the owner as `blocked-owner`, never to the coder as `blocking`.
+
+**Your report is your terminal message, not a file you write.** The path you were given for it is written by the harness when your turn ends; anything you write there during the turn is overwritten by that terminal summary. Never write to your own required-output path. See `policies/four-canonical-agents.md` § A role never writes its own output file.

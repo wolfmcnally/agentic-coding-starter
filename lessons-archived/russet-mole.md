@@ -1,10 +1,12 @@
 ---
 slug: russet-mole
 title: Something reported success while proving less than its name claimed — the family, not the instance
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-24
+closed: 2026-09-05
+graduated_to: policies/lessons.md
 source: learn
 occurrences:
   - date: 2026-08-16
@@ -115,3 +117,13 @@ warns does not fire. The occurrence rows are unchanged — the carve-off graduat
 rule, not a count, and the remaining members still describe this family. The next
 sweep should not re-litigate this from scratch: the open question is whether a
 firing form of the family rule exists, not whether the evidence is sufficient.
+
+## Ledger note — 2026-09-05 (graduation)
+
+**Graduated, in a firing form, by operator ruling.** Held twice before on the correct ground that the only sentence broad enough to cover all eight members — *state a rule at its class, not at the example that produced it* — was the kind this repository warns does not fire. The open question was never the evidence; it was whether a checkable form existed.
+
+The form adopted is the **second-instance test**, now a section in [`policies/lessons.md`](../policies/lessons.md): a rule graduated from an incident must name one other instance it also catches, differing in tool, surface, or subject matter, or it is stated at its example and does not graduate in that form. It is the same claim as the family sentence, restated so a writer can fail it and a reviewer can check it. The family's own history is what qualifies it under its own test: the truncation rule was written at a command, and the eight members differ in tool and subject while sharing one diagnosis.
+
+The narrow members already graduated stay in force and are unaffected — the one-reachable-answer and vacuous-green rules, the material-count reproduction rule, and the self-truncation rule carved off on 2026-08-25.
+
+**Two same-species instances were observed in this repository on the day of graduation** and are recorded here rather than as occurrence rows, because they arrived during the review that closed the entry and adding rows to a closing lesson would change a count that no longer gates anything. Both were caught by independent review and neither shipped: a published claim describing a stored report as "dated" when the artifact carries no date, and an audit table citing a file that could not support the row attached to it. They matter because all eight recorded sightings came from one donor project; these were the first here, and they are why the family was treated as live rather than historical.
