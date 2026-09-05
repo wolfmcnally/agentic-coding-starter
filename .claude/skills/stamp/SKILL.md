@@ -479,7 +479,7 @@ Author these afresh, using the gathered configuration:
     - `## Project briefs` — list of `briefs/*.md` files specific to this project (initially just `BRIEF.md`).
     - `## Project surfaces` — describe the deliverable (path, what language, what the example or seed code is). When `project_isolation` is on, the surface is `project/`; when off, name the sibling deliverable directories.
     - `## Project conventions` — language, tooling, build-gate command shape for this project.
-    - `## Model & review venue` — describe `kickoff.yaml` as the human-editable source for separate model/effort fields and execution budgets; `roles` is an optional validated editor; the shipped default gives cross-vendor review. Governed by the two role policies.
+    - `## Model & review venue` — describe `kickoff.yaml` as the human-editable source for separate model/effort fields and execution budgets; `roles` is an optional validated editor; the shipped default is quality/same-harness, with balanced/economy presets and explicit cross-vendor review defined in the role policy. Governed by the two role policies.
     - `## Project-specific skills` — if the new project carries any skills beyond the universal thirteen (`kickoff`, `methodology`, `rule-one`, `learn`, `teach`, `roles`, `sweep`, `sweep-planning`, `sweep-coding`, `demo`, `treatise`, `plain`, `ask`), list them here. For most fresh projects, this section is empty (or omitted).
   - Preserve the introductory paragraph that explains the two-zone contract; it is informational and lives outside both markers. Adjust only its `stamp`-specific wording: the destination is not a template, so the zones are described as written-for-this-project and carried-from-the-template rather than as things `stamp` does.
 
@@ -862,7 +862,7 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - Every dependency named in the brief or the description appears in the
   destination's manifest and in its lockfile, and no dependency appears that
   nobody named.
-- `<dest>/kickoff.yaml` exists; `show` prints the seeded cross-vendor model routing, portable timeout values, and per-role research budgets; a scoped model edit preserves timeout/research comments and values; `<dest>/.gitignore` includes `.kickoff/`; the role, timeout, and research-authority policies plus invocation brief exist.
+- `<dest>/kickoff.yaml` exists; `show` prints the seeded quality/same-harness model routing, portable timeout values, and per-role research budgets; a scoped model edit preserves timeout/research comments and values; `<dest>/.gitignore` includes `.kickoff/`; the role, timeout, and research-authority policies plus invocation brief exist.
 - `<dest>/bin/setup` succeeds from outside `<dest>` and provisions only the
   committed runtime/dependencies, then passes the target-adapted dependency
   probe.
@@ -900,7 +900,7 @@ When the bootstrap finishes cleanly, report to the user:
 
 - The destination path.
 - The project name, slug, primary language, and inferred surfaces.
-- That human-editable `kickoff.yaml` was seeded with cross-vendor model routing and portable role budgets; model and effort are separate fields; `roles` edits model fields; local telemetry stays under `.kickoff/`; and `bin/kickoff-config recommend-timeouts` proposes target-local recalibration.
+- That human-editable `kickoff.yaml` was seeded with quality/same-harness model routing and portable role budgets; model and effort are separate fields; `roles` edits model fields or applies the role policy’s presets without invoking a model; local telemetry stays under `.kickoff/`; and `bin/kickoff-config recommend-timeouts` proposes target-local recalibration.
 - The path to the new project's `BRIEF.md` (which the user should flesh out next) and `plan/phase-1.md` (which the user should review before `kickoff`'ing).
 - The recommended next steps:
   1. `cd <dest>`

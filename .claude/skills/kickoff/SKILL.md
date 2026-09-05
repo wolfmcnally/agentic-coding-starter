@@ -96,19 +96,20 @@ For an initial implementation or delegated follow-up, resolve once per session b
 
 1. **Recursion guard.** If the env var `KICKOFF_DELEGATION_DEPTH` is set, this session is *itself* a delegated role invoked by an outer `kickoff` run; **every role runs native** and no further delegation happens. Skip the rest of Step 0a.
 2. **Detect the orchestrating harness `H`:** `CLAUDECODE=1` in the environment → `claude`; otherwise → `codex`.
-3. **Read + resolve.** Run `./bin/kickoff-config show models` — it validates the complete human-editable `kickoff.yaml` and prints the resolved `model` plus optional separate `effort` field per role for the current harness. (The resolution rule is: `role_models[H][role]` if set, else `role_models['default'][role]` if set, else `{model: default}`.) Models are `default | claude | codex | opus | fable | sol | terra | luna`; effort is absent/default or `low | medium | high | xhigh`, plus Claude-only `max`.
+3. **Read + resolve.** Run `./bin/kickoff-config show models` — it validates the complete human-editable `kickoff.yaml` and prints the resolved `model` plus optional separate `effort` field per role for the current harness. (The resolution rule is: `role_models[H][role]` if set, else `role_models['default'][role]` if set, else `{model: default}`.) Models and their supported effort subsets are defined in [`policies/role-models.md`](../../../policies/role-models.md#human-editable-configuration), including `astra`. Quality/same-harness is the shipped preset; balanced, economy and explicit cross-vendor review expand into ordinary pins through `apply-preset`.
 4. **Map each resolved value to a venue:**
    - `default` → **native** (in-harness subagent on the session model). No CLI.
    - `claude` → the `claude` CLI, its configured default model (no `--model`).
    - `codex` → the `codex` CLI, its configured default model (no `-m`).
    - `opus` / `fable` → the `claude` CLI, `--model opus|fable`.
+   - `astra` → the `codex` CLI, `--model gpt-6-astra`.
    - `sol` / `terra` / `luna` → the `codex` CLI,
      `--model gpt-5.6-sol|terra|luna` respectively.
    - A separate effort field adds `-c 'model_reasoning_effort="<effort>"'` to Codex
      initial and resume invocations, or `--effort <effort>` to Claude initial
      and resume invocations. An absent effort field preserves the configured/default effort.
 
-Remember each role's resolved `(venue, model, effort)` and the orchestrating harness for Steps 3–6 and the Step 10 END block. Roles do not re-resolve mid-session. A non-`default` model always goes through the CLI recipe — do **not** short-circuit "model == session model" (uniform resolution, no session-model probing).
+Remember each role's resolved `(venue, model, effort)` and the orchestrating harness for Steps 3–6 and the Step 10 END block. Freeze this resolution with the run’s tool/config bundle. Roles do not re-resolve during the run, even when implementation edits live pins; new settings begin the next run. A non-`default` model always goes through the CLI recipe — do **not** short-circuit "model == session model" (uniform resolution, no session-model probing).
 
 ### Step 0b: Preflight and retain the role-topology receipt
 
@@ -153,8 +154,7 @@ Exit 66 is not success. Preserve the artifact and verify the exact role shape,
 the expected candidate id, and its structured change/finding evidence through
 `bin/kickoff-evidence`. If all checks pass, continue without rerunning the
 intelligence work and record `[protocol recovered: terminal stream
-incomplete]` for Step 10. If any check fails, use the stage's normal native
-fallback and record a 🚨 disconnect. Codex emits JSONL with `--json`; Claude
+incomplete]` for Step 10. If any check fails, follow [governed recovery](../../../policies/role-models.md#governed-recovery), retaining the failed evidence and selected model/effort. Codex emits JSONL with `--json`; Claude
 emits JSONL with `--output-format stream-json --verbose`. Preserve each role's
 timing record for Step 10.
 
@@ -323,14 +323,12 @@ describe the same instant and a mid-role write becomes invisible.
 **Delegated venue** (per Step 0a): write a prompt that tells the
 external agent to read `.claude/agents/phase-planner.md`, then invoke the
 registered attempt through `$WATCHER_TOOL watch`. The planner is read-only.
-Preserve its session id for revision rounds. A post-preflight runtime failure
-may fall back to the native planner only after the failed attempt is closed
-and recorded; surface the disconnect in Step 10.
+Preserve its session id for revision rounds. A post-preflight runtime failure follows [governed recovery](../../../policies/role-models.md#governed-recovery); close and preserve the failed attempt before any authorized recovery, and report it in Step 10.
 
 Wait for the plan. Write the exact plan artifact into the run directory and
 invoke `./bin/kickoff-evidence capture-plan --run-dir <run> --plan <artifact>`.
 The returned plan hash is the identity reviewed in Step 4. A malformed planner
-report or failed capture follows the planner stage's fallback rules; do not
+report or failed capture follows the same governed recovery rule; do not
 send unbound plan text to review.
 
 **Mechanical pre-review.** Before spending a review round, run
@@ -365,7 +363,7 @@ decision to the operator. More material is not evidence of convergence.
 - On revision rounds, the prior finding ledger and generated plan-revision
   packet.
 
-**Delegated venue** (the non-`default` model `reviewer` resolved to in Step 0a): run the role in that CLI per [`policies/role-models.md`](../../../policies/role-models.md). The shipped `kickoff.yaml` resolves reviewer to the *other* harness (cross-vendor review); a project may resolve it anywhere. Add the resolved model and effort flags to the recipe below and preserve them on resume; everything else is identical. A later runtime failure despite the successful preflight falls back to native with a 🚨 in Step 10.
+**Delegated venue** (the non-`default` model `reviewer` resolved to in Step 0a): run the role in that CLI per [`policies/role-models.md`](../../../policies/role-models.md). The shipped quality preset uses same-harness review; explicit pins or presets may select cross-vendor review. Add the resolved model and effort flags to the recipe below and preserve them on resume; everything else is identical. A later runtime failure follows [governed recovery](../../../policies/role-models.md#governed-recovery) and is reported in Step 10.
 
 1. Write the full phase text and the full plan text to temp files (e.g., `/tmp/kickoff-phase-<id>.md`, `/tmp/kickoff-plan-<id>.md`). Do not include the planner's own confidence statements or open-questions commentary beyond the plan text itself.
 2. Write a prompt file instructing the external agent to: read `.claude/agents/plan-reviewer.md` and adopt that role for this review; review the plan in `<plan temp file>` against the phase text in `<phase temp file>`; use the supplied plan hash, candidate id, evidence run directory, and revision packet/ledger when present; assume the planner was careful but missed something; emit the exact `## Finding Evidence` JSON block; and end with the exact verdict header (`## Verdict: APPROVED` or `## Verdict: REVISE`). Note that `AskUserQuestion` is unavailable in this venue — an unresolved owner decision is recorded as a `blocked-owner` finding whose `required_outcome` states the exact question and its defensible answers, and the verdict is `REVISE`; the orchestrator relays it (below). **Scope the reading mandate** — the reviewer has a read-only checkout and its own Read/Grep, so name the handful of load-bearing files to read (the sources the plan actually reshapes), not "read all the sources the plan touches." An unbounded "read everything" instruction on a large multi-file phase can exhaust the external reviewer's own context (and trip its internal compaction, which can fail on a network stall) before it reaches a verdict — see [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md) §4.
@@ -392,8 +390,8 @@ decision to the operator. More material is not evidence of convergence.
    re-ingesting an earlier artifact to satisfy a validator drives
    `verified → open` and reopens resolved findings, which is why the flag is
    still required here. Failure
-   of role shape, finding schema/transition, or candidate identity triggers
-   native fallback. Exception before falling back:
+   of role shape, finding schema/transition, or candidate identity follows
+   [governed recovery](../../../policies/role-models.md#governed-recovery). Existing bounded exception:
    a Claude `error_max_turns` result may resume once with the concise
    “conclude now” instruction and re-gate. After ingesting the response, mark
    the plan just reviewed through `mark-plan-reviewed --plan <plan-artifact>
@@ -461,7 +459,7 @@ alone.
    flags cannot drift from the routing metadata.
 3. **Single-writer guarantee:** `kickoff` is sequential, so during this stage no native writer touches the tree — the pinned coder owns it exclusively (build gates run afterward, Step 7). This satisfies "serialize or isolate — never two writers on one tree" without a worktree.
 4. Capture the session id (codex `--json` `thread_id`; claude stream `session_id`) — the coder resumes across code-revision and build-fix rounds. Read the report (file list, Build Status, Manual Checks) from the watcher result artifact / codex `--output-last-message`; the file writes have already landed in the tree.
-5. **Fallback:** a later three-signal gate failure or timeout despite the successful preflight → fall back to the native `phase-coder`, record `[fallback: <reason>]`, and raise the 🚨 disconnect for Step 10. Do not attempt to repair the sandbox mid-run.
+5. **Recovery:** a later three-signal gate failure or timeout follows [governed recovery](../../../policies/role-models.md#governed-recovery). Preserve the failed attempt and selected model/effort; report any explicitly authorized recovery and its basis in Step 10. Do not attempt to repair the sandbox mid-run.
 
 Wait for the coder. Write its exact report to a fresh artifact. Require the
 normal report shape plus exactly one `### Change Evidence` JSON block, then
@@ -522,7 +520,7 @@ both stage attempts.
   for any prior finding the critic marked `SUSPECTED` (run the probe it named
   before dispatching; attach the output verbatim).
 
-**Delegated venue** (the non-`default` model `critic` resolved to in Step 0a): run the role in that model's implied CLI per [`policies/role-models.md`](../../../policies/role-models.md). The shipped `kickoff.yaml` resolves critic to the *other* harness (cross-vendor review). Add the resolved model and effort flags and preserve them on resume; a later runtime failure despite the successful preflight falls back with a 🚨 in Step 10.
+**Delegated venue** (the non-`default` model `critic` resolved to in Step 0a): run the role in that model's implied CLI per [`policies/role-models.md`](../../../policies/role-models.md). The shipped quality preset uses same-harness critique; cross-vendor review is explicitly selectable. Add the resolved model and effort flags and preserve them on resume; a later runtime failure follows [governed recovery](../../../policies/role-models.md#governed-recovery) and is reported in Step 10.
 
 1. Write the approved plan and the **changed-file list** to temp files, and capture `git diff --stat` (what changed and where). The external reviewer runs against a **read-only checkout** with its own Read/Grep, so hand it a map, not a payload: it pulls the specific files it wants. Inline a full diff into a temp file only when the change is small enough to read whole; for a large change the file list + `git diff --stat` *is* the handoff. **Never pre-materialize a monolithic diff and reject the venue because `git diff | wc -c` is large** — an on-disk artifact is not tokens-in-the-window; a reviewer with Read/Grep reads surgically, and delegation is discarded only on the three-signal gate below, never on a pre-computed size estimate. **Flag machine-regenerated blobs** in the file list (fixtures, snapshot JSON, lockfiles, golden files) as "spot-check structure, don't read line-by-line" — they dominate byte count but carry almost no review surface. **Redact the coder's self-assessment** — no Build Status block, no Manual Checks narrative, no "tests pass" framing. Cold artifacts review 3–4× deeper (see [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md) §§1, 4).
 2. Write a prompt file instructing the external agent to: read
@@ -542,7 +540,7 @@ both stage attempts.
    --artifact <critic-artifact>` against
    its `## Finding Evidence` block. **`--review-span-id` is required**, for the
    reason given in Step 4. Failure of role shape, evidence
-   schema/transition, or candidate identity triggers native fallback. The one
+   schema/transition, or candidate identity follows [governed recovery](../../../policies/role-models.md#governed-recovery). The one
    `error_max_turns` conclude-now rescue remains available. After ingesting
    the response, mark the candidate just reviewed through
    `bin/kickoff-evidence mark-reviewed --expected-candidate <id>`.
@@ -835,12 +833,14 @@ Follow-up route (per `policies/review-lanes.md`):
 
 Role model/venue (per `policies/role-models.md`) — orchestrated by <claude|codex>:
 - Preflight: OK (<validated targets>) | N/A (every role native)
-- Planner: model=<model> effort=<effort|default> venue=<native|claude|codex> <annotate "[fallback: <reason>]" only for a post-preflight runtime failure>
-- Reviewer (plan review): model=<model> effort=<effort|default> venue=<native|claude|codex> | skipped (light lane) <same annotations>
-- Coder: model=<model> effort=<effort|default> venue=<native|claude|codex> <same annotations>
-- Critic (code review): model=<model> effort=<effort|default> venue=<native|claude|codex> <same annotations>
+- Planner: requested model=<model> effort=<effort|default> venue=<native|claude|codex> <annotate any authorized recovery with its reason and authority>
+- Reviewer (plan review): requested model=<model> effort=<effort|default> venue=<native|claude|codex> | skipped (light lane) <same annotations>
+- Coder: requested model=<model> effort=<effort|default> venue=<native|claude|codex> <same annotations>
+- Critic (code review): requested model=<model> effort=<effort|default> venue=<native|claude|codex> <same annotations>
 <Annotate any exit-66 artifact accepted after explicit validation as
 "[protocol recovered: terminal stream incomplete]"; this is not a fallback.>
+
+For each role separately: harness_version=<observed|unreported>, observed_model=<observed|unreported>, observed_effort=<observed|unreported>; observation_errors=<diagnostics|none>. Never copy requested settings into observed fields. Follow `policies/role-models.md` for qualified observation sources.
 
 Role timing (per `policies/role-timeouts.md`):
 - Planner: <duration>; first event <duration|unavailable>; longest idle <duration|unavailable>; <success|error|timeout(type)>
@@ -1030,7 +1030,7 @@ report to the user.
 
 Report to the user, in this order:
 
-- **🚨 Role disconnects (per [`policies/role-models.md`](../../../policies/role-models.md)):** for every role whose runtime call failed after a successful preflight (three-signal gate or timeout) so it ran native instead, add a 🚨 line stating what was configured, what actually ran, and why — e.g. `🚨 coder configured for opus but ran native (call timed out) — output was NOT produced by opus`. If every role ran on its resolved venue, omit this entirely. Preflight failures never reach Step 10 because they abort before phase state exists.
+- **🚨 Role disconnects (per [`policies/role-models.md`](../../../policies/role-models.md)):** report any configured-versus-dispatched venue difference, the failed attempt, and the explicit authority for recovery. Never infer provider identity from the requested alias or claim an automatic native downgrade succeeded. Report requested settings separately from qualified observations, with missing values `unreported`. Preflight failures abort before phase state exists.
 - **What to try: the user testing protocol** for what's new or changed (Step 10a). This leads because it is what the user does next — the phase is already delivered, so the demo, not a commit instruction, is the handoff (`policies/user-demo-protocols.md`).
 - **Acceptance:** what closed objectively on gate evidence, and what is parked for the user's judgment. Both halves, even when one is `None`.
 - **Delivery:** the commit id and the push result — or the park and its reason, or the user's restriction verbatim.
@@ -1056,7 +1056,7 @@ otherwise in the report is the failure this whole boundary exists to prevent.
 
 - The four canonical role names (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`) are load-bearing. See [`policies/four-canonical-agents.md`](../../../policies/four-canonical-agents.md).
 - The verdict header (`## Verdict: APPROVED` or `## Verdict: REVISE`) is parsed by string match. Mis-cased or rephrased verdicts break orchestration.
-- Per-role model/venue ([`policies/role-models.md`](../../../policies/role-models.md)): `kickoff.yaml`'s human-editable `role_models` section (set directly or via `roles`) resolves each of the four roles to separate model and effort fields plus an implied venue at Step 0a, scoped by which harness is orchestrating. Step 0b live-validates every non-native CLI/model/access target and aborts before phase mutation on any upstream failure. The shipped default routes reviewer + critic to the *other* harness (cross-vendor review — there is no separate on/off token) and leaves planner + coder native; a project may resolve any role anywhere. A role resolving to a CLI is invoked there with the resolved model/effort overrides (write-enabled for the coder), resuming the same session across the role's rounds. Orchestration and build gates always run on the session model — never pinnable. A later runtime failure after successful preflight may still fall back per-stage and surfaces a 🚨 in the Step 10 report. The recursion guard env var is `KICKOFF_DELEGATION_DEPTH` (a delegated role never re-delegates). Recipes and handoff hygiene: [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md).
+- Per-role model/venue ([`policies/role-models.md`](../../../policies/role-models.md)): `kickoff.yaml`'s human-editable `role_models` section (set directly or via `roles`) resolves each of the four roles to separate model and effort fields plus an implied venue at Step 0a, scoped by which harness is orchestrating. Step 0b live-validates every non-native CLI/model/access target and aborts before phase mutation on any upstream failure. The shipped quality preset selects same-harness roles; balanced, economy and cross-vendor choices follow the role policy. A preset expands into ordinary pins, and a project may explicitly select any supported role model. A role resolving to a CLI is invoked there with the resolved model/effort overrides (write-enabled for the coder), resuming the same session across the role's rounds. Orchestration and build gates always run on the session model — never pinnable. A later runtime failure follows the policy’s governed recovery rule without silent model/effort substitution, with the outcome reported in Step 10. The recursion guard env var is `KICKOFF_DELEGATION_DEPTH` (a delegated role never re-delegates). Recipes and handoff hygiene: [`briefs/cross-agent-invocation.md`](../../../briefs/cross-agent-invocation.md).
 - Per-role execution budgets ([`policies/role-timeouts.md`](../../../policies/role-timeouts.md)): Step 0c loads portable defaults from `kickoff.yaml`'s `role_timeouts` section. Every external initial/resume/rescue call runs through the generated-command watcher; native calls use the same budgets through the harness wait mechanism. The finalized shared trace is authoritative; `.kickoff/role-timings.jsonl` remains local protocol/recalibration diagnostics.
 - Exact execution telemetry ([`policies/execution-telemetry.md`](../../../policies/execution-telemetry.md)): monotonic nanoseconds, overlap-safe unions, exclusive attribution, candidate/role/gate joins, truthful recovery, phase-level operator-input parks, and deterministic offline reports are one acceptance-bound contract. UTC is correlation only for trace spans; a cross-boot operator park uses visibly non-exact calendar duration. Wait mirrors are not extra work, operator parks are reported separately, and missing measurement never becomes a reassuring zero.
 - Research authority ([`policies/research-authority.md`](../../../policies/research-authority.md)): planner/reviewer may originate search and retrieval within their configured budgets; coder/critic may retrieve approved authorities but not originate search. Ambient MCP servers and plugins are allow-by-default unless explicitly narrowed, and external research receives no repository or candidate content.
@@ -1070,8 +1070,8 @@ otherwise in the report is the failure this whole boundary exists to prevent.
 - The ripple pass in Step 9a (sub-phase close) and Step 9b (major-phase close) is governed by [`policies/phase-ripple.md`](../../../policies/phase-ripple.md). AUTO ripples land in the same session; DECIDE ripples appear in the END block as named follow-ups.
 - The lessons harvest in Step 9c is governed by [`policies/lessons.md`](../../../policies/lessons.md). Agents file and recur ledger entries; graduation into a rule surface is a human-ratified DECIDE, never an autonomous edit. A follow-up correction that reveals a recurring learning files a lesson too, even though it skips the full Step 9 family.
 - Cross-harness: this same canonical skill drives both Claude Code and Codex. Claude Code invokes it as `kickoff`; Codex discovers it through `.agents/skills/kickoff` (a directory symlink to `.claude/skills/kickoff/`) and invokes it as `$kickoff`. Edit this canonical skill, not the mirror.
-- If your harness does not expose named subagents, perform the same role sequence locally by reading each `.claude/agents/<role>.md` directly and adopting that role's reading protocol and output format for the duration of the step.
+- If your harness does not expose named subagents, use the resolved CLI venue. Local execution is admissible only when it preserves the selected model, effort, required authority and independent review context under the role policy; otherwise park.
 
-## Local fallback
+## Native execution limits
 
-If the current platform does not expose named subagents, perform the same role sequence locally and follow the canonical role procedures in `.claude/agents/phase-planner.md`, `.claude/agents/plan-reviewer.md`, `.claude/agents/phase-coder.md`, and `.claude/agents/code-critic.md` directly. The agents' tool-stance and verdict format apply just the same.
+Absent named subagents does not authorize substituting the orchestrator for a selected model or reviewing its own work in the same context. Follow [governed recovery](../../../policies/role-models.md#governed-recovery); retain canonical role procedures, tool stances and verdict formats in any admissible venue.

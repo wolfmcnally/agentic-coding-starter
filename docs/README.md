@@ -10,3 +10,4 @@ Every top-level entry in this directory has one row here. `As of` is the date or
 
 | Document | Source | As of | Retrieved | Basis | Pinned for |
 |---|---|---|---|---|---|
+| [OpenAI Astra model settings](openai-astra-model-settings.md) | https://developers.openai.com/api/docs/models/gpt-6-astra | 2026-09-04 (living-page observation) | 2026-09-04 | Minimal factual identifiers and enumerated settings; no expressive guide prose | Astra identifier and API effort enum; excerpt of Model ID line and reasoning.effort sentence (source lines 3 and 11). |

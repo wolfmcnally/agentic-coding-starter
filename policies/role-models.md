@@ -2,14 +2,22 @@
 
 Each canonical `kickoff` role may select a model and optional reasoning effort, scoped by which harness is orchestrating. The model determines the delegated CLI; `{model: default}` runs natively. Orchestration and build gates always stay on the current session model.
 
-## Review diversity scales with coder capability
+## Independent review and portable presets
 
-A reviewer from the *same* model family shares the coder's blind spots, and its marginal catches shrink as the coder's baseline quality rises. Cross-model review's value is decorrelation, and decorrelation does not shrink: whatever class of error a frontier coder still makes is precisely the class it is least able to see in its own family's review. Two consequences:
+Every review runs in a separate role context with the canonical review contract. Same-harness review preserves that independence. Cross-vendor review is an explicit option whose incremental value should be measured; model strength alone does not establish decorrelation or better defect detection. Review lane and model/venue selection are orthogonal.
 
-- **The stronger the coding model, the stronger the case for cross-vendor review.** Do not read a strong coder's streak of clean first-cycle reviews as a reason to clear the reviewer pins — read it as same-family review running out of things only a different family would catch.
-- **The shipped default routes `reviewer` and `critic` to the other harness** — that default *is* the second-family mechanism, not a stylistic preference.
+`bin/kickoff-config apply-preset quality|balanced|economy [--review same-harness|cross-vendor]` expands the selected preset into ordinary `role_models` pins for both concrete harness sections. Omitted review mode means `same-harness`. There is no persisted preset selector or runtime router. Applying a preset replaces all concrete role selections, preserves the base `default` layer and other configuration/comments, validates the complete document, and writes atomically. It makes no model call and requires no preflight.
 
-Interaction with review lanes ([`review-lanes.md`](review-lanes.md)): in a `light` lane the code critique is the only review that runs, which makes its venue diversity matter more, not less.
+| Preset | Orchestrating harness | Planner | Reviewer | Coder | Critic |
+|---|---|---|---|---|---|
+| quality | codex | astra | astra | astra | astra |
+| quality | claude | fable | fable | fable | fable |
+| balanced | codex | astra | astra | sol | astra |
+| balanced | claude | fable | fable | opus | fable |
+| economy | codex | sol | sol | sol | sol |
+| economy | claude | opus | opus | opus | opus |
+
+All preset pins use `high` effort. Quality/same-harness is the shipped, reset and stamp default. Cross-vendor changes reviewer and critic only: quality/balanced use Fable from Codex and Astra from Claude; economy uses Opus from Codex and Sol from Claude. These are operator-approved starting points, not measured rankings. A missing required CLI or model entitlement fails preflight; select an available preset or explicit pins through the manager, `roles`, or direct editing before restarting.
 
 ## Human-editable configuration
 
@@ -18,34 +26,34 @@ Model routing lives under `role_models` in the repo-root [`kickoff.yaml`](../kic
 ```yaml
 role_models:
   default:
-    planner:
-      model: default
-    reviewer:
-      model: default
-    coder:
-      model: default
-    critic:
-      model: default
+    planner: {model: default}
+    reviewer: {model: default}
+    coder: {model: default}
+    critic: {model: default}
   claude:
-    reviewer:
-      model: codex
-    critic:
-      model: codex
+    planner: {model: fable, effort: high}
+    reviewer: {model: fable, effort: high}
+    coder: {model: fable, effort: high}
+    critic: {model: fable, effort: high}
   codex:
-    reviewer:
-      model: opus
-      effort: high
-    critic:
-      model: opus
-      effort: high
+    planner: {model: astra, effort: high}
+    reviewer: {model: astra, effort: high}
+    coder: {model: astra, effort: high}
+    critic: {model: astra, effort: high}
 ```
 
-- **Harness sections:** `default` is the base layer; `claude` and `codex` override it when that harness orchestrates.
-- **Roles:** `planner`, `reviewer`, `coder`, `critic` map to the four canonical agent definitions.
-- **Models:** `default`, `claude`, `codex`, `opus`, `fable`, `sol`, `terra`, `luna`.
-- **Effort:** optional `low`, `medium`, `high`, or `xhigh`; Claude-routed models additionally accept `max`. Effort is invalid with `model: default`.
+Harness sections `claude` and `codex` override the base `default` layer. Roles `planner`, `reviewer`, `coder`, and `critic` map to the four canonical agent definitions. A non-default model always uses its implied CLI, including when its vendor matches the orchestrator.
 
-`default` means native. `claude` uses the Claude CLI's configured model; `opus` and `fable` add their Claude model flag. `codex` uses the Codex CLI's configured model; `sol`, `terra`, and `luna` map to `gpt-5.6-sol`, `gpt-5.6-terra`, and `gpt-5.6-luna`. A non-default model always uses its implied CLI even when it matches the orchestrator's vendor.
+| Selector | Venue / explicit model | Supported explicit effort |
+|---|---|---|
+| default | Native session | None |
+| claude | Claude CLI configured model | low, medium, high, xhigh, max |
+| codex | Codex CLI configured model | low, medium, high, xhigh |
+| opus, fable | Claude CLI / corresponding alias | low, medium, high, xhigh, max |
+| astra | Codex CLI / gpt-6-astra | low, medium, high, xhigh, max |
+| sol, terra, luna | Codex CLI / gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna | low, medium, high, xhigh, max |
+
+Effort is a separate optional field; omission retains the selected CLI/model's configured effort. The table is a supported subset, not a claim that other settings cannot exist. `ultra` is not enabled. Invalid model/venue or model/effort combinations fail before write or spawn. Capability metadata is not live entitlement; recipient-local preflight remains decisive for execution.
 
 The routing, timeout, run-budget, and research-budget schemas are strict:
 unknown harnesses, roles, or fields fail validation so direct-edit typos cannot
@@ -60,6 +68,7 @@ configuration fails before any command runs or write occurs.
 - `show models` resolves the current harness;
 - `show research` reports role capability and originating-query budgets;
 - `set-models` updates only `role_models`;
+- `apply-preset` expands a named preset into both concrete harness sections;
 - `reset models` resets only model routing;
 - `preflight --receipt <path>` validates live external venues and writes a config-bound receipt;
 - `verify-preflight-receipt` revalidates that receipt against current routing.
@@ -68,7 +77,7 @@ It uses round-trip YAML parsing, preserves comments, ordering, quoting, and data
 
 ## Resolution (kickoff Step 0a)
 
-Resolve once per session. `CLAUDECODE=1` means Claude orchestrates; otherwise Codex does.
+Resolve once per evidence run and retain its frozen tool/config bundle through all rounds, including when implementation edits the live configuration. New settings apply to the next run. `CLAUDECODE=1` means Claude orchestrates; otherwise Codex does.
 
 1. If `KICKOFF_DELEGATION_DEPTH` is set, every role runs native and no child delegates again.
 2. For role `R`, use `role_models[H][R]`, else `role_models.default[R]`, else `{model: default}`.
@@ -86,7 +95,11 @@ explicitly narrow them.
 
 **A tool stance is only as guaranteed as its venue's enforcement.** Measured in a donor project: a delegated Claude-venue role launched with a restricted `--allowedTools` list still executed tools outside it — a planner launched without `Bash` made twenty-four Bash calls of which one was denied, despite an explicit taboo in its role definition. Treat that flag as a strong hint and the role's tool stance as self-policed discipline, not a sandbox; the Codex venue's `-s read-only` enforces the read-only stance structurally. Where a stance must be guaranteed rather than requested, route the role to a venue that enforces it.
 
-**Native fallback carries the resolved tier.** Any `model:` pin in an agent wrapper's frontmatter is a default for ordinary native dispatch, not a routing decision, and it goes stale as model generations advance. When a delegated venue fails and a stage falls back to native, the orchestrator passes the `role_models`-resolved tier explicitly rather than inheriting a wrapper pin — observed otherwise in a donor project: a wrapper pinned a superseded model generation, so the fallback silently downgraded the role at exactly the moment its delegated venue had already failed.
+## Governed recovery
+
+Preserve failed artifacts and dispatch evidence, classify the failure, and park unless an existing explicitly authorized recovery preserves the selected model, effort, and required authority. Native dispatch is admissible only when the harness can explicitly honor those same selections; otherwise that route is unavailable. Never inherit an agent-wrapper model pin, silently downgrade, change effort, or switch providers to make a failed call appear successful. Terminal policy refusals do not authorize automatic retries or provider switching. Do not identify refusals by matching words in prose; structured terminal errors remain failures even when a text artifact exists. Alias string equality and auxiliary usage-model maps cannot prove a provider substitution.
+
+Existing bounded verdict-only and incomplete-stream recoveries retain their own conditions and budgets. This rule grants no additional retry authority. Report the failed request, any authorized recovery and its basis, and the actual dispatch venue.
 
 ## Mandatory live preflight (kickoff Step 0b)
 
@@ -103,9 +116,9 @@ shared probe digest. All-native routing writes the same schema with no targets.
 Production credential scrubs, model/effort and research flags, stdin closure,
 approval posture, and read-only/write-enabled access still apply.
 
-Preflight is fail-closed. A missing CLI, unusable authentication, unavailable model, network or sandbox error, flag incompatibility, timeout, malformed response, wrong digest, stale configuration, or incomplete target set aborts `kickoff` before phase state exists. There is no native fallback for an upstream prerequisite failure.
+Preflight is fail-closed. A missing CLI, unusable authentication, unavailable model, network or sandbox error, flag incompatibility, timeout, malformed response, wrong challenge response, stale configuration, or incomplete target set aborts `kickoff` before phase state exists. There is no native fallback for an upstream prerequisite failure.
 
-## Invocation, resume, and fallback
+## Invocation and resume
 
 `bin/kickoff-config` owns the production command. `render-command` emits the
 exact inspectable argv; `watch` generates and launches it from role, venue,
@@ -193,25 +206,17 @@ artifact from a successful child whose terminal stream was incomplete. The
 orchestrator may use it only after validating the role shape, ingesting and
 validating any finding/change evidence, and confirming the expected candidate
 id per [`orchestration-evidence.md`](orchestration-evidence.md). It records the
-protocol recovery in the END block. Failed verification follows the normal
-fallback path.
+protocol recovery in the END block. Failed verification follows [Governed recovery](#governed-recovery).
 
-After successful preflight, a non-zero child, timeout, network failure, stale
-or missing artifact, malformed output, candidate mismatch, or unrecoverable
-protocol error makes the rest of that stage native and produces a 🚨
-disconnect. A Claude review that exhausts its turn cap may resume once only to
-emit its verdict. Fallback is per stage; once a stage falls back, it does not
-venue-thrash.
+After successful preflight, a non-zero child, timeout, network failure, stale or missing artifact, malformed output, candidate mismatch, or unrecoverable protocol error remains a failed attempt under [Governed recovery](#governed-recovery). A Claude review that exhausts its turn cap after completing investigation may resume once only to emit its verdict under the existing timeout policy.
 
 ## END-block reporting
 
-Every END block records the preflight result, orchestrating harness, and each
-role's resolved model, effort, venue, fallback status, and any verified
-protocol recovery. It also carries the timing and candidate-bound evidence
-summaries required by [`role-timeouts.md`](role-timeouts.md) and
-[`orchestration-evidence.md`](orchestration-evidence.md). Any post-preflight
-difference between configured and actual venue is repeated as a 🚨 in the
-user-facing summary.
+Every END block records preflight, orchestrating harness, and each role's requested model, effort and venue separately from provider observations. The watcher's existing `model` and `effort` fields mean requested values. Optional local diagnostic fields are `harness_version`, `observed_model`, `observed_effort`, and `observation_errors`; they do not change required trace, registration or receipt schemas. Null observations render as `unreported`, never as the request copied into an observation.
+
+The selected CLI's bounded, scrubbed `--version` operation supplies a version observation when available; failure records null and a diagnostic without changing routing. Qualified Claude `system`/`init` metadata may supply its top-level `model` and `claude_code_version`; conflicting primary values remain null with an observation error. Effort for both venues and Codex primary model remain unreported until a primary source field is qualified. Do not infer identity from assistant prose, requested argv, or auxiliary usage-model maps.
+
+Record authorized recovery and verified protocol recovery separately, retaining failed evidence. Any configured-versus-dispatched venue difference is repeated with a 🚨 and its authority in the user-facing summary. Timing and candidate-bound summaries remain required by [`role-timeouts.md`](role-timeouts.md) and [`orchestration-evidence.md`](orchestration-evidence.md).
 
 ## Propagation
 

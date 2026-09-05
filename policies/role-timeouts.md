@@ -42,7 +42,7 @@ The role-shape and candidate-bound evidence gates in
 
 Native roles use the same role-specific hard and idle budgets through the orchestrating harness's sub-agent wait/status mechanism. If the harness cannot expose structured progress or an idle watchdog, enforce the hard deadline and report that idle telemetry was unavailable; do not invent activity. The orchestrator remains responsive and gives the user a progress update at least every 60 seconds while it waits.
 
-One max-turn rescue is allowed only for a review role that completed investigation but failed to emit its verdict. Resume the existing session with the concise “conclude now” instruction. Do not automatically rerun a timed-out role from scratch: a timeout falls through the existing stage fallback state machine and is surfaced with a 🚨.
+One max-turn rescue is allowed only for a review role that completed investigation but failed to emit its verdict. Resume the existing session with the concise “conclude now” instruction. Do not automatically rerun a timed-out role from scratch: a timeout follows [governed recovery](role-models.md#governed-recovery), preserving the failed attempt and selected model/effort. No automatic native substitution is authorized.
 
 ### The harness ceiling bounds every budget
 
@@ -98,8 +98,7 @@ the separate phase-level operator-park ledger and never folded into a role's
 idle or wait duration.
 
 The watcher also keeps local protocol diagnostics for timeout recalibration.
-Those rows are not a second execution ledger and cannot fill a missing shared
-span.
+Those rows are not a second execution ledger and cannot fill a missing shared span. Their `model`/`effort` fields record requests; optional provider observations and null-as-unreported reporting follow [`role-models.md`](role-models.md#end-block-reporting). Observation failures neither establish success nor change routing.
 
 ## Local recalibration
 
@@ -132,7 +131,7 @@ The two policy sections, unified config schema and shipped defaults, manager, te
 
 ## Relationship to other policies
 
-- [`role-models.md`](role-models.md) resolves venue/model/effort, performs fail-closed preflight, gates artifacts, and owns runtime fallback.
+- [`role-models.md`](role-models.md) resolves venue/model/effort, performs fail-closed preflight, gates artifacts, and owns governed runtime recovery.
 - [`execution-telemetry.md`](execution-telemetry.md) owns exact shared spans, aggregation, recovery, and the phase report.
 - [`four-canonical-agents.md`](four-canonical-agents.md) owns role semantics and the ten-cycle convergence limit.
 - [`mechanistic-vs-intelligence.md`](mechanistic-vs-intelligence.md) places validation, enforcement, measurement, and percentile calculation in `bin/kickoff-config`; deciding whether evidence warrants a policy change remains human judgment.

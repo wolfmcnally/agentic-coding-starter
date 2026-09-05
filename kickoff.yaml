@@ -10,6 +10,7 @@ version: 1
 # manager preserves unknown extension data without interpreting it.
 extensions: {}
 
+# Quality/same-harness defaults: strong roles with explicit high effort.
 # Which model and implied harness runs each canonical role. A harness section
 # overrides `default` when that harness orchestrates kickoff.
 role_models:
@@ -23,16 +24,30 @@ role_models:
     critic:
       model: default
   claude:
+    planner:
+      model: fable
+      effort: high
     reviewer:
-      model: codex
-    critic:
-      model: codex
-  codex:
-    reviewer:
-      model: opus
+      model: fable
+      effort: high
+    coder:
+      model: fable
       effort: high
     critic:
-      model: opus
+      model: fable
+      effort: high
+  codex:
+    planner:
+      model: astra
+      effort: high
+    reviewer:
+      model: astra
+      effort: high
+    coder:
+      model: astra
+      effort: high
+    critic:
+      model: astra
       effort: high
 
 # Per-role originating-search budgets. Retrieval of resources already named in

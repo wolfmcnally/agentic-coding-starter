@@ -28,9 +28,11 @@ If you are working on a phase:
 ```mermaid
 graph TD
     P1[Phase 1<br/>Adopt the template for your project]
+    P2[Phase 2<br/>Model support and portable role presets] --> P3[Phase 3<br/>Coherent phases and instruction delivery]
+    P3 --> P4[Phase 4<br/>Qualification and evaluation]
 ```
 
-The graph contains a single placeholder phase because starter's own deliverable is "the template itself" — a one-phase project. **Derived projects** stamped from this template via `stamp` enumerate every major phase the brief surfaces at bootstrap (each as a sketched `plan/phase-N.md` file at lower fidelity), per [`../briefs/methodology.md`](../briefs/methodology.md) §6 and [`../briefs/agentic-bootstrap.md`](../briefs/agentic-bootstrap.md) §8. Sub-phases stay JIT (drafted at parent open via `kickoff` Step 1a) and ripple at every phase close per [`../policies/phase-ripple.md`](../policies/phase-ripple.md).
+The adoption placeholder remains available; the operator approved the three sequential template-improvement outcomes on 2026-09-04. Phase 2 does not depend on adopting the template as another product. These phases remain monolithic unless an actual decision or acceptance boundary requires decomposition. **Derived projects** stamped from this template via `stamp` enumerate every major phase the brief surfaces at bootstrap (each as a sketched `plan/phase-N.md` file at lower fidelity), per [`../briefs/methodology.md`](../briefs/methodology.md) §6 and [`../briefs/agentic-bootstrap.md`](../briefs/agentic-bootstrap.md) §8. Sub-phases stay JIT (drafted at parent open via `kickoff` Step 1a) and ripple at every phase close per [`../policies/phase-ripple.md`](../policies/phase-ripple.md).
 
 ## Phase Table
 
@@ -38,13 +40,20 @@ Status legend: ⏳ Not Started · ⬅️ Next (at most one) · 🚧 In Progress 
 
 | Phase                  | Title                                | Status |
 |------------------------|--------------------------------------|--------|
-| [Phase 1](phase-1.md)  | Adopt the template for your project  | ⬅️     |
+| [Phase 1](phase-1.md)  | Adopt the template for your project  | ⏳     |
+| [Phase 2](phase-2.md) | Model support and portable role presets | ✅ |
+| [Phase 3](phase-3.md) | Coherent phases and reliable instruction delivery | ⬅️ |
+| [Phase 4](phase-4.md) | Integrated qualification and bounded evaluation | ⏳ |
 
 `kickoff` flips `⬅️` → `🚧` on start, `🚧` → `✅` on completion, and advances the next `⏳` row to `⬅️` per this dependency graph. Status does not live in per-phase frontmatter.
 
 Every phase row carries exactly one recognized status. An idle incomplete
 project has exactly one `⬅️`; active work may have zero while its executable
 row is `🚧`; a complete project has zero; more than one is always invalid.
+
+## Approved improvement work
+
+Operator decision, 2026-09-04: implement the [Astra-era development workflow](../briefs/astra-era-development.md) through phases 2–4. Model routing precedes instruction delivery; integrated qualification follows both. Phase 1 remains the adoption example, not a prerequisite to template maintenance.
 
 ## Decomposition ledger (convention)
 

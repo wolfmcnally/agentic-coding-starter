@@ -7,8 +7,8 @@ description: >-
   while preserving human comments and other sections, so the orchestrator
   invokes each role on the resolved model. Orchestration and build gates always
   stay on the current session's model. Invoke as /roles in Claude Code or
-  $roles in Codex; arguments show, set, or reset the pins.
-argument-hint: "[<harness>] <role>: <model> [effort <level>], ... | reset"
+  $roles in Codex; arguments show, set, reset, or apply a preset to the pins.
+argument-hint: "[<harness>] <role>: <model> [effort <level>], ... | preset <quality|balanced|economy> [same-harness|cross-vendor] | reset"
 allowed-tools: Bash
 last-reviewed: 2026-08-10
 ---
@@ -29,17 +29,11 @@ which harness is orchestrating. This is a thin wrapper over the deterministic
   - `claude` — `claude` CLI, its configured default model.
   - `codex` — `codex` CLI, its configured default model.
   - `opus`, `fable` — `claude --model opus|fable`.
+  - `astra` — `codex --model gpt-6-astra`.
   - `sol`, `terra`, `luna` — `codex --model gpt-5.6-sol|terra|luna`.
-- **Reasoning effort:** set a separate `effort` field to `low`, `medium`, `high`,
-  or `xhigh` when a Codex- or Claude-routed role needs an explicit effort. Claude
-  additionally accepts `max`. Omit the field to preserve the model's
-  configured/default effort. Effort is rejected for `default` because
-  `roles` cannot control the orchestrator's native session effort. `max` is
-  Claude-only; `Ultra` is a product execution mode rather than a role-pin effort.
+- **Reasoning effort:** a separate optional field, validated against the selector-specific supported subset in [`policies/role-models.md`](../../../policies/role-models.md#human-editable-configuration). Native `default` rejects explicit effort; `ultra` is not enabled. Omission retains configured effort.
 
-Resolution for a role under harness `H`: `H`'s section, else the `default`
-section, else native. The shipped default routes reviewer + critic to the *other*
-harness (cross-vendor review) and leaves planner + coder native.
+Resolution for a role under harness `H`: `H`'s section, else the `default` section, else native. The shipped/reset preset is quality/same-harness. The authoritative matrix and cross-vendor selection are in [`policies/role-models.md`](../../../policies/role-models.md#independent-review-and-portable-presets).
 
 ## Parse arguments
 
@@ -47,6 +41,7 @@ Raw arguments: `!{ARGUMENTS}`
 
 - **Empty** → show current pins + the resolved view for this harness: run `./bin/kickoff-config show models`.
 - **`reset`** (or `--reset`) → restore only the shipped model defaults: run `./bin/kickoff-config reset models`. Timeout calibration and data under `extensions` remain untouched.
+- **Preset request** (`quality`, `balanced`, or `economy`, optionally prefixed by `preset`) → run `./bin/kickoff-config apply-preset <name> [--review same-harness|cross-vendor]`. Omitted review mode is same-harness. Explain that this replaces all role pins in both concrete harness sections, retaining the base layer, other sections and comments; it makes no model call.
 - **One or more role assignments**, optionally preceded by a **harness token** (`default`/`claude`/`codex`) → translate to field-path assignments and run `./bin/kickoff-config set-models <harness> <role>.model=<model> [<role>.effort=<effort>] ...`. With no harness token, use `default`. Use `<role>.effort=default` to remove an explicit effort field.
 
 If the request is vague or uses a synonym (e.g. "when I'm on Codex, review with opus at high effort", "put the coder on the big model"), resolve it to concrete harness/role/model/effort fields using the vocabulary above, state the mapping you chose, then run the manager. That interpretation is the only judgment this skill makes. If genuinely ambiguous, ask rather than guess.
@@ -59,7 +54,14 @@ Invoke the script with the resolved arguments, e.g.:
 ./bin/kickoff-config set-models codex reviewer.model=opus critic.model=opus
 ```
 
-An explicit GPT-5.6 configuration uses the code names directly:
+Preset examples:
+
+```
+./bin/kickoff-config apply-preset balanced
+./bin/kickoff-config apply-preset quality --review cross-vendor
+```
+
+Explicit model selections use code names directly:
 
 ```
 ./bin/kickoff-config set-models claude reviewer.model=sol reviewer.effort=medium critic.model=terra critic.effort=low
@@ -81,12 +83,12 @@ its error message verbatim and do not retry with the same bad value.
 Echo the script's output so the user sees the config and the resolved view.
 When any role resolves to a non-`default` model, add a one-line reminder:
 
-> These take effect on the next `kickoff`. Its fail-closed preflight aborts before phase mutation if a required external CLI, authentication path, or model is unavailable; a later runtime failure falls back with a 🚨 in the `kickoff` summary.
+> These take effect on the next `kickoff`. Its fail-closed preflight aborts before phase mutation if a required external CLI, authentication path, or model is unavailable; a later runtime failure preserves evidence and follows governed recovery without silently changing model or effort. If a model is unavailable, select an available preset or explicit pins before restarting.
 
 Once `./bin/kickoff-config show` validates the edited configuration, commit that one file by explicit path and non-force-push it ([`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md)). The change is small, mechanically validated, and exactly what the user asked for; park delivery and report instead if validation fails, if `git status` shows a path this skill did not touch, or if the upstream is missing or ambiguous.
 
 ## Notes
 
 - The config file is `kickoff.yaml` at the repo root and is deliberately human-editable. `roles` is a convenient validated editor for its `role_models` section, not its owner.
-- `roles` is universal — carried into every project `stamp` derives; every derived project has the same four roles and the same cross-vendor-review default.
-- The default `claude:`/`codex:` sections are what provide out-of-the-box cross-vendor review. Editing or clearing them changes the review venue; there is no separate on/off switch.
+- `roles` is universal — carried into every project `stamp` derives; every derived project has the same four roles and the same portable quality/same-harness default.
+- Presets are an editor operation over `claude:`/`codex:` role pins, not a second runtime setting. Existing target pins remain authoritative until explicitly edited.

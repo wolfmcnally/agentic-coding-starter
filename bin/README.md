@@ -249,8 +249,14 @@ PEP 723 `ruamel.yaml`. Governed by
 ```
 
 ```bash
+./bin/kickoff-config apply-preset balanced
+./bin/kickoff-config apply-preset quality --review cross-vendor
 ./bin/kickoff-config reset models
 ```
+
+Presets replace all concrete harness role pins while preserving the base layer, comments and other sections; omitted review mode is same-harness. Quality/same-harness is the shipped/reset default. The [role policy](../policies/role-models.md#independent-review-and-portable-presets) owns the matrix. These editing operations make no model call, so an unavailable model can be replaced before retrying fail-closed preflight.
+
+Watcher diagnostics distinguish requested `model`/`effort` from optional `harness_version`, `observed_model`, `observed_effort`, and `observation_errors`. Missing observations render as `unreported`; provider aliases and auxiliary usage maps are not evidence of a changed request. See [reporting semantics](../policies/role-models.md#end-block-reporting).
 
 ```bash
 ./bin/kickoff-config show budgets

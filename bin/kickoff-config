@@ -7,6 +7,7 @@
 
   bin/kickoff-config show [all|models|research|timeouts|budgets]
   bin/kickoff-config set-models [<harness>] <role>.model=<model> [<role>.effort=<effort>] ...
+  bin/kickoff-config apply-preset quality|balanced|economy [--review same-harness|cross-vendor]
   bin/kickoff-config reset models|research|timeouts|budgets|all
   bin/kickoff-config preflight --receipt <path>
   bin/kickoff-config verify-preflight-receipt --receipt <path>
@@ -117,16 +118,23 @@ REVIEW_ROLE_KINDS = {"reviewer": "plan", "critic": "code"}
 
 HARNESSES = ("default", "claude", "codex")
 ROLES = ("planner", "reviewer", "coder", "critic")
-MODELS = ("default", "claude", "codex", "opus", "fable", "sol", "terra", "luna")
+MODELS = ("default", "claude", "codex", "opus", "fable", "astra", "sol", "terra", "luna")
 CODEX_MODELS = {
     "codex": None,
+    "astra": "gpt-6-astra",
     "sol": "gpt-5.6-sol",
     "terra": "gpt-5.6-terra",
     "luna": "gpt-5.6-luna",
 }
 CLAUDE_MODELS = {"claude": None, "opus": "opus", "fable": "fable"}
-CODEX_EFFORTS = ("low", "medium", "high", "xhigh")
-CLAUDE_EFFORTS = ("low", "medium", "high", "xhigh", "max")
+MODEL_EFFORTS = {
+    model: ("low", "medium", "high", "xhigh", "max") for model in (*CODEX_MODELS, *CLAUDE_MODELS)
+}
+MODEL_EFFORTS["codex"] = ("low", "medium", "high", "xhigh")
+MODEL_EFFORTS["default"] = ()
+EFFORTS = tuple(dict.fromkeys(effort for values in MODEL_EFFORTS.values() for effort in values))
+PRESETS = ("quality", "balanced", "economy")
+REVIEW_MODES = ("same-harness", "cross-vendor")
 ROLE_OPERATIONS = {
     "planner": "role.plan",
     "reviewer": "role.plan-review",
@@ -134,18 +142,33 @@ ROLE_OPERATIONS = {
     "critic": "role.code-review",
 }
 
+
+def preset_models(
+    preset: str, review: str = "same-harness"
+) -> dict[str, dict[str, dict[str, str]]]:
+    if preset not in PRESETS or review not in REVIEW_MODES:
+        die("unknown preset or review mode")
+    models = {}
+    for harness, strong, economical, other_strong, other_economical in (
+        ("claude", "fable", "opus", "astra", "sol"),
+        ("codex", "astra", "sol", "fable", "opus"),
+    ):
+        roles = {
+            role: {"model": economical if preset == "economy" else strong, "effort": "high"}
+            for role in ROLES
+        }
+        if preset == "balanced":
+            roles["coder"]["model"] = economical
+        if review == "cross-vendor":
+            for role in ("reviewer", "critic"):
+                roles[role]["model"] = other_economical if preset == "economy" else other_strong
+        models[harness] = roles
+    return models
+
+
 SHIPPED_MODELS: dict[str, dict[str, dict[str, str]]] = {
-    "default": {
-        "planner": {"model": "default"},
-        "reviewer": {"model": "default"},
-        "coder": {"model": "default"},
-        "critic": {"model": "default"},
-    },
-    "claude": {"reviewer": {"model": "codex"}, "critic": {"model": "codex"}},
-    "codex": {
-        "reviewer": {"model": "opus", "effort": "high"},
-        "critic": {"model": "opus", "effort": "high"},
-    },
+    "default": {role: {"model": "default"} for role in ROLES},
+    **preset_models("quality"),
 }
 
 SHIPPED_TIMEOUTS: dict[str, Any] = {
@@ -237,11 +260,7 @@ def positive_integer(value: Any, label: str) -> int:
 
 
 def supported_efforts(model: str) -> tuple[str, ...]:
-    if model in CODEX_MODELS:
-        return CODEX_EFFORTS
-    if model in CLAUDE_MODELS:
-        return CLAUDE_EFFORTS
-    return ()
+    return MODEL_EFFORTS.get(model, ())
 
 
 def reject_unknown_keys(value: MutableMapping[str, Any], allowed: set[str], label: str) -> None:
@@ -590,7 +609,7 @@ def set_models(arguments: list[str]) -> None:
             die(f"unknown model '{value}' (models: {' '.join(MODELS)})")
         if field == "effort" and value in ("default", "none"):
             staged.append((role, field, None))
-        elif field == "effort" and value not in CLAUDE_EFFORTS:
+        elif field == "effort" and value not in EFFORTS:
             die(f"unknown reasoning effort '{value}'")
         else:
             staged.append((role, field, value))
@@ -607,6 +626,17 @@ def set_models(arguments: list[str]) -> None:
             section[section_name][role].pop(field, None)
         else:
             section[section_name][role][field] = value
+    atomic_dump(document)
+    show_models(load_document()["role_models"])
+
+
+def apply_preset(preset: str, review: str) -> None:
+    document = load_document()
+    section = document["role_models"]
+    for harness, roles in preset_models(preset, review).items():
+        target = section.setdefault(harness, CommentedMap())
+        for role, fields in roles.items():
+            target.setdefault(role, CommentedMap()).update(fields)
     atomic_dump(document)
     show_models(load_document()["role_models"])
 
@@ -1515,7 +1545,7 @@ def event_text(event: dict[str, Any]) -> str | None:
 def parse_events(
     data: bytes,
     venue: str | None = None,
-) -> tuple[int | None, int | None, int | None, str | None, str | None, set[str]]:
+) -> tuple[int | None, int | None, int | None, str | None, str | None, set[str], bool]:
     turns = 0
     input_tokens: int | None = None
     output_tokens: int | None = None
@@ -1523,6 +1553,7 @@ def parse_events(
     assistant_text: str | None = None
     event_types: set[str] = set()
     parsed = False
+    terminal_error = False
     for raw_line in data.decode("utf-8", errors="replace").splitlines():
         try:
             event = json.loads(raw_line)
@@ -1536,6 +1567,7 @@ def parse_events(
         if event_type in {"turn.started", "assistant"}:
             turns += 1
         if venue == "claude" and event_type == "result":
+            terminal_error = terminal_error or event.get("is_error") is True
             input_tokens, output_tokens = numbers_from_usage(event.get("usage"))
         if event_type == "result" and isinstance(event.get("result"), str):
             result = event["result"]
@@ -1550,7 +1582,55 @@ def parse_events(
         result,
         assistant_text,
         event_types,
+        terminal_error,
     )
+
+
+def invocation_observations(
+    data: bytes, venue: str, version: str | None, errors: list[str]
+) -> dict[str, Any]:
+    errors = list(errors)
+    models: set[str] = set()
+    versions: set[str] = set()
+    malformed: set[str] = set()
+    if venue == "claude":
+        for line in data.decode("utf-8", errors="replace").splitlines():
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(event, dict) or (event.get("type"), event.get("subtype")) != (
+                "system",
+                "init",
+            ):
+                continue
+            for key, values in (("model", models), ("claude_code_version", versions)):
+                value = event.get(key)
+                if isinstance(value, str) and value.strip():
+                    values.add(value.strip())
+                elif key in event:
+                    malformed.add(key)
+    observed_model = None
+    for key, values in (("model", models), ("claude_code_version", versions)):
+        if len(values) > 1 or key in malformed:
+            errors.append(f"primary {key} conflicting or malformed; unreported")
+            if key == "claude_code_version":
+                version = None
+        elif values:
+            if key == "model":
+                observed_model = next(iter(values))
+            else:
+                version = next(iter(values))
+    if observed_model is None:
+        errors.append("primary model unreported")
+    if version is None:
+        errors.append("harness version unreported")
+    return {
+        "harness_version": version,
+        "observed_model": observed_model,
+        "observed_effort": None,
+        "observation_errors": errors,
+    }
 
 
 def append_record(record: dict[str, Any], telemetry_path: str) -> None:
@@ -1812,6 +1892,25 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
     if idle_limit > hard_limit:
         die("idle timeout cannot exceed hard timeout")
 
+    version = None
+    version_errors: list[str] = []
+    try:
+        version_result = subprocess.run(
+            [command[program_index], "--version"],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            env=scrubbed_env(arguments.venue),
+            timeout=5,
+            check=False,
+        )
+        if version_result.returncode == 0 and version_result.stdout.strip():
+            version = version_result.stdout.strip()
+        else:
+            version_errors.append("version command failed or returned empty output")
+    except (OSError, UnicodeError, subprocess.TimeoutExpired) as exc:
+        version_errors.append(f"version command unavailable: {type(exc).__name__}")
+
     stdout_file = open_artifact(arguments.stdout_file)
     stderr_file = open_artifact(arguments.stderr_file)
     result_path = prepare_output_path(arguments.result_file)
@@ -2036,10 +2135,15 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
     if child_exit_code is not None and child_exit_code < 0:
         child_exit_code = 128 + abs(child_exit_code)
         return_code = child_exit_code
-    turns, input_tokens, output_tokens, result, assistant_text, event_types = parse_events(
-        bytes(stdout_data), arguments.venue
+    turns, input_tokens, output_tokens, result, assistant_text, event_types, terminal_error = (
+        parse_events(bytes(stdout_data), arguments.venue)
+    )
+    observations = invocation_observations(
+        bytes(stdout_data), arguments.venue, version, version_errors
     )
     protocol_errors: list[str] = []
+    if terminal_error:
+        protocol_errors.append("provider reported an explicit terminal error")
     artifact_requested = result_path is not None or required_output_path is not None
     artifact_status = "not-requested"
     if result_path is not None:
@@ -2078,6 +2182,9 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
         outcome = "interrupted"
     elif child_exit_code != 0:
         return_code = child_exit_code
+        outcome = "error"
+    elif terminal_error:
+        return_code = PROTOCOL_EXIT
         outcome = "error"
     elif artifact_status == "fresh" and not stream_complete:
         return_code = RECOVERABLE_PROTOCOL_EXIT
@@ -2157,6 +2264,7 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
         "venue": arguments.venue,
         "model": arguments.model,
         "effort": arguments.effort,
+        **observations,
         "started_at": started_iso,
         "ended_at": utc_now(),
         "trace_id": arguments.telemetry_trace_id,
@@ -2321,6 +2429,10 @@ def build_parser() -> argparse.ArgumentParser:
     set_parser = subparsers.add_parser("set-models")
     set_parser.add_argument("arguments", nargs=argparse.REMAINDER)
 
+    preset_parser = subparsers.add_parser("apply-preset")
+    preset_parser.add_argument("preset", choices=PRESETS)
+    preset_parser.add_argument("--review", choices=REVIEW_MODES, default="same-harness")
+
     set_budgets_parser = subparsers.add_parser("set-budgets")
     set_budgets_parser.add_argument("arguments", nargs=argparse.REMAINDER)
 
@@ -2337,7 +2449,7 @@ def build_parser() -> argparse.ArgumentParser:
         parser.add_argument("--role", required=True, choices=ROLES)
         parser.add_argument("--venue", required=True, choices=("claude", "codex"))
         parser.add_argument("--model", required=True, choices=MODELS)
-        parser.add_argument("--effort", default="default", choices=("default", *CLAUDE_EFFORTS))
+        parser.add_argument("--effort", default="default", choices=("default", *EFFORTS))
         parser.add_argument("--prompt-file", required=True)
         parser.add_argument("--result-file")
         parser.add_argument("--required-output-file")
@@ -2399,6 +2511,8 @@ def main() -> None:
         show(document, arguments.scope)
     elif arguments.action == "set-models":
         set_models(arguments.arguments)
+    elif arguments.action == "apply-preset":
+        apply_preset(arguments.preset, arguments.review)
     elif arguments.action == "set-budgets":
         set_budgets(arguments.arguments)
     elif arguments.action == "preflight":

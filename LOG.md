@@ -1209,3 +1209,153 @@ Lessons:
 
 Remaining:
 - Restart the approved Astra-era improvement work after delivery.
+
+## 2026-09-04 21:01 — START
+Phase 2 — Model support and portable role presets
+
+Execution trace: 9d1eee00b7ea4b31a18edc6898264759
+
+Planned work:
+- Add explicit Astra routing and model/venue effort validation across initial and resumed commands.
+- Provide inspectable quality, balanced, and economy presets with explicit cross-vendor review selection and portable quality defaults.
+- Preserve routing authority and permission posture; report requested and observed execution metadata honestly and prevent silent substitution.
+- Update role documentation, reset/stamp behavior, fixtures, and existing behavioral proofs together.
+
+## 2026-09-04 21:46 — PARK
+Phase 2 — Model support and portable role presets (preparation)
+
+The plan is independently approved and governing documentation is prepared. Executable preset support, configuration, fixtures, behavioral tests and final review remain pending. No phase acceptance or delivery is claimed.
+
+Execution trace: 9d1eee00b7ea4b31a18edc6898264759
+Candidate lineage: 461ca15ede338c2a50e7a46aa8b38aff3915948e1630f002462668863b188f54 → 5f87e088d008b7a146e4cf25aaac18b76f3c8815697acc7ceaeee4fb44896d0b. Prepared changes are retained; restoration would discard approved work.
+
+Park reason: declared authority changed; re-review is required in a fresh run. The instrument freezes whole-file authority before the required startup marker and this phase's approved governing-document edits. The correction is to capture final authority bytes and the already-in-progress marker before genuine remaining implementation, retaining the unchanged original role configuration throughout that fresh run. This is the first recorded occurrence of that generator in this phase; no previous signature ledger exists.
+
+Evidence is preserved in the finalized local preparation run. Both external reviewer processes exited successfully; the native planner and preparation coder completed. No delegated work or process remains active. The preparation trace ended interrupted because it cannot establish acceptance. Under the approved plan and policies/fail-closed-resume.md, the fresh run consumes one of three self-resume units, leaving two. It will record genuine planning, review, implementation and critique against the complete phase diff. No authority guard or role requirement is waived.
+
+Preparation checks: catalogs, cross-harness parity, anonymization and whitespace passed. Runtime tests and both full close gates remain pending. Requested reviewers were Opus/high through Claude; their streams reported claude-opus-5 and Claude Code 2.1.261, with effort unreported. Native planner/coder settings were inherited rather than provider-observed.
+
+Lessons:
+- Filed lessons/classy-kangaroo.md: test lifecycle transitions with the production authority inventory; bookkeeping exclusion does not exempt declared authority.
+- The existing citation-direction rule covered the preparation citation correction; no duplicate rule added.
+
+## 2026-09-04 21:48 — START
+Phase 2 — Model support and portable role presets (resumed)
+
+Execution trace: e30ed101de844ad0bfae70b19efec1ce
+
+Planned work:
+- Rebind independent planning and review to the final prepared requirements.
+- Implement preset expansion, explicit Astra routing, qualified observations and existing behavioral proofs.
+- Review the complete phase change, then run both full close gates. The preparation run remains parked; two self-resume units remain.
+
+## 2026-09-04 22:37 — END
+Phase 2 — Model support and portable role presets
+
+Quality, balanced and economy now expand into inspectable role choices for both harnesses. Quality defaults to Astra in Codex and Fable in Claude Code, with high effort and same-harness independent review. Cross-vendor review remains an explicit choice. Requested settings survive resumes; unsupported observations remain unreported and qualified explicit terminal errors remain failures. The implementation is independently approved and its full gate passed. Final delivery remains contingent on the post-bookkeeping handoff gate below.
+
+Files changed:
+- .claude/skills/kickoff/SKILL.md
+- .claude/skills/roles/SKILL.md
+- .claude/skills/stamp/SKILL.md
+- CLAUDE.md
+- EXECUTION_LOG.jsonl
+- LOG.md
+- bin/README.md
+- bin/kickoff-config
+- briefs/astra-era-development.md
+- briefs/cross-agent-invocation.md
+- briefs/eacp-pattern-map.md
+- docs/README.md
+- docs/openai-astra-model-settings.md
+- kickoff.yaml
+- lessons/classy-kangaroo.md
+- plan/INDEX.md
+- plan/phase-2.md
+- plan/phase-3.md
+- plan/phase-4.md
+- policies/four-canonical-agents.md
+- policies/review-lanes.md
+- policies/role-models.md
+- policies/role-timeouts.md
+- tests/fixtures/kickoff_config_seed.yaml
+- tests/test_kickoff_config.py
+- reports/execution/ — sanitized offline phase report and aggregate index generated after this entry.
+
+Build status:
+- Focused configuration and adjacent evidence checks: passed (1, 8 and 14 tests in the approved sequence); lint, format and policy checks passed.
+- Implementation full gate: `./bin/check all` passed, 103 tests; all diagnostics inspected. Proof estate remains 108 families / 126 leaves, measured by the full gate's governance report.
+- Handoff gate: runs after this tracked END block and dashboard; completion is contingent on its ignored full-tree receipt.
+- Optional gate attachment: digest absent because the orchestrator supplied an uncreated attachment path. The required full-gate receipt and complete captured log exist; acceptance validation passed. This is a capture-argument mistake, not a suppressed test warning. No evidence was rewritten.
+
+Review lane: full. Evidence lane: full. Follow-up route: initial implementation with one bounded coder/critic revision.
+
+Role model/venue — orchestrated by Codex:
+- Preflight: passed for the frozen original routing configuration. The new pins start on the next run; this run does not establish Astra/Fable entitlement.
+- Planner: requested model=default effort=default venue=native; harness_version=unreported, observed_model=unreported, observed_effort=unreported; observation_errors=native provider metadata unavailable.
+- Reviewer: requested model=opus effort=high venue=claude; harness_version=2.1.261, observed_model=claude-opus-5, observed_effort=unreported; observation_errors=effort not exposed by qualified primary metadata.
+- Coder: requested model=default effort=default venue=native; harness_version=unreported, observed_model=unreported, observed_effort=unreported; observation_errors=native provider metadata unavailable.
+- Critic: requested model=opus effort=high venue=claude; harness_version=2.1.261, observed_model=claude-opus-5, observed_effort=unreported; observation_errors=effort not exposed by qualified primary metadata.
+- Observed Claude values came from each role's system/init stream. No configured-versus-dispatched difference or protocol recovery occurred in the accepted run.
+
+Role timing:
+- Planning: 1 attempt(s), 161.848 s measured, success; native first-event/idle telemetry unavailable where applicable.
+- Plan Review: 1 attempt(s), 237.434 s measured, success; native first-event/idle telemetry unavailable where applicable.
+- Implementation: 2 attempt(s), 825.260 s measured, success; native first-event/idle telemetry unavailable where applicable.
+- Code Review: 2 attempt(s), 816.275 s measured, success; native first-event/idle telemetry unavailable where applicable.
+
+Execution timing:
+- Accepted run active makespan: 2875.040464417 s; calendar window: 2875.040464417 s. Preparation remains a separate interrupted trace in the phase report.
+- Exclusive measured roles: Planning 161.847820917 s; Plan Review 237.433647875 s; Implementation 825.260449666 s; Code Review 816.275335125 s. Role spans are sequential; peak role concurrency is 1.
+- Automated checks: 49.946037375 s; reconciliation: 777.706343876 s; unmeasured gaps: 6.570829583 s. Wait mirrors are excluded from work totals.
+- Failed work: 0.000000000 s; retry work: 383.200329917 s.
+- Awaiting user input: none in the phase park ledger, zero recorded duration; no open park.
+- Timing validation: finalized trace, exact monotonic joins and both JSON/Markdown timing summaries passed. Counts and durations derive from `kickoff-evidence timing-summary`, finalized spans and the dashboard's overlap-safe projection, not wall-clock guesses.
+
+Candidate-bound evidence:
+- Product: prepared=5f87e088d008b7a146e4cf25aaac18b76f3c8815697acc7ceaeee4fb44896d0b; approved=632b2e0b96f08ebedf617a990990bc5b723a31730dbe5eb1a7a875e0d7786dc5; final implementation=632b2e0b96f08ebedf617a990990bc5b723a31730dbe5eb1a7a875e0d7786dc5.
+- Implementation full tree: 6a5c35e9440158aecab2657a7d8554bc9931fa323f35724e701734724ce81180; active command manifest: 250b591a81eada6da01e17548b21c58dadc2f098afe32f25f97496a58a845c45.
+- Revision packets: 1, 16077 bytes, source hashes recorded in the run packet ledger.
+- Findings: open=0, addressed=0, verified=5, rejected-with-evidence=3, closed=0, blocked=0; reopened=0. The independent delta review verified three fixes and accepted three refutations without new scope.
+- Implementation-final gates: 1, bound to the approved product. Focused checks are recorded in coder change evidence; they are not miscounted as separately measured gate spans.
+- Evidence acceptance validation passed with required command `./bin/check all`. The original authority-preparation PARK remains truthful; the accepted major-phase close precedes the status marker update without relaxing authority hashes.
+
+Wall-clock observations:
+- Separable command properties now use 27 manager renders instead of 65 in the revised test block, retaining model/resume/max, venue/effort and rejection coverage. Counts were independently recounted from literal loops; no comparative model-performance claim follows.
+
+Acceptance:
+- Objective: preset matrices, atomic configuration edits and reset behavior, Astra/effort routing and resume preservation, qualified observation/null behavior, explicit-error precedence, permissions, receipts and repository checks closed on independently reviewed executable evidence.
+- Parked for the user: judge preset-table clarity and run the disposable User Demo. Local fixtures do not prove account entitlement, comparative cost, speed or defect escape rates.
+
+Delivery:
+- Default — explicit-path commit and fast-forward push after the handoff gate. No delivery outcome is claimed by this pre-handoff entry.
+
+Ripple:
+- AUTO: none; Phase 3 and Phase 4 already cite the approved contract and correct remaining scope.
+- DECIDE: none blocking. Codex primary field qualification remains in Phase 4's authorized qualification work; no invented provider field was added.
+
+Lessons:
+- Filed during preparation: classy-kangaroo — production lifecycle tests must use real authority inventories and status transitions; methodology scope, one occurrence.
+- Existing verification discipline covers the critic's authority overreads and the orchestrator's optional capture-argument mistake; corrected interpretation, no duplicate rule.
+- Existing graduation candidates from `bin/lessons candidates`: deft-puffin (3, operation names as schema keys); greedy-ammonite (3, report/output path collision); merciful-cicada (4, explicit repository selection); russet-mole (8, success claims proving too little). No graduation is applied or required for this phase.
+- Recalibration: insufficient samples; no target reaches the required 30 successful samples. Configuration unchanged by the recommendation.
+
+User Demo:
+- Entry point: the commands below create and edit only a disposable configuration. No live model call occurs.
+- Suggested inputs: apply balanced with omitted review mode, show models, apply quality with cross-vendor review, then reset models. Each operation is `./bin/kickoff-config` with that disposable config override.
+- What to look for: judge whether the stored two-harness tables and current-harness resolution make the change in coder cost and review venue clear enough to choose intentionally.
+- Variations: compare economy and a scoped explicit role edit; confirm the other operational budgets and comments are retained. No preflight or paid role invocation is part of this demo.
+
+```sh
+astra_demo_dir=$(mktemp -d)
+cp kickoff.yaml "$astra_demo_dir/kickoff.yaml"
+env KICKOFF_CONFIG_FILE="$astra_demo_dir/kickoff.yaml" ./bin/kickoff-config apply-preset balanced
+env KICKOFF_CONFIG_FILE="$astra_demo_dir/kickoff.yaml" ./bin/kickoff-config show models
+env KICKOFF_CONFIG_FILE="$astra_demo_dir/kickoff.yaml" ./bin/kickoff-config apply-preset quality --review cross-vendor
+env KICKOFF_CONFIG_FILE="$astra_demo_dir/kickoff.yaml" ./bin/kickoff-config reset models
+```
+
+
+Remaining:
+- Phase 3: coherent phases and reliable instruction delivery. Phase 4: integrated qualification and bounded evaluation.
+- The live comparative batch remains unrun and requires separate pricing and operator authorization. The broader approved implementation remains authorized.
