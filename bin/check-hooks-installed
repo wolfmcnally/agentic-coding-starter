@@ -1,4 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
 """check-hooks-installed — Prove the opt-in Git hooks are live when opted in.
 
 ``core.hooksPath`` is *local* config that does not survive a clone, and it can

@@ -1657,3 +1657,27 @@ Qualification: major and child workflows reach ordinary commits and fast-forward
 Lessons: three distinct lifecycle observations appended to `classy-kangaroo`; it remains a candidate. `attentive-dolphin`, `classy-kangaroo` and `deft-puffin` meet the recurrence threshold but are not graduated. The existing operator action about role-output custody remains open and outside this scope.
 
 Remaining: final bare handoff gate and automatic explicit-path delivery follow this last tracked write. The approved cross-repository reconciliation, target-preserving teaching and product trials remain to execute after source delivery. Contract ratification, release tags, production deployment and paid experiment authorization retain their separate operator boundaries. No target repository was modified during readiness work.
+
+## 2026-09-05 23:38 — METHODOLOGY SCOPE
+
+Approved outcome: complete the approved readiness and real-project feedback initiative by removing ambient-Python launch assumptions from the template. A target qualification exposed the same two raw Python entrypoints present here. Use the already established uv-script bootstrap and retain exact command behavior and source/pinned imports.
+
+Surfaces in scope: bin/check-hooks-installed, bin/kickoff-evidence, tests/test_check_hooks_installed.py and tests/test_kickoff_evidence.py; recipient-local effectiveness reassessment if required by proof governance; this paired log. Apply only the qualified launcher and existing-test hunks, preserving this template's stronger evidence and child-close behavior. Existing build-gate runtime ownership supplies the requirement. No new policy or lesson graduation is authorized or needed.
+
+Excluded: target product code, identities, configuration, evidence, corpus choices or reports; runtime/dependency versions; phase changes; ambient interpreter installation; gate weakening or model-pin changes. Keep external provenance anonymized before writing.
+
+Route: direct implementation under the approved methodology route, independent review of the complete local correction, focused executable tests and local governance checks, then both full gates and ordinary delivery. The source remains responsible for its own evidence.
+
+## 2026-09-05 23:47 — METHODOLOGY
+
+The template now launches both affected gate tools through its established uv-script bootstrap. Their command bodies, hook-refusal semantics, pinned-tool imports and template-specific child-close behavior remain unchanged. No scope departure or new policy was introduced.
+
+Files changed: bin/check-hooks-installed; bin/kickoff-evidence; tests/test_check_hooks_installed.py; tests/test_kickoff_evidence.py; reports/test-governance/starter-effectiveness.jsonl; LOG.md. The independent reviewer approved the complete local correction with no required findings at product candidate 45655c5068922a0c72888f80cf9fce8ba02d99860805132cb2cf58a79122cf8d.
+
+Qualification: both prior executable launchers fail with exit 127 on a restricted PATH without ambient Python; both corrected launchers pass there. Existing behavioral families also preserve the incorrect-hook-path refusal and exercise source and pinned evidence launch. Focused tests: 11 passed; lint, format and anonymization checks passed. The first full ./bin/check all passed all 103 tests in 91.19 seconds and every policy check, with complete diagnostics inspected and no warnings. Its unchanged full-tree receipt is 0568bcf711aa1531fe9e779aba97336944aabff802244ee4b746c433cbe6f371.
+
+Recipient-local reassessment: 24 fresh observations retain all case identities, commands, patch digests and outcomes. Detection remains 12/12 historical and 11/12 fixed mutants; the existing vital-substitutes-for-full survivor remains visible. Only observed output hashes changed. These are repeated fixed-corpus regression observations, not a new unseen holdout or broad recall claim. Validation and reassessment retain 108 families and 126 leaves under the frozen budgets; no corpus or proof-family change.
+
+Lessons: the existing build-gate ownership requirement now has stronger execution-boundary coverage in its existing test families. No duplicate rule or provisional graduation was added. Target findings and evidence were not imported.
+
+Remaining: the second bare ./bin/check all runs after this terminal bookkeeping. Delivery is contingent on its successful receipt, then explicit-path staging and ordinary fast-forward push. No manual acceptance criterion remains for this bounded correction. Model pins, target product state and the separate watcher-output decision are unchanged.

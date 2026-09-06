@@ -447,6 +447,25 @@ def test_change_manifest_is_candidate_bound_and_detects_authority_drift(
     assert (run_dir / "findings.json").is_file()
     assert (run_dir / "gates.jsonl").is_file()
 
+    # Neither the source executable nor its pinned copy may require an
+    # ambient interpreter before reaching their own imports and argument parser.
+    launch_path = tmp_path / "launch-path"
+    launch_path.mkdir()
+    (launch_path / "uv").symlink_to(UV)
+    assert shutil.which("python3", path=str(launch_path)) is None
+    for executable in (EVIDENCE, run_dir / "tools" / "kickoff-evidence"):
+        launched = subprocess.run(
+            [str(executable), "--help"],
+            cwd=repository,
+            env={**os.environ, "PATH": str(launch_path), "UV_PYTHON_PREFERENCE": "only-managed"},
+            text=True,
+            capture_output=True,
+            timeout=20,
+            check=False,
+        )
+        assert launched.returncode == 0, launched.stderr
+        assert "capture-change" in launched.stdout
+
     active_digest = json.loads((run_dir / "gate-manifests.jsonl").read_text())["manifest_sha256"]
     original_manifest = json.loads((tmp_path / "run-commands.json").read_text())
     successor = tmp_path / "successor-commands.json"

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -23,9 +25,10 @@ def hook_repo(tmp_path: Path) -> Path:
     return root
 
 
-def _run(root: Path) -> subprocess.CompletedProcess[str]:
+def _run(root: Path, launch_path: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [str(SCRIPT), "--root", str(root)],
+        env={**os.environ, "PATH": str(launch_path), "UV_PYTHON_PREFERENCE": "only-managed"},
         text=True,
         capture_output=True,
         check=False,
@@ -39,22 +42,35 @@ def _set_hooks_path(root: Path, value: str) -> None:
     )
 
 
-def test_wrong_hooks_path_fails(hook_repo: Path) -> None:
+@pytest.fixture
+def launch_path(tmp_path: Path) -> Path:
+    """Exercise executable launch with only the bootstrap manager and Git."""
+    directory = tmp_path / "launch-path"
+    directory.mkdir()
+    for name in ("uv", "git"):
+        executable = shutil.which(name)
+        assert executable is not None, name
+        (directory / name).symlink_to(executable)
+    assert shutil.which("python3", path=str(directory)) is None
+    return directory
+
+
+def test_wrong_hooks_path_fails(hook_repo: Path, launch_path: Path) -> None:
     # A checkout that opted in and was silently repointed is the silent
     # disablement the witness exists to catch.
     _set_hooks_path(hook_repo, ".git/hooks")
 
-    result = _run(hook_repo)
+    result = _run(hook_repo, launch_path)
 
     assert result.returncode == 1
     assert ".git/hooks" in result.stderr
     assert "install-hooks" in result.stderr
 
 
-def test_this_repository_passes_its_own_witness() -> None:
+def test_this_repository_passes_its_own_witness(launch_path: Path) -> None:
     # Whatever this checkout's opt-in state, the witness must be clean here:
     # either cleanly not opted in, or opted in with live executable hooks.
-    result = _run(REPO_ROOT)
+    result = _run(REPO_ROOT, launch_path)
 
     assert result.returncode == 0, result.stderr + result.stdout
     assert "CHECK-HOOKS-INSTALLED OK" in result.stdout
