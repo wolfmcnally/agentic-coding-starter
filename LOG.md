@@ -1710,3 +1710,21 @@ Validation: `./bin/test tests/test_kickoff_evidence.py tests/test_mirror_parity.
 Lessons: Already covered by `policies/verification-discipline.md` § A name you did not read is not a name: several exploratory commands guessed plausible executable names and refused; reading the actual inventory and CLI definitions corrected them. No repository state changed through those refusals. R1 is corrected at the owning stage instructions; the complete-route review exposed the mismatch before delivery. Existing lesson candidates remain for operator judgment; no graduation was performed.
 
 Remaining: No product or corpus acceptance is claimed by this methodology change. Live continuation effectiveness remains to be observed. Delivery follows the standing explicit-staging and fast-forward-push authority after the handoff gate; no phase status or artificial kickoff evidence was created.
+
+## 2026-09-06 15:49 — METHODOLOGY SCOPE
+
+Approved outcome: finish the authorized workflow improvements by making the delegated runtime preflight execute the repository-owned dependency chain. The current help-only command succeeds with an invalid authoritative runtime and can falsely report readiness.
+
+Scope: replace the probe in `bin/kickoff-config`, extend the existing preflight behavioral test in `tests/test_kickoff_config.py`, and record scope and delivery in `LOG.md`. Preserve the current runtime, dependencies, role routing, proof-family count and failed-probe/native-qualification behavior. No new phase or model experiment is part of this correction.
+
+Review route: direct implementation and self-review under the operator's explicit authorization for the invoking agent to take over all remaining assignments and model review. This scoped exception does not change future independent-review defaults. Required focused checks and both full gates remain in force; ordinary explicit-path commit and fast-forward push are authorized.
+
+## 2026-09-06 15:53 — METHODOLOGY
+
+Completed the 15:49 runtime-preflight scope without expansion. `bin/kickoff-config` now requests `./bin/python -c pass`, entering the repository-owned dependency chain. The retained preflight test executes the actual configured command with an authoritative invalid runtime and requires refusal; its negative witness failed against the prior help-only probe. It reads the literal command through the syntax tree so testing does not import the manager's separate script dependency environment.
+
+Changed paths: `bin/kickoff-config`, `tests/test_kickoff_config.py`, `LOG.md`. Direct self-review used the operator's explicit remaining-work authorization; no independent review is claimed and future review defaults are unchanged. The full implementation candidate before this terminal bookkeeping was `d38343456a94e9727ce3d0a9fdb850aef6afda79682fceb40027fd2111118011`.
+
+Verification: repository setup, the focused preflight regression, lint and formatting passed. The implementation-candidate bare `./bin/check all` passed against an unchanged tree in 95.510 seconds, including all 103 tests and policy gates. Complete diagnostics contained no warnings. Proof governance remains valid at 108 families and 126 leaves, with no new family. The second bare full handoff gate runs after this record; no tracked write follows its success. Delivery remains the authorized explicit-path commit and fast-forward push, verified against the resulting tree and remote tips.
+
+Lessons: no new ledger entry; the existing runtime-capability policy now has a direct counterexample witness at the delegated probe. No manual judgment or paid external action is required for this correction. Existing unrelated operator actions remain open.

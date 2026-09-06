@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -565,6 +567,30 @@ def _coder_pinned_config(tmp_path: Path) -> Path:
 
 
 def test_preflight_still_aborts_on_a_failed_sentinel(tmp_path: Path) -> None:
+    # Exercise the production probe with an authoritative invalid runtime.
+    # A help-only command bypasses readiness and falsely reports success.
+    probe = next(
+        node.value
+        for node in ast.parse(MANAGER.read_text()).body
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(target, ast.Name) and target.id == "TOOLCHAIN_PROBE_COMMAND"
+            for target in node.targets
+        )
+    )
+    environment = os.environ.copy()
+    environment["TOOLCHAIN_PYTHON"] = str(tmp_path / "absent-python")
+    invalid_runtime = subprocess.run(
+        shlex.split(ast.literal_eval(probe)),
+        cwd=ROOT,
+        env=environment,
+        text=True,
+        capture_output=True,
+        timeout=10,
+    )
+    assert invalid_runtime.returncode != 0, invalid_runtime.stdout
+    assert "TOOLCHAIN_PYTHON" in invalid_runtime.stderr
+
     for venue in ("claude", "codex"):
         work = tmp_path / venue
         work.mkdir()

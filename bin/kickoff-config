@@ -85,7 +85,7 @@ RECOVERABLE_PROTOCOL_EXIT = 66
 PREFLIGHT_SENTINEL = "KICKOFF_PREFLIGHT_OK"
 TOOLCHAIN_SENTINEL = "KICKOFF_TOOLCHAIN_OK"
 TOOLCHAIN_FAILURE = "KICKOFF_TOOLCHAIN_UNAVAILABLE"
-TOOLCHAIN_PROBE_COMMAND = "./bin/test --help"
+TOOLCHAIN_PROBE_COMMAND = "./bin/python -c pass"
 TOOLCHAIN_PROBE_PROMPT = (
     f"From the current directory run exactly this shell command: {TOOLCHAIN_PROBE_COMMAND} . "
     f"If it exits 0 reply with exactly {TOOLCHAIN_SENTINEL} and nothing else; otherwise reply "
