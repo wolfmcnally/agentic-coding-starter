@@ -4,7 +4,7 @@ Read this resource before executing its branch. Enter through [SKILL.md](SKILL.m
 
 ### Step 9: Update status markers
 
-For a major phase, enter only after [acceptance.md](acceptance.md) Step 8c materialized accepted close against unchanged authorities. For a child, retain the separate refusal described there; do not mutate around it. In `plan/INDEX.md`'s phase table (and only there):
+For a major phase, enter only after [acceptance.md](acceptance.md) Step 8c materialized accepted close against unchanged authorities. For a child, apply and verify the exact accepted prospective ledger described there before any further bookkeeping. In `plan/INDEX.md`'s phase table (and only there):
 
 1. Flip the completed phase's status cell from `🚧` to `✅`.
 2. **If the closed phase was a sub-phase** (`phase-N.M.md`), go to Step 9a. Step 9a owns next-sub-phase drafting, the ripple sub-step, and (if the parent rolled up) handing off to Step 9b.
@@ -14,40 +14,22 @@ If the phase is only partially complete (the user paused mid-way), leave it `�
 
 **Never edit the per-phase file's frontmatter or body to record status.** Per-phase frontmatter is `id` / `title` / `depends_on` / `informs` plus optional `review_lane` ([`policies/review-lanes.md`](../../../policies/review-lanes.md)) only.
 
-### Step 9a: Draft the next sub-phase (sub-phase close only)
+### Step 9a: Complete the prepared child transition
 
-If the just-closed phase was a sub-phase `phase-N.M.md` and the parent `phase-N.md`'s Deliverables are **not yet fully addressed** by the closed sub-phases:
+The next real child, when needed, was drafted and captured before final review as required by [acceptance.md](acceptance.md). Do not add an uncaptured sibling after acceptance to satisfy the child-close check. The accepted prospective ledger either completes the current child while retaining its active parent and a drafted incomplete sibling, or completes child and parent together using separately accepted parent evidence.
 
-1. Invoke `phase-planner` to draft `phase-N.(M+1).md` with the benefit of the closed sub-phases' outcomes. Pass it: the parent's full text, the list of closed sub-phases with their END summaries, and the parent's remaining un-addressed deliverables. The draft includes a `review_lane:` frontmatter assignment per [`policies/review-lanes.md`](../../../policies/review-lanes.md) eligibility (default `full`), and is sized per the outcome-boundary test in [preflight.md](preflight.md) Step 1a.
-2. Write `phase-N.(M+1).md`. Update `plan/INDEX.md` (new row, dependency graph if needed).
-3. Mark `phase-N.(M+1)` `⬅️`. Parent stays `🚧`.
+Apply the accepted ledger and verify it before subsequent ripple edits. Include the one required next-phase arrow in the prospective ledger when parent completion would otherwise leave an idle incomplete ledger. If the parent remains active, its existing next child supplies continuation. If separately accepted parent completion was included, run Step 9b. Any newly discovered change to the parent's deliverables remains an operator decision, not a bookkeeping edit.
 
-If the parent's Deliverables **are** fully addressed by the closed sub-phases:
+### Shared ripple procedure (child and major close)
 
-1. Mark the parent `✅`.
-2. Run Step 9b (below) to ripple into the next major phase and advance `⬅️`. (Step 9.2's normal "advance to next `⏳`" is subsumed by Step 9b.)
-
-If the closed sub-phase reveals that the parent's Deliverables list needs revision (new deliverable surfaced, an existing one no longer applies), surface this to the user explicitly in Step 10's report rather than silently rewriting the parent. The parent edit is the user's decision.
-
-This step implements just-in-time, one-at-a-time sub-phase decomposition per [`briefs/methodology.md`](../../../briefs/methodology.md) §6 — `phase-N.(M+1)` is drafted *with* `phase-N.M`'s outcomes in hand, not in advance.
-
-**Then run the ripple sub-step** before proceeding to Step 9c. This applies whether the parent is still `🚧` (a new sub-phase was drafted in 1–3 above) or just rolled up to `✅` (Step 9b took over). The ripple sub-step exists per [`policies/phase-ripple.md`](../../../policies/phase-ripple.md):
-
-1. Read the closing sub-phase's `LOG.md` END block, the plan-reviewer's Observations, and the code-critic's verdict body.
-2. Identify candidate ripples: pinned values, renamed paths, added brief refs, tightened Acceptance criteria, surfaced concerns addressed to a later phase by name.
-3. For each candidate, walk the downstream drafted phase files — siblings (`phase-N.(M+1)`, `phase-N.(M+2)`, …, just-drafted or already drafted) plus downstream major phases (`phase-(N+1).md`, `phase-(N+2).md`, …, sketched at bootstrap). Classify each potential edit:
-   - **AUTO** (mechanical, one correct shape): apply the edit now. If the edit is more than one line (e.g., reshaping an Acceptance section to incorporate a now-pinned value), invoke `phase-planner` with the downstream file and the ripple description; otherwise edit directly.
-   - **DECIDE** (judgment-bearing): do *not* edit. Capture the item for the END block.
-4. Prepare AUTO/DECIDE classification before accepted close at Step 8c. Resolve blocking DECIDE ripples before acceptance; apply prepared AUTO writes after accepted close and record their actual outcomes before Step 11. A newly discovered unresolved DECIDE parks completion. Note ripple's boundary: it propagates *content* into downstream `plan/` files. Durable *process* learnings are not ripples — they belong to Step 9c's lessons harvest.
-
-If no downstream drafted phase files exist (e.g., this is the project's only phase, or all later phases are already ✅), the ripple sub-step is a no-op — note `none — no downstream sketches` in the END block.
+Before acceptance, read the prepared END block, reviewer and critic verdicts, and affected downstream phase files. Identify every pinned name, path, value and decision; classify each propagation as AUTO or DECIDE under [phase-ripple.md](../../../policies/phase-ripple.md). Resolve every DECIDE gate before accepted close. After the recorded ledger transition is verified, apply the prepared AUTO edits to incomplete downstream phases and append actual outcomes before the final handoff gate. A non-final child runs this procedure against its drafted successor and affected later phases; parent completion runs it against subsequent major phases. Never edit the completed phase or claim a planned edit already happened.
 
 ### Step 9b: Major-phase close — ripple and advance ⬅️ (major-phase close only)
 
 Runs when a major phase's row was just flipped to `✅` — either by Step 9.3 directly (the closed phase was a monolithic major phase) or by Step 9a's parent-rollup branch (the closed phase was the last sub-phase under its parent).
 
-1. **Ripple pass** against the next drafted major phase (`phase-(N+1).md`) and any subsequent sketched phases. Procedure mirrors Step 9a's ripple sub-step (read END block + verdict bodies; classify each candidate AUTO/DECIDE; apply AUTO; capture DECIDE for the END block). The major-phase ripple is more likely to touch Goal and Deliverables (lower-fidelity sketches have more headroom) and Acceptance (sketched criteria need tightening once the upstream phase pins them).
-2. **Advance `⬅️`.** Find the next `⏳` row in the dependency graph order (honoring parallel opportunities). Change it to `⬅️`. At most one row is `⬅️`; when no downstream phase exists, zero is the valid completed state.
+1. **Ripple pass** against the next drafted major phase (`phase-(N+1).md`) and any subsequent sketched phases. Use the shared ripple procedure above. The major-phase ripple is more likely to touch Goal and Deliverables (lower-fidelity sketches have more headroom) and Acceptance (sketched criteria need tightening once the upstream phase pins them).
+2. **Advance `⬅️`.** Preserve any next marker already applied by the accepted transition; do not advance it again. Otherwise find the next `⏳` row in the dependency graph order (honoring parallel opportunities). Change it to `⬅️`. At most one row is `⬅️`; when no downstream phase exists, zero is the valid completed state.
 3. **Sketched-phase completeness check.** If the new `⬅️` row points at a `phase-N.md` that doesn't exist as a file (only a row in INDEX.md), this is a bootstrap-completeness failure — flag in the END block. Do not auto-draft it; per [`briefs/agentic-bootstrap.md`](../../../briefs/agentic-bootstrap.md) §8, every major phase the brief surfaces should have been sketched at bootstrap.
 
 If no downstream major phase exists (project complete), Step 9b's ripple is a no-op and `⬅️` advances to nothing — the project is done. Surface this to the user in the report.

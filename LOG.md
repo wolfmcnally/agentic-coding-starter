@@ -1617,3 +1617,43 @@ Acceptance: objective preparation, instruction correction and refreshed evidence
 Lessons: `attentive-dolphin` recurred twice and now reaches the candidate threshold; no lesson is graduated or policy invented. The existing requirement to distinguish intended failures from unrelated errors is implemented in both instruments. Other candidate judgments and the existing watcher user action remain outside this change.
 
 Delivery: default — explicit-path commit and fast-forward push after the handoff gate; no acceptance of the unrun human/model experiments is implied. Remaining within this approved completion scope: handoff gate and delivery only.
+
+## 2026-09-05 19:12 — METHODOLOGY SCOPE
+
+Approved outcome: qualify the template before any outward transfer, repair prospective child closure without weakening authority or handoff checks, disposition the three surviving assay cases, and prove ordinary major/child delivery in disposable recipients.
+
+Surfaces in scope: phase-ledger checker, evidence close and log integration, kickoff resources and governing policies, existing behavioral proofs, test-governance assessment, and transfer qualification for isolated and root-level product layouts.
+
+Excluded: changes to target repositories before this readiness work closes; paid model experiments; release tags and deployments; implementation of the separately reviewed storage-excision contract; unrelated watcher machinery. Later authorized work comprises dependency reconciliation, target-specific methodology transfer, upstream Linux/retrieval/provider support and measured product trials. External project identities remain outside committed template artifacts.
+
+## 2026-09-05 19:50 — METHODOLOGY
+
+Readiness implementation and evidence independently approved against the preceding METHODOLOGY SCOPE. The implementation adds prospective status-only child closure, independently accepted ancestor rollup, exact before/after ledger binding, record-integrity checks, post-bookkeeping verification and idempotent retries. Child and major ripple obligations remain operative; no authority guard or full gate was waived.
+
+Changed paths:
+- `.claude/skills/kickoff/SKILL.md`
+- `.claude/skills/kickoff/acceptance.md`
+- `.claude/skills/kickoff/close.md`
+- `CLAUDE.md`
+- `LOG.md`
+- `bin/check-catalogs`
+- `bin/kickoff-evidence`
+- `lessons/classy-kangaroo.md`
+- `policies/orchestration-evidence.md`
+- `policies/phase-ripple.md`
+- `policies/phase-status.md`
+- `reports/test-governance/README.md`
+- `reports/test-governance/starter-effectiveness.jsonl`
+- `tests/test_check_receipt.py`
+- `tests/test_kickoff_evidence.py`
+- `tests/test_methodology_toolchain_contract.py`
+
+Independent verdict: APPROVED. Final reviewed product candidate: `7aea23a119c6343ec13a287f173bd3538f7517bbe35df2ae8f01a5fddd1e66fd`. Required corrections resolved pinned-parent validation, final-child next-marker advancement, restored ripple instructions, nested ancestor completion, optional final-command arguments, post-transition retries, closure integrity and the seeded-remote fast-forward proof.
+
+Verification: focused evidence suite 9 passed; complete implementation-candidate `./bin/check all` passed 103 tests, lint, format and all policy gates with no warnings. Full-tree candidate: `705eb611dae73a4d986afbc4bbb6b506aa1336e2585570bbd9fc618ffc0497a4`. Final frozen assay: 12/12 historical detections, 11/12 held-out detections, unchanged corpus and thresholds. `./bin/test-governance reassess` remains valid at 108 families and 126 leaves. The one remaining frozen miss has a mismatched command scope; its intended full-gate behavioral proof passes unmodified and rejects the frozen mutation. Preliminary live-tree assay evidence was discarded after review corrections; only the final frozen qualification populated the report.
+
+Qualification: major and child workflows reach ordinary commits and fast-forward pushes to seeded disposable remotes; nested final-child closure, missing bookkeeping, substantive ledger drift, invalid parent evidence, record tampering and repeated close are exercised. The isolated example gate and root-level lifecycle fixture pass. Ten recipient-local delivery tests passed against a disposable adaptation preserving the recipient's stronger delivery identity. This is workflow and preservation qualification, not a completed teaching pass or a model-performance result.
+
+Lessons: three distinct lifecycle observations appended to `classy-kangaroo`; it remains a candidate. `attentive-dolphin`, `classy-kangaroo` and `deft-puffin` meet the recurrence threshold but are not graduated. The existing operator action about role-output custody remains open and outside this scope.
+
+Remaining: final bare handoff gate and automatic explicit-path delivery follow this last tracked write. The approved cross-repository reconciliation, target-preserving teaching and product trials remain to execute after source delivery. Contract ratification, release tags, production deployment and paid experiment authorization retain their separate operator boundaries. No target repository was modified during readiness work.

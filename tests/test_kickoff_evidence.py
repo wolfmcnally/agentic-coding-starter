@@ -780,16 +780,53 @@ def _assert_failed_close_is_truthful_terminal_and_idempotent(
 def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
     repository: Path, tmp_path: Path
 ) -> None:
+    final_repository = tmp_path / "final-repo"
+    shutil.copytree(repository, final_repository, symlinks=True)
     child_repository = tmp_path / "child-repo"
     shutil.copytree(repository, child_repository, symlinks=True)
     _assert_complete_synthetic_kickoff(repository, tmp_path / "major", phase="1")
     _assert_complete_synthetic_kickoff(child_repository, tmp_path / "child", phase="1.1")
+    parent_run = _assert_complete_synthetic_kickoff(
+        final_repository,
+        tmp_path / "parent",
+        phase="1",
+        final_child=True,
+        nested=True,
+        accept_only=True,
+    )
+    middle_run = _assert_complete_synthetic_kickoff(
+        final_repository,
+        tmp_path / "middle-child",
+        phase="1.1",
+        final_child=True,
+        nested=True,
+        parent_run=parent_run,
+        accept_only=True,
+    )
+    _assert_complete_synthetic_kickoff(
+        final_repository,
+        tmp_path / "final-child",
+        phase="1.1.1",
+        final_child=True,
+        nested=True,
+        parent_run=middle_run,
+    )
 
 
-def _assert_complete_synthetic_kickoff(repository: Path, tmp_path: Path, *, phase: str) -> None:
+def _assert_complete_synthetic_kickoff(
+    repository: Path,
+    tmp_path: Path,
+    *,
+    phase: str,
+    final_child: bool = False,
+    nested: bool = False,
+    accept_only: bool = False,
+    parent_run: Path | None = None,
+) -> Path | None:
     tmp_path.mkdir()
+    (repository / "code.py").write_text("VALUE = 1\n")
     write_instruction_resources(repository)
-    (repository / "briefs").mkdir()
+    (repository / "briefs").mkdir(exist_ok=True)
     (repository / "briefs/design.md").write_text("# Design\n\nDeliver VALUE = 2.\n")
     (repository / "policies/delivery.md").write_text(
         "# Delivery\n\nKeep governing bytes unchanged through accepted close.\n"
@@ -798,7 +835,7 @@ def _assert_complete_synthetic_kickoff(repository: Path, tmp_path: Path, *, phas
         "# Synthetic engine\n\n"
         "[Design](briefs/design.md)\n[Delivery](policies/delivery.md)\n" + ZONE_MARKERS
     )
-    (repository / "plan").mkdir()
+    (repository / "plan").mkdir(exist_ok=True)
     (repository / "plan/phase-0.md").write_text("# Prepared dependency\n")
     (repository / "plan/phase-1.md").write_text(
         '---\nid: "1"\ndepends_on: ["plan/phase-0.md"]\n---\n'
@@ -806,11 +843,27 @@ def _assert_complete_synthetic_kickoff(repository: Path, tmp_path: Path, *, phas
         "\n## Brief refs\n\n[Design](../briefs/design.md)\n"
     )
     child_row = ""
-    if phase == "1.1":
+    if phase == "1.1" or final_child:
         (repository / "plan/phase-1.1.md").write_text(
             "# Child qualification\n\n[Parent](phase-1.md)\n"
         )
-        child_row = "| [Phase 1.1](phase-1.1.md) | Qualification child | 🚧 |\n"
+        child_row = (
+            "| [Phase 1.1](phase-1.1.md) | Qualification child | 🚧 |\n"
+            "| [Phase 1.2](phase-1.2.md) | Next child | ⬅️ |\n"
+        )
+        (repository / "plan/phase-1.2.md").write_text("# Next child\n")
+        if final_child:
+            child_row = (
+                "| [Phase 1.1](phase-1.1.md) | Qualification child | 🚧 |\n"
+                "| [Phase 2](phase-2.md) | Next major | ⏳ |\n"
+            )
+            (repository / "plan/phase-2.md").write_text("# Next major\n")
+            if nested:
+                child_row = child_row.replace(
+                    "| [Phase 2]",
+                    "| [Phase 1.1.1](phase-1.1.1.md) | Nested child | 🚧 |\n| [Phase 2]",
+                )
+                (repository / "plan/phase-1.1.1.md").write_text("# Nested child\n")
     index = repository / "plan/INDEX.md"
     index.write_text(
         "# Plan\n\n## Phase Table\n\n| Phase | Title | Status |\n|---|---|---|\n"
@@ -827,9 +880,12 @@ def _assert_complete_synthetic_kickoff(repository: Path, tmp_path: Path, *, phas
         'test "$(cat code.py)" = "VALUE = 2"\nexec ./bin/check-catalogs\n'
     )
     partition = repository / "candidate-partition.yaml"
-    partition.write_text(
-        partition.read_text().replace("active:\n", 'active:\n  - "/.claude/**"\n  - "/briefs/**"\n')
-    )
+    if '"/.claude/**"' not in partition.read_text():
+        partition.write_text(
+            partition.read_text().replace(
+                "active:\n", 'active:\n  - "/.claude/**"\n  - "/briefs/**"\n'
+            )
+        )
     authorities = (
         "plan/INDEX.md",
         f"plan/phase-{phase}.md",
@@ -1296,21 +1352,67 @@ def _assert_complete_synthetic_kickoff(repository: Path, tmp_path: Path, *, phas
         finally:
             target.write_bytes(governing_bytes[relative])
     assert all((repository / name).read_bytes() == body for name, body in governing_bytes.items())
-    if phase == "1.1":
-        refused = run(*close_arguments)
-        assert refused.returncode == 2
-        assert "phase ledger refuses close" in refused.stderr
-        assert "closing child Phase 1.1 must exist and be marked ✅" in refused.stderr
-        # Satisfying child-close's marker requirement still drifts its captured authority.
-        index.write_bytes(captured_index.replace("🚧".encode(), "✅".encode()))
-        refused = run(*close_arguments)
-        assert refused.returncode == 2
-        assert (
-            "reviewed bookkeeping changed; capture and re-review: plan/INDEX.md" in refused.stderr
+    if accept_only and parent_run is None:
+        closed = run(*close_arguments)
+        assert closed.returncode == 0, closed.stderr
+        return run_dir
+    ledger_after = tmp_path / "ledger-after.md"
+    title = {"1": "Qualification", "1.1": "Qualification child", "1.1.1": "Nested child"}[phase]
+    expected_index = captured_index.replace(
+        f"{title} | 🚧".encode(),
+        f"{title} | ✅".encode(),
+    )
+    if parent_run is not None:
+        if phase == "1.1.1":
+            expected_index = expected_index.replace(
+                "Qualification child | 🚧".encode(), "Qualification child | ✅".encode()
+            )
+        expected_index = expected_index.replace(
+            "Qualification | 🚧".encode(), "Qualification | ✅".encode()
         )
+        expected_index = expected_index.replace(
+            "Next major | ⏳".encode(), "Next major | ⬅️".encode()
+        )
+        close_arguments += ("--parent-run", str(parent_run))
+    ledger_after.write_bytes(expected_index)
+    close_arguments += ("--ledger-after", str(ledger_after))
+    for invalid in (
+        expected_index.replace(b"Retain both close gates.", b"Omit the handoff gate."),
+        expected_index.replace(
+            "Prepared dependency | ✅".encode(), "Prepared dependency | 🚧".encode()
+        ),
+    ):
+        ledger_after.write_bytes(invalid)
+        refused = run(*close_arguments)
+        assert refused.returncode == 2
+        assert "close transition" in refused.stderr
         assert not (run_dir / "closure.json").exists()
-        index.write_bytes(captured_index)
-        return
+    ledger_after.write_bytes(expected_index)
+    if parent_run is not None:
+        wrong_parent = run(*close_arguments, "--parent-run", str(run_dir))
+        assert wrong_parent.returncode == 2
+        assert "parent acceptance must belong" in wrong_parent.stderr
+        parent_closure = parent_run / "closure.json"
+        clean_closure = parent_closure.read_bytes()
+        try:
+            invalid_parent = json.loads(clean_closure)
+            invalid_parent["status"] = "failed"
+            parent_closure.write_text(json.dumps(invalid_parent))
+            refused_parent = run(*close_arguments)
+            assert refused_parent.returncode == 2
+            assert "parent implementation is not independently accepted" in refused_parent.stderr
+        finally:
+            parent_closure.write_bytes(clean_closure)
+        if "ledger_transition" in json.loads(clean_closure):
+            try:
+                altered = json.loads(clean_closure)
+                altered["ledger_transition"]["completed_phases"].append("0")
+                parent_closure.write_text(json.dumps(altered))
+                refused_parent = run(*close_arguments)
+                assert refused_parent.returncode == 2
+                assert "parent closure identity" in refused_parent.stderr
+            finally:
+                parent_closure.write_bytes(clean_closure)
     closed = run(*close_arguments)
     repeated = run(*close_arguments)
     assert closed.returncode == repeated.returncode == 0, closed.stderr + repeated.stderr
@@ -1318,7 +1420,29 @@ def _assert_complete_synthetic_kickoff(repository: Path, tmp_path: Path, *, phas
     closure = json.loads((run_dir / "closure.json").read_text())
     assert closure["status"] == "complete" and closure["outcome"] == "accepted"
     assert index.read_bytes() == captured_index
-    index.write_bytes(captured_index.replace("🚧".encode(), "✅".encode()))
+    if accept_only:
+        return run_dir
+    record_path = run_dir / "closure.json"
+    clean_record = record_path.read_bytes()
+    try:
+        corrupted = json.loads(clean_record)
+        corrupted["ledger_transition"]["after_sha256"] = corrupted["ledger_transition"][
+            "before_sha256"
+        ]
+        record_path.write_text(json.dumps(corrupted))
+        refused_record = run(*close_arguments, "--verify-handoff")
+        assert refused_record.returncode == 2
+        assert "closure identity" in refused_record.stderr
+    finally:
+        record_path.write_bytes(clean_record)
+    missing_bookkeeping = run(*close_arguments, "--verify-handoff")
+    assert missing_bookkeeping.returncode == 2
+    assert "handoff ledger differs" in missing_bookkeeping.stderr
+    index.write_bytes(expected_index)
+    retried = run(*close_arguments)
+    assert retried.returncode == 0, retried.stderr
+    verified = run(*close_arguments, "--verify-handoff")
+    assert verified.returncode == 0, verified.stderr
     handoff = subprocess.run(
         [str(repository / "bin/check"), "all"],
         cwd=repository,
@@ -1328,6 +1452,45 @@ def _assert_complete_synthetic_kickoff(repository: Path, tmp_path: Path, *, phas
     )
     assert handoff.returncode == 0, handoff.stdout + handoff.stderr
     assert "CATALOGS OK" in handoff.stdout
+
+    # Delivery is a real ordinary commit and fast-forward to a disposable remote.
+    remote = tmp_path / "delivery.git"
+    subprocess.run(["git", "init", "--bare", "-q", "-b", "master", str(remote)], check=True)
+    subprocess.run(
+        ["git", "push", str(remote), "master"],
+        cwd=repository,
+        capture_output=True,
+        check=True,
+    )
+    paths = (
+        subprocess.run(
+            ["git", "ls-files", "-co", "--exclude-standard", "-z"],
+            cwd=repository,
+            capture_output=True,
+            check=True,
+        )
+        .stdout.decode()
+        .split("\0")
+    )
+    paths = sorted(set(item for item in paths if item))
+    subprocess.run(["git", "add", "--", *paths], cwd=repository, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "Deliver qualified fixture"], cwd=repository, check=True
+    )
+    subprocess.run(
+        ["git", "push", str(remote), "master"], cwd=repository, capture_output=True, check=True
+    )
+    local_head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=repository, capture_output=True, check=True
+    ).stdout
+    remote_head = subprocess.run(
+        ["git", "--git-dir", str(remote), "rev-parse", "master"], capture_output=True, check=True
+    ).stdout
+    assert local_head == remote_head
+    clean = subprocess.run(
+        ["git", "status", "--porcelain"], cwd=repository, capture_output=True, check=True
+    )
+    assert not clean.stdout
 
     (repository / "code.py").write_text("VALUE = 3\n")
     stale = run(

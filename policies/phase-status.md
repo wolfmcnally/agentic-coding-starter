@@ -77,3 +77,11 @@ The checker runs inside the authoritative full gate:
 ```bash
 ./bin/check all
 ```
+
+## Prospective accepted closure
+
+Accepted evidence close may validate an external proposed ledger using `--ledger-after`. The live captured ledger remains unchanged through acceptance. Only the closing active phase's completion marker may change. A child still requires a completed parent or an active parent with another real drafted incomplete child. A simultaneous parent completion additionally requires `--parent-run` identifying separately accepted, current parent evidence from this repository. The successor child must be prepared before final review, not invented after acceptance.
+
+The close record binds both ledger digests and the accepted product. Apply the exact proposed ledger and run the same close command with `--verify-handoff` before any further ripple or arrow edits. This verification checks the actual ledger, product and child continuation; it does not certify delivery or replace the final full handoff gate. The ordinary catalog checker and standalone log writer retain their checks against the live ledger.
+
+A prospective close may additionally advance at most one existing not-started phase to next, selected in dependency order during close preparation. This exact marker transition is bound with the completion markers; it prevents a final-child close from creating an idle incomplete ledger without a next phase.

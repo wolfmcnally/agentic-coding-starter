@@ -527,3 +527,9 @@ pinned executables; the evidence binary rejects access through a mutable live
 copy. A phase may therefore change its own construction machinery without
 stranding the active run. The bundle is a same-run snapshot and never a
 historical schema reader or migration shim.
+
+## Prospective ledger transition at accepted close
+
+The accepted `close` interface supports `--ledger-after <file>` and, for separately accepted parent completion, `--parent-run <run>`. The external proposal changes only the closing phase's active marker to completed, optionally including its independently accepted parent's marker. Declared authority remains unchanged through acceptance. The closure identity binds the proposal's before/after digests, accepted product and parent closure identity when present. Invalid or conflicting transitions refuse before log mutation. The same close command with `--verify-handoff` verifies the applied ledger and product; this checkpoint precedes further bookkeeping and never replaces the second full gate. See [phase-status.md](phase-status.md) for continuation requirements.
+
+A prospective close may additionally advance at most one existing not-started phase to next, selected in dependency order during close preparation. This exact marker transition is bound with the completion markers; it prevents a final-child close from creating an idle incomplete ledger without a next phase.

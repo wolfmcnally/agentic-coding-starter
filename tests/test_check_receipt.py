@@ -202,6 +202,15 @@ def test_passed_run_is_durable_and_reusable_for_exact_clean_head(
     assert run["status"] == "passed"
     assert run["candidate_before"] == run["candidate_after"]
 
+    # The filename locates a receipt; it does not authenticate its candidate.
+    receipt["candidate_id"] = "0" * 64
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+    refused = run_receipt(
+        repository, "pre-push", "--root", str(repository), stdin=push_input(repository)
+    )
+    assert refused.returncode == 1
+    assert "reason=receipt-identity-mismatch" in refused.stderr
+
 
 def test_tampered_log_never_reuses_receipt(repository: Path) -> None:
     log, _ = record_pass(repository)

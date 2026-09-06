@@ -4401,10 +4401,15 @@ def _append_failure_once(path: Path, record: dict[str, Any]) -> None:
     append_jsonl(path, record)
 
 
-def _validate_phase_close(root: Path, phase: str) -> None:
+def _validate_phase_close(root: Path, phase: str, ledger: Path | None = None) -> None:
     checker = root / "bin" / "check-catalogs"
     process = subprocess.run(
-        [str(checker), "--closing-phase", phase],
+        [
+            str(checker),
+            "--closing-phase",
+            phase,
+            *(["--ledger-file", str(ledger)] if ledger else []),
+        ],
         cwd=root,
         capture_output=True,
         text=True,
@@ -4413,6 +4418,55 @@ def _validate_phase_close(root: Path, phase: str) -> None:
     if process.returncode != 0:
         detail = (process.stdout + process.stderr).strip()
         raise EvidenceError(f"phase ledger refuses close: {detail}")
+
+
+def _close_transition(
+    root: Path, phase: str, ledger: Path | None, parents: list[str] | None = None
+) -> dict[str, Any] | None:
+    """Bind an exact status-only transition without changing reviewed authority."""
+    if ledger is None:
+        return None
+    before = (root / "plan/INDEX.md").read_bytes()
+    after = ledger.read_bytes()
+    original = before.decode("utf-8").splitlines(keepends=True)
+    proposed = after.decode("utf-8").splitlines(keepends=True)
+    if len(original) != len(proposed):
+        raise EvidenceError("close transition may change only the closing phase status")
+    changes = []
+    next_changes = 0
+    allowed = {phase, *(parents or [])}
+    for old, new in zip(original, proposed, strict=True):
+        if old == new:
+            continue
+        if (
+            old.lstrip().startswith("|")
+            and re.search(r"\bPhase\s+\d+(?:\.\d+)*", old)
+            and old.count("⏳") == 1
+            and new == old.replace("⏳", "⬅️")
+        ):
+            next_changes += 1
+            if next_changes > 1:
+                raise EvidenceError("close transition may queue at most one next phase")
+            continue
+        if (
+            not old.lstrip().startswith("|")
+            or not any(re.search(rf"\bPhase\s+{re.escape(item)}(?![\d.])", old) for item in allowed)
+            or old.count("🚧") != 1
+            or new != old.replace("🚧", "✅")
+        ):
+            raise EvidenceError("close transition may change only the closing phase status")
+        changes.extend(
+            item for item in allowed if re.search(rf"\bPhase\s+{re.escape(item)}(?![\d.])", old)
+        )
+    if set(changes) != allowed or len(changes) != len(allowed):
+        raise EvidenceError(
+            "close transition requires exactly the authorized active phase completions"
+        )
+    return {
+        "before_sha256": hashlib.sha256(before).hexdigest(),
+        "after_sha256": hashlib.sha256(after).hexdigest(),
+        "completed_phases": sorted(allowed),
+    }
 
 
 def command_status(arguments: argparse.Namespace) -> None:
@@ -4451,6 +4505,30 @@ def command_close(arguments: argparse.Namespace) -> int:
     """Materialize one truthful, idempotent accepted/parked/failed close."""
     run = validate_run_dir(arguments.run_dir)
     root = Path(run["repository_root"])
+    if arguments.verify_handoff:
+        closure = load_json(arguments.run_dir / "closure.json")
+        bound_request = {
+            key: value
+            for key, value in closure.items()
+            if key not in {"closure_id", "status", "completed_at"}
+        }
+        if closure.get("closure_id") != _closure_digest(bound_request):
+            raise EvidenceError("closure identity does not match its accepted request")
+        transition = closure.get("ledger_transition")
+        if (
+            closure.get("outcome") != "accepted"
+            or closure.get("status") != "complete"
+            or not transition
+        ):
+            raise EvidenceError("no accepted prospective close to verify")
+        if product_manifest(root)["candidate_id"] != closure.get("product_candidate_id"):
+            raise EvidenceError("handoff product differs from accepted candidate")
+        actual = hashlib.sha256((root / "plan/INDEX.md").read_bytes()).hexdigest()
+        if actual != transition["after_sha256"]:
+            raise EvidenceError("handoff ledger differs from accepted transition")
+        _validate_phase_close(root, run["phase"])
+        print("close ledger verified; full handoff gate remains required")
+        return 0
     outcome = arguments.outcome
     reason_code = arguments.reason_code.strip()
     if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", reason_code):
@@ -4475,6 +4553,81 @@ def command_close(arguments: argparse.Namespace) -> int:
         "log_sha256": hashlib.sha256(log_block.encode()).hexdigest(),
         "failure_sha256": _closure_digest(failure_record) if failure_record else None,
     }
+    if outcome != "accepted" and (
+        arguments.ledger_after is not None or arguments.parent_run is not None
+    ):
+        raise EvidenceError("only accepted close may carry a ledger transition")
+    parents = None
+    if arguments.parent_run is not None:
+        parent_tool = arguments.parent_run / "tools/kickoff-evidence"
+        inspected = subprocess.run(
+            [sys.executable, str(parent_tool), "status", "--run-dir", str(arguments.parent_run)],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+        if inspected.returncode:
+            raise EvidenceError("parent evidence validation failed: " + inspected.stderr.strip())
+        parent_run = load_json(arguments.parent_run / "run.json")
+        parent = run["phase"].rsplit(".", 1)[0]
+        if (
+            "." not in run["phase"]
+            or parent_run["phase"] != parent
+            or Path(parent_run["repository_root"]) != root
+        ):
+            raise EvidenceError(
+                "parent acceptance must belong to this phase's parent and repository"
+            )
+        parent_close = load_json(arguments.parent_run / "closure.json")
+        parent_request = {
+            key: value
+            for key, value in parent_close.items()
+            if key not in {"closure_id", "status", "completed_at"}
+        }
+        if (
+            parent_close.get("closure_id") != _closure_digest(parent_request)
+            or parent_close.get("phase") != parent
+        ):
+            raise EvidenceError("parent closure identity does not match its accepted request")
+        if parent_close.get("status") != "complete" or parent_close.get("outcome") != "accepted":
+            raise EvidenceError("parent implementation is not independently accepted")
+        if arguments.ledger_after is None:
+            raise EvidenceError("parent acceptance requires a prospective ledger")
+        parents = parent_close.get("ledger_transition", {}).get("completed_phases", [parent])
+        if (
+            not isinstance(parents, list)
+            or parent not in parents
+            or any(
+                not isinstance(item, str) or not run["phase"].startswith(item + ".")
+                for item in parents
+            )
+        ):
+            raise EvidenceError("parent transition has invalid ancestor completions")
+        prior_transition = parent_close.get("ledger_transition")
+        if (
+            prior_transition
+            and not (arguments.run_dir / "closure.json").exists()
+            and prior_transition["before_sha256"]
+            != hashlib.sha256((root / "plan/INDEX.md").read_bytes()).hexdigest()
+        ):
+            raise EvidenceError("parent transition was accepted against a different ledger")
+        request["parent_closure_id"] = parent_close["closure_id"]
+    if arguments.ledger_after is not None:
+        previous_path = arguments.run_dir / "closure.json"
+        if previous_path.exists():
+            previous = load_json(previous_path)
+            transition = previous.get("ledger_transition")
+            if (
+                not transition
+                or hashlib.sha256(arguments.ledger_after.read_bytes()).hexdigest()
+                != transition["after_sha256"]
+            ):
+                raise EvidenceError("close transition conflicts with recorded close")
+        else:
+            transition = _close_transition(root, run["phase"], arguments.ledger_after, parents)
+        request["ledger_transition"] = transition
+        request["product_candidate_id"] = product_manifest(root)["candidate_id"]
     closure_id = _closure_digest(request)
     closure_path = arguments.run_dir / "closure.json"
     lock_path = arguments.run_dir / "closure.lock"
@@ -4484,6 +4637,10 @@ def command_close(arguments: argparse.Namespace) -> int:
         if existing is not None and existing.get("closure_id") != closure_id:
             raise EvidenceError("closure request conflicts with the recorded close")
         if existing is not None and existing.get("status") == "complete":
+            if transition := existing.get("ledger_transition"):
+                actual = hashlib.sha256((root / "plan/INDEX.md").read_bytes()).hexdigest()
+                if actual not in {transition["before_sha256"], transition["after_sha256"]}:
+                    raise EvidenceError("repeated close ledger differs from recorded transition")
             print("closure complete")
             return 0
         if outcome in {"parked", "failed"}:
@@ -4506,7 +4663,33 @@ def command_close(arguments: argparse.Namespace) -> int:
                 finalized_trace(engine_root=root, trace_id=run["telemetry_trace_id"])
             except TelemetryError as exc:
                 raise EvidenceError(f"accepted trace is not durably finalized: {exc}") from exc
-            _validate_phase_close(root, run["phase"])
+            if arguments.parent_run is not None:
+                checked_parent = subprocess.run(
+                    [
+                        sys.executable,
+                        str(parent_tool),
+                        "validate",
+                        "--run-dir",
+                        str(arguments.parent_run),
+                        "--level",
+                        "acceptance",
+                        *(
+                            ["--required-final-command", arguments.required_final_command]
+                            if arguments.required_final_command
+                            else []
+                        ),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=60,
+                )
+                if checked_parent.returncode:
+                    raise EvidenceError(
+                        "parent acceptance failed: " + checked_parent.stderr.strip()
+                    )
+                finalized_trace(engine_root=root, trace_id=parent_run["telemetry_trace_id"])
+            _validate_phase_close(root, run["phase"], arguments.ledger_after)
             append_text_once(root / "LOG.md", log_block)
         atomic_json(
             closure_path,
@@ -4802,6 +4985,9 @@ def build_parser() -> argparse.ArgumentParser:
     close.add_argument("--reason-code", required=True)
     close.add_argument("--log-block", type=Path, required=True)
     close.add_argument("--failure-record", type=Path)
+    close.add_argument("--ledger-after", type=Path)
+    close.add_argument("--parent-run", type=Path)
+    close.add_argument("--verify-handoff", action="store_true")
     close.add_argument("--required-final-command")
     close.set_defaults(handler=command_close)
 

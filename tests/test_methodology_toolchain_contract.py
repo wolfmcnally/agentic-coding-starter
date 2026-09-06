@@ -68,6 +68,9 @@ def test_proof_estate_governance_propagates_without_local_judgments() -> None:
     ):
         assert "local" in document or "recipient" in document
         assert "full" in document
+    # A later mention does not repair an incorrect executable preflight inventory.
+    preflight = STAMP.split("## Pre-flight checks", 1)[1].split("## Seed briefs", 1)[0]
+    assert "`bin/test-governance` exist and are executable" in preflight
     assert "Never copy donor family choices" in LEARN
     assert "Never seed the target" in TEACH
     assert "generated from the destination rather than copied" in STAMP
@@ -337,7 +340,9 @@ def test_every_gate_required_executable_propagates() -> None:
             assert path in document, f"{path} missing from a transfer authority"
 
 
-def test_research_authority_contract_propagates_and_stays_allow_by_default(tmp_path: Path) -> None:
+def test_research_authority_contract_propagates_and_stays_allow_by_default(
+    tmp_path: Path,
+) -> None:
     assert "allow-by-default" in RESEARCH_POLICY
     assert "same-host structural neighbors" in RESEARCH_POLICY
     assert "GET" in RESEARCH_POLICY

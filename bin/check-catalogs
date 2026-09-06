@@ -152,7 +152,11 @@ def check_instruction_delivery(instructions: str) -> None:
         try:
             (ROOT / relative).read_text(encoding="utf-8")
         except (OSError, UnicodeError) as exc:
-            report("instructions", relative.as_posix(), f"required resource is unreadable: {exc}")
+            report(
+                "instructions",
+                relative.as_posix(),
+                f"required resource is unreadable: {exc}",
+            )
         requirements = rows.get(name, [])
         if len(requirements) != 1:
             report(
@@ -161,7 +165,11 @@ def check_instruction_delivery(instructions: str) -> None:
                 f"{name}: expected one operative row with a direct resource link",
             )
         elif not re.fullmatch(r"Read before \S.*", CODE_SPAN_PATTERN.sub("", requirements[0])):
-            report("instructions", entry_relative, f"{name}: row must declare Read before use")
+            report(
+                "instructions",
+                entry_relative,
+                f"{name}: row must declare Read before use",
+            )
 
 
 def phase_rows(lines: list[str]) -> list[str]:
@@ -193,8 +201,8 @@ def phase_rows(lines: list[str]) -> list[str]:
     return rows
 
 
-def check_phase_ledger() -> None:
-    index = ROOT / "plan" / "INDEX.md"
+def check_phase_ledger(ledger: Path | None = None) -> None:
+    index = ledger or ROOT / "plan" / "INDEX.md"
     try:
         lines = index.read_text(encoding="utf-8").splitlines()
     except OSError as exc:
@@ -236,11 +244,11 @@ def check_phase_ledger() -> None:
         )
 
 
-def check_closing_phase(phase: str) -> None:
+def check_closing_phase(phase: str, ledger: Path | None = None) -> None:
     """A completed child cannot leave its parent with no truthful continuation."""
     if "." not in phase:
         return
-    index = ROOT / "plan" / "INDEX.md"
+    index = ledger or ROOT / "plan" / "INDEX.md"
     try:
         rows = phase_rows(index.read_text(encoding="utf-8").splitlines())
     except OSError as exc:
@@ -635,6 +643,7 @@ def check_markdown_links() -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--closing-phase")
+    parser.add_argument("--ledger-file", type=Path, help="validate a prospective phase ledger")
     arguments = parser.parse_args()
     try:
         instructions = (ROOT / "CLAUDE.md").read_bytes().decode("utf-8")
@@ -646,9 +655,9 @@ def main() -> int:
         for directory in CATALOGED_DIRECTORIES:
             check_catalog(directory, instructions)
     check_docs_catalog()
-    check_phase_ledger()
+    check_phase_ledger(arguments.ledger_file)
     if arguments.closing_phase:
-        check_closing_phase(arguments.closing_phase)
+        check_closing_phase(arguments.closing_phase, arguments.ledger_file)
     check_phase_files()
     check_markdown_links()
     if DRIFT:

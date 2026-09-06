@@ -32,14 +32,14 @@ Mirrors `teach`'s stale-sweep model. Every potential ripple gets one classificat
   - Adding a brief ref the closing phase introduced to a downstream phase's "Brief refs" section when the downstream phase's Deliverables genuinely depend on it.
   - Tightening a downstream Acceptance criterion from "TBD in phase N" to the actual value phase N just pinned.
   - Updating a flag/value/version number the downstream phase references.
-  AUTO ripples land as edits in the same `kickoff` session, before the END block is written, so the END block can list them.
+  AUTO ripples are classified before acceptance and applied after the accepted status transition. The prepared END block identifies pending edits; append their actual outcomes before the full handoff gate.
 
 - **DECIDE** — touches judgment-bearing content. Examples:
   - The closing phase reveals a downstream Goal needs revision (its scope shifted).
   - A downstream Deliverable became obsolete or was absorbed by the closing phase.
   - The dependency graph changes (a downstream phase no longer depends on this one, or vice versa).
   - Multiple acceptable shapes exist for the downstream edit and the orchestrator can't pick.
-  DECIDE ripples are *not* applied. They are listed in the closing phase's END block as named manual follow-ups for the user to resolve before the next `kickoff`.
+  DECIDE ripples are *not* applied. They are surfaced before acceptance as named operator decisions. An unresolved DECIDE parks the current close and delivery; it is not deferred past acceptance.
 
 When in doubt, classify as DECIDE. The cost of surfacing a mechanical edit for human approval is one extra round-trip; the cost of an unwanted auto-edit to a downstream draft is silent drift.
 
@@ -57,7 +57,7 @@ The user owns DECIDE resolution and may also override any AUTO edit by editing t
 
 - [`phase-status.md`](phase-status.md) — sibling policy governing status-marker flips. A phase's status is flipped *before* the ripple pass runs (so AUTO edits to downstream files don't accidentally land on the closing phase itself).
 - [`acceptance-empirical.md`](acceptance-empirical.md) — downstream Acceptance criteria tightened by an AUTO ripple must still be empirical, not aspirational.
-- [`log-discipline.md`](log-discipline.md) — the END block is append-only; AUTO ripples are recorded there in the same write that closes the phase, not as a later amendment.
+- [`log-discipline.md`](log-discipline.md) — the END block is append-only; the accepted block distinguishes planned ripple edits from actual outcomes appended before the handoff gate.
 - [`human-in-the-loop.md`](human-in-the-loop.md) — DECIDE items are surfaced to the user and are an unresolved gate: an open DECIDE ripple parks the phase, so it also parks delivery. AUTO ripples ride along in the delivered commit, and the user may revert them like any other part of the phase.
 
 ## Verification
