@@ -122,6 +122,14 @@ Escalate: full lane — <one-line reason>
 
 On escalation from `light`, the orchestrator runs the skipped plan review retroactively against the plan as-built (same venue rules as kickoff Step 4), routes its outcome through the normal revision loops, and the phase finishes in the full lane. The END block records `light → full (escalated: <reason>)`. Escalation from `one-shot` follows § One-shot escalation (there is no plan artifact to review retroactively — the planner runs late, in a fresh evidence run).
 
+## Continue an approved plan after preparation
+
+An expressly approved preparation/qualification sequence may continue in a fresh evidence run through the existing `full-cycle` follow-up route without repeating planning. This is a continuation of an independently approved plan, not an initial lane downgrade or a correction that pretends initial code critique already happened. Use it only when the exact approved plan and independent approval survive, the preparation stays within that plan, and the remaining implementation and qualification work is concrete and unchanged in consequential scope, design, interfaces, risk and proof obligations.
+
+Close the preparation run truthfully parked, preserve its artifacts and candidate lineage, then capture the current authorities in a fresh run. Carry the approved plan and its hash, independent approval, complete authority diff, completed and remaining work, focused results and all unresolved findings into the continuation brief. Expected governing-prose changes must implement the approved contract; missing approval, lost continuity or a consequential change requires planning and independent plan review. Never rewrite an old authority hash or manufacture a planning attempt in the fresh run.
+
+The coder completes the real remaining work. The first code-critic pass still reviews the complete resulting diff from HEAD, including prepared work and governing prose, against the preserved approved plan and current authorities; it also verifies that the continuation met this rule. A failed continuation claim returns to planning and review in a fresh run. Neither prepared work nor carried approval supplies implementation acceptance: all required focused checks, candidate-bound final review, the implementation-candidate full sequence and the post-bookkeeping bare full gate remain mandatory. [Kickoff recovery](../.claude/skills/kickoff/recovery.md#planned-continuation) owns the execution procedure.
+
 ## Follow-up revisions are proportional
 
 After the initial implementation has passed code review, a correction prompted by a build/test/acceptance failure or by concrete user feedback is a **follow-up revision**. Before changing code, the orchestrator classifies both its **risk** and its **size**. The initial phase lane does not force the follow-up route.

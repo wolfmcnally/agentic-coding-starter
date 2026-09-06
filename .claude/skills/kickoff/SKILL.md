@@ -24,7 +24,7 @@ Raw arguments: `$ARGUMENTS`
 - Empty: select the single `⬅️` row in `plan/INDEX.md`.
 - `phase N` or `phase N.M`: select that explicit phase. Resuming a `🚧` row requires explicit selection; do not infer it from an absent arrow.
 - `one-shot`: invocation-only request under [review-lanes.md](../../../policies/review-lanes.md); check eligibility before skipping planning. Never select it autonomously or declare it in frontmatter.
-- Concrete feedback or a build/test failure after initial critique: use the follow-up route in [recovery.md](recovery.md).
+- Concrete feedback or a build/test failure after initial critique, or an approved preparation/qualification continuation: use the corresponding route in [recovery.md](recovery.md).
 - Other text: match a phase row; unresolved ambiguity goes to the operator through recovery's input-park procedure.
 
 Inspect the current branch, authoritative phase table and relevant recent log directly. Report missing files, command failures and invalid ledgers explicitly; never default a failed status probe to a benign state.

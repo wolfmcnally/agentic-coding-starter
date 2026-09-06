@@ -1681,3 +1681,32 @@ Recipient-local reassessment: 24 fresh observations retain all case identities, 
 Lessons: the existing build-gate ownership requirement now has stronger execution-boundary coverage in its existing test families. No duplicate rule or provisional graduation was added. Target findings and evidence were not imported.
 
 Remaining: the second bare ./bin/check all runs after this terminal bookkeeping. Delivery is contingent on its successful receipt, then explicit-path staging and ordinary fast-forward push. No manual acceptance criterion remains for this bounded correction. Model pins, target product state and the separate watcher-output decision are unchanged.
+
+## 2026-09-06 02:36 — METHODOLOGY SCOPE
+
+Authorization: The operator said, “Remember that if you feel trapped by any procedures or bureaucracy introduced by previous generations of the methodology, that your role right now is also to adjust those strictures.”
+
+Approved outcome: Preserve an independently approved implementation plan across an expressly approved preparation/qualification boundary when the remaining work, design and risk are unchanged. Replace the redundant planning restart with the existing full-cycle coder/critic route, fresh authority capture, complete independent implementation review and both full gates.
+
+Surfaces in scope: Review-lane policy and the kickoff entry, preflight, implementation and recovery instructions; their existing structural and runtime-route checks; this operation's log and any evidenced lesson disposition.
+
+Excluded: New lane values, changes to evidence tooling or stored evidence, omitted initial code review, relaxed gates, product behavior changes, permission changes and unrelated methodology maintenance. Changed consequential scope or design still requires planning and review. Prepared work remains incomplete until qualification passes.
+
+## 2026-09-06 02:46 — METHODOLOGY
+
+Outcome: An expressly approved preparation/qualification sequence can carry its exact independently approved plan into a fresh full-cycle run. The coder finishes the real remaining work; the critic reviews the entire result and verifies continuation eligibility. Fresh authority capture, unchanged consequential scope and proof obligations, complete first code review and both full gates remain required. Delivered scope matches the preceding METHODOLOGY SCOPE block.
+
+Files changed:
+- `policies/review-lanes.md` — eligibility, preserved approval and evidence, complete review and refusal conditions.
+- `.claude/skills/kickoff/SKILL.md`, `.claude/skills/kickoff/preflight.md`, `.claude/skills/kickoff/implementation.md`, `.claude/skills/kickoff/recovery.md` — discoverable continuation branch, fresh initialization, resumed log entry and correct setup-to-implementation transition.
+- `LOG.md` — pre-edit scope and this terminal record.
+
+Independent review: APPROVED after one required correction, R1, verified resolved. The first pass found that the new branch omitted planning while the shared stage instructions still closed it. The corrected instructions close setup, refresh the candidate and enter implementation directly; planning closes only if that route opened it. Review used a separate read-only context and inspected the full six-file diff and existing runtime route. The reviewer could not recompute product identity because its sandbox denied managed-runtime cache access; the orchestrator measured and bound the reviewed bytes directly.
+
+Reviewed product: `a43a225c55ea8f895d2e7049467dfc38fc824280e2331731b1affc636c598ace`.
+
+Validation: `./bin/test tests/test_kickoff_evidence.py tests/test_mirror_parity.py` passed 10 tests in 57.11 seconds. Catalogs, harness parity, format, diff whitespace and lesson validation passed. After approval, `./bin/check all` passed 103 tests in 91.60 seconds with no warnings; full-tree receipt `166af9a886c76a1cd23902197ad3d5ba9f4c9738edc294d167cc2eea7a98ff80`. The second bare full gate follows this final tracked write; its exact handoff receipt governs delivery. Existing tests establish retained route and evidence behavior, not an empirical claim that the revised instructions improve model convergence.
+
+Lessons: Already covered by `policies/verification-discipline.md` § A name you did not read is not a name: several exploratory commands guessed plausible executable names and refused; reading the actual inventory and CLI definitions corrected them. No repository state changed through those refusals. R1 is corrected at the owning stage instructions; the complete-route review exposed the mismatch before delivery. Existing lesson candidates remain for operator judgment; no graduation was performed.
+
+Remaining: No product or corpus acceptance is claimed by this methodology change. Live continuation effectiveness remains to be observed. Delivery follows the standing explicit-staging and fast-forward-push authority after the handoff gate; no phase status or artificial kickoff evidence was created.

@@ -26,7 +26,7 @@ Wait for the coder. Write its exact report to a fresh artifact. Require the norm
 
 This binds the changed paths, declared risks, selected tests, selection reason, intentionally unchanged neighbors, rebase reasons, falsifiers, and the coder's `gate_status` to the resulting candidate. Exit 66 is recoverable only if this validation and the report-shape gate both pass. Collect the file list, focused Build Status, Finding Resolution, and Manual Checks. The coder does not run or claim the acceptance-close sequence.
 
-For an expressly approved preparation/qualification sequence, record every focused result on the preparation return, including expected mismatches; do not loop on intentionally undelivered qualification files or dispatch final critique. Read [recovery.md](recovery.md), preserve the report and lineage, and park truthfully before fresh authority capture. The fresh run's final critique covers the complete diff from HEAD, including prepared prose. This is not a green-code exception.
+For an expressly approved preparation/qualification sequence, record every focused result on the preparation return, including expected mismatches; do not loop on intentionally undelivered qualification files or dispatch final critique. Read [planned continuation](recovery.md#planned-continuation), preserve the report and lineage, and park truthfully before fresh authority capture. Eligible continuation preserves the approved plan; the fresh run's final critique covers the complete diff from HEAD, including prepared prose. This is not a green-code exception.
 
 **Unverified-handoff guard.** Read `gate_status` from `change.json`. When `focused` is `not-run` (the venue could not reach the toolchain) or `red`, run the approved plan's Iteration and Revision Close sequence natively, including `./bin/check format` and `./bin/check lint` when prescribed; run either missing check afterward — each command in its own block, its refusal read — and record each as a gate against the candidate. Outside the expressly approved preparation boundary above, a red result goes back to the coder as a revision attempt with the diagnostics (reason `revision`); the critic is never dispatched on code whose focused gate has not run green somewhere. When a role venue was flagged at Step 0b as unable to run the toolchain, expect this branch on every coder return.
 
@@ -34,7 +34,7 @@ For an expressly approved preparation/qualification sequence, record every focus
 
 **Push-back.** A Finding Resolution line of the form `<id> — rejected-with-evidence: <observation>` is ingested as that transition (`--no-review-span '<coder refutation>'`) and the refutation is quoted to the critic on the next round, which accepts it or reopens with counter-evidence.
 
-Before dispatching the coder, close `orchestration.planning` and open `orchestration.implementation`. On any later return from acceptance to implementation, close the failed acceptance stage truthfully and increment both stage attempts.
+Before dispatching the coder, close `orchestration.planning` if this route opened it, and ensure `orchestration.implementation` is open. A route that opens implementation directly after setup does not create or close a planning stage. On any later return from acceptance to implementation, close the failed acceptance stage truthfully and increment both stage attempts.
 
 ### Step 6: Review code
 

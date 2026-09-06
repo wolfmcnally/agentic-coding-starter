@@ -4,7 +4,7 @@ Read this resource before executing its branch. Enter through [SKILL.md](SKILL.m
 
 ## Follow-up entry
 
-A follow-up revision exists only after the affected implementation has received its initial code-critic pass. Inspect the diagnostic or user instruction and the likely change surface, then classify both risk and size per [`policies/review-lanes.md`](../../../policies/review-lanes.md):
+A follow-up correction exists only after the affected implementation has received its initial code-critic pass. An approved preparation/qualification continuation instead enters through [Planned continuation](#planned-continuation) below. For a correction, inspect the diagnostic or user instruction and the likely change surface, then classify both risk and size per [`policies/review-lanes.md`](../../../policies/review-lanes.md):
 
 - **Direct fix** (small and low risk): the orchestrator edits the localized code itself. Skip role resolution/preflight and Steps 3–6; validate through Steps 7–8.
 - **Coder only** (low risk, but implementation delegation is useful): run Steps 0a–0c, invoke Step 5, skip Step 6, then validate through Steps 7–8.
@@ -17,6 +17,14 @@ For a delegated follow-up, use the concrete diagnostic or user instruction, the 
 Do not turn an uncertain correction into a direct fix: uncertainty about behavior, blast radius, or validation makes it high risk. For a follow-up during an active phase, continue through the normal Steps 9–10 after validation. If the prior phase is already `✅`, skip Steps 2 and 9 and do not emit the normal Step 10 END block; preserve its status and historical END block, then append an `END (correction)` block and report the route and evidence per [`policies/log-discipline.md`](../../../policies/log-discipline.md). A concrete correction does not reopen the phase, while genuinely new scope belongs in a new phase.
 
 Every route still initializes Step 1b evidence. For a direct fix, the orchestrator writes the same exact Change Evidence JSON object the coder would have reported and passes it to `capture-change --metadata`; direct authorship does not bypass candidate identity, risk tags, selection rationale, or final gate records.
+
+## Planned continuation
+
+Apply [the approved-plan continuation rule](../../../policies/review-lanes.md#continue-an-approved-plan-after-preparation) before restarting an expressly approved preparation/qualification sequence. Verify the preserved approved plan, approval, authority diff and candidate lineage; identify completed work, real remaining work, focused results and every unresolved finding. If the policy's eligibility conditions fail, use fresh planning and independent plan review rather than this branch.
+
+After the truthful preparation park and final authority edits, read [preflight.md](preflight.md) and initialize a fresh run with `--follow-up-route full-cycle`, retaining the resolved review and evidence lanes. This existing route derives coder and critic attempts without a new planning stage. Put the preserved plan and hash, approval and the verified continuation evidence in the continuation brief; do not invent fresh planning or review records. Read [dispatch.md](dispatch.md) and [implementation.md](implementation.md), then run Steps 5–8 using that brief. Tell the critic to check continuation eligibility and review the entire diff from HEAD against the preserved plan and current authorities. Ineligible continuation requires a truthful park and fresh planning/review; do not insert a late planning stage into this run.
+
+Before dispatching the continuation coder, append `START (resumed)` through preflight Step 2, naming the preserved preparation and plan. Close `orchestration.setup` successfully, recompute the candidate through `$EVIDENCE_TOOL current-candidate`, and open `orchestration.implementation` directly; do not open or close an omitted planning stage. This remains the same incomplete phase: preserve its in-progress marker and close through [acceptance.md](acceptance.md) and [close.md](close.md), including Steps 9–10 and the normal END block. Record the preparation and continuation relationship, actual roles and preserved approval; never report preparation as acceptance or use the historical-phase correction format.
 
 ### Operator-input parks (applies throughout)
 
