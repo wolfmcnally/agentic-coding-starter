@@ -1159,6 +1159,32 @@ def _assert_complete_synthetic_kickoff(repository: Path, tmp_path: Path, *, phas
     assert candidate == implemented
     reviewed = run("mark-reviewed", "--run-dir", str(run_dir), "--expected-candidate", candidate)
     assert reviewed.returncode == 0, reviewed.stderr
+    full_tree = subprocess.run(
+        [str(TREE_ID), "--root", str(repository)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert full_tree.returncode == 0, full_tree.stderr
+    assert full_tree.stdout.strip() != candidate
+    wrong_identity = run(
+        "run-gate",
+        "--run-dir",
+        str(run_dir),
+        "--candidate",
+        full_tree.stdout.strip(),
+        "--operation",
+        "gate.focused",
+        "--selection-reason",
+        "full-tree identity must not substitute for product identity",
+        "--warning-count",
+        "0",
+        "--",
+        "/usr/bin/true",
+        cwd=repository,
+    )
+    assert wrong_identity.returncode != 0
+    assert "candidate mismatch" in wrong_identity.stderr
     focused = run(
         "run-gate",
         "--run-dir",

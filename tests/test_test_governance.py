@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -112,6 +114,7 @@ def test_critical_risk_requires_a_retained_direct_proof(
 
 def test_recall_below_eighty_percent_fails_closed(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     original = governance.load_ledger
 
@@ -138,6 +141,51 @@ def test_recall_below_eighty_percent_fails_closed(
     monkeypatch.setattr(governance, "load_yaml", drifted)
     with pytest.raises(governance.GovernanceError, match="patch digest drifted"):
         governance.validate(REPO_ROOT)
+
+    # A failure in an unmodified copy cannot count as mutation detection.
+    fixture = tmp_path / "assay"
+    fixture.mkdir()
+    (fixture / "flag").write_text("good\n")
+    (fixture / "alias").symlink_to("flag")
+    patch = fixture / "defect.patch"
+    patch.write_text("--- a/flag\n+++ b/flag\n@@ -1 +1 @@\n-good\n+bad\n")
+    command = shlex.join(
+        [
+            sys.executable,
+            "-c",
+            "from pathlib import Path; assert Path('alias').is_symlink(); "
+            "assert Path('alias').read_text() == 'good\\n'",
+        ]
+    )
+    corpus = {
+        "selection_frozen": True,
+        "cases": [
+            {
+                "id": "copied-link",
+                "class": "historical_defect",
+                "patch": "defect.patch",
+                "patch_sha256": hashlib.sha256(patch.read_bytes()).hexdigest(),
+                "command": command,
+                "owner": "fixture",
+            }
+        ],
+    }
+    monkeypatch.setattr(
+        governance,
+        "load_yaml",
+        lambda path: (
+            {"effectiveness_corpus": "corpus.yaml"}
+            if path.name == "proof-estate.yaml"
+            else copy.deepcopy(corpus)
+        ),
+    )
+    rows = governance.assay(fixture)
+    assert len(rows) == 1 and rows[0]["observed"] is True
+    assert (fixture / "flag").read_text() == "good\n"
+    (fixture / "alias").unlink()
+    (fixture / "alias").write_text("good\n")
+    with pytest.raises(governance.GovernanceError, match="assay baseline failed for copied-link"):
+        governance.assay(fixture)
 
 
 def test_positive_growth_requires_named_approval(

@@ -1,0 +1,34 @@
+{
+  "files": {
+    "CLAUDE.md": "# Disposable loading fixture\n\nRoot token: root-cedar\n\nWhen the fixture skill is invoked, follow its entry and resource. Return exactly one JSON object with keys root, entry, resource. Read the current resource on every invocation. Write the same object to result.json before replying. Work only inside this disposable workspace.\n",
+    ".claude/skills/fixture/SKILL.md": "---\nname: fixture\ndescription: Read the disposable loading resource and report its current token.\n---\n\nEntry token: entry-elm\n\nRead [resource.md](resource.md) before responding, including after resume. Combine its Resource token with the Root token and this Entry token under the root instruction contract. Do not infer missing tokens; report a missing resource as an error.\n",
+    ".claude/skills/fixture/resource.md": "Resource token: initial-ash\n"
+  },
+  "symlinks": {
+    "AGENTS.md": "CLAUDE.md",
+    ".agents/skills/fixture": "../../.claude/skills/fixture"
+  },
+  "resumed_resource": "Resource token: resumed-birch\n",
+  "prompts": {
+    "claude": {
+      "initial": "/fixture",
+      "resumed": "/fixture"
+    },
+    "codex": {
+      "initial": "$fixture",
+      "resumed": "$fixture"
+    }
+  },
+  "oracle": {
+    "initial": {
+      "root": "root-cedar",
+      "entry": "entry-elm",
+      "resource": "initial-ash"
+    },
+    "resumed": {
+      "root": "root-cedar",
+      "entry": "entry-elm",
+      "resource": "resumed-birch"
+    }
+  }
+}

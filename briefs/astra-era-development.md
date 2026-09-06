@@ -67,7 +67,7 @@ The surfaces this contract named for extended proof are qualified in the governe
 
 This batch requires operator authorization and a stated price before any run. Nothing below has been executed, and no result from it is claimed anywhere in this repository.
 
-Matrix: four models (Astra, Fable, Sol, Opus) x initial and resumed invocation. Each cell runs a disposable instruction-loading fixture outside the reviewable tree and records the provider-reported model and effort, the harness version, the permission posture actually granted, and any observable failure. Policy refusals are covered by synthetic events rather than by provoking a live refusal, so the batch never depends on a provider declining to answer.
+The concrete [evaluation pack](../tests/fixtures/astra_evaluation/README.md) fixes the disposable loading files, native prompts, initial/resumed oracles and local wrong controls. Matrix: four models (Astra, Fable, Sol, Opus) x initial and resumed invocation. Each cell runs a disposable instruction-loading fixture outside the reviewable tree and records the provider-reported model and effort, the harness version, the permission posture actually granted, and any observable failure. Policy refusals are covered by synthetic events rather than by provoking a live refusal, so the batch never depends on a provider declining to answer.
 
 Fail-closed reading rules, which matter more than the runs themselves:
 
@@ -75,11 +75,11 @@ Fail-closed reading rules, which matter more than the runs themselves:
 - An absent provider report is **unreported**, not a default. A cell with no effort field says so; it does not inherit the requested effort.
 - A model that answers under a different identity than the one requested is a **silent-downgrade finding**, not a pass.
 
-Cost shape before authorization: the batch is dominated by per-invocation model charges across sixteen cells, not by repository work. Price it per model from current published rates on the day it runs, present the total to the operator, and record the actual spend against the estimate afterward.
+Cost shape before authorization: the batch is dominated by per-invocation model charges across eight invocations (four paired initial/resumed sessions), not by repository work. Price it per model from current published rates on the day it runs, present the total to the operator, and record the actual spend against the estimate afterward.
 
 ### Comparative evaluation — prepared, unrun, separately priced
 
-Four fixed tasks, chosen to separate capability from ceremony: a **mechanical edit** (a rename and its forced call sites), a **cross-file contract change** (a required member added to a contract with independent fixture inventories), a **consequential design** task (an unresolved decision the planner must surface rather than settle), and a **difficult repair** (a defect whose obvious fix is wrong). Each task carries independent behavioral acceptance written before any run, and held-out checks the implementer never sees.
+Four fixed tasks, chosen to separate capability from ceremony: a **mechanical edit** (a rename and its forced call sites), a **cross-file contract change** (a required member added to a contract with independent fixture inventories), a **consequential design** task (an unresolved decision the planner must surface rather than settle), and a **difficult repair** (a defect whose obvious fix is wrong). The [evaluation pack](../tests/fixtures/astra_evaluation/README.md) supplies exact public starting files and prompts, private executable checks, manual rubrics, reference solutions and wrong-repair controls. Keep evaluator artifacts outside a verified implementer filesystem boundary; without that boundary held-out qualification is unavailable. The consequential-design task requires a separately observed decision request before the fixed ruling is revealed. Local control qualification does not constitute a model result.
 
 Initial batch: four tasks across quality, balanced and economy in one selected harness — twelve complete runs. Cross-vendor review and effort variation are a separate batch requiring separate budget approval; vendor diversity remains a hypothesis to measure, never a presumed benefit.
 
@@ -87,7 +87,7 @@ Comparison is **per accepted outcome**, aggregating whatever phases a run took, 
 
 | Metric | Source | Availability |
 |---|---|---|
-| Behavior and escaped defects | Held-out checks plus independent acceptance | Complete |
+| Behavior and escaped defects | Fixed evaluation checks plus independent manual rubrics | Prepared; model outcomes unrun |
 | Review rounds and their cause | `bin/review-verdicts`, including `--coder-evidence` | Complete |
 | Elapsed time | `bin/execution-telemetry` spans; overlap-safe unions | Complete |
 | Operator intervention | `bin/execution-telemetry` park intervals, reported separately from run time | Complete |

@@ -26,3 +26,5 @@ The executable authority is:
 `assay` reruns corpus patches in disposable copies. Run it whenever proof code,
 selection, corpus, or critical-risk applicability changes. Routine vital and
 changed lanes never replace the full retained close gate.
+
+As of 2026-09-05, `assay` preserves symlinks in each disposable copy and requires each case command to pass on that copy before applying the frozen mutation. A failing baseline stops measurement instead of increasing recall. The effectiveness rows report the subsequent mutated command outcomes; inspect their full diagnostics to distinguish intended detections from unrelated failures. A stored report is the most recent assay observation, not something `validate` or either full close gate regenerates. The frozen reset summary remains a historical snapshot; use `reassess` for current totals and recall.

@@ -1574,3 +1574,46 @@ Direct-implementation route. Scope block above, including its disclosure that it
 Lessons:
 - A standing obligation with no moment attached to it does not fire. Both of this session's own rule failures were remedies without triggers — one prospective, one retrospective — and the fix in each case is a moment to attach to rather than more emphasis.
 - Distrust the item decided before a new rule existed, not the item decided while holding it. Twice in this pass the self-flagged risk was sound and the unexamined earlier decision was wrong.
+
+## 2026-09-05 18:12 — METHODOLOGY SCOPE — Complete Astra-era acceptance and evaluation preparation
+
+Approved outcome: correct the acceptance instructions to bind gate requests to the product candidate while retaining full-tree non-mutation checks; prepare concrete, fixed comparative tasks with prompts, fixtures and independent held-out acceptance, plus a disposable initial/resumed instruction-loading fixture; correct the live invocation count; regenerate effectiveness evidence against the current proof estate.
+
+Surfaces in scope: kickoff acceptance resource, Astra-era development brief, local evaluation fixtures and their evaluator instructions/checks, existing focused proofs where needed, test-governance effectiveness report, and this operation's close record. Implement directly, obtain independent review, run both required full gates, then commit and fast-forward push explicit paths.
+
+Excluded: paid or live model experiments, new routing/model defaults, new phase planning, child-close repair, telemetry expansion, unrelated pending user actions, corpus/threshold changes and performance claims. Experiments remain prepared and unrun; future execution requires a separately priced operator authorization.
+
+## 2026-09-05 18:31 — METHODOLOGY — Complete Astra-era acceptance and evaluation preparation
+
+Scope: the preceding METHODOLOGY SCOPE block, implemented through the direct methodology route. No phase rows or role-planning cycles were created.
+
+Changed paths:
+
+- `.claude/skills/kickoff/acceptance.md` — pass the product identity to gate requests, compare full-tree identity independently, and correct caller-supplied warning and summary-format instructions.
+- `tests/test_kickoff_evidence.py` — extend the existing lifecycle proof to refuse a real full-tree identity where product identity is required, before the valid product-bound call succeeds.
+- `briefs/astra-era-development.md` — link concrete evaluation inputs, state their limits, and correct the live matrix to eight invocations in four paired sessions.
+- `tests/fixtures/astra_evaluation/README.md`, `exercise.py`, `tasks.json`, `loading.py`, and `loading.json` — fixed public task inputs, private executable checks and manual rubrics, positive and negative controls, initial/resumed loading fixture, and separately priced execution instructions. No model calls are implemented or performed.
+- `lib/agentic_starter/test_governance.py` and `tests/test_test_governance.py` — preserve symlinks in assay copies and require a green unmodified baseline before measuring each mutant; strengthen the existing recall proof without growing the estate.
+- `reports/test-governance/starter-effectiveness.jsonl` and `reports/test-governance/README.md` — regenerated observations and explicit measurement/freshness limits.
+- `lessons/attentive-dolphin.md` — two distinct recurrence observations, with diagnosis and verified corrections; no graduation.
+- `LOG.md` — immutable scope and this terminal record.
+
+Scope departure: the requested effectiveness refresh exposed an assay-instrument defect outside the originally named report surface. The copy operation dereferenced healthy skill symlinks, and the assay counted a resulting mirror-test failure as mutation detection without qualifying an unmodified copy. Correcting that implementation and its existing proof was necessary to produce trustworthy requested evidence. The first measurement was discarded. Corpus patches, digests, selectors, thresholds and proof identities were not changed. No unrelated routing or model-default changes were made.
+
+Independent review: APPROVE after one comprehensive separate-context pass and verification of R1. R1 demonstrated that the comparative control qualifier counted an unrelated startup traceback as a correct rejection. Controls now require each fixed case's intended exception type and message; the exact reviewer counterexample refuses, while all reference and wrong-repair controls qualify. Reviewer independently checked the corrected controls, complete report joins, scope departure, documentation and lesson record. No required findings remain.
+
+Reviewed product candidate: `5fdf123492f5b8f5c4f143936fa3f730866a24f7073a71f86b88341b4cdff6f8`. Reviewed full-tree candidate: `dd34527e018643a29c2c152d5f150cb8a358315458808ed8ae63aa702c62bd35`.
+
+Validation:
+
+- Focused evidence and governance suites: 9 and 11 tests passed respectively. Local fixture qualification passes four intended baseline failures, four correct references, four intended wrong-repair failures, and refusal of unrelated startup failures. Loading controls pass initial/resumed oracles and reject stale responses, missing writes and missing resources. These are offline instrument checks, not model qualification.
+- Canonical assay CLI implementation executed under `bin/python` through a scratch diagnostic tap preserving every child result. All 24 unmodified commands and all 24 frozen patch applications succeeded; every published observation matches the subsequent mutant command and output digest. Complete diagnostics were reviewed; the corrected run has no warnings. Raw diagnostics remain private outside the repository.
+- `./bin/test-governance reassess`: valid, 108 families and 126 leaves. Historical recall is 10/12; held-out recall is 11/12. Both exceed the unchanged 80% floors. Misses remain visible: `required-gate-inventory`, `receipt-candidate-drift`, and `vital-substitutes-for-full`. The first was previously obscured by the copy-induced false positive; these measurements do not claim comprehensive coverage.
+- Implementation-candidate sequence after independent approval: `./bin/python tests/fixtures/astra_evaluation/exercise.py qualify`; `./bin/python tests/fixtures/astra_evaluation/loading.py qualify-loading`; `./bin/test-governance reassess`; `./bin/check all`. All passed. The full gate passed 103 tests and every policy member without warnings, preserving the reviewed full-tree identity. Receipt log: `.kickoff/check-all/logs/20260906T002924.194671Z-7155-df6f4a14.log`.
+- Handoff gate: the second bare `./bin/check all` runs after this final tracked write; completion and delivery are contingent on its ignored receipt. No tracked write follows a successful handoff gate.
+
+Acceptance: objective preparation, instruction correction and refreshed evidence are independently reviewed and proved. Paid live qualification, the twelve comparative outcomes, their manual design verdicts, provider identity/permission qualification, and any performance/cost conclusions remain unrun and require a separately priced operator authorization. Their absence does not imply success or zero cost.
+
+Lessons: `attentive-dolphin` recurred twice and now reaches the candidate threshold; no lesson is graduated or policy invented. The existing requirement to distinguish intended failures from unrelated errors is implemented in both instruments. Other candidate judgments and the existing watcher user action remain outside this change.
+
+Delivery: default — explicit-path commit and fast-forward push after the handoff gate; no acceptance of the unrun human/model experiments is implied. Remaining within this approved completion scope: handoff gate and delivery only.

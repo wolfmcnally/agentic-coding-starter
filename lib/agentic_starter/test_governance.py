@@ -819,19 +819,26 @@ def assay(root: Path, *, evidence_class: str | None = None) -> list[dict[str, An
             shutil.copytree(
                 root,
                 work,
+                symlinks=True,
                 ignore=shutil.ignore_patterns(".git", ".venv", "__pycache__", ".pytest_cache"),
             )
             patch = root / str(case["patch"])
             patch_sha256 = hashlib.sha256(patch.read_bytes()).hexdigest()
             if case.get("patch_sha256") != patch_sha256:
                 raise GovernanceError(f"assay patch digest drifted for {case['id']}")
+            command = shlex.split(str(case["command"]))
+            case_root = work / str(case.get("cwd", "."))
+            baseline = _run(command, case_root, check=False)
+            if baseline.returncode != 0:
+                raise GovernanceError(
+                    f"assay baseline failed for {case['id']}: "
+                    + (baseline.stdout + "\n" + baseline.stderr).strip()
+                )
             applied = _run(["git", "apply", str(patch)], work, check=False)
             if applied.returncode != 0:
                 raise GovernanceError(
                     f"assay patch does not apply for {case['id']}: {applied.stderr.strip()}"
                 )
-            command = shlex.split(str(case["command"]))
-            case_root = work / str(case.get("cwd", "."))
             result = _run(command, case_root, check=False)
             output = (result.stdout + "\n" + result.stderr).encode()
             rows.append(

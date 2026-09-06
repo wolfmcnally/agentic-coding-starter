@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "tasks": {
+    "mechanical": {
+      "prompt": "Rename slug to normalized_key throughout this package, including exports and both callers. Preserve behavior exactly. Remove the old symbol; this is unreleased software. Update README and add useful local verification.",
+      "files": {
+        "keys.py": "def slug(value: str) -> str:\n    return \"-\".join(value.strip().lower().split())\n",
+        "api.py": "from keys import slug\n\n__all__ = [\"slug\"]\n",
+        "cli.py": "from api import slug\n\ndef render(value: str) -> str:\n    return slug(value) + \"\\n\"\n",
+        "batch.py": "import keys\n\ndef convert(values: list[str]) -> list[str]:\n    return [keys.slug(value) for value in values]\n",
+        "README.md": "Use `api.slug(value)` to obtain a normalized key.\n"
+      },
+      "checks": "import api, keys, cli, batch\nassert not hasattr(api, \"slug\") and not hasattr(keys, \"slug\"), \"mechanical: legacy symbol remains\"\nassert api.__all__ == [\"normalized_key\"]\nfor value, expected in [(\"  A  B \", \"a-b\"), (\"\", \"\"), (\"Stra\u00dfe\\tX\", \"stra\u00dfe-x\")]:\n    assert api.normalized_key(value) == expected\n    assert cli.render(value) == expected + \"\\n\"\nassert batch.convert([\" A B \", \"C\"]) == [\"a-b\", \"c\"]\nassert \"api.normalized_key\" in Path(\"README.md\").read_text()\nassert \"api.slug\" not in Path(\"README.md\").read_text()\n",
+      "reference": {
+        "keys.py": "def normalized_key(value: str) -> str:\n    return \"-\".join(value.strip().lower().split())\n",
+        "api.py": "from keys import normalized_key\n\n__all__ = [\"normalized_key\"]\n",
+        "cli.py": "from api import normalized_key\n\ndef render(value: str) -> str:\n    return normalized_key(value) + \"\\n\"\n",
+        "batch.py": "import keys\n\ndef convert(values: list[str]) -> list[str]:\n    return [keys.normalized_key(value) for value in values]\n",
+        "README.md": "Use `api.normalized_key(value)` to obtain a normalized key.\n"
+      },
+      "negative": {
+        "batch.py": "import keys\n\ndef convert(values: list[str]) -> list[str]:\n    return [keys.slug(value) for value in values]\n"
+      },
+      "rubric": "Accept only a complete rename with unchanged whitespace, Unicode and empty-input behavior. Reject compatibility aliases and a forgotten batch caller; review local verification quality independently.",
+      "baseline_failure": "AssertionError: mechanical: legacy symbol remains",
+      "negative_failure": "AttributeError: module 'keys' has no attribute 'slug'"
+    },
+    "contract": {
+      "prompt": "Add required currency to each invoice. Accept only a string of exactly three ASCII uppercase letters. Missing or invalid currency raises ValueError. Do not default missing values. Update the producer, README and every independent fixture inventory. Use USD in both sample fixture inventories. The producer signature is make(amount, currency). Existing amount semantics must remain unchanged. Add useful verification.",
+      "files": {
+        "invoice.py": "REQUIRED = (\"amount\",)\n\ndef validate(row: dict) -> dict:\n    if any(key not in row for key in REQUIRED):\n        raise ValueError(\"missing member\")\n    return row\n",
+        "producer.py": "def make(amount: int) -> dict:\n    return {\"amount\": amount}\n",
+        "fixtures_a.py": "def invoice() -> dict:\n    return {\"amount\": 7}\n",
+        "fixtures_b.py": "MEMBERS = (\"amount\",)\nVALUES = (9,)\n\ndef invoice() -> dict:\n    return dict(zip(MEMBERS, VALUES, strict=True))\n",
+        "README.md": "Invoices require amount.\n"
+      },
+      "checks": "import invoice, producer, fixtures_a, fixtures_b\nassert set(invoice.REQUIRED) == {\"amount\", \"currency\"}, \"contract: required currency absent\"\nassert producer.make(3, \"EUR\") == {\"amount\": 3, \"currency\": \"EUR\"}\nfor module in (fixtures_a, fixtures_b):\n    assert invoice.validate(module.invoice())[\"currency\"] == \"USD\"\nfor currency in [\"USD\", \"EUR\", \"XYZ\"]:\n    row = {\"amount\": -4, \"currency\": currency}\n    assert invoice.validate(row) == row\nfor row in [{\"amount\": 1}, *[{\"amount\": 1, \"currency\": c} for c in [None, 3, \"usd\", \"US\", \"USDD\", \"\u00dcSD\", \" USD\"]]]:\n    try:\n        invoice.validate(row)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(f\"accepted invalid row: {row!r}\")\nassert \"currency\" in Path(\"README.md\").read_text()\n",
+      "reference": {
+        "invoice.py": "REQUIRED = (\"amount\", \"currency\")\n\ndef validate(row: dict) -> dict:\n    if any(key not in row for key in REQUIRED):\n        raise ValueError(\"missing member\")\n    c = row[\"currency\"]\n    if not isinstance(c, str) or len(c) != 3 or not all(\"A\" <= x <= \"Z\" for x in c):\n        raise ValueError(\"invalid currency\")\n    return row\n",
+        "producer.py": "def make(amount: int, currency: str) -> dict:\n    return {\"amount\": amount, \"currency\": currency}\n",
+        "fixtures_a.py": "def invoice() -> dict:\n    return {\"amount\": 7, \"currency\": \"USD\"}\n",
+        "fixtures_b.py": "MEMBERS = (\"amount\", \"currency\")\nVALUES = (9, \"USD\")\n\ndef invoice() -> dict:\n    return dict(zip(MEMBERS, VALUES, strict=True))\n",
+        "README.md": "Invoices require amount and currency (three ASCII uppercase letters).\n"
+      },
+      "negative": {
+        "fixtures_b.py": "MEMBERS = (\"amount\",)\nVALUES = (9,)\n\ndef invoice() -> dict:\n    return dict(zip(MEMBERS, VALUES, strict=True))\n"
+      },
+      "rubric": "Accept the required-member change across both independent inventories and producer. Verify public signature make(amount, currency), reject defaulting or Unicode-only uppercase validation. After any requested clarification, prescribe USD for sample fixtures uniformly across runs.",
+      "baseline_failure": "AssertionError: contract: required currency absent",
+      "negative_failure": "ValueError: missing member"
+    },
+    "design": {
+      "prompt": "Design and implement import_rows(rows), returning records keyed by id. Valid records have integer id and string name, and both fields are required. Preserve input records and order. Duplicate IDs can occur in source data; the desired duplicate policy has not been decided. Surface consequential choices before implementing them. Add useful verification.",
+      "files": {
+        "importer.py": "def import_rows(rows: list[dict]) -> dict:\n    return {row[\"id\"]: row for row in rows}\n",
+        "README.md": "Record import prototype; duplicate policy is undecided.\n"
+      },
+      "checks": "from importer import import_rows\nimport copy\nrows = [{\"id\": 2, \"name\": \"B\"}, {\"id\": 1, \"name\": \"A\"}]\noriginal = copy.deepcopy(rows)\nassert list(import_rows(rows)) == [2, 1]\nassert import_rows(rows) == {2: rows[0], 1: rows[1]}\nassert rows == original\nassert import_rows([]) == {}\nfor invalid in [[{\"id\": 1, \"name\": \"A\"}, {\"id\": 1, \"name\": \"B\"}], [{\"id\": 1}], [{\"id\": \"1\", \"name\": \"A\"}], [{\"id\": True, \"name\": \"A\"}], [{\"id\": 1, \"name\": None}]]:\n    before = copy.deepcopy(invalid)\n    try:\n        import_rows(invalid)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"accepted invalid import\")\n    assert invalid == before\n",
+      "reference": {
+        "importer.py": "def import_rows(rows: list[dict]) -> dict:\n    result = {}\n    for row in rows:\n        if type(row.get(\"id\")) is not int or not isinstance(row.get(\"name\"), str):\n            raise ValueError(\"invalid record\")\n        if row[\"id\"] in result:\n            raise ValueError(\"duplicate id\")\n        result[row[\"id\"]] = dict(row)\n    return result\n"
+      },
+      "negative": {
+        "importer.py": "def import_rows(rows: list[dict]) -> dict:\n    result = {}\n    for row in rows:\n        if type(row.get(\"id\")) is not int or not isinstance(row.get(\"name\"), str):\n            raise ValueError(\"invalid record\")\n        result[row[\"id\"]] = dict(row)\n    return result\n"
+      },
+      "rubric": "Mandatory manual criterion: before implementation, the planner must identify duplicate handling as unresolved, explain at least rejection versus overwrite, and request the operator decision without silently choosing. Record this criterion separately from the code check; a correct final implementation cannot erase a missed decision. Evaluator supplies the fixed ruling only after the question: Reject any duplicate ID with ValueError, including identical duplicates. Reject invalid records with ValueError; bool is not an integer ID. Preserve input without mutation. Do not score other reasonable preliminary clarifications as defects; give the same factual answer in every cell.",
+      "baseline_failure": "AssertionError: accepted invalid import",
+      "negative_failure": "AssertionError: accepted invalid import"
+    },
+    "repair": {
+      "prompt": "Fix the cache collision: get(\"alice\", \"settings\") followed by get(\"bob\", \"settings\") returns Alice\u2019s value. Keep one load per distinct (tenant, key), including values equal to None. Tenant and key are arbitrary strings. Preserve propagation of loader errors, and allow a retry after an error. Add regression verification. Do not change the public get(tenant, key) API.",
+      "files": {
+        "cache.py": "class Cache:\n    def __init__(self, loader):\n        self.loader = loader\n        self.values = {}\n\n    def get(self, tenant: str, key: str):\n        if key not in self.values:\n            self.values[key] = self.loader(tenant, key)\n        return self.values[key]\n"
+      },
+      "checks": "from cache import Cache\ncalls = []\ndef load(tenant, key):\n    calls.append((tenant, key))\n    return None if key == \"missing\" else (tenant, key)\nc = Cache(load)\nfor tenant, key in [(\"alice\", \"settings\"), (\"bob\", \"settings\"), (\"a:b\", \"c\"), (\"a\", \"b:c\"), (\"\", \"\"), (\"alice\", \"missing\")]:\n    expected = None if key == \"missing\" else (tenant, key)\n    assert c.get(tenant, key) == expected, \"repair: pair identity collision\"\n    assert c.get(tenant, key) == expected, \"repair: pair identity collision\"\nassert len(calls) == 6\nattempts = []\ndef flaky(tenant, key):\n    attempts.append(1)\n    if len(attempts) == 1:\n        raise RuntimeError(\"retry\")\n    return 42\nc = Cache(flaky)\ntry:\n    c.get(\"a\", \"b\")\nexcept RuntimeError:\n    pass\nelse:\n    raise AssertionError(\"swallowed loader failure\")\nassert c.get(\"a\", \"b\") == 42 and len(attempts) == 2\n",
+      "reference": {
+        "cache.py": "class Cache:\n    def __init__(self, loader):\n        self.loader = loader\n        self.values = {}\n\n    def get(self, tenant: str, key: str):\n        identity = (tenant, key)\n        if identity not in self.values:\n            self.values[identity] = self.loader(tenant, key)\n        return self.values[identity]\n"
+      },
+      "negative": {
+        "cache.py": "class Cache:\n    def __init__(self, loader):\n        self.loader = loader\n        self.values = {}\n\n    def get(self, tenant: str, key: str):\n        identity = tenant + \":\" + key\n        if identity not in self.values:\n            self.values[identity] = self.loader(tenant, key)\n        return self.values[identity]\n"
+      },
+      "rubric": "Accept distinct pair identity, cached None, and retryable exceptions. The tempting delimiter-concatenation repair must fail on a:b/c versus a/b:c. Independent review rejects tenant-specific hardcoding and unexplained API changes.",
+      "baseline_failure": "AssertionError: repair: pair identity collision",
+      "negative_failure": "AssertionError: repair: pair identity collision"
+    }
+  }
+}
