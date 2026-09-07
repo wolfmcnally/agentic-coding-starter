@@ -118,7 +118,17 @@ REVIEW_ROLE_KINDS = {"reviewer": "plan", "critic": "code"}
 
 HARNESSES = ("default", "claude", "codex")
 ROLES = ("planner", "reviewer", "coder", "critic")
-MODELS = ("default", "claude", "codex", "opus", "fable", "astra", "sol", "terra", "luna")
+MODELS = (
+    "default",
+    "claude",
+    "codex",
+    "opus",
+    "fable",
+    "astra",
+    "sol",
+    "terra",
+    "luna",
+)
 CODEX_MODELS = {
     "codex": None,
     "astra": "gpt-6-astra",
@@ -154,7 +164,10 @@ def preset_models(
         ("codex", "astra", "sol", "fable", "opus"),
     ):
         roles = {
-            role: {"model": economical if preset == "economy" else strong, "effort": "high"}
+            role: {
+                "model": economical if preset == "economy" else strong,
+                "effort": "high",
+            }
             for role in ROLES
         }
         if preset == "balanced":
@@ -967,6 +980,10 @@ def scrubbed_env(cli: str) -> dict[str, str]:
     )
     for key in keys:
         environment.pop(key, None)
+    if cli == "claude":
+        # Every generated Claude invocation is --print. Native background work
+        # would be cleaned up when that CLI exits instead of reawakening it.
+        environment["CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"] = "1"
     environment["KICKOFF_DELEGATION_DEPTH"] = "1"
     return environment
 
@@ -1599,7 +1616,10 @@ def invocation_observations(
                 event = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            if not isinstance(event, dict) or (event.get("type"), event.get("subtype")) != (
+            if not isinstance(event, dict) or (
+                event.get("type"),
+                event.get("subtype"),
+            ) != (
                 "system",
                 "init",
             ):
@@ -1654,17 +1674,12 @@ def inject_telemetry_failure(stage: str) -> None:
 def validate_telemetry_registration(
     arguments: argparse.Namespace,
 ) -> dict[str, Any] | None:
-    supplied = [
-        arguments.telemetry_trace_id,
-        arguments.telemetry_parent_span_id,
-        arguments.telemetry_operation,
-        arguments.telemetry_attempt,
-        arguments.telemetry_role_registration,
-    ]
-    if not any(value is not None for value in supplied):
+    arguments.telemetry_trace_id = None
+    arguments.telemetry_parent_span_id = None
+    arguments.telemetry_operation = None
+    arguments.telemetry_attempt = None
+    if arguments.telemetry_role_registration is None:
         return None
-    if not all(value is not None for value in supplied):
-        die("telemetry arguments must be supplied together")
     registration_path = Path(arguments.telemetry_role_registration)
     # The append-only ledger is never a registration. It is JSON Lines, so a
     # ledger holding exactly one record is *also* a valid JSON object and would
@@ -1691,20 +1706,21 @@ def validate_telemetry_registration(
             "JSON object -- the per-attempt file written by "
             "`register-role-attempt --output`, not an append-only JSON Lines ledger"
         )
+    if not isinstance(registration, dict):
+        die("telemetry role registration must be one JSON object")
     expected = {
-        "telemetry_trace_id": arguments.telemetry_trace_id,
-        "telemetry_root_span_id": arguments.telemetry_parent_span_id,
-        "operation": arguments.telemetry_operation,
-        "attempt": arguments.telemetry_attempt,
         "role": arguments.role,
         "harness": arguments.venue,
         "model": arguments.model,
         "effort": None if arguments.effort == "default" else arguments.effort,
     }
-    if not isinstance(registration, dict) or any(
-        registration.get(key) != value for key, value in expected.items()
-    ):
-        die("telemetry role registration does not match watcher routing")
+    mismatches = [
+        f"{key}: registered={registration.get(key)!r}, requested={value!r}"
+        for key, value in expected.items()
+        if registration.get(key) != value
+    ]
+    if mismatches:
+        die("telemetry role registration does not match watcher routing: " + "; ".join(mismatches))
     try:
         ledger_records = [
             json.loads(line)
@@ -1715,6 +1731,19 @@ def validate_telemetry_registration(
         die(f"invalid role-attempt ledger: {exc}")
     if sum(item == registration for item in ledger_records) != 1:
         die("telemetry role registration is not uniquely present in its ledger")
+    # The authenticated registration is the single source of telemetry routing.
+    # In particular, roles belong to the trace root, not the current stage span.
+    arguments.telemetry_trace_id = registration.get("telemetry_trace_id")
+    arguments.telemetry_parent_span_id = registration.get("telemetry_root_span_id")
+    arguments.telemetry_operation = registration.get("operation")
+    arguments.telemetry_attempt = registration.get("attempt")
+    if (
+        not isinstance(arguments.telemetry_trace_id, str)
+        or not isinstance(arguments.telemetry_parent_span_id, str)
+        or type(arguments.telemetry_attempt) is not int
+        or arguments.telemetry_attempt < 1
+    ):
+        die("telemetry role registration has invalid trace, root or attempt")
     if ROLE_OPERATIONS[arguments.role] != arguments.telemetry_operation:
         die("telemetry operation does not match canonical role")
     try:
@@ -2135,9 +2164,15 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
     if child_exit_code is not None and child_exit_code < 0:
         child_exit_code = 128 + abs(child_exit_code)
         return_code = child_exit_code
-    turns, input_tokens, output_tokens, result, assistant_text, event_types, terminal_error = (
-        parse_events(bytes(stdout_data), arguments.venue)
-    )
+    (
+        turns,
+        input_tokens,
+        output_tokens,
+        result,
+        assistant_text,
+        event_types,
+        terminal_error,
+    ) = parse_events(bytes(stdout_data), arguments.venue)
     observations = invocation_observations(
         bytes(stdout_data), arguments.venue, version, version_errors
     )
@@ -2477,11 +2512,10 @@ def build_parser() -> argparse.ArgumentParser:
     watch_parser.add_argument("--first-event-timeout", type=float)
     watch_parser.add_argument("--idle-timeout", type=float)
     watch_parser.add_argument("--hard-timeout", type=float)
-    watch_parser.add_argument("--telemetry-trace-id")
-    watch_parser.add_argument("--telemetry-parent-span-id")
-    watch_parser.add_argument("--telemetry-operation")
-    watch_parser.add_argument("--telemetry-attempt", type=int)
-    watch_parser.add_argument("--telemetry-role-registration")
+    watch_parser.add_argument(
+        "--telemetry-role-registration",
+        help="registration file supplying trace, root, operation and attempt",
+    )
 
     render_parser = subparsers.add_parser(
         "render-command",

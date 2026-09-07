@@ -75,7 +75,7 @@ Each phase run owns four run-scoped records:
    evidence, affected paths, required outcome, introduction and resolution
    candidates, state, classification, and disposition.
 4. **Gate ledger.** Command, candidate identifier, selection rationale, exit
-   status, warning count, final-gate flag, and optional artifact digest.
+   status, final-gate flag, and optional artifact digest. A managed execution's warning count remains unknown until a diagnostic observation, bound to that execution's immutable record, supplies the observed count and assessment after completion. Corrected observations preserve the prior record and never count as another execution.
 
 Each managed gate is also admitted by an immutable, content-addressed command
 manifest. Exact argv, operation, attempt, and finality are authority; a later

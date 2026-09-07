@@ -162,6 +162,8 @@ executable for every repeated call. It does not re-enter the wrapper for each
 iteration, start a background process through an ambient executable, or depend
 on a later `PATH` lookup after selection.
 
+Project wrappers discard an inherited `VIRTUAL_ENV` before probing or executing: their project selection is authoritative, and `TOOLCHAIN_PYTHON` remains the explicit base-interpreter override. A standalone tool whose declared dependencies are outside the project environment must use its own executable contract; the role watcher is one such tool. Other tools follow their generated invocation contracts, including project-interpreter recipes when their dependencies are provided there.
+
 ## Language profiles
 
 The interface is universal; implementations are language-specific:
@@ -201,6 +203,8 @@ The planner's Build Gate Sequence has three explicit parts:
    other tracked close write, a bare `./bin/check all` against the actual tree
    handed to the user. No tracked write follows a successful handoff gate.
 
+Do not place an unchanged component suite immediately before a full gate that already includes it. An additional pre-gate command needs a distinct acceptance property, configuration or environment; running `./bin/test` and then `./bin/check all` under identical conditions does not add coverage. Both full close gates remain mandatory at their separate candidate and handoff seams.
+
 A raw ecosystem command is acceptable only for a narrow operation the
 repository interface does not represent; it must still use committed metadata
 and lock-preserving mode.
@@ -214,7 +218,7 @@ the orchestrator's host context.
 
 Every gate record names the candidate identifier from
 `bin/kickoff-tree-id`, its exact command, selection reason, exit status,
-warning count, and optional artifact digest, per
+post-execution diagnostic assessment and observed warning count, and optional artifact digest, per
 [`orchestration-evidence.md`](orchestration-evidence.md). Verify the candidate
 before and after the implementation sequence. A relevant implementation
 candidate change invalidates prior evidence; a gate that mutates the candidate

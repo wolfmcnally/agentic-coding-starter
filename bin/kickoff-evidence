@@ -961,6 +961,7 @@ def command_init(arguments: argparse.Namespace) -> None:
         },
     )
     (run_dir / "gates.jsonl").touch()
+    (run_dir / "gate-reviews.jsonl").touch()
     (run_dir / "role-attempts.jsonl").touch()
     (run_dir / "role-dispatch.jsonl").touch()
     (run_dir / "dispatch-open-omitted.jsonl").touch()
@@ -2414,6 +2415,79 @@ def command_record_gate(arguments: argparse.Namespace) -> None:
     print("recorded")
 
 
+def gate_reviews(run_dir: Path, gates: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Validate diagnostic observations against immutable executions, without counting new gates."""
+    executions = {_closure_digest(gate): gate for gate in gates}
+    reviews: dict[str, dict[str, Any]] = {}
+    required = {
+        "schema_version",
+        "recorded_at",
+        "gate_sha256",
+        "warning_count",
+        "summary",
+        "supersedes",
+    }
+    for row in load_jsonl(run_dir / "gate-reviews.jsonl"):
+        if (
+            set(row) != required
+            or row.get("schema_version") != SCHEMA_VERSION
+            or type(row.get("warning_count")) is not int
+            or row["warning_count"] < 0
+            or not isinstance(row.get("summary"), str)
+            or not row["summary"].strip()
+            or not isinstance(row.get("recorded_at"), str)
+            or not row["recorded_at"]
+        ):
+            raise EvidenceError("invalid gate diagnostic review")
+        key = validate_candidate_id(row.get("gate_sha256"), "reviewed gate hash")
+        gate = executions.get(key)
+        if gate is None or gate["operation"] == "gate.imported":
+            raise EvidenceError("gate diagnostic review does not name a managed execution")
+        prior = reviews.get(key)
+        expected = _closure_digest(prior) if prior else None
+        if row["supersedes"] != expected:
+            raise EvidenceError("gate diagnostic review has an invalid supersession")
+        reviews[key] = row
+    return reviews
+
+
+def command_review_gate(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    root = Path(run["repository_root"])
+    gates = load_jsonl(arguments.run_dir / "gates.jsonl")
+    for gate in gates:
+        validate_gate_record(gate, run, root)
+    reviews = gate_reviews(arguments.run_dir, gates)
+    matches = [gate for gate in gates if _closure_digest(gate) == arguments.gate]
+    if len(matches) != 1 or matches[0]["operation"] == "gate.imported":
+        raise EvidenceError("review-gate requires one exact managed gate hash printed by run-gate")
+    if arguments.warning_count < 0 or not arguments.summary.strip():
+        raise EvidenceError("diagnostic review requires a nonnegative warning count and summary")
+    prior = reviews.get(arguments.gate)
+    if (
+        prior
+        and prior["warning_count"] == arguments.warning_count
+        and prior["summary"] == arguments.summary.strip()
+    ):
+        print(f"GATE REVIEWED {_closure_digest(prior)}")
+        return
+    expected = _closure_digest(prior) if prior else None
+    if arguments.supersedes != expected:
+        raise EvidenceError(
+            "changed diagnostic review requires --supersedes with the current review hash"
+        )
+    record = {
+        "schema_version": SCHEMA_VERSION,
+        "recorded_at": now(),
+        "gate_sha256": arguments.gate,
+        "warning_count": arguments.warning_count,
+        "summary": arguments.summary.strip(),
+        "supersedes": expected,
+    }
+    append_jsonl(arguments.run_dir / "gate-reviews.jsonl", record)
+    print(f"GATE REVIEWED {_closure_digest(record)}")
+
+
 def command_run_gate(arguments: argparse.Namespace) -> None:
     run = validate_run_dir(arguments.run_dir)
     root = Path(run["repository_root"])
@@ -2424,8 +2498,8 @@ def command_run_gate(arguments: argparse.Namespace) -> None:
         raise EvidenceError(
             f"candidate mismatch: expected {expected}, found {product_before['candidate_id']}"
         )
-    if arguments.warning_count < 0 or not arguments.selection_reason.strip():
-        raise EvidenceError("gate warning count/reason is invalid")
+    if not arguments.selection_reason.strip():
+        raise EvidenceError("gate selection reason is invalid")
     argv = list(arguments.argv)
     if argv and argv[0] == "--":
         argv = argv[1:]
@@ -2515,7 +2589,7 @@ def command_run_gate(arguments: argparse.Namespace) -> None:
         "selection_reason": arguments.selection_reason.strip(),
         "exit_code": result.exit_code,
         "outcome": result.outcome,
-        "warning_count": arguments.warning_count,
+        "warning_count": None,
         "artifact_sha256": artifact_digest,
         "final": arguments.final,
         "telemetry_trace_id": run["telemetry_trace_id"],
@@ -2524,6 +2598,7 @@ def command_run_gate(arguments: argparse.Namespace) -> None:
         "telemetry_complete": telemetry_complete,
     }
     append_jsonl(arguments.run_dir / "gates.jsonl", record)
+    print(f"GATE RECORDED {_closure_digest(record)}; diagnostics unreviewed", flush=True)
     if after["candidate_id"] != before["candidate_id"]:
         print("kickoff-evidence: gate changed the candidate", file=sys.stderr)
         raise SystemExit(2)
@@ -3704,6 +3779,12 @@ def validate_gate_record(
     }
     if set(gate) != required or gate.get("schema_version") != SCHEMA_VERSION:
         raise EvidenceError(f"invalid {label} schema")
+    count = gate.get("warning_count")
+    if gate.get("operation") == "gate.imported":
+        if type(count) is not int or count < 0:
+            raise EvidenceError("imported gate requires an observed nonnegative warning count")
+    elif count is not None:
+        raise EvidenceError("managed gate warning count belongs to its post-execution review")
     validate_candidate_id(gate.get("candidate_id"), "gate candidate")
     validate_candidate_id(gate.get("candidate_after_id"), "gate candidate after")
     validate_candidate_id(gate.get("product_candidate_id"), "gate product candidate")
@@ -3967,6 +4048,17 @@ def command_packet(arguments: argparse.Namespace) -> None:
     findings = load_json(arguments.run_dir / "findings.json")
     gates_path = arguments.run_dir / "gates.jsonl"
     gates = [json.loads(line) for line in gates_path.read_text().splitlines() if line.strip()]
+    reviews = gate_reviews(arguments.run_dir, gates)
+    gates = [
+        {
+            **gate,
+            "warning_count": reviews.get(_closure_digest(gate), {}).get(
+                "warning_count", gate["warning_count"]
+            ),
+            "diagnostic_summary": reviews.get(_closure_digest(gate), {}).get("summary"),
+        }
+        for gate in gates
+    ]
     unresolved = [item for item in findings["findings"] if item["state"] in UNRESOLVED_STATES]
     if arguments.kind == "plan":
         plan_change = load_json(arguments.run_dir / "plan-change.json")
@@ -4078,8 +4170,11 @@ def command_packet(arguments: argparse.Namespace) -> None:
         for gate in gates:
             lines.append(
                 f"- `{gate['command']}` @ `{gate['candidate_id']}`: "
-                f"exit {gate['exit_code']}, warnings {gate['warning_count']}"
+                f"exit {gate['exit_code']}, warnings "
+                f"{gate['warning_count'] if gate['warning_count'] is not None else 'unreviewed'}"
             )
+            if gate["diagnostic_summary"]:
+                lines.append(f"  Diagnostic assessment: {gate['diagnostic_summary']}")
     else:
         lines.append("- None recorded.")
     lines.extend(
@@ -4114,6 +4209,7 @@ def command_packet(arguments: argparse.Namespace) -> None:
             "change": source_digest(source_change_path),
             "findings": source_digest(arguments.run_dir / "findings.json"),
             "gates": source_digest(gates_path),
+            "gate_reviews": source_digest(arguments.run_dir / "gate-reviews.jsonl"),
         },
         "unresolved_findings": len(unresolved),
     }
@@ -4268,6 +4364,15 @@ def command_validate(arguments: argparse.Namespace) -> None:
             validate_candidate_id(artifact_hash, f"artifact hash in gates.jsonl line {line_number}")
     if acceptance:
         validate_gate_span_join(ledgers["gates.jsonl"], run, root)
+    reviews = gate_reviews(arguments.run_dir, ledgers["gates.jsonl"])
+    if acceptance:
+        unreviewed = [
+            f"{gate['operation']}#{gate['attempt']}"
+            for gate in ledgers["gates.jsonl"]
+            if gate["operation"] != "gate.imported" and _closure_digest(gate) not in reviews
+        ]
+        if unreviewed:
+            raise EvidenceError("gate diagnostics remain unreviewed: " + ", ".join(unreviewed))
     active_manifest = active_gate_manifest(arguments.run_dir)
     if run["evidence_lane"] == "full":
         for gate in ledgers["gates.jsonl"]:
@@ -4564,7 +4669,13 @@ def command_close(arguments: argparse.Namespace) -> int:
     if arguments.parent_run is not None:
         parent_tool = arguments.parent_run / "tools/kickoff-evidence"
         inspected = subprocess.run(
-            [sys.executable, str(parent_tool), "status", "--run-dir", str(arguments.parent_run)],
+            [
+                sys.executable,
+                str(parent_tool),
+                "status",
+                "--run-dir",
+                str(arguments.parent_run),
+            ],
             capture_output=True,
             text=True,
             check=False,
@@ -4642,7 +4753,10 @@ def command_close(arguments: argparse.Namespace) -> int:
         if existing is not None and existing.get("status") == "complete":
             if transition := existing.get("ledger_transition"):
                 actual = hashlib.sha256((root / "plan/INDEX.md").read_bytes()).hexdigest()
-                if actual not in {transition["before_sha256"], transition["after_sha256"]}:
+                if actual not in {
+                    transition["before_sha256"],
+                    transition["after_sha256"],
+                }:
                     raise EvidenceError("repeated close ledger differs from recorded transition")
             print("closure complete")
             return 0
@@ -4677,7 +4791,10 @@ def command_close(arguments: argparse.Namespace) -> int:
                         "--level",
                         "acceptance",
                         *(
-                            ["--required-final-command", arguments.required_final_command]
+                            [
+                                "--required-final-command",
+                                arguments.required_final_command,
+                            ]
                             if arguments.required_final_command
                             else []
                         ),
@@ -4949,12 +5066,29 @@ def build_parser() -> argparse.ArgumentParser:
     run_gate.add_argument("--operation", required=True)
     run_gate.add_argument("--attempt", type=int, default=1)
     run_gate.add_argument("--selection-reason", required=True)
-    run_gate.add_argument("--warning-count", type=int, required=True)
     run_gate.add_argument("--artifact", type=Path)
     run_gate.add_argument("--timeout-seconds", type=float)
     run_gate.add_argument("--final", action="store_true")
     run_gate.add_argument("argv", nargs=argparse.REMAINDER)
     run_gate.set_defaults(handler=command_run_gate)
+
+    review_gate = subparsers.add_parser(
+        "review-gate",
+        description="Record diagnostic review after one managed execution.",
+    )
+    add_run_dir(review_gate)
+    review_gate.add_argument("--gate", required=True, help="exact gate hash printed by run-gate")
+    review_gate.add_argument("--warning-count", type=int, required=True)
+    review_gate.add_argument(
+        "--summary",
+        required=True,
+        help="complete diagnostics reviewed; explain any remaining warnings",
+    )
+    review_gate.add_argument(
+        "--supersedes",
+        help="current review hash when correcting an earlier observation",
+    )
+    review_gate.set_defaults(handler=command_review_gate)
 
     activate_manifest = subparsers.add_parser(
         "activate-gate-manifest",

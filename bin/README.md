@@ -336,6 +336,8 @@ reports missing acceptance roles and allowed next actions. `close` materializes
 one idempotent accepted, parked, or failed terminal record and appends its exact
 log block once; parked and failed closes require a validated failure signature.
 
+`run-gate` prints the immutable execution hash with diagnostics explicitly unreviewed. Inspect the complete command output, then use `review-gate --gate <hash> --warning-count <observed-count> --summary <assessment>` with the same run directory. Diagnostic observations live in `gate-reviews.jsonl`; corrections require the prior review hash through `--supersedes` and do not create new execution rows. Acceptance refuses any managed execution without a valid diagnostic review. Imported nonfinal evidence continues to carry an already observed count through `record-gate`.
+
 ```bash
 ./bin/kickoff-evidence --help
 ```

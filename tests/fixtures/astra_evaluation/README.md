@@ -1,6 +1,6 @@
 # Astra-era evaluation pack
 
-As of 2026-09-05: fixed inputs and evaluator checks are prepared; no model experiment has run. This pack implements the [evaluation contract](../../../briefs/astra-era-development.md). It is a small calibration batch, insufficient by itself to establish a general model ranking or an optimal phase size.
+As of 2026-09-06: the eight instruction-loading invocations have run, and the first workflow comparison exposed execution obstacles before any fixture delivery completed. Three terminated design attempts passed private behavioral checks but exhausted their workflow budget; one had an evaluator-induced process interruption. A fourth attempt was stopped by the evaluator when the operator chose to repair the workflow before continuing. These are preserved outcomes, not evidence for a general model ranking. Corrected comparisons require a separately identified batch. This pack implements the [evaluation contract](../../../briefs/astra-era-development.md) and remains insufficient by itself to establish a general model ranking or an optimal phase size.
 
 ## Comparative tasks
 
@@ -15,6 +15,8 @@ As of 2026-09-05: fixed inputs and evaluator checks are prepared; no model exper
 Qualification requires all four original fixtures and all four wrong repairs to produce their predeclared exception type and message, and all four references to pass. An unrelated import-time crash must be refused as measurement failure, not counted as a successful rejection. It validates the local instruments, not model behavior. These are experiment fixtures, not additions to the retained repository proof estate; qualification remains an explicit preparation check.
 
 Before a priced batch, record the delivered repository revision and the pack's byte digests in the evaluator's run record. Never revise a task or scoring rule after seeing results; a corrected pack starts a separately identified batch.
+
+Qualify the complete launcher and ordinary workflow through local delivery before scaling the matrix. Static controls and a green host test suite do not witness native process lifetime, review dispatch or close bookkeeping. Use the first predeclared cell in each harness as that witness rather than adding hidden pilot calls. Record any interruption caused by the evaluator separately from model non-convergence. A repaired launcher or methodology starts a new identified batch; preserve the original attempts and do not combine incompatible timing measurements. A deadline reached after correct implementation is a workflow non-completion, not a failed behavioral check.
 
 ```bash
 ./bin/python tests/fixtures/astra_evaluation/exercise.py digest

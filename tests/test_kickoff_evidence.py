@@ -399,6 +399,23 @@ def tree_manifest_for_test(repository: Path) -> str:
     return json.loads(result.stdout)["candidate_id"]
 
 
+def review_gate_output(run_dir: Path, result: subprocess.CompletedProcess[str]):
+    key = result.stdout.split("GATE RECORDED ", 1)[1].split(";", 1)[0]
+    reviewed = run(
+        "review-gate",
+        "--run-dir",
+        str(run_dir),
+        "--gate",
+        key,
+        "--warning-count",
+        "0",
+        "--summary",
+        "Complete fixture diagnostics inspected; no warnings.",
+    )
+    assert reviewed.returncode == 0, reviewed.stderr
+    return reviewed
+
+
 def run_final_gate(run_dir: Path, candidate: str, artifact: Path | None = None):
     repository = Path(json.loads((run_dir / "run.json").read_text())["repository_root"])
     complete_orchestration(repository, run_dir)
@@ -414,16 +431,17 @@ def run_final_gate(run_dir: Path, candidate: str, artifact: Path | None = None):
         "1",
         "--selection-reason",
         "Authoritative acceptance close",
-        "--warning-count",
-        "0",
     ]
     if artifact is not None:
         arguments.extend(["--artifact", str(artifact)])
     arguments.extend(["--final", "--", "./bin/check", "all"])
-    return run(
+    result = run(
         *arguments,
         cwd=repository,
     )
+    if "GATE RECORDED " in result.stdout:
+        review_gate_output(run_dir, result)
+    return result
 
 
 def test_change_manifest_is_candidate_bound_and_detects_authority_drift(
@@ -457,7 +475,11 @@ def test_change_manifest_is_candidate_bound_and_detects_authority_drift(
         launched = subprocess.run(
             [str(executable), "--help"],
             cwd=repository,
-            env={**os.environ, "PATH": str(launch_path), "UV_PYTHON_PREFERENCE": "only-managed"},
+            env={
+                **os.environ,
+                "PATH": str(launch_path),
+                "UV_PYTHON_PREFERENCE": "only-managed",
+            },
             text=True,
             capture_output=True,
             timeout=20,
@@ -1094,14 +1116,6 @@ def _assert_complete_synthetic_kickoff(
                 "2",
                 "--hard-timeout",
                 "2",
-                "--telemetry-trace-id",
-                root.trace_id,
-                "--telemetry-parent-span-id",
-                root.span_id,
-                "--telemetry-operation",
-                operation,
-                "--telemetry-attempt",
-                str(attempt),
                 "--telemetry-role-registration",
                 str(handoff),
             ]
@@ -1252,8 +1266,6 @@ def _assert_complete_synthetic_kickoff(
         "gate.focused",
         "--selection-reason",
         "full-tree identity must not substitute for product identity",
-        "--warning-count",
-        "0",
         "--",
         "/usr/bin/true",
         cwd=repository,
@@ -1270,8 +1282,6 @@ def _assert_complete_synthetic_kickoff(
         "gate.focused",
         "--selection-reason",
         "focused proof",
-        "--warning-count",
-        "0",
         "--",
         "/usr/bin/true",
         cwd=repository,
@@ -1290,8 +1300,6 @@ def _assert_complete_synthetic_kickoff(
         "gate.check-all",
         "--selection-reason",
         "final proof",
-        "--warning-count",
-        "0",
         "--artifact",
         str(artifact),
         "--final",
@@ -1304,6 +1312,44 @@ def _assert_complete_synthetic_kickoff(
     gates = [json.loads(line) for line in (run_dir / "gates.jsonl").read_text().splitlines()]
     assert gates[-1]["artifact_sha256"] == hashlib.sha256(artifact.read_bytes()).hexdigest()
     assert gates[-1]["final"]
+    assert all(gate["warning_count"] is None for gate in gates)
+    unreviewed = run("validate", "--run-dir", str(run_dir), "--level", "acceptance")
+    assert unreviewed.returncode == 2
+    assert "gate diagnostics remain unreviewed" in unreviewed.stderr
+    wrong_review = run(
+        "review-gate",
+        "--run-dir",
+        str(run_dir),
+        "--gate",
+        "f" * 64,
+        "--warning-count",
+        "0",
+        "--summary",
+        "Wrong execution must refuse.",
+    )
+    assert wrong_review.returncode == 2
+    review_gate_output(run_dir, focused)
+    reviewed = review_gate_output(run_dir, final)
+    review_bytes = (run_dir / "gate-reviews.jsonl").read_bytes()
+    review_gate_output(run_dir, final)
+    assert (run_dir / "gate-reviews.jsonl").read_bytes() == review_bytes
+    key = final.stdout.split("GATE RECORDED ", 1)[1].split(";", 1)[0]
+    correction = [
+        "review-gate",
+        "--run-dir",
+        str(run_dir),
+        "--gate",
+        key,
+        "--warning-count",
+        "2",
+        "--summary",
+        "Two explained fixture warnings; correcting the observation.",
+    ]
+    assert run(*correction).returncode == 2
+    corrected = run(*correction, "--supersedes", reviewed.stdout.split()[2])
+    assert corrected.returncode == 0, corrected.stderr
+    assert len((run_dir / "gates.jsonl").read_text().splitlines()) == 2
+    assert len((run_dir / "gate-reviews.jsonl").read_text().splitlines()) == 3
     validated = run(
         "validate",
         "--run-dir",
@@ -1376,7 +1422,11 @@ def _assert_complete_synthetic_kickoff(
         assert closed.returncode == 0, closed.stderr
         return run_dir
     ledger_after = tmp_path / "ledger-after.md"
-    title = {"1": "Qualification", "1.1": "Qualification child", "1.1.1": "Nested child"}[phase]
+    title = {
+        "1": "Qualification",
+        "1.1": "Qualification child",
+        "1.1.1": "Nested child",
+    }[phase]
     expected_index = captured_index.replace(
         f"{title} | 🚧".encode(),
         f"{title} | ✅".encode(),
@@ -1494,20 +1544,30 @@ def _assert_complete_synthetic_kickoff(
     paths = sorted(set(item for item in paths if item))
     subprocess.run(["git", "add", "--", *paths], cwd=repository, check=True)
     subprocess.run(
-        ["git", "commit", "-q", "-m", "Deliver qualified fixture"], cwd=repository, check=True
+        ["git", "commit", "-q", "-m", "Deliver qualified fixture"],
+        cwd=repository,
+        check=True,
     )
     subprocess.run(
-        ["git", "push", str(remote), "master"], cwd=repository, capture_output=True, check=True
+        ["git", "push", str(remote), "master"],
+        cwd=repository,
+        capture_output=True,
+        check=True,
     )
     local_head = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=repository, capture_output=True, check=True
     ).stdout
     remote_head = subprocess.run(
-        ["git", "--git-dir", str(remote), "rev-parse", "master"], capture_output=True, check=True
+        ["git", "--git-dir", str(remote), "rev-parse", "master"],
+        capture_output=True,
+        check=True,
     ).stdout
     assert local_head == remote_head
     clean = subprocess.run(
-        ["git", "status", "--porcelain"], cwd=repository, capture_output=True, check=True
+        ["git", "status", "--porcelain"],
+        cwd=repository,
+        capture_output=True,
+        check=True,
     )
     assert not clean.stdout
 
@@ -1776,8 +1836,6 @@ def _assert_bookkeeping_review_custody(repository: Path, tmp_path: Path) -> None
         "--final",
         "--selection-reason",
         "prove bookkeeping cannot hide gate mutation",
-        "--warning-count",
-        "0",
         "--",
         "./bin/check",
         "all",

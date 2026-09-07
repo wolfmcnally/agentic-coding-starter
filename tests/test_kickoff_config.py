@@ -265,6 +265,7 @@ def test_watch_extracts_fresh_claude_result_and_telemetry(tmp_path: Path) -> Non
     cli = fake_cli(
         tmp_path,
         "claude",
+        'test "$CLAUDE_CODE_DISABLE_BACKGROUND_TASKS" = 1 || exit 79\n'
         'printf \'%s\\n\' \'{"type":"assistant","usage":{"input_tokens":3}}\'\n'
         'printf \'%s\\n\' \'{"type":"result","result":"FRESH",'
         '"usage":{"output_tokens":2}}\'',

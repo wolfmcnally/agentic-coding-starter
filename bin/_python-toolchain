@@ -7,6 +7,10 @@
 python_toolchain_init() {
   python_toolchain_prefix="$1"
 
+  # These wrappers own project selection. A caller's standalone script venv
+  # is not an override and must not leak into either the probe or execution.
+  unset VIRTUAL_ENV
+
   if ! command -v uv >/dev/null 2>&1; then
     echo "$python_toolchain_prefix ERROR missing prerequisite: uv" >&2
     return 1

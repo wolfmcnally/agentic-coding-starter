@@ -62,9 +62,7 @@ Path classification is a proxy for relevance, not a claim that a file can never 
 - **Finding ledger:** stable id, severity, authority, evidence, affected
   paths, required outcome, introduction/resolution candidates, state,
   classification, and disposition.
-- **Gate ledger:** structured argv, full-tree and product candidate ids,
-  active command-manifest digest, selection reason, exit status, warning count,
-  final-gate flag, and optional artifact digest.
+- **Gate ledger:** structured argv, full-tree and product candidate ids, active command-manifest digest, selection reason, exit status, final-gate flag, and optional artifact digest. Managed executions start with an unknown warning count. After complete diagnostics are inspected, `review-gate` appends the observed count and assessment to `gate-reviews.jsonl`, bound to the exact immutable gate-record hash. Acceptance refuses unreviewed managed executions, invalid review bindings and unexplained review replacement. Corrections name the preceding review hash through `--supersedes`; they never create another execution or alter measured gate counts. Imported nonfinal evidence records an already observed count through `record-gate`.
 
 A full-evidence run activates one immutable content-addressed command manifest
 before managed gates begin. Activation is append-only; a successor must name
@@ -208,6 +206,8 @@ ledger holding exactly one record is also a valid JSON object and would parse,
 so the same argument would work for the first role registered and die on the
 second — an order-dependent trap that teaches the wrong contract and fails at the
 worst moment. Give each attempt its own `--output` path.
+
+The watcher derives the trace, root span, operation and attempt from that authenticated registration. Callers supply only `--telemetry-role-registration` for telemetry routing. The registered trace root remains the role's parent, even while the orchestrator has a stage span open; a caller cannot replace it with the current stage. Role, model, venue and effort must still match the registration, with field-specific diagnostics on disagreement.
 
 ## Every registered attempt has an intelligence span, rejections included
 

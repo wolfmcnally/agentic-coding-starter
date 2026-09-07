@@ -59,6 +59,10 @@ printf '%s\n' 'FOCUSED' 'fixture selection' 'tests/test_check.py'
         tool_dir / "uv",
         """#!/usr/bin/env bash
 set -u
+if [[ "${VIRTUAL_ENV+x}" == x ]]; then
+  echo 'Inherited environment reached project selection' >&2
+  exit 87
+fi
 printf 'uv cwd=%s args=%s\\n' "$PWD" "$*" >> "$TOOLCHAIN_TEST_LOG"
 if [[ -n "${TOOLCHAIN_TEST_FAIL_MATCH:-}" && "$*" == *"$TOOLCHAIN_TEST_FAIL_MATCH"* ]]; then
   exit "${TOOLCHAIN_TEST_FAIL_CODE:-23}"
@@ -112,6 +116,8 @@ def test_test_defaults_to_every_repository_test_from_any_cwd(
     toolchain_repo: tuple[Path, dict[str, str]], tmp_path: Path
 ) -> None:
     root, environment = toolchain_repo
+
+    environment["VIRTUAL_ENV"] = str(tmp_path / "standalone-script-environment")
 
     result = _run(root, environment, "test", cwd=tmp_path)
 

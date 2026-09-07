@@ -186,6 +186,8 @@ with:
 
 - `./bin/check all`
 
+Inspect what that full gate includes. Do not repeat an unchanged component suite immediately before it; any additional acceptance command must prove a distinct property, configuration or environment. Focused iteration and both full close gates remain required.
+
 Read `policies/build-gates.md` and inspect the complete toolchain contract:
 `bin/setup`, `bin/test`, `bin/check`, any runtime wrapper, runtime pin,
 manifest, and lockfile. Route focused tests through `bin/test`; do not copy a
