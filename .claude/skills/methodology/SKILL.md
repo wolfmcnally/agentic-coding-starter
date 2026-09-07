@@ -13,6 +13,15 @@ last-reviewed: 2026-09-04
 
 # The Agentic Coding Methodology
 
+## Primary ownership and independent advice
+
+As of 2026-09-07, the primary use case is a configured SOTA instance that owns orchestration, planning, implementation and acceptance. A comparable or stronger model in another permitted provider's harness normally supplies independent plan and code advice; a single-provider environment uses fresh instances of the primary model. One comprehensive pass per stage is normal, a second needs recorded cause, and two is the maximum. Advisers report evidence and severity without veto; the primary decides corrections and records consequential dispositions. Objective requirements and both full gates remain binding.
+
+A constrained primary uses separate planner/coder roles and the established approval-gated reviewer/critic loops. Detailed references to mandatory reviewer approval or four-role delegation below describe that constrained product branch. Eligibility is maintained configuration, not a benchmark claim. Backend and handling restrictions prevail over preferred routing. Optional kickoff usage checks refuse a primary at >=95% of any applicable limit and substitute the primary for a secondary above 95% weekly; absent tooling does not prevent execution.
+
+All methodology work itself, including teach/learn knowledge transfer, is always one-shot by the invoking primary across harnesses and capability tiers, without delegated production or independent review. The primary owns adaptation, self-checks, required gates, commit and fast-forward push within authorized scope. This standing delivery grant does not expand scope or waive custody and human decisions. No product phase or repeated approval ceremony is needed for authorized methodology work.
+
+
 A methodology for writing software with AI coding agents in a way that scales beyond ad-hoc prompting. Each step involves conversing with or using LLMs. Apply it when scoping or structuring a coding project — not when answering one-off coding questions.
 
 The authoritative source is [`briefs/methodology.md`](../../../briefs/methodology.md). Invoke this restatement as `/methodology` in Claude Code or `$methodology` in Codex.
@@ -35,19 +44,17 @@ The eleven steps govern forward construction. Rule One governs what happens when
 
 6. **Coherent outcomes; conditional children.** Apply the boundary test in `briefs/methodology.md` §6: an unresolved consequential decision, independently accepted prerequisite, deployment/migration/human seam or demonstrated coherence limit can justify decomposition. Keep coherent changes intact across modules, tests and docs; absent children, session length and model reputation are not triggers. Route consequential decisions to the operator. Once a split is authorized, draft children just in time, one at a time; do not pre-decompose future major phases.
 
-7. **Orchestrator-driven phase execution.** Use the high-level `kickoff` orchestrator skill (`/kickoff` in Claude Code; `$kickoff` in Codex), which delegates the initial implementation. It:
-   - determines the current phase,
-   - invokes a **planner agent**,
-   - hands the plan to a **plan reviewer** (skipped when the phase declares the `light` review lane per `policies/review-lanes.md`),
-   - hands the approved plan to a **coding agent**,
-   - hands the result to a **code critic** (runs on every initial implementation; in `light`, it also guards the lane and can escalate back to `full`),
-   - on any critic's complaint, sends the work back to the relevant agent with stable findings and a candidate-bound causal revision packet (bounded, fail-closed loops).
+7. **Orchestrator-driven phase execution.** Use the high-level `kickoff` orchestrator skill (`/kickoff` in Claude Code; `$kickoff` in Codex), which keeps implementation inline in primary mode and delegates it in constrained mode. It:
+   - selects the current phase and freezes the authority mode and permitted model routes;
+   - plans and codes inline in primary mode, obtaining the required independent advice;
+   - records primary dispositions and requests a second advisory pass only for recorded cause, never a third;
+   - in constrained delegated mode, dispatches planner, reviewer, coder, and critic under the established bounded approval loops.
 
-8. **Acceptance check.** While work converges, the coder runs the smallest behavioral and affected checks that can falsify the change. After critic approval, the orchestrator runs the complete phase-prescribed sequence and the implementation-candidate full gate against the unchanged approved candidate, followed after accepted close and all tracked bookkeeping by a second bare full handoff gate. No tracked write follows success. Test- or user-driven follow-ups are routed by risk and size: direct fix, coder only, or the full coder → critic cycle. A changed candidate invalidates prior gate evidence; a failed lightweight route upgrades to the full cycle.
+8. **Acceptance check.** The primary or delegated coder runs focused behavioral checks during implementation. The primary then runs the complete required sequence ending in the implementation-candidate full gate. After accepted close and all tracked bookkeeping, it runs the second bare full handoff gate. No tracked write follows success. Changed implementation invalidates prior gates. Follow-ups use their risk and size classification without automatically requiring another advisory pass. Methodology work always uses direct primary self-inspection and both gates.
 
 9. **Append-only phase log and lessons harvest.** `LOG.md` opens and closes work on every phase. Closing requires recorded evidence plus the mandatory lessons question: harvest role Process Observations, revision failure analyses, wall-clock observations, and relevant dispositions into `lessons/`; `None` is valid, omission is not.
 
-10. **Human evaluation where judgment is required.** Objective criteria may close autonomously after independent review and complete gates, and the phase is delivered. Named manual, subjective, product, custody, or owner-only criteria still park for the human, who evaluates each phase at the seam. Delivery never substitutes for that judgment.
+10. **Human evaluation where judgment is required.** Objective criteria may close autonomously after their applicable review contract and complete gates, and the phase is delivered. Named manual, subjective, product, custody, or owner-only criteria still park for the human, who evaluates each phase at the seam. Delivery never substitutes for that judgment.
 
 11. **Stay agile.** Add new phases, or break existing phases into more sub-phases, as the problem and solution space become clearer.
 
@@ -75,12 +82,12 @@ The orchestrator delegates to four specialist roles. Their names are load-bearin
 
 - **Every completed phase is incremental and testable.**
 - **Prefer conceptual economy.** Among designs that satisfy the same requirements and invariants, choose the one that leaves fewer independent concepts, states, paths, representations, authorities, and exceptions for the next reader to understand; never substitute line, file, or abstraction counts for that judgment. See [`policies/simplicity-and-consolidation.md`](../../../policies/simplicity-and-consolidation.md).
-- **Every initial phase implementation passes the code critic; repeat review on follow-ups is risk- and size-based.**
+- **Every initial product implementation receives the review required by its lane; primary-mode critique is advisory and delegated-mode critique is approval-gated.**
 - **Review, findings, and gates are bound to exact candidate identity.**
 - **Revision rounds use causal packets and widen when continuity is uncertain.**
 - **The orchestrator owns both full close gates; the coder owns focused iteration.**
-- **The human owns subjective and owner-only acceptance; objective acceptance is independently reviewed and gate-proved.**
-- **The orchestrator writes code only for eligible small, low-risk follow-up corrections.**
+- **The human owns subjective and owner-only acceptance; objective acceptance satisfies its review contract and is gate-proved.**
+- **The primary plans and codes inline in primary mode and for all methodology work; constrained product work delegates those roles.**
 - **Closing a phase requires recorded evidence and a lessons-harvest answer.**
 - **Unstarted phases and authorized children are mutable; completed phases stay completed.**
 

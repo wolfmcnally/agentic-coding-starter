@@ -1,5 +1,9 @@
 # Policy: Research Authority
 
+## Primary ownership
+
+The role matrix below governs delegated roles and independent advisers. An eligible primary that plans and codes inline retains originating-research authority throughout implementation within one shared planner budget. It does not reset the budget, delegate a replacement planner, or lose authority merely because it is coding. Plan advice retains reviewer research permissions; code advice retains critic permissions. Repository egress restrictions remain unchanged.
+
 Research authority belongs to the **role**, not to the transport that happens
 to run it. A role dispatched through another harness keeps the same authority,
 and a tool being installed does not by itself authorize a role to use it.

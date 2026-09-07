@@ -1,6 +1,22 @@
 # Policy: The Four Canonical Agents
 
-The methodology's orchestrator (`kickoff`) delegates one phase of work to four specialist agents. Approved methodology improvements instead default to [direct implementation](review-lanes.md#methodology-improvements-direct-implementation-by-default), unless the operator explicitly requests this workflow. Their names are load-bearing: `kickoff` invokes them by name. A typo silently breaks the orchestration.
+## Authority before roles
+
+Operator-ratified 2026-09-07. Product development normally uses a configured eligible SOTA primary instance for orchestration, planning and implementation. Independent reviewer and critic instances advise; the primary owns dispositions and acceptance. Constrained primary models use the delegated workflow described below. Capability is explicit configuration, not a model's self-assessment. Provider diversity and review authority are separate choices.
+
+In primary mode each required review stage gets one comprehensive independent pass. A second pass requires a concrete cause recorded by the primary before launch and is the maximum across continuations, resumes and provider switches. Severity describes consequence: critical, high, medium, low, informational. Advisory reports have no APPROVED/REVISE verdict, blocking severity, mandatory correction or reviewer-controlled state. Report source evidence, affected locations, consequence and a suggestion. Only the primary chooses changes or another pass; reviewer dissatisfaction grants no authority.
+
+The primary separately records adopt, decline or defer decisions. Material advice needs a concise rationale; adopted work needs verification. Minor advice can be grouped or left as optional observations. A real unmet requirement remains unmet regardless of its label, and consequential scope/authorization decisions remain with the operator. Passing gates and truthful primary acceptance are required; adviser agreement is not. At least one usable independent report is needed at each required stage; if two attempts yield none, park for the operator. A failed invocation consumes a pass once launch begins; deterministic parsing of existing output does not.
+
+Keep the first review context independent of the primary's self-assessment. A second pass may reuse that adviser's context with its prior observations and the actual delta. Preserve the reviewed candidate separately from the final primary-accepted candidate; do not claim the adviser saw subsequent corrections. The primary assesses and tests those corrections without a mandatory additional review.
+
+All methodology work, including `teach` and `learn`, instead uses the primary's one-shot route with commit/push authority and no delegated roles or independent review, per [review-lanes.md](review-lanes.md). This exception applies even under constrained models.
+
+## Delegated product workflow
+
+The approval verdicts, role delegation, stable blocking-finding ledger and convergence limits in the remainder of this policy govern delegated product work. They do not reinstate veto authority in primary mode or require reviews for methodology work.
+
+The methodology's orchestrator (`kickoff`) delegates one phase of work to four specialist agents. All authorized methodology work instead uses [primary one-shot implementation](review-lanes.md#methodology-improvements-primary-one-shot-with-delivery-authority). Their names are load-bearing: `kickoff` invokes them by name. A typo silently breaks the orchestration.
 
 ## The four roles
 

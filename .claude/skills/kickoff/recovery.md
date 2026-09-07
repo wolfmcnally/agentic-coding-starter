@@ -1,5 +1,10 @@
 # Kickoff — Recovery, parks and follow-ups
 
+## Authority-mode interpretation
+
+Read the frozen workflow mode. Product primary mode dispatches only independent advisory reviewers, retains planning/coding on the invoking instance, and accepts through a current primary decision plus required checks. A reviewer verdict or remaining suggestion cannot block it. Second review/critique requires recorded cause; two passes per stage is the maximum across continuations. Candidate changes require truthful delta assessment and fresh tests, not mandatory additional advice. Delegated product mode retains the approval/revision procedures below. Methodology work follows the separate primary one-shot route with no delegated role or independent review and with commit/push authority after required checks.
+
+
 Read this resource before executing its branch. Enter through [SKILL.md](SKILL.md); its resource table defines the order. Before resuming a stage, read its resource again when continuity is uncertain.
 
 ## Follow-up entry
@@ -55,3 +60,5 @@ Absent named subagents does not authorize substituting the orchestrator for a se
 ## Context continuity
 
 Before a capacity pause or compaction continuation, read [the context brief](../../../briefs/session-context-compaction.md). Use measured session capacity and comparable arc evidence; unknown capacity is unknown. Externalize exact plan/candidate/findings and actual run state at a safe boundary, then re-read active instructions and the next stage resource on continuation. Lost trustworthy continuity requires complete review; authority drift requires a truthful park and fresh capture. Do not add hooks, change permissions or infer CLI capacity from an API setting.
+
+For a fresh primary-mode continuation run, use `kickoff-evidence carry-advice --run-dir <new-run> --source-run <prior-run>` after initialization. It preserves original report/candidate/dispatch provenance and the phase-wide pass allowance. Record a fresh primary decision about the final delta; an old decision is not acceptance of new bytes. Keep prior evidence available. A failed second advisory invocation does not authorize a third under another run directory.

@@ -7,6 +7,15 @@ scope: Procedure for using this repository as a master template to stand up a ne
 
 # Standing Up a New Project From This Template
 
+## Primary ownership and independent advice
+
+As of 2026-09-07, the primary use case is a configured SOTA instance that owns orchestration, planning, implementation and acceptance. A comparable or stronger model in another permitted provider's harness normally supplies independent plan and code advice; a single-provider environment uses fresh instances of the primary model. One comprehensive pass per stage is normal, a second needs recorded cause, and two is the maximum. Advisers report evidence and severity without veto; the primary decides corrections and records consequential dispositions. Objective requirements and both full gates remain binding.
+
+A constrained primary uses separate planner/coder roles and the established approval-gated reviewer/critic loops. Detailed references to mandatory reviewer approval or four-role delegation below describe that constrained product branch. Eligibility is maintained configuration, not a benchmark claim. Backend and handling restrictions prevail over preferred routing. Optional kickoff usage checks refuse a primary at >=95% of any applicable limit and substitute the primary for a secondary above 95% weekly; absent tooling does not prevent execution.
+
+All methodology work itself, including teach/learn knowledge transfer, is always one-shot by the invoking primary across harnesses and capability tiers, without delegated production or independent review. The primary owns adaptation, self-checks, required gates, commit and fast-forward push within authorized scope. This standing delivery grant does not expand scope or waive custody and human decisions. No product phase or repeated approval ceremony is needed for authorized methodology work.
+
+
 How to use this repository as a *master template* to bootstrap a new project that follows the same agentic coding methodology. This brief is the contract `stamp` implements; read it before customizing the skill or running the procedure by hand.
 
 This brief assumes you already have (or are about to write) a high-level brief for the new project. If you don't yet have one, do the methodology's steps 1–3 first ([`methodology.md`](methodology.md)) — turn the idea into insights, write a brief, decide an architecture.
@@ -289,7 +298,7 @@ These files encode the methodology itself, not any particular product. Copy them
 - `tests/test_kickoff_config.py` (universal manager/watchdog behavioral coverage; run independently of the deliverable's language)
 - `bin/kickoff-tree-id` and `bin/kickoff-evidence` (universal candidate identity and run-evidence managers)
 - `tests/test_kickoff_tree_id.py` and `tests/test_kickoff_evidence.py` (universal behavioral coverage for candidate/evidence mechanics)
-- `bin/kickoff-command-zero`, `bin/check-log`, `bin/check-log-prefix`, `bin/check-log-monotonic`, `bin/log-append`, `bin/log-relocate`, and `bin/normalize-final-newline`, together with `lib/agentic_starter/candidate_boundaries.py`, `lib/agentic_starter/kickoff_runbook.py`, and `lib/agentic_starter/log_blocks.py` (the universal executable-authority, dual-identity, append-only log, and bounded-repair control plane)
+- `bin/kickoff-command-zero`, `bin/check-log`, `bin/check-log-prefix`, `bin/check-log-monotonic`, `bin/log-append`, `bin/log-relocate`, and `bin/normalize-final-newline`, together with `lib/agentic_starter/candidate_boundaries.py`, `lib/agentic_starter/kickoff_runbook.py`, `lib/agentic_starter/workflow.py`, `lib/agentic_starter/advisory.py`, and `lib/agentic_starter/log_blocks.py` (the universal executable-authority, dual-identity, append-only log, and bounded-repair control plane)
 - `tests/test_kickoff_control_plane.py` and `tests/test_log_control_plane.py` (behavioral coverage for exact command admission, command zero, log custody, and the single-repair boundary)
 - `bin/check-receipt` and `tests/test_check_receipt.py` (universal durable full-gate records and exact, fail-closed pre-push reuse)
 - `bin/test-governance`, `lib/agentic_starter/test_governance.py`, `tests/test_test_governance.py`, `tests/test_pre_commit.py`, and `reports/test-governance/README.md` (universal proof-estate mechanics and behavioral contract; the destination supplies its own manifest, assay cases, and report bodies)
@@ -506,7 +515,7 @@ Port the deterministic orchestration control plane as one atomic bundle:
 
 - `briefs/deterministic-orchestration-control-plane.md` and `policies/orchestration-control-plane.md`
 - `bin/kickoff-command-zero`, `bin/check-log`, `bin/check-log-prefix`, `bin/check-log-monotonic`, `bin/log-append`, `bin/log-relocate`, and `bin/normalize-final-newline`
-- `lib/agentic_starter/candidate_boundaries.py`, `lib/agentic_starter/kickoff_runbook.py`, and `lib/agentic_starter/log_blocks.py`
+- `lib/agentic_starter/candidate_boundaries.py`, `lib/agentic_starter/kickoff_runbook.py`, `lib/agentic_starter/workflow.py`, `lib/agentic_starter/advisory.py`, and `lib/agentic_starter/log_blocks.py`
 - `tests/test_kickoff_control_plane.py` and `tests/test_log_control_plane.py`
 - its `kickoff-evidence`, `kickoff-config`, `kickoff-tree-id`, `bin/check`, pre-commit, catalog, and skill integrations
 
@@ -807,3 +816,5 @@ The last item is the operational test. Until it passes, the bootstrap is not don
 ## Candidate declaration transfer
 
 The candidate boundary transfers atomically: `candidate-partition.yaml`, `bin/check-candidate-partition`, `lib/agentic_starter/candidate_boundaries.py`, candidate/evidence managers, the staged hook, gate inventory, and their behavioral fixtures. Generate the recipient's explicit active inventory and retain only its approved bookkeeping exclusions; never copy the donor's path judgments. The declaration remains active, unclassified tracked files refuse, unclassified nonignored untracked files remain included, and complete-tree delivery receipts remain mandatory. Verify the staged checker by actually tripping it in an isolated fixture. The tiny supported YAML subset and pattern syntax are defined in `policies/orchestration-evidence.md`.
+
+Workflow runtime transfer includes `lib/agentic_starter/workflow.py` and `lib/agentic_starter/advisory.py` with the configuration, evidence tools and behavioral fixtures. Recipient model/backend restrictions remain recipient-owned.

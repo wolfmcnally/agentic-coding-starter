@@ -3,7 +3,7 @@ name: teach
 description: >-
   Explore another repository to assess what techniques, patterns, or
   template content from THIS starter should be applied to it. Produces a
-  structured plan ranked by generality, awaits user approval, then applies
+  structured plan ranked by generality, uses existing scope authorization, then applies
   approved changes to the target repo. Use to push template improvements
   outward to projects that were stamped from an older version, or to
   retrofit an existing project with the agentic methodology. Invoke as
@@ -15,7 +15,7 @@ last-reviewed: 2026-09-04
 
 # Teach — Apply patterns from this repo to another repo
 
-This skill is **universal**. It runs inside any project that follows the agentic methodology — the starter template and every project derived from it. It treats *this* repository (whichever one invokes the skill) as the source of patterns and `<target-dir>` as the destination. The user approves a plan before any change is made to the target.
+This skill is **universal**. It runs inside any project that follows the agentic methodology — the starter template and every project derived from it. It treats *this* repository (whichever one invokes the skill) as the source of patterns and `<target-dir>` as the destination. Existing session authorization governs the transfer; ask only about unresolved consequential scope.
 
 The pipeline is the same three-stage shape as `learn` (structural analysis → semantic identification → translation), inverted: we read both repos but only write to the target. Updates use a Copier-style discipline — the target's customizations are preserved by default; files that exist verbatim in the target may be overwritten; conflicts are surfaced for the user.
 
@@ -57,16 +57,13 @@ If `<target-dir>` is missing or is an empty/non-existent directory, refuse with 
 
 4. **Target's harness compatibility.** Note which agent harnesses the target appears to use (`CLAUDE.md` / `AGENTS.md` at root; `.claude/` and/or `.codex/` directories). Some teachings only apply if a particular harness is in use.
 
-## Plan-mode lifecycle (Stages 1–4)
+## Primary one-shot ownership and scope
 
-Stages 1, 2, and 3 are read-only against both repos; Stage 4 surfaces the plan to the user; Stage 5 is the only stage that writes. This maps cleanly onto the harness's plan-mode contract — enter at the start of Stage 1, exit at Stage 4.
+The invoking primary performs the complete methodology transfer: assessment, selection, adaptation, implementation, self-inspection, required checks, commit and fast-forward push. No delegated planning/coding, independent review/critique, or phase-role loop. This standing route applies across harnesses and model tiers, per `policies/review-lanes.md`.
 
-- **If the current harness exposes an `EnterPlanMode`-like tool** (Claude Code does today; Codex does not yet — see [openai/codex#11180](https://github.com/openai/codex/issues/11180)), **call it now** before starting Stage 1. The harness then enforces no-write through Stages 1–3; the bespoke "do not write to the target" rule below becomes belt-and-braces.
-- **If the harness does not expose programmatic plan-mode entry**, proceed without calling anything — the bespoke read-only discipline through Stages 1–3 carries the contract. The user may have entered plan mode interactively (Codex CLI's `/plan`; the Codex desktop app's plan mode); that's fine and orthogonal to this skill.
-- **At Stage 4**, if you entered plan mode in Stage 1 (or detected the user did so interactively and the harness exposes `ExitPlanMode`), place the Stage 3 plan body where the harness's plan-mode contract specifies — Claude Code names a plan file to write; other harnesses may differ — and then call `ExitPlanMode`. That plan body is the content the harness surfaces for approval. The user's accept / revise / reject from the plan-mode UI is the Stage 4 approval signal. If `ExitPlanMode` is not available, fall back to the free-text approval described in Stage 4.
-- **Stage 5 (Apply) always runs outside plan mode.** Either the harness has handed control back after `ExitPlanMode`, or no plan mode was entered. Either way, edits to the target are permitted only after the user has approved.
+Do not enter a blocking plan-mode or repeated approval ceremony for already-authorized work. Stages 1–3 establish the concrete transfer scope. Stage 4 checks that scope against existing operator authorization; unresolved consequential choices go to the operator, while authorized work proceeds directly. If the operator requested only an assessment or plan, deliver that artifact and do not apply it. Specific delivery restrictions remain binding.
 
-The skill's bespoke Stage 3 plan template stays the canonical plan body in both paths. Plan mode is a harness affordance layered on top, not a replacement for the structured plan.
+The primary has commit and push authority for authorized changes in every affected repository, after its required checks and both full gates pass. Preserve read-only source/donor boundaries, target-specific rules, safe staging, anonymization and custody. A dirty or ambiguous target is not permission to overwrite another session's work.
 
 ## Stage 1 — Explore (read-only)
 
@@ -153,7 +150,7 @@ For each proposed addition or update, ask:
 - **Pinned-documentation adoption.** Check for `<target>/docs/README.md` and `policies/docs.md`. If absent, port `policies/docs.md`, the `docs/README.md` catalog shape (header, no rows), the `docs/` checks in `bin/check-catalogs` with their `tests/test_check_catalogs.py` coverage, and the CLAUDE.md layout, catalog, reading-protocol, and glossary entries as one contract — AUTO. Never seed the target's `docs/` with this repository's pins; and if the target already keeps third-party text pasted inside briefs, moving it under `docs/` is a DECIDE item for the target's owner, listed by brief.
 - **Candidate-bound evidence adoption.** Treat `briefs/incremental-orchestration.md`, `policies/orchestration-evidence.md`, `bin/kickoff-tree-id`, `bin/kickoff-evidence`, `tests/test_kickoff_tree_id.py`, `tests/test_kickoff_evidence.py`, `kickoff`, all four roles, `bin/check`, `bin/README.md`, and the CLAUDE/plan catalogs and glossary as one atomic contract. Preserve target-defined risk tags and stricter assurance layers. Never transfer run directories or their findings, candidates, hashes, gate artifacts, or telemetry. Partial adoption is stale and blocking.
 
-- **Deterministic orchestration-control adoption.** Treat `briefs/deterministic-orchestration-control-plane.md`, `policies/orchestration-control-plane.md`, `bin/kickoff-command-zero`, `bin/check-log`, `bin/check-log-prefix`, `bin/check-log-monotonic`, `bin/log-append`, `bin/log-relocate`, `bin/normalize-final-newline`, `lib/agentic_starter/candidate_boundaries.py`, `lib/agentic_starter/kickoff_runbook.py`, `lib/agentic_starter/log_blocks.py`, `tests/test_kickoff_control_plane.py`, and `tests/test_log_control_plane.py` with their `kickoff-config`, `kickoff-evidence`, `kickoff-tree-id`, `bin/check`, hook, skill, catalog, bootstrap, and proof-estate integrations as one contract. The target defines its exact command rows, selector dry-runs, venue inventory, inert paths, manifests, receipts, and proof exchanges from local evidence; never seed them from Starter. Partial adoption is stale and blocking.
+- **Deterministic orchestration-control adoption.** Treat `briefs/deterministic-orchestration-control-plane.md`, `policies/orchestration-control-plane.md`, `bin/kickoff-command-zero`, `bin/check-log`, `bin/check-log-prefix`, `bin/check-log-monotonic`, `bin/log-append`, `bin/log-relocate`, `bin/normalize-final-newline`, `lib/agentic_starter/candidate_boundaries.py`, `lib/agentic_starter/kickoff_runbook.py`, `lib/agentic_starter/workflow.py`, `lib/agentic_starter/advisory.py`, `lib/agentic_starter/log_blocks.py`, `tests/test_kickoff_control_plane.py`, and `tests/test_log_control_plane.py` with their `kickoff-config`, `kickoff-evidence`, `kickoff-tree-id`, `bin/check`, hook, skill, catalog, bootstrap, and proof-estate integrations as one contract. The target defines its exact command rows, selector dry-runs, venue inventory, inert paths, manifests, receipts, and proof exchanges from local evidence; never seed them from Starter. Partial adoption is stale and blocking.
 
 - **Execution-telemetry and dashboard adoption.** Treat `policies/execution-telemetry.md`, `lib/agentic_starter/`, `bin/execution-telemetry`, `bin/check-execution-dashboards`, `bin/serve-execution-dashboard`, `reports/execution/` (with `index.html`, `index-data.js`, and the vendored offline `assets/`), `tests/test_execution_telemetry.py`, `tests/test_execution_dashboard.py`, `tests/render_execution_dashboard_fixture.py`, `tests/fixtures/`, the `bin/check` registrations, and the CLAUDE.md layout/invariant/glossary entries as one atomic contract. `bin/execution-telemetry` and `bin/check-execution-dashboards` import `lib/agentic_starter/`; porting either script without the library leaves `bin/check` failing at startup. Never transfer this repository's own phase reports — the target's archive starts empty, which the checker reports as `EXECUTION DASHBOARDS PASS (0 phases)`. Partial adoption is stale and blocking.
 
@@ -272,7 +269,7 @@ If the target's parity surfaces are all clean, declare "None identified" rather 
   - **Replace with this starter's.** (target's version is a naive earlier copy from another donor or a stale fork — update-in-place is the strict improvement)
   - **Merge** (target has innovations on top of a stale base — graft target's additions onto this starter's current shape).
 
-## Proposed write set (will only be applied after approval)
+## Proposed write set and existing authorization
 
 - `<target file>` — NEW | MODIFY (diff size)
 - ...
@@ -289,18 +286,13 @@ End the plan with one line: **"Approve this plan to apply to the target, ask for
 
 A Rule One proposal names both `.claude/skills/rule-one/SKILL.md` and `briefs/rule-one-diagnostic-learning.md`, including an explicit `UNCHANGED` compatibility finding when one target member requires no write. An incomplete target pair is one coupled proposal, not two independently approvable items.
 
-## Stage 4 — Approve (gate)
+## Stage 4 — Confirm authorized scope
 
-Do not write a single byte to the target until the user clearly approves.
-
-**Two paths, by harness capability** (per the Plan-mode lifecycle section above):
-
-- **Plan-mode path.** If you entered plan mode at Stage 1 (or the user did interactively), place the Stage 3 plan body where the harness's plan-mode contract specifies (Claude Code names a plan file to write), then call `ExitPlanMode`. The harness presents accept / revise / reject affordances; the user's choice is the approval signal. A plain accept maps to "approved (all items)"; revise routes back to Stage 3 with the user's constraints; reject means write nothing.
-- **Free-text path** (when plan mode is unavailable in the current harness). Wait for a clear approval signal in chat: "approved", "go ahead", "apply it", "yes", or specific opt-in like "apply items 1, 3, and 5 only." Revisions return to Stage 3; rejections mean write nothing.
-
-If the user partially approves (subset of items, whether via plan-mode revise-with-constraints or free-text opt-in), the apply step honors the subset exactly.
+Compare the concrete assessment with the operator's existing request and decisions. Apply already-authorized methodology transfers directly. Ask only for consequential scope or recipient-policy choices that remain unresolved; do not seek independent approval from another model or repeat operator ratification. If the request was assessment-only, return the plan and stop before writes.
 
 ## Stage 5 — Apply
+
+All application and self-check work below belongs to the primary. Independent review: not applicable. Run an implementation-candidate full gate before final bookkeeping and the second bare full gate afterward, then commit and fast-forward-push the attributable changes under standing authority. Scope uncertainty is not delegated to a reviewer.
 
 Once approved, apply the approved items to the target. Order:
 
@@ -341,7 +333,7 @@ Once approved, apply the approved items to the target. Order:
 - **Mechanical parity heals always run, independent of `<desc>` scope.** Every `teach` invocation scans the target's parity surfaces and surfaces known-broken shapes (per the catalog in Stage 1 step 11) for repair. Even a narrow `teach` pass — "just bring policies up to date" — heals an `AGENTS.md`-as-file, a file-level `.agents/skills/<name>/SKILL.md`, or a stray `.agents/skills/stamp` it finds along the way. This is what closes the gap where broken parity shapes lingered because the teach pass didn't otherwise touch them.
 - **This repo is read-only.** Never write to this repository during `teach`. The starter learns via `learn`, not as a side effect of `teach`.
 - **Generality first.** Default to Tier 1+2 transfers. Specialize only when those are exhausted or the user's `<desc>` requested it.
-- **Approval is mandatory.** No bytes change in the target before explicit approval.
+- **Authorization follows session scope.** Apply authorized transfers without repeated approval; new consequential scope remains an operator decision.
 - **Target preservations are inviolate.** A custom skill, agent, brief, or policy that exists only in the target stays. The plan's "Target preservations" section is enumerated; the apply step honors it.
 - **Cross-harness parity carries to the target.** Any agent or skill transfer updates both surfaces in the target's tree.
 - **Adapt to the target's language.** Build-gate commands, language metadata, surface names — all get rewritten to the target's stack before the apply finishes.

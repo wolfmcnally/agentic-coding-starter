@@ -1,5 +1,7 @@
 # Policy: Acceptance Is Empirical
 
+Authority mode follows [four-canonical-agents.md](four-canonical-agents.md). Product primary mode uses independent advice and primary acceptance; delegated product mode retains approval verdicts and bounded revision loops. References below to reviewer assent or mandatory re-review govern delegated work only. Required objective gates and truthful evidence apply in both modes. All methodology work, including teach/learn, follows [review-lanes.md](review-lanes.md): one-shot by the primary, no delegated production or review, and commit/fast-forward-push authority after required checks.
+
 Every phase declares its acceptance criteria as **verifiable shell commands** or **named manual checks**. "The code compiles" is not acceptance. "The tests pass" by itself is not acceptance either; the tests must actually exercise the behavior the phase claims to deliver.
 
 Phases that touch a user-facing surface also carry an interactive try-it-yourself protocol per [`user-demo-protocols.md`](user-demo-protocols.md) — a complement to the empirical checks here, not a substitute.
@@ -46,16 +48,11 @@ A criterion is acceptable when it is:
 ## How acceptance flows through the methodology
 
 - **Step 5 (phased plan).** When breaking the work into phases, each phase carries an Acceptance section. The criteria are drafted at planning time, not retrofitted.
-- **Step 7 (orchestrator).** The orchestrator passes the Acceptance section verbatim to the planner. The planner is responsible for ensuring every criterion has a concrete satisfaction path in the implementation plan (a build-gate command, a manual check named explicitly, or a deliverable that satisfies it by construction).
+- **Step 7 (orchestrator).** The primary reads the Acceptance section verbatim, or passes it to the planner in delegated mode. Whoever plans ensures every criterion has a concrete satisfaction path in the implementation plan (a build-gate command, a manual check named explicitly, or a deliverable that satisfies it by construction).
 - **Step 8 (acceptance check).** The orchestrator runs every executable criterion. Manual criteria are surfaced to the human in the phase's END block and in the user-facing report.
 - **Step 10 (human evaluation).** The human inspects the manual criteria and either accepts the phase or asks for revisions.
 
-Which criteria the orchestrator may close on its own, and which always park for
-the human, is the acceptance boundary in
-[`human-in-the-loop.md`](human-in-the-loop.md). An executable criterion that was
-independently reviewed and proved by a complete gate against the exact candidate
-is objective and closes autonomously; a manual, perceptual, product, custody, or
-owner-only criterion parks no matter how green the gate is.
+Which criteria the orchestrator may close on its own follows [`human-in-the-loop.md`](human-in-the-loop.md). An executable criterion that satisfies its applicable review contract and a complete gate against the exact accepted candidate closes autonomously. Methodology work uses primary self-inspection; product work uses the selected authority mode. Manual, perceptual, product, custody, or owner-only criteria remain with the human.
 
 ## Acceptance evidence is candidate-bound
 

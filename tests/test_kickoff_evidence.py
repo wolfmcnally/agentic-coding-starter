@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 from test_check_catalogs import ZONE_MARKERS, write_instruction_resources
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,7 @@ TREE_ID = ROOT / "bin" / "kickoff-tree-id"
 UV = shutil.which("uv")
 assert UV is not None
 sys.path.insert(0, str(ROOT / "lib"))
+from agentic_starter import workflow  # noqa: E402
 from agentic_starter.execution_telemetry import (  # noqa: E402
     attach_review_metrics,
     closed_span,
@@ -118,8 +120,15 @@ def run(
         pinned = run_dir / "tools" / "kickoff-evidence"
         if pinned.is_file():
             executable = pinned
+    environment = os.environ.copy()
+    if "--run-dir" in arguments:
+        directory = Path(arguments[arguments.index("--run-dir") + 1])
+        config = directory.parent / "fixture-config.yaml"
+        if config.exists():
+            environment["KICKOFF_CONFIG_FILE"] = str(config)
     return subprocess.run(
         [str(executable), *arguments],
+        env=environment,
         cwd=cwd or ROOT,
         capture_output=True,
         text=True,
@@ -153,36 +162,63 @@ def open_role_dispatch(
     return run(*arguments)
 
 
-def initialize(
-    repository: Path,
-    run_dir: Path,
-    *,
-    review_lane: str = "full",
-    evidence_lane: str = "full",
-    follow_up_route: str = "direct-fix",
-    authorities: tuple[str, ...] = ("phase.md::Acceptance", "policy.md"),
-) -> str:
-    receipt = run_dir.parent / f"{run_dir.name}-preflight.json"
+def write_fixture_receipt(receipt: Path, *, mode: str = "delegated") -> None:
+    document = yaml.safe_load((ROOT / "tests/fixtures/kickoff_config_seed.yaml").read_text())
+    document["role_models"] = {"default": {role: {"model": "default"} for role in workflow.ROLES}}
+    document["workflow"]["mode"] = mode
+    config = receipt.parent / "fixture-config.yaml"
+    config.write_text(yaml.safe_dump(document))
+    resolution = workflow.resolve(document, "codex")
+    targets = (
+        []
+        if mode == "delegated"
+        else [
+            {
+                "cli": "claude",
+                "model": "fable",
+                "effort": None,
+                "write_enabled": False,
+                "roles": [role],
+                "probe_sha256": "a" * 64,
+            }
+            for role in ("critic", "reviewer")
+        ]
+    )
     receipt.write_text(
         json.dumps(
             {
                 "schema_version": 1,
                 "created_at": "2026-01-01T00:00:00+00:00",
-                "config_sha256": hashlib.sha256((ROOT / "kickoff.yaml").read_bytes()).hexdigest(),
-                "harness": "default",
-                "targets": [],
-            },
-            sort_keys=True,
+                "config_sha256": hashlib.sha256(config.read_bytes()).hexdigest(),
+                "harness": "codex",
+                "targets": targets,
+                "workflow": resolution,
+            }
         )
         + "\n"
     )
+
+
+def initialize(
+    repository: Path,
+    run_dir: Path,
+    *,
+    review_lane: str = "full",
+    mode: str = "delegated",
+    phase: str = "1.1",
+    evidence_lane: str = "full",
+    follow_up_route: str = "direct-fix",
+    authorities: tuple[str, ...] = ("phase.md::Acceptance", "policy.md"),
+) -> str:
+    receipt = run_dir.parent / f"{run_dir.name}-preflight.json"
+    write_fixture_receipt(receipt, mode=mode)
     handle = start_trace(
         engine_root=repository,
         scope_root=repository,
         scope="engine",
         scope_id="engine",
         run_type="kickoff",
-        operation="phase.1.1",
+        operation=f"phase.{phase}",
     )
     setup = start_span(
         engine_root=repository,
@@ -198,7 +234,7 @@ def initialize(
         "--root",
         str(repository),
         "--phase",
-        "1.1",
+        phase,
         *[item for authority in authorities for item in ("--authority", authority)],
         "--telemetry-trace-id",
         handle.trace_id,
@@ -821,6 +857,11 @@ def _assert_failed_close_is_truthful_terminal_and_idempotent(
 def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
     repository: Path, tmp_path: Path
 ) -> None:
+    primary_repository = tmp_path / "primary-repo"
+    shutil.copytree(repository, primary_repository, symlinks=True)
+    _assert_complete_synthetic_kickoff(
+        primary_repository, tmp_path / "primary", phase="1", primary=True
+    )
     final_repository = tmp_path / "final-repo"
     shutil.copytree(repository, final_repository, symlinks=True)
     child_repository = tmp_path / "child-repo"
@@ -863,6 +904,7 @@ def _assert_complete_synthetic_kickoff(
     nested: bool = False,
     accept_only: bool = False,
     parent_run: Path | None = None,
+    primary: bool = False,
 ) -> Path | None:
     tmp_path.mkdir()
     (repository / "code.py").write_text("VALUE = 1\n")
@@ -918,7 +960,8 @@ def _assert_complete_synthetic_kickoff(
     # The final synthetic gate exercises the product and the real catalog checker.
     (repository / "bin/check").write_text(
         '#!/bin/sh\nset -eu\ntest "$1" = all\n'
-        'test "$(cat code.py)" = "VALUE = 2"\nexec ./bin/check-catalogs\n'
+        f"{sys.executable} -c \"import runpy; assert runpy.run_path('code.py')['VALUE'] == 2\"\n"
+        "exec ./bin/check-catalogs\n"
     )
     partition = repository / "candidate-partition.yaml"
     if '"/.claude/**"' not in partition.read_text():
@@ -954,19 +997,7 @@ def _assert_complete_synthetic_kickoff(
     )
     run_dir = tmp_path / "run"
     receipt = tmp_path / "preflight.json"
-    receipt.write_text(
-        json.dumps(
-            {
-                "schema_version": 1,
-                "created_at": "2026-01-01T00:00:00+00:00",
-                "config_sha256": hashlib.sha256((ROOT / "kickoff.yaml").read_bytes()).hexdigest(),
-                "harness": "default",
-                "targets": [],
-            },
-            sort_keys=True,
-        )
-        + "\n"
-    )
+    write_fixture_receipt(receipt, mode="primary" if primary else "delegated")
     initialized = run(
         "init",
         "--run-dir",
@@ -1039,6 +1070,20 @@ def _assert_complete_synthetic_kickoff(
     )
     assert activated.returncode == 0, activated.stderr
 
+    primary_report = {
+        "summary": "Check completed.",
+        "findings": [
+            {
+                "id": "F1",
+                "severity": "critical",
+                "affected_paths": ["code.py"],
+                "evidence": "VALUE is a constant.",
+                "consequence": "Suggestion assumes runtime configuration.",
+                "suggestion": "Introduce a configuration service.",
+            }
+        ],
+    }
+
     def role_attempt(
         operation: str,
         role: str,
@@ -1072,6 +1117,8 @@ def _assert_complete_synthetic_kickoff(
             arguments.extend(["--model", model])
         if effort:
             arguments.extend(["--effort", effort])
+        if primary and attempt > 1:
+            arguments.extend(["--cause", "Check the concrete correction once"])
         registered = run(*arguments)
         assert registered.returncode == 0, registered.stderr
         if harness in {"claude", "codex"}:
@@ -1081,6 +1128,8 @@ def _assert_complete_synthetic_kickoff(
                 if harness == "claude"
                 else '{"type":"turn.completed"}'
             )
+            if primary:
+                event = json.dumps({"type": "result", "result": json.dumps(primary_report)})
             artifact = tmp_path / f"{operation}-{attempt}-artifact.txt"
             populate = "" if harness == "claude" else f"printf '%s' 'CODEX' > {artifact}\n"
             executable.write_text(
@@ -1130,7 +1179,10 @@ def _assert_complete_synthetic_kickoff(
                 text=True,
                 check=False,
             )
-            assert watched.returncode == exit_code, watched.stderr
+            if primary and attempt == 3:
+                assert watched.returncode != 0 and "maximum two" in watched.stderr, watched.stderr
+            else:
+                assert watched.returncode == exit_code, watched.stderr
             return
         metadata = {"role": role, "harness": harness}
         if model:
@@ -1190,60 +1242,141 @@ def _assert_complete_synthetic_kickoff(
         )
         assert dispatched.returncode == 0, dispatched.stderr
 
-    role_attempt(
-        "role.plan",
-        "planner",
-        "claude",
-        1,
-        "initial",
-        outcome="error",
-        exit_code=1,
-        model="opus",
-        effort="high",
-    )
-    role_attempt(
-        "role.plan",
-        "planner",
-        "claude",
-        2,
-        "revision",
-        model="opus",
-        effort="high",
-    )
-    role_attempt("role.plan-review", "reviewer", "native", 1, "initial")
-    role_attempt("role.implement", "coder", "native", 1, "initial")
-    implemented = capture(repository, run_dir)
-    assert implemented != initial_product
-    change = json.loads((run_dir / "change.json").read_text())
-    assert [item["path"] for item in change["changed_files"]] == ["code.py"]
-    assert change["authority_drift"] == []
-    role_attempt(
-        "role.code-review",
-        "critic",
-        "codex",
-        1,
-        "initial",
-        model="sol",
-        effort="high",
-    )
+    if primary:
+        plan = tmp_path / "primary-plan.md"
+        plan.write_text("# Plan\n\nImplement VALUE = 2 and run the complete gate.\n")
+        captured_plan = run("capture-plan", "--run-dir", str(run_dir), "--plan", str(plan))
+        assert captured_plan.returncode == 0, captured_plan.stderr
+        role_attempt("role.plan-review", "reviewer", "claude", 1, "initial", model="fable")
+        (repository / "code.py").write_text("VALUE = 2\n")
+        implemented = capture(repository, run_dir)
+        role_attempt("role.code-review", "critic", "claude", 1, "initial", model="fable")
+        role_attempt("role.code-review", "critic", "claude", 2, "revision", model="fable")
+        role_attempt("role.code-review", "critic", "claude", 3, "revision", model="fable")
+    else:
+        role_attempt(
+            "role.plan",
+            "planner",
+            "claude",
+            1,
+            "initial",
+            outcome="error",
+            exit_code=1,
+            model="opus",
+            effort="high",
+        )
+        role_attempt(
+            "role.plan",
+            "planner",
+            "claude",
+            2,
+            "revision",
+            model="opus",
+            effort="high",
+        )
+        role_attempt("role.plan-review", "reviewer", "native", 1, "initial")
+        role_attempt("role.implement", "coder", "native", 1, "initial")
+        implemented = capture(repository, run_dir)
+        assert implemented != initial_product
+        change = json.loads((run_dir / "change.json").read_text())
+        assert [item["path"] for item in change["changed_files"]] == ["code.py"]
+        assert change["authority_drift"] == []
+        role_attempt(
+            "role.code-review",
+            "critic",
+            "codex",
+            1,
+            "initial",
+            model="sol",
+            effort="high",
+        )
     dispatches = [
         dispatch
         for line in (run_dir / "role-dispatch.jsonl").read_text().splitlines()
         for dispatch in [json.loads(line)]
         if dispatch.get("state") != "opened"
     ]
-    for dispatch in dispatches:
-        if dispatch["operation"] in {"role.plan-review", "role.code-review"}:
-            attach_review_metrics(
-                engine_root=repository,
-                trace_id=root.trace_id,
-                span_id=dispatch["intelligence_span_id"],
-                findings_reported=0,
-                actionable_findings=0,
+    if primary:
+        assert len(dispatches) == 4
+        assert sum(d["accepted"] for d in dispatches) == 3
+        assert {d["operation"] for d in dispatches} == {
+            "role.plan-review",
+            "role.code-review",
+        }
+        for dispatch in dispatches:
+            if not dispatch["accepted"]:
+                continue
+            report = tmp_path / f"{dispatch['operation']}-{dispatch['attempt']}-artifact.txt"
+            assert json.loads(report.read_text()) == primary_report
+            ingested = run(
+                "ingest-findings",
+                "--run-dir",
+                str(run_dir),
+                "--kind",
+                "plan" if dispatch["operation"] == "role.plan-review" else "code",
+                "--artifact",
+                str(report),
+                "--candidate",
+                dispatch["dispatch_candidate_id"],
+                "--review-span-id",
+                dispatch["intelligence_span_id"],
             )
-    assert len(dispatches) == 5
-    assert sum(item["idle_telemetry"] == "available" for item in dispatches) == 3
-    assert sum(item["idle_telemetry"] == "unavailable" for item in dispatches) == 2
+            assert ingested.returncode == 0, ingested.stderr
+        # Advice-driven correction changes final identity without another model call.
+        (repository / "code.py").write_text("VALUE = 2  # Required constant.\n")
+        implemented = capture(repository, run_dir)
+        decision = tmp_path / "primary-decision-input.json"
+        decision.write_text(
+            json.dumps(
+                {
+                    "delta_assessment": "Added a comment after advice; behavior unchanged.",
+                    "requirements_checked": "Constant remains 2; full gate required.",
+                    "dispositions": [
+                        {
+                            "finding": identifier + ":F1",
+                            "action": "decline",
+                            "reason": "Requirement specifies a constant; no service needed.",
+                            "verification": "",
+                        }
+                        for identifier in ("plan-1", "code-1", "code-2")
+                    ],
+                }
+            )
+        )
+        accepted = run("accept-primary", "--run-dir", str(run_dir), "--input", str(decision))
+        assert accepted.returncode == 0, accepted.stderr
+        saved = (run_dir / "primary-decision.json").read_bytes()
+        altered = json.loads(saved)
+        altered["candidate_id"] = initial_product
+        (run_dir / "primary-decision.json").write_text(json.dumps(altered))
+        stale = run("validate", "--run-dir", str(run_dir), "--level", "acceptance")
+        assert stale.returncode != 0 and "stale" in stale.stderr, stale.stderr
+        (run_dir / "primary-decision.json").write_bytes(saved)
+        continuation = tmp_path / "continuation"
+        initialize(repository, continuation, mode="primary", phase=phase)
+        carried = run("carry-advice", "--run-dir", str(continuation), "--source-run", str(run_dir))
+        assert carried.returncode == 0, carried.stderr
+        carried_rows = json.loads((continuation / "advisory-reports.json").read_text())
+        assert len(carried_rows) == 3 and all(
+            r["source_run"] == str(run_dir.resolve()) for r in carried_rows
+        )
+        decision_again = run(
+            "accept-primary", "--run-dir", str(continuation), "--input", str(decision)
+        )
+        assert decision_again.returncode == 0, decision_again.stderr
+    else:
+        for dispatch in dispatches:
+            if dispatch["operation"] in {"role.plan-review", "role.code-review"}:
+                attach_review_metrics(
+                    engine_root=repository,
+                    trace_id=root.trace_id,
+                    span_id=dispatch["intelligence_span_id"],
+                    findings_reported=0,
+                    actionable_findings=0,
+                )
+        assert len(dispatches) == 5
+        assert sum(item["idle_telemetry"] == "available" for item in dispatches) == 3
+        assert sum(item["idle_telemetry"] == "unavailable" for item in dispatches) == 2
     candidate = tree_manifest_for_test(repository)
     assert candidate == implemented
     reviewed = run("mark-reviewed", "--run-dir", str(run_dir), "--expected-candidate", candidate)
@@ -1371,10 +1504,17 @@ def _assert_complete_synthetic_kickoff(
     markdown = run("timing-summary", "--run-dir", str(run_dir), "--format", "markdown")
     assert json_summary.returncode == markdown.returncode == 0
     projection = json.loads(json_summary.stdout)
-    assert projection["retry_ns"] > 0
-    assert projection["failed_ns"] > 0
+    if primary:
+        assert projection["authority_mode"] == "primary"
+        assert projection["advisory_reports"] == 3
+        assert len(projection["primary_dispositions"]) == 3
+    else:
+        assert projection["retry_ns"] > 0
+        assert projection["failed_ns"] > 0
     for slow in projection["slowest_spans"]:
         assert slow["operation"] in markdown.stdout
+
+    assert f"Execution trace: {projection['trace_id']}" in markdown.stdout
 
     close_text = (
         f"## 2026-01-01 10:00 — END\n\nPhase {phase} — accepted implementation\n"
@@ -1412,7 +1552,12 @@ def _assert_complete_synthetic_kickoff(
             target.write_bytes(replacement)
             refused = run(*close_arguments)
             assert refused.returncode == 2, refused.stdout + refused.stderr
-            assert diagnostic in refused.stderr
+            expected = (
+                "primary acceptance is stale"
+                if primary and relative == "policies/delivery.md"
+                else diagnostic
+            )
+            assert expected in refused.stderr
             assert not (run_dir / "closure.json").exists()
         finally:
             target.write_bytes(governing_bytes[relative])

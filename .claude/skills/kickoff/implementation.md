@@ -1,5 +1,14 @@
 # Kickoff — Implementation and code review
 
+## Primary-mode Steps 5–6
+
+The invoking instance implements the plan itself and runs focused falsifying checks. It retains planning/research authority within the shared budget, adjusts ordinary implementation choices, and captures the actual delta. Do not dispatch or synthesize a coder role.
+
+Obtain the required independent code advice through the receipt's critic target. The pinned watcher supplies advisory authority and schema; ingest the report against its real candidate and span. Self-inspect the complete result and decide which recommendations to adopt, decline or defer. A correction after advice needs fresh relevant tests and the primary's delta assessment, not automatic re-review. A second critique is optional for a recorded concrete cause and is the maximum across continuations. Continued adviser disagreement has no veto.
+
+Before acceptance, write a JSON input containing delta_assessment, requirements_checked and dispositions. Each material finding is addressed by its `report_id:id`; each row has finding, action (adopt/decline/defer), reason and verification. Adopted changes name their verification. Pass it to the pinned `accept-primary --run-dir <run> --input <file>`. That operation captures the actual candidate and report digest. It does not replace objective gates. Proceed to the shared acceptance resource. The remaining coder/critic approval loop below governs delegated mode only.
+
+
 Read this resource before executing its branch. Enter through [SKILL.md](SKILL.md); its resource table defines the order. Read [dispatch.md](dispatch.md) before every role invocation. Before any failure, resume or operator-input branch, read [recovery.md](recovery.md).
 
 ### Step 5: Implement

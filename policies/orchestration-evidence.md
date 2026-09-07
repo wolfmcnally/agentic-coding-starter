@@ -1,5 +1,15 @@
 # Policy: Candidate-Bound Orchestration Evidence
 
+## Primary evidence operations
+
+Run metadata freezes the workflow from the verified preflight receipt. `required_initial_roles` derives only the independent stages in primary mode; inline planning/coding uses orchestration stages and creates no child attempts. `register-role-attempt --cause <text>` captures the primary's reason for a second review. `watch` invokes `start-advice` before launch; the phase-bound budget persists across run directories. No third pass or cause-free second pass is permitted.
+
+`ingest-findings` selects the advisory schema in primary mode and stores immutable observations in `advisory-reports.json`, joined to the actual read-only dispatch. `accept-primary --input <json>` accepts delta_assessment, requirements_checked and dispositions; each disposition has finding (`report_id:id`), action (adopt/decline/defer), reason and verification. The tool captures the current candidate and report digest. Material findings need rationale; adopted findings need verification. Optional low/informational suggestions need no individual ledger row. Acceptance validation requires all necessary independent reports and a current primary decision, not adviser approval or zero suggestions. The normal gate and custody checks still run.
+
+A correction after advice changes the accepted candidate. The primary records its delta assessment and runs fresh tests without relabeling the older report as review of the new bytes. Direct methodology work uses the scope/log route and an explicit independent-review-not-applicable disposition, never synthetic kickoff reports.
+
+Authority mode follows [four-canonical-agents.md](four-canonical-agents.md). Product primary mode uses independent advice and primary acceptance; delegated product mode retains approval verdicts and bounded revision loops. References below to reviewer assent or mandatory re-review govern delegated work only. Required objective gates and truthful evidence apply in both modes. All methodology work, including teach/learn, follows [review-lanes.md](review-lanes.md): one-shot by the primary, no delegated production or review, and commit/fast-forward-push authority after required checks.
+
 `kickoff` preserves independent review while making later rounds incremental.
 Every material review, revision, and gate is bound to exact run-scoped
 evidence. Narrative continuity or a remembered green result is not evidence.
@@ -533,3 +543,5 @@ historical schema reader or migration shim.
 The accepted `close` interface supports `--ledger-after <file>` and, for separately accepted parent completion, `--parent-run <run>`. The external proposal changes only the closing phase's active marker to completed, optionally including its independently accepted parent's marker. Declared authority remains unchanged through acceptance. The closure identity binds the proposal's before/after digests, accepted product and parent closure identity when present. Invalid or conflicting transitions refuse before log mutation. The same close command with `--verify-handoff` verifies the applied ledger and product; this checkpoint precedes further bookkeeping and never replaces the second full gate. See [phase-status.md](phase-status.md) for continuation requirements.
 
 A prospective close may additionally advance at most one existing not-started phase to next, selected in dependency order during close preparation. This exact marker transition is bound with the completion markers; it prevents a final-child close from creating an idle incomplete ledger without a next phase.
+
+Primary continuations carry advice with `carry-advice --source-run <prior-run>` and record a fresh final-delta decision. Original reports remain joined to their original read-only dispatches; phase-wide launch counts do not reset. Primary acceptance captures the assessed bookkeeping snapshot, while declared-authority protection and post-gate non-mutation remain mandatory.

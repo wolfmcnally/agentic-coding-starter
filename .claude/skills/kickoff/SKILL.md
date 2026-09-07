@@ -13,11 +13,18 @@ last-reviewed: 2026-09-04
 
 # Kickoff: Single-Phase Session
 
-Orchestrate one independently acceptable phase under `plan/`: plan → independent plan review → implementation → independent code critique → candidate gate → accepted evidence close → bookkeeping → handoff gate → delivery. This is the entry point; the adjacent resources carry the execution procedure. Read `CLAUDE.md`, the phase and its named authorities. The invoking session owns orchestration, logs, telemetry and both close gates; the coder owns initial implementation. Do not proceed to another phase without authorization.
+## Authority routing
+
+Methodology work, including teach/learn, never enters phase orchestration: the primary implements one-shot with commit/push authority and required checks, without delegated roles or independent review. See `policies/review-lanes.md`.
+
+For product work, preflight freezes primary or delegated authority. Primary mode keeps planning and coding on this instance and obtains bounded advisory reports; delegated mode retains the four-role approval loop. Follow the primary branches in planning/implementation resources when selected. Do not let the delegated procedures or verdict vocabulary silently override advisory authority. Optional `llm-usage` checking occurs at kickoff before any model-backed preflight or phase mutation.
+
+
+Orchestrate one independently acceptable phase under `plan/`: plan → independent plan review → implementation → independent code critique → candidate gate → accepted evidence close → bookkeeping → handoff gate → delivery. This is the entry point; the adjacent resources carry the execution procedure. Read `CLAUDE.md`, the phase and its named authorities. The invoking session owns orchestration, logs, telemetry and both close gates; the primary owns inline implementation in primary mode; the coder owns it in delegated mode. Do not proceed to another phase without authorization.
 
 ## Parse arguments
 
-Before selecting work, apply [methodology routing](../../../policies/review-lanes.md#methodology-improvements-direct-implementation-by-default): approved methodology improvements default to direct implementation outside this skill unless the operator explicitly requests this workflow.
+Before selecting work, apply [methodology routing](../../../policies/review-lanes.md#methodology-improvements-primary-one-shot-with-delivery-authority): all authorized methodology improvements run directly outside this skill, including teach/learn.
 
 Raw arguments: `$ARGUMENTS`
 

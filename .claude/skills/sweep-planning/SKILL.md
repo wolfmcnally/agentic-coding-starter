@@ -20,6 +20,11 @@ last-reviewed: 2026-08-26
 
 # Sweep-planning — Calibrate the review loop from its own record
 
+## Advisory evidence
+
+Keep primary-mode advisory reports and primary dispositions separate from delegated APPROVED/REVISE verdicts. Declined advice is not a failed review or a revision loop. Analyze the actual primary decision and its observed consequence; do not infer defects from finding count or severity alone. Methodology changes resulting from this skill are implemented one-shot by the primary with required checks and commit/push authority, without delegated planning/coding or independent review. Existing operator authority over unresolved rule changes remains intact.
+
+
 This file is two things: the `sweep-planning` skill, and the **review-loop
 sweep lifecycle** that its sibling `sweep-coding` follows by citation rather
 than by copy (one procedure, two invocations — `policies/simplicity-and-consolidation.md`).
@@ -350,3 +355,5 @@ Delivered as <commit> (or: parked — <reason>).
   other projects' names, no commit SHAs, no proprietary identifiers in
   examples.
 - The user ratifies; the skill proposes. Nothing is edited before Stage 5.
+
+For primary-mode runs in scope, pass their canonical evidence directories through `review-verdicts --advisory-run <run-directory>`; read `advisory_reports` and `primary_decisions` separately from the historical verdict arrays. Do not infer binding decisions from quoted advisory prose.

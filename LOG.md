@@ -1770,3 +1770,149 @@ Lessons: mega-seriema and polar-mastodon filed as candidates. Existing graduatio
 Acceptance: automated repair checks and independent source review are satisfied. Human acceptance remains deferred, not completed. Live complete-workflow qualification and the corrected model comparison remain outstanding and will run against the delivered repair revision. This record closes the repair portion only; it does not claim the entire preceding comparison scope complete.
 
 Delivery: commit and fast-forward push after the final bare ./bin/check all. Handoff completion remains contingent on its ignored receipt; no tracked writes follow a passing handoff gate.
+
+## 2026-09-07 00:09 — METHODOLOGY SCOPE
+
+Approved continuation of the workflow-obstacle repair: make generated timing Markdown safe to append to the public activity log without being misidentified as a private commit reference. The corrected native qualification reproduced the earlier refusal through generated output after the handwritten instruction had been repaired.
+
+In scope: the timing-summary renderer in bin/kickoff-evidence, its existing end-to-end behavioral proof in tests/test_kickoff_evidence.py, the existing qualification lesson and this activity log. Verify normal and degraded identifier output against the real anonymization guard, preserving the guard's rejection of genuine commit-shaped references. Direct implementation and independent review apply; both full gates remain required.
+
+Excluded: changes to model pins, weakening the anonymization guard, changing the frozen comparison or retroactively treating a timeout as delivery, and edits to any other live repository. This is a correction within the preceding approved outcome, not a new product phase.
+
+## 2026-09-07 00:24 — METHODOLOGY SCOPE
+
+Approved continuation of the same experiment-obstacle repair: remove evaluator scoring assumptions that contradict the public task or penalize safe early escalation. Preserve every frozen batch and original raw result.
+
+In scope: tests/fixtures/astra_evaluation/tasks.json and its README. Keep mechanical runtime assertions executable; evaluate README accuracy semantically under the manual rubric instead of requiring one exact identifier spelling. For the unresolved-design decision, record whether the workflow surfaced the choice before implementation and which role asked; claim planner-specific detection only when directly witnessed. Qualify the unchanged behavioral baseline/reference/negative controls and document the completed qualification outcomes honestly. No additional model calls, task changes to an existing batch, model-pin changes or weaker product acceptance are authorized by this correction.
+
+## 2026-09-07 00:32 — METHODOLOGY
+
+Completed the generated-output and evaluator-instrument corrections under the two preceding scope records. Timing Markdown now emits trace and optional span identifiers as plain text. The actual publication guard accepts normal and optional rendered records while still rejecting a real commit-shaped reference. Future task scoring judges documentation meaning rather than exact substrings and records the actual role that surfaced an unresolved design choice. Frozen experiments and original raw results are preserved; no model pins changed.
+
+Changed paths: bin/kickoff-evidence, tests/test_kickoff_evidence.py, tests/test_methodology_toolchain_contract.py, lessons/mega-seriema.md, tests/fixtures/astra_evaluation/tasks.json, tests/fixtures/astra_evaluation/README.md, briefs/astra-era-development.md and LOG.md. Two file-owner adjustments extend the anticipated path lists without changing the approved outcome: the real-guard proof belongs in the existing starter-only methodology test family, because derived projects omit that guard; the owning brief's stale unrun claims were reconciled with the recorded observations. Independent review approved both adjustments and all substantive corrections without required findings.
+
+Verification: the generated-output regression first failed against the unchanged real guard on the precise trace-identifier refusal. The corrected two retained proof families passed. All four task baseline/reference/wrong-repair controls passed and unrelated failures were correctly refused. The initial renderer-only full gate passed; after the instrument and brief corrections, the final combined implementation gate passed all 103 tests and every policy gate in 98.808 seconds with unchanged full-tree identity and no warnings. Complete diagnostics were inspected. Reviewed product candidate: 8284eb0eb5e9b114442928c91398b0164c9855d6d42a00d56a5f46a68f3ba044. No proof families or leaves were added; governance remains valid at 108 families and 126 leaves. The bare handoff gate follows this record; no tracked write follows success.
+
+Experiment outcome: the corrected qualification pair reached first-pass approved implementations and full implementation gates but not delivery within its fixed 30-minute budget. Their runtime implementation files were identical. One final handoff failed on generated formatting and its repair rerun was interrupted by the deadline; the other run reached closing records before timeout. The remaining 22 cells were not started. A raw documentation-check failure remains preserved and separately qualified as an invalid proxy. Complete native delivery qualification, comparative cost per accepted outcome, model ranking and optimal phase size remain unproved. The synthetic matrix has stopped at its qualification boundary; no further model calls were made for these corrections. A subsequent real-task comparison is a recommendation, not an initiated phase or an authorized new budget.
+
+Lessons: mega-seriema now records the missed generated producer and distinguishes observed process lifetime from unproved delivery. The evaluator also corrected a progress-reporting error caused by reading a recent-command tail as complete role state; the existing evidence-over-proxies rule already covers it, and subsequent status used the complete dispatch ledger. Scope and fixture preparation mistakes during the correction were repaired under existing invocation and portability rules; no duplicate permanent rules were added and no lessons were graduated.
+
+Acceptance: automated correction checks and independent review are satisfied. Human acceptance remains deferred, not completed. Existing unrelated operator actions remain open. Delivery is the authorized explicit-path commit and fast-forward push after the final full handoff gate, with the result verified against the intended file set and remote tip.
+
+## 2026-09-07 01:05 — METHODOLOGY SCOPE
+
+Approved outcome: primary-owned product development with bounded advisory review, cross-provider preference, single-provider and constrained-model fallback, optional kickoff usage thresholds, and standing one-shot methodology work including teach/learn with commit and push authority.
+
+Scope: workflow configuration and dispatch, report schemas and evidence acceptance, canonical policies/briefs/skills/root instructions, portable mirrors and transfer instructions, associated behavioral tests and fixture inventories. Preserve and integrate the already-written report-generator correction where the shared evidence tool depends on it; prior comparison results remain historical and no comparisons resume.
+
+Execution: primary implements and self-checks directly. Independent review and critique: not applicable, by operator instruction. Both required full gates remain binding.
+
+Excluded: live model comparison research, cross-repository transfers, product or cloud deployment, new subscriptions, unrelated deferred work, destructive Git operations.
+
+## 2026-09-07 02:00 — METHODOLOGY END
+
+Primary-owned development and advisory review implemented under the recorded METHODOLOGY SCOPE.
+
+Delivered behavior: configured eligible primaries plan and code inline; independent reviewers provide advisory findings, with one ordinary pass and at most a second for recorded cause. Ordered permitted adviser targets, fresh same-primary fallback, and the retained constrained four-role workflow share the existing configuration manager. Optional usage checking refuses the primary at or above 95 percent in any applicable window and substitutes the primary when a secondary exceeds 95 percent weekly. Missing tooling proceeds normally; malformed relevant data remains an error. Managed targets preserve explicitly named credentials and routing without automatic provider or billing fallback.
+
+Evidence now separates immutable advice from primary dispositions and final-candidate acceptance, binds plan advice to captured plan bytes, preserves reports through the prior run's pinned validation entrypoint, and carries phase-wide launch counts across continuations. A third pass refuses before model launch. Failed executable gates, changed authority, stale acceptance, and invented dispatch joins remain disqualifying. Advisory severity and declined suggestions do not confer veto. Canonical skills, role mirrors, policies, bootstrap/transfer instructions, and the public explanation now agree. Methodology work, including teach and learn, always stays on the primary with authorized commit and fast-forward-push delivery after required checks.
+
+Scope reconciliation: no new product phase, live model comparison, external transfer, cloud provisioning, subscription purchase, or destructive Git operation. Integrated the eight pre-existing files identified at kickoff: LOG.md, bin/kickoff-evidence, briefs/astra-era-development.md, lessons/mega-seriema.md, tests/fixtures/astra_evaluation/README.md, tests/fixtures/astra_evaluation/tasks.json, tests/test_kickoff_evidence.py, and tests/test_methodology_toolchain_contract.py. Their unfinished report-generator correction and truthful historical comparison dispositions share this evidence path; no comparison resumed.
+
+Primary self-check: compared the final change with the approved scope and owning contracts; exercised the real watcher, ingestion, continuation, acceptance, gate, closure and ordinary Git delivery paths with deterministic harness substitutes. The primary-mode fixture declines critical advice with rationale, corrects code after advice, retains the advised plan identity, carries reports to a new run, allows a second critique for cause and refuses a third. The existing delegated major/child/nested closure proofs remain passing. Configuration fixtures cover fractional threshold boundaries, separate review targets, shared and scoped limits, refusal before model probes and receipt writes, missing tools, malformed relevant data, and explicit managed-backend credentials. Transfer fixtures retain independent same-model review under recipient provider restrictions and preserve canonical mirrors. The harvested advisory dataset stays separate from approval/rejection statistics.
+
+Independent review: not applicable — primary one-shot methodology work, as directed by the operator. No planner/coder delegation or reviewer/critic invocation was used to implement this update.
+
+Implementation gate: ./bin/check all passed, including 103 tests, formatting, lint, catalogs, harness parity, toolchain callers, execution reports, configuration, lessons, treatise, shell syntax, append-only log checks, candidate partition, proof-estate governance and anonymization. Complete diagnostics inspected; no unexplained warning or error. Implementation candidate sha256: 23dfba94572b57ea75e53a9317301ae385225d81e0afbb6857d8e6dc5c2e1925. Required checks remain on the configured repository wrappers. Hooks are not opted in on this checkout; their existing liveness gate reports that explicitly.
+
+Lessons: appended the repeated cross-run pinned-entrypoint failure to lessons/classy-kangaroo.md; its production-path fixture now exercises the correction. Preserved the existing report-generator lesson in lessons/mega-seriema.md. Lessons validation and candidate inspection passed; no lesson was graduated automatically.
+
+Handoff gate: the second bare ./bin/check all runs after this tracked completion record; delivery is contingent on its ignored receipt for the final unchanged tree. Standing authority permits an ordinary commit and fast-forward push to the existing unambiguous upstream. No tracked write follows the successful handoff gate.
+
+Remaining boundaries: actual provider subscriptions and managed deployments were not newly certified; proof uses deterministic substitutes. No external repository was taught during this update. The earlier private treatise rendering has not been republished. Product, perceptual and custody acceptance remain with the operator; none is claimed by these tests.
+
+Files changed:
+- .claude/agents/code-critic.md
+- .claude/agents/phase-coder.md
+- .claude/agents/phase-planner.md
+- .claude/agents/plan-reviewer.md
+- .claude/skills/kickoff/SKILL.md
+- .claude/skills/kickoff/acceptance.md
+- .claude/skills/kickoff/close.md
+- .claude/skills/kickoff/dispatch.md
+- .claude/skills/kickoff/implementation.md
+- .claude/skills/kickoff/planning.md
+- .claude/skills/kickoff/preflight.md
+- .claude/skills/kickoff/recovery.md
+- .claude/skills/learn/SKILL.md
+- .claude/skills/methodology/SKILL.md
+- .claude/skills/roles/SKILL.md
+- .claude/skills/stamp/SKILL.md
+- .claude/skills/sweep-coding/SKILL.md
+- .claude/skills/sweep-planning/SKILL.md
+- .claude/skills/teach/SKILL.md
+- .codex/agents/code-critic.toml
+- .codex/agents/phase-coder.toml
+- .codex/agents/phase-planner.toml
+- .codex/agents/plan-reviewer.toml
+- CLAUDE.md
+- LOG.md
+- README.md
+- bin/README.md
+- bin/kickoff-config
+- bin/kickoff-evidence
+- bin/review-verdicts
+- briefs/BRIEF.md
+- briefs/agentic-bootstrap.md
+- briefs/astra-era-development.md
+- briefs/cross-agent-invocation.md
+- briefs/deterministic-orchestration-control-plane.md
+- briefs/deterministic-orchestration.md
+- briefs/incremental-orchestration.md
+- briefs/methodology-treatise.md
+- briefs/methodology.md
+- kickoff.yaml
+- lessons/classy-kangaroo.md
+- lessons/mega-seriema.md
+- lib/agentic_starter/advisory.py
+- lib/agentic_starter/finding_schema.py
+- lib/agentic_starter/workflow.py
+- plan/INDEX.md
+- policies/acceptance-empirical.md
+- policies/build-gates.md
+- policies/commit-staging.md
+- policies/execution-telemetry.md
+- policies/fail-closed-resume.md
+- policies/four-canonical-agents.md
+- policies/human-in-the-loop.md
+- policies/log-discipline.md
+- policies/orchestration-control-plane.md
+- policies/orchestration-evidence.md
+- policies/research-authority.md
+- policies/review-lanes.md
+- policies/role-models.md
+- policies/role-timeouts.md
+- policies/verification-discipline.md
+- tests/fixtures/astra_evaluation/README.md
+- tests/fixtures/astra_evaluation/tasks.json
+- tests/fixtures/kickoff_config_seed.yaml
+- tests/test_kickoff_config.py
+- tests/test_kickoff_evidence.py
+- tests/test_methodology_toolchain_contract.py
+- tests/test_review_verdicts.py
+
+## 2026-09-07 02:06 — METHODOLOGY END (configuration correction)
+
+Final self-inspection found that the custom-target identity guard rejected usage-window mappings for the shipped model identifiers. The correction permits an override under that model's canonical selector while continuing to reject ambiguous alternate names. Files: lib/agentic_starter/workflow.py and tests/test_kickoff_config.py. The fixture now proves a usable model-specific mapping alongside shared limits and rejects a duplicate identity alias. This remains within the approved configuration scope; the earlier completion block's implementation proof predates this correction.
+
+Primary self-check and focused fixture passed. The complete implementation-candidate ./bin/check all passed again with 103 tests and all policy gates; diagnostics are clean. Implementation candidate sha256: ee01c357475153ee4e79ab1e42a669ce12438f2b67ea46de608cf3fc28a3364b. Independent review remains not applicable — primary one-shot methodology work. No additional lesson graduation or external action.
+
+The final bare ./bin/check all follows this record; its ignored receipt must match the unchanged delivery tree. Commit and fast-forward push remain authorized after that gate. All remaining boundaries and the attributable file list in the preceding completion record still apply.
+
+## 2026-09-07 02:16 — METHODOLOGY END (atomic routing correction)
+
+Final configuration inspection also identified stale in-process model definitions after target removal and delayed validation of mode eligibility. The manager now rebuilds target tables from the current document and resolves permitted routes before atomic replacement. Invalid target removal and ineligible primary-mode edits refuse without changing the file. Files: bin/kickoff-config and tests/test_kickoff_config.py. This closes the approved atomic-configuration requirement; it adds no workflow or delivery authority.
+
+The focused configuration family and complete ./bin/check all passed, with 103 tests and all policy gates; complete diagnostics are clean. Implementation candidate sha256: a351dd5489600f6623c6cdabb0105907df53d445563e7aa8788f94039078f182. Primary self-inspection remains the applicable review; no independent role was dispatched. Lessons: no additional general rule beyond the existing configuration atomicity contract and its strengthened fixture.
+
+The final bare ./bin/check all follows this tracked correction record. Delivery requires its current unchanged-tree receipt; prior handoff receipts do not qualify these new bytes. The preceding scope, complete attributable file list, commit/push authority, and remaining human/deployment boundaries remain unchanged.

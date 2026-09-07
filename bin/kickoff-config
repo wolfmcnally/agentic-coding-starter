@@ -68,6 +68,7 @@ else:
     DEFAULT_CONFIG = REPO_ROOT / "kickoff.yaml"
 sys.path.insert(0, str(LIB_ROOT))
 
+from agentic_starter import advisory, workflow  # noqa: E402
 from agentic_starter.execution_telemetry import (  # noqa: E402
     TelemetryError,
     closed_span,
@@ -420,6 +421,7 @@ def validate_document(document: Any) -> MutableMapping[str, Any]:
             "role_timeouts",
             "run_budgets",
             "research_budgets",
+            "workflow",
         },
         str(CONFIG),
     )
@@ -428,11 +430,42 @@ def validate_document(document: Any) -> MutableMapping[str, Any]:
     extensions = document.get("extensions", {})
     if not isinstance(extensions, MutableMapping):
         die(f"{CONFIG}.extensions must be a mapping")
+    install_targets(document)
     validate_models(document.get("role_models"))
     validate_timeouts(document.get("role_timeouts"))
     validate_budgets(document.get("run_budgets"))
     validate_research_budgets(document.get("research_budgets"))
+    try:
+        for harness in workflow.settings(document)["allowed_harnesses"]:
+            workflow.resolve(document, harness)
+    except workflow.WorkflowError as exc:
+        die(str(exc))
     return document
+
+
+BUILTIN_MODEL_PINS = (MODELS, CLAUDE_MODELS.copy(), CODEX_MODELS.copy(), MODEL_EFFORTS.copy())
+
+
+def install_targets(document: dict[str, Any]) -> None:
+    global MODELS
+    MODELS = BUILTIN_MODEL_PINS[0]
+    for table, original in zip(
+        (CLAUDE_MODELS, CODEX_MODELS, MODEL_EFFORTS), BUILTIN_MODEL_PINS[1:], strict=True
+    ):
+        table.clear()
+        table.update(original)
+    try:
+        config = workflow.settings(document)
+    except workflow.WorkflowError as exc:
+        die(str(exc))
+    for name, target in config["targets"].items():
+        mapping = CLAUDE_MODELS if target["harness"] == "claude" else CODEX_MODELS
+        opposite = CODEX_MODELS if target["harness"] == "claude" else CLAUDE_MODELS
+        opposite.pop(name, None)
+        mapping[name] = target["model"]
+        MODEL_EFFORTS[name] = tuple(target["efforts"])
+        if name not in MODELS:
+            MODELS = (*MODELS, name)
 
 
 def load_document(*, allow_missing: bool = False) -> MutableMapping[str, Any]:
@@ -441,6 +474,7 @@ def load_document(*, allow_missing: bool = False) -> MutableMapping[str, Any]:
             die(f"{CONFIG} is missing; run ./bin/kickoff-config reset all")
         document = CommentedMap()
         document["version"] = 1
+        document["workflow"] = commented(workflow.DEFAULT_WORKFLOW)
         document["role_models"] = commented(SHIPPED_MODELS)
         document["role_timeouts"] = commented(SHIPPED_TIMEOUTS)
         document["run_budgets"] = commented(SHIPPED_BUDGETS)
@@ -506,7 +540,7 @@ def describe_model(model: str, effort: str | None) -> str:
 
 
 def show_models(section: MutableMapping[str, Any]) -> None:
-    print(f"Model pins from {CONFIG}:")
+    print(f"Delegated role pins from {CONFIG} (dormant in primary mode):")
     found = False
     for harness in HARNESSES:
         values = section.get(harness)
@@ -521,7 +555,7 @@ def show_models(section: MutableMapping[str, Any]) -> None:
     if not found:
         print("  (none — every role runs native)")
     harness = detect_harness()
-    print(f"\nResolved for this harness ({harness}):")
+    print(f"\nDelegated resolution for this harness ({harness}):")
     for role, (model, effort) in resolve_models(section, harness).items():
         effort_text = effort or "default"
         print(
@@ -584,6 +618,8 @@ def show_research(section: MutableMapping[str, Any] | None) -> None:
 
 
 def show(document: MutableMapping[str, Any], scope: str) -> None:
+    if scope in ("all", "workflow"):
+        print(json.dumps(workflow.resolve(document, detect_harness()), indent=2))
     if scope in ("all", "models"):
         show_models(document["role_models"])
     if scope == "all":
@@ -645,6 +681,8 @@ def set_models(arguments: list[str]) -> None:
 
 def apply_preset(preset: str, review: str) -> None:
     document = load_document()
+    document["workflow"] = commented(workflow.settings(document))
+    document["workflow"]["mode"] = "delegated"
     section = document["role_models"]
     for harness, roles in preset_models(preset, review).items():
         target = section.setdefault(harness, CommentedMap())
@@ -685,6 +723,8 @@ def set_budgets(arguments: list[str]) -> None:
 
 def reset(scope: str) -> None:
     document = load_document(allow_missing=True)
+    if scope in ("workflow", "all"):
+        document["workflow"] = commented(workflow.DEFAULT_WORKFLOW)
     if scope in ("models", "all"):
         document["role_models"] = commented(SHIPPED_MODELS)
     if scope in ("timeouts", "all"):
@@ -937,7 +977,28 @@ def build_watch_command(
         "watch routing",
     )
     access = role_access(arguments.role)
+    authority_mode = getattr(arguments, "authority_mode", "delegated")
+    registration_path = getattr(arguments, "telemetry_role_registration", None)
+    if registration_path:
+        run = json.loads((Path(registration_path).parent / "run.json").read_text())
+        authority_mode = run["workflow"]["mode"]
+        selected = run["workflow"]["roles"][arguments.role]
+        if selected["execution"] == "inline":
+            die("primary planning/coding is inline; delegation is forbidden")
+        if authority_mode == "primary" and (
+            selected["model"] != arguments.model or selected["effort"] != effort
+        ):
+            die("watch routing does not match frozen workflow")
+    if authority_mode == "primary" and arguments.role in {"planner", "coder"}:
+        die("primary planning/coding is inline; delegation is forbidden")
     schema_kind = review_kind(arguments.role)
+    if authority_mode == "primary" and schema_kind:
+        schema_kind = "advisory-" + schema_kind
+        prompt += (
+            "\nAuthority: ADVISORY ONLY. Report evidence, consequence, severity and suggested "
+            "corrections. Do not issue APPROVED/REVISE, blockers, required changes, or demand "
+            "another pass. The primary owns all dispositions.\n"
+        )
     if arguments.venue == "claude":
         if model not in CLAUDE_MODELS:
             die(f"model '{model}' does not route to the claude CLI")
@@ -971,21 +1032,14 @@ def build_watch_command(
     )
 
 
-def scrubbed_env(cli: str) -> dict[str, str]:
-    environment = os.environ.copy()
-    keys = (
-        ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "ANTHROPIC_API_KEY")
-        if cli == "claude"
-        else ("OPENAI_API_KEY", "CODEX_API_KEY")
-    )
-    for key in keys:
-        environment.pop(key, None)
-    if cli == "claude":
-        # Every generated Claude invocation is --print. Native background work
-        # would be cleaned up when that CLI exits instead of reawakening it.
-        environment["CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"] = "1"
-    environment["KICKOFF_DELEGATION_DEPTH"] = "1"
-    return environment
+def scrubbed_env(cli: str, model: str | None = None) -> dict[str, str]:
+    try:
+        return workflow.child_environment(
+            os.environ.copy(), cli, model, workflow.settings(load_document())
+        )
+    except workflow.WorkflowError as exc:
+        die(str(exc))
+        raise AssertionError("unreachable")
 
 
 def diagnostic(process: subprocess.CompletedProcess[str]) -> str:
@@ -1030,7 +1084,7 @@ def run_claude_preflight(
     process = subprocess.run(
         command,
         cwd=workdir,
-        env=scrubbed_env("claude"),
+        env=scrubbed_env("claude", target.model),
         stdin=subprocess.DEVNULL,
         capture_output=True,
         text=True,
@@ -1077,7 +1131,7 @@ def run_codex_preflight(
         process = subprocess.run(
             command,
             cwd=workdir,
-            env=scrubbed_env("codex"),
+            env=scrubbed_env("codex", target.model),
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
@@ -1130,7 +1184,7 @@ def run_toolchain_probe(target: PreflightTarget) -> str | None:
         process = subprocess.run(
             command,
             cwd=workdir,
-            env=scrubbed_env("claude"),
+            env=scrubbed_env("claude", target.model),
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
@@ -1163,7 +1217,7 @@ def run_toolchain_probe(target: PreflightTarget) -> str | None:
         process = subprocess.run(
             command,
             cwd=workdir,
-            env=scrubbed_env("codex"),
+            env=scrubbed_env("codex", target.model),
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
@@ -1177,12 +1231,50 @@ def run_toolchain_probe(target: PreflightTarget) -> str | None:
             return "output artifact missing"
 
 
-def preflight(section: MutableMapping[str, Any], *, receipt: Path | None = None) -> dict[str, Any]:
+def preflight(
+    section: MutableMapping[str, Any],
+    *,
+    receipt: Path | None = None,
+    primary_model: str | None = None,
+) -> dict[str, Any]:
     if os.environ.get("KICKOFF_DELEGATION_DEPTH"):
         print("Role venue preflight: skipped (delegated session; every role runs native)")
         raise SystemExit("preflight receipts cannot be created from a delegated session")
     harness = detect_harness()
-    targets = preflight_targets(section, harness)
+    config_document = load_document()
+    try:
+        resolution = workflow.resolve(config_document, harness, primary_model)
+        config = workflow.settings(config_document)
+        # Resolve absent cross-provider executables before asking usage about an account
+        # that the operator does not have. No model or candidate is transmitted here.
+        if resolution["mode"] == "primary":
+            for role in ("reviewer", "critic"):
+                choices = workflow.adviser_choices(
+                    config, harness, resolution["primary_model"], role
+                )
+                for name in choices:
+                    dest = workflow.target(name, config)
+                    if (
+                        shutil.which(cli_program(dest["harness"])) is not None
+                        or name == resolution["primary_model"]
+                    ):
+                        original = resolution["roles"][role]["model"]
+                        if name != original:
+                            resolution["roles"][role] = {
+                                "model": name,
+                                "effort": None,
+                                "execution": "independent",
+                            }
+                            resolution["fallbacks"].append(
+                                f"{role}: {original} CLI unavailable; configured alternative {name}"
+                            )
+                        break
+        resolution = workflow.apply_usage(resolution, config, workflow.usage_snapshot())
+    except workflow.WorkflowError as exc:
+        die(str(exc))
+    print("Workflow: " + json.dumps(resolution, sort_keys=True), flush=True)
+    effective = effective_models(resolution)
+    targets = preflight_targets(effective, harness)
     results: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(prefix="kickoff-preflight-workdir-") as workdir:
         probe_name = ".kickoff-capability-probe"
@@ -1196,7 +1288,7 @@ def preflight(section: MutableMapping[str, Any], *, receipt: Path | None = None)
             effort = f", effort {target.effort}" if target.effort else ""
             access = "write-enabled" if target.write_enabled else "read-only"
             label = f"{target.cli}{model}{effort}, {access}; roles: {', '.join(roles)}"
-            if shutil.which(target.cli) is None:
+            if shutil.which(cli_program(target.cli)) is None:
                 die(f"preflight failed for {label}: CLI not on PATH")
             print(f"Role venue preflight: validating {label} ...", flush=True)
             try:
@@ -1245,6 +1337,7 @@ def preflight(section: MutableMapping[str, Any], *, receipt: Path | None = None)
         "config_sha256": hashlib.sha256(CONFIG.read_bytes()).hexdigest(),
         "harness": harness,
         "targets": results,
+        "workflow": resolution,
     }
     if receipt is not None:
         receipt.parent.mkdir(parents=True, exist_ok=True)
@@ -1253,6 +1346,18 @@ def preflight(section: MutableMapping[str, Any], *, receipt: Path | None = None)
         os.replace(temporary, receipt)
         print(f"Role venue preflight receipt: {receipt}")
     return document
+
+
+def effective_models(resolution: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "default": {
+            role: {
+                "model": "default" if pin["execution"] == "inline" else pin["model"],
+                **({"effort": pin["effort"]} if pin["effort"] else {}),
+            }
+            for role, pin in resolution["roles"].items()
+        }
+    }
 
 
 def verify_preflight_receipt(path: Path) -> dict[str, Any]:
@@ -1266,6 +1371,7 @@ def verify_preflight_receipt(path: Path) -> dict[str, Any]:
         "config_sha256",
         "harness",
         "targets",
+        "workflow",
     }
     if not isinstance(document, dict) or set(document) != required:
         die("preflight receipt has unknown or missing fields")
@@ -1290,7 +1396,46 @@ def verify_preflight_receipt(path: Path) -> dict[str, Any]:
         if CANDIDATE_ID.fullmatch(str(target["probe_sha256"])) is None:
             die("preflight receipt target lacks a valid probe digest")
         descriptors.append({key: target[key] for key in target_fields if key != "probe_sha256"})
-    expected = preflight_target_descriptors(load_document()["role_models"], document["harness"])
+    config = load_document()
+    resolution = document["workflow"]
+    if not isinstance(resolution, dict) or resolution.get("mode") not in {
+        "primary",
+        "delegated",
+    }:
+        die("preflight receipt has invalid workflow")
+    baseline = workflow.resolve(config, document["harness"], resolution["primary_model"])
+    if resolution["mode"] != baseline["mode"]:
+        die("preflight workflow mode differs from configured eligibility")
+    if set(resolution) != set(baseline) or set(resolution["roles"]) != set(baseline["roles"]):
+        die("preflight receipt has incomplete workflow topology")
+    for key in ("harness", "primary_model", "identity_basis", "reported_model"):
+        if resolution[key] != baseline[key]:
+            die("preflight receipt changed configured identity")
+    if not isinstance(resolution["fallbacks"], list):
+        die("invalid workflow fallback record")
+    for role, selected in resolution["roles"].items():
+        expected_role = baseline["roles"][role]
+        allowed = (
+            workflow.adviser_choices(
+                workflow.settings(config), document["harness"], resolution["primary_model"], role
+            )
+            if role in {"reviewer", "critic"}
+            else []
+        )
+        fallback_role = {**expected_role, "model": selected.get("model"), "effort": None}
+        causes = [
+            cause
+            for cause in resolution["fallbacks"]
+            if isinstance(cause, str) and cause.startswith(role + ": ")
+        ]
+        if selected != expected_role and not (
+            role in {"reviewer", "critic"}
+            and selected == fallback_role
+            and selected["model"] in allowed
+            and causes
+        ):
+            die("preflight receipt changed role routing without an authorized fallback")
+    expected = preflight_target_descriptors(effective_models(resolution), document["harness"])
     if sorted(descriptors, key=lambda row: json.dumps(row, sort_keys=True)) != expected:
         die("preflight receipt does not cover the current resolved role targets")
     if document["targets"] and len({target["probe_sha256"] for target in document["targets"]}) != 1:
@@ -1473,7 +1618,7 @@ def prepare_watched_command(
     command: list[str],
     program_index: int,
 ) -> tuple[list[str], dict[str, str]]:
-    environment = scrubbed_env(arguments.venue)
+    environment = scrubbed_env(arguments.venue, arguments.model)
     cli_arguments = command[program_index + 1 :]
     sandbox = watched_sandbox(cli_arguments)
     if arguments.venue != "codex" or sandbox != "workspace-write":
@@ -1868,6 +2013,8 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
     program_index = validate_watch_routing(arguments, command)
     command, child_environment = prepare_watched_command(arguments, command, program_index)
     registration = validate_telemetry_registration(arguments)
+    if registration is None and arguments.authority_mode == "primary":
+        die("primary advice requires a registered evidence run")
     intelligence = None
     wait_span = None
     telemetry_complete = registration is not None
@@ -1929,7 +2076,7 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
-            env=scrubbed_env(arguments.venue),
+            env=scrubbed_env(arguments.venue, arguments.model),
             timeout=5,
             check=False,
         )
@@ -2000,7 +2147,26 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
     stdout_data = bytearray()
     stdout_line_buffer = bytearray()
     timeout_kind: str | None = None
+    claimed_now = False
     try:
+        if registration is not None:
+            run_dir = Path(arguments.telemetry_role_registration).parent
+            launch = subprocess.run(
+                [
+                    str(run_dir / "tools/kickoff-evidence"),
+                    "start-advice",
+                    "--run-dir",
+                    str(run_dir),
+                    "--registration",
+                    arguments.telemetry_role_registration,
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if launch.returncode:
+                raise OSError(launch.stderr.strip() or "advice launch refused")
+            claimed_now = True
         process = subprocess.Popen(
             command,
             env=child_environment,
@@ -2010,6 +2176,18 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
             start_new_session=True,
         )
     except OSError as exc:
+        if registration is not None and claimed_now:
+            run_dir = Path(arguments.telemetry_role_registration).parent
+            claim_path = (
+                run_dir / f"advice-launch-{arguments.role}-{arguments.telemetry_attempt}.json"
+            )
+            if claim_path.exists():
+                run = json.loads((run_dir / "run.json").read_text())
+                claim = json.loads(claim_path.read_text())
+                # A count is charged after process creation, including errors and timeouts.
+                # No child exists in this exception branch; retain an explicit cancellation.
+                if claim in advisory.launches(Path(run["repository_root"]), run["phase"]):
+                    advisory.cancel_unstarted(Path(run["repository_root"]), run["phase"], claim)
         if stdout_file:
             stdout_file.close()
         if stderr_file:
@@ -2457,7 +2635,7 @@ def build_parser() -> argparse.ArgumentParser:
     show_parser.add_argument(
         "scope",
         nargs="?",
-        choices=("all", "models", "research", "timeouts", "budgets"),
+        choices=("all", "models", "research", "timeouts", "budgets", "workflow"),
         default="all",
     )
 
@@ -2472,10 +2650,16 @@ def build_parser() -> argparse.ArgumentParser:
     set_budgets_parser.add_argument("arguments", nargs=argparse.REMAINDER)
 
     reset_parser = subparsers.add_parser("reset")
-    reset_parser.add_argument("scope", choices=("models", "research", "timeouts", "budgets", "all"))
+    reset_parser.add_argument(
+        "scope",
+        choices=("models", "research", "timeouts", "budgets", "workflow", "all"),
+    )
 
     preflight_parser = subparsers.add_parser("preflight")
     preflight_parser.add_argument("--receipt", type=Path)
+    preflight_parser.add_argument("--primary-model")
+    workflow_parser = subparsers.add_parser("set-workflow")
+    workflow_parser.add_argument("--file", type=Path, required=True)
     receipt_parser = subparsers.add_parser("verify-preflight-receipt")
     receipt_parser.add_argument("--receipt", type=Path, required=True)
     subparsers.add_parser("recommend-timeouts")
@@ -2483,7 +2667,10 @@ def build_parser() -> argparse.ArgumentParser:
     def add_routing_arguments(parser: argparse.ArgumentParser) -> None:
         parser.add_argument("--role", required=True, choices=ROLES)
         parser.add_argument("--venue", required=True, choices=("claude", "codex"))
-        parser.add_argument("--model", required=True, choices=MODELS)
+        parser.add_argument("--model", required=True)
+        parser.add_argument(
+            "--authority-mode", choices=("primary", "delegated"), default="delegated"
+        )
         parser.add_argument("--effort", default="default", choices=("default", *EFFORTS))
         parser.add_argument("--prompt-file", required=True)
         parser.add_argument("--result-file")
@@ -2547,10 +2734,18 @@ def main() -> None:
         set_models(arguments.arguments)
     elif arguments.action == "apply-preset":
         apply_preset(arguments.preset, arguments.review)
+    elif arguments.action == "set-workflow":
+        document["workflow"] = commented(json.loads(arguments.file.read_text()))
+        atomic_dump(document)
+        show(load_document(), "workflow")
     elif arguments.action == "set-budgets":
         set_budgets(arguments.arguments)
     elif arguments.action == "preflight":
-        preflight(document["role_models"], receipt=arguments.receipt)
+        preflight(
+            document["role_models"],
+            receipt=arguments.receipt,
+            primary_model=arguments.primary_model,
+        )
     elif arguments.action == "verify-preflight-receipt":
         verify_preflight_receipt(arguments.receipt)
     elif arguments.action == "watch":

@@ -15,6 +15,8 @@ occurrences:
     ref: "Readiness review — final-child completion required a next marker in the same prospective transition, and deeper nesting required separately accepted ancestor completions"
   - date: 2026-09-05
     ref: "Readiness review — a repeated nested close after applying bookkeeping failed the parent pre-state check before reaching idempotency handling"
+  - date: 2026-09-07
+    ref: "Primary-advice continuation — validating the prior run through the new run's pinned executable repeated the cross-run custody refusal; the fixture now exercises the prior run's own read-only validation entrypoint"
 ---
 
 Check an orchestration lifecycle with its production authority inventory and real status transitions. In Phase 2, kickoff captured `plan/INDEX.md` as a whole-file authority, then changed its status marker as the next required step. Candidate partitioning correctly excluded bookkeeping from product identity, but the independent authority hash still changed. The fixture inventory did not reproduce that combination, so passing component tests did not prove that a complete phase could close.

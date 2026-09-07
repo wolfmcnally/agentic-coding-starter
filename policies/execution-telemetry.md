@@ -1,5 +1,7 @@
 # Policy: Execution Telemetry and Phase Reports
 
+Authority mode follows [four-canonical-agents.md](four-canonical-agents.md). Product primary mode uses independent advice and primary acceptance; delegated product mode retains approval verdicts and bounded revision loops. References below to reviewer assent or mandatory re-review govern delegated work only. Required objective gates and truthful evidence apply in both modes. All methodology work, including teach/learn, follows [review-lanes.md](review-lanes.md): one-shot by the primary, no delegated production or review, and commit/fast-forward-push authority after required checks.
+
 Kickoff execution timing is exact, candidate-bound, privacy-bounded, and
 machine-owned. It measures elapsed work; it does not replace narrative logs,
 status events, gate evidence, or human judgment about whether an optimization

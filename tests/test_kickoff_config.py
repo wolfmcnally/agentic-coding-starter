@@ -40,6 +40,7 @@ def run_manager(
     extra_env: dict[str, str] | None = None,
     cli: Path | None = None,
     manager: Path | None = None,
+    usage_data: dict | None = None,
 ) -> subprocess.CompletedProcess[str]:
     environment = os.environ.copy()
     environment["KICKOFF_CONFIG_FILE"] = str(config)
@@ -51,6 +52,29 @@ def run_manager(
     environment.pop("KICKOFF_DELEGATION_DEPTH", None)
     if extra_env:
         environment.update(extra_env)
+    if (
+        arguments
+        and arguments[0] == "preflight"
+        and (not (extra_env and "PATH" in extra_env) or os.pathsep in extra_env["PATH"])
+    ):
+        usage = config.parent / "llm-usage"
+        usage.write_text(
+            f"#!{sys.executable}\nimport json\nprint(json.dumps("
+            + repr(
+                usage_data
+                if usage_data is not None
+                else {
+                    provider: {
+                        "ok": True,
+                        "windows": {"shared": {"utilization": 0, "window_seconds": 604800}},
+                    }
+                    for provider in ("anthropic", "openai")
+                }
+            )
+            + "))\n"
+        )
+        usage.chmod(0o755)
+        environment["PATH"] = str(config.parent) + os.pathsep + environment.get("PATH", "")
     return subprocess.run(
         [UV, "run", "--script", str(manager or MANAGER), *arguments],
         cwd=ROOT,
@@ -149,7 +173,7 @@ def test_show_validates_seed_config(tmp_path: Path) -> None:
     result = run_manager(seeded_config(tmp_path), "show")
 
     assert result.returncode == 0, result.stderr
-    assert "Resolved for this harness" in result.stdout
+    assert "Delegated resolution for this harness" in result.stdout
     assert "claude turns" in result.stdout
 
 
@@ -217,7 +241,7 @@ def test_scoped_edit_preserves_extensions_comments_and_timeouts(tmp_path: Path) 
         assert text.split("role_timeouts:", 1)[1] == timeout_block
         assert "# role comment" in text
         assert 'model: "' in text
-        assert "Resolved for this harness" in result.stdout
+        assert "Delegated resolution for this harness" in result.stdout
     assert run_manager(config, "reset", "models").returncode == 0
     seed_models = yaml.safe_load(SEED_CONFIG.read_text())["role_models"]
     assert yaml.safe_load(config.read_text())["role_models"] == seed_models
@@ -232,6 +256,7 @@ def test_scoped_edit_preserves_extensions_comments_and_timeouts(tmp_path: Path) 
 
 
 def test_invalid_edit_is_atomic(tmp_path: Path) -> None:
+    _assert_primary_routing_and_usage(tmp_path)
     config = seeded_config(tmp_path)
     before = config.read_bytes()
 
@@ -311,7 +336,10 @@ def test_watch_extracts_fresh_claude_result_and_telemetry(tmp_path: Path) -> Non
         ([{**primary, "type": "assistant"}], None, "test-cli 1.0"),
         ([{**primary, "subtype": "other"}], None, "test-cli 1.0"),
         (
-            [primary, {**primary, "model": "different", "claude_code_version": "different"}],
+            [
+                primary,
+                {**primary, "model": "different", "claude_code_version": "different"},
+            ],
             None,
             None,
         ),
@@ -326,7 +354,10 @@ def test_watch_extracts_fresh_claude_result_and_telemetry(tmp_path: Path) -> Non
             "\n".join("printf '%s\\n' '" + json.dumps(event) + "'" for event in events),
         )
         result = run_manager(
-            config, *arguments, extra_env={"KICKOFF_TIMING_LOG": str(telemetry)}, cli=cli
+            config,
+            *arguments,
+            extra_env={"KICKOFF_TIMING_LOG": str(telemetry)},
+            cli=cli,
         )
         assert result.returncode == 0, result.stderr
         record = read_record(telemetry)
@@ -356,7 +387,10 @@ def test_watch_extracts_fresh_claude_result_and_telemetry(tmp_path: Path) -> Non
             "\n".join("printf '%s\\n' '" + json.dumps(event) + "'" for event in events),
         )
         result = run_manager(
-            config, *arguments, extra_env={"KICKOFF_TIMING_LOG": str(telemetry)}, cli=cli
+            config,
+            *arguments,
+            extra_env={"KICKOFF_TIMING_LOG": str(telemetry)},
+            cli=cli,
         )
         assert result.returncode == 65, result.stderr
         record = read_record(telemetry)
@@ -367,7 +401,10 @@ def test_watch_extracts_fresh_claude_result_and_telemetry(tmp_path: Path) -> Non
         assert result_path.read_text() == "FRESH"
         cli.write_text(cli.read_text() + "\nexit 7\n")
         result = run_manager(
-            config, *arguments, extra_env={"KICKOFF_TIMING_LOG": str(telemetry)}, cli=cli
+            config,
+            *arguments,
+            extra_env={"KICKOFF_TIMING_LOG": str(telemetry)},
+            cli=cli,
         )
         assert result.returncode == 7
         assert read_record(telemetry)["outcome"] == "error"
@@ -707,3 +744,294 @@ else:
             stale = run_manager(config, "verify-preflight-receipt", "--receipt", str(receipt))
             assert stale.returncode != 0
             assert "stale routing configuration" in stale.stderr
+
+
+def _assert_primary_routing_and_usage(tmp_path: Path) -> None:
+    """Independent truth table for authority, deployment and quota decisions."""
+    import copy
+    from unittest.mock import patch
+
+    import pytest
+    from agentic_starter import advisory, workflow
+    from agentic_starter.finding_schema import review_artifact_schema
+
+    document = yaml.safe_load(SEED_CONFIG.read_text())
+    document["workflow"] = copy.deepcopy(workflow.DEFAULT_WORKFLOW)
+    config = document["workflow"]
+    routed = workflow.resolve(document, "codex")
+    assert routed["mode"] == "primary"
+    assert [routed["roles"][r]["execution"] for r in ("planner", "coder")] == [
+        "inline",
+        "inline",
+    ]
+    assert [routed["roles"][r]["model"] for r in ("reviewer", "critic")] == [
+        "fable",
+        "fable",
+    ]
+    config["allowed_harnesses"] = ["codex"]
+    assert workflow.resolve(document, "codex")["roles"]["reviewer"]["model"] == "astra"
+    config["allowed_harnesses"] = ["codex", "claude"]
+    assert workflow.resolve(document, "codex", "sol")["mode"] == "delegated"
+    config["mode"] = "primary"
+    with pytest.raises(workflow.WorkflowError, match="eligible"):
+        workflow.resolve(document, "codex", "sol")
+    config["mode"] = "auto"
+
+    snapshot = {
+        provider: {
+            "ok": True,
+            "windows": {
+                "week": {"utilization": 0, "window_seconds": 604800},
+                "short": {"utilization": 0, "window_seconds": 18000},
+            },
+        }
+        for provider in ("openai", "anthropic")
+    }
+    for window in ("week", "short"):
+        for percent, refused in [
+            (94.999, False),
+            (95, True),
+            (95.001, True),
+            (100, True),
+        ]:
+            data = copy.deepcopy(snapshot)
+            data["openai"]["windows"][window]["utilization"] = percent
+            if refused:
+                with pytest.raises(workflow.WorkflowError, match="primary.*95"):
+                    workflow.apply_usage(routed, config, data)
+            else:
+                assert (
+                    workflow.apply_usage(routed, config, data)["roles"]["reviewer"]["model"]
+                    == "fable"
+                )
+    for window, percent, wanted in [
+        ("week", 95, "fable"),
+        ("week", 95.001, "astra"),
+        ("short", 100, "fable"),
+    ]:
+        data = copy.deepcopy(snapshot)
+        data["anthropic"]["windows"][window]["utilization"] = percent
+        result = workflow.apply_usage(routed, config, data)
+        assert all(result["roles"][r]["model"] == wanted for r in ("reviewer", "critic"))
+        assert result["mode"] == "primary"
+    data["openai"]["windows"]["week"]["utilization"] = 95
+    with pytest.raises(workflow.WorkflowError, match="primary"):
+        workflow.apply_usage(routed, config, data)
+    assert workflow.apply_usage(routed, config, None)["usage"]["state"] == "unavailable"
+    with patch.object(workflow.shutil, "which", return_value=None):
+        assert workflow.usage_snapshot() is None
+    for bad in [None, float("nan"), True, "95"]:
+        data = copy.deepcopy(snapshot)
+        data["openai"]["windows"]["week"]["utilization"] = bad
+        with pytest.raises(workflow.WorkflowError):
+            workflow.apply_usage(routed, config, data)
+    data = copy.deepcopy(snapshot)
+    data["openai"]["ok"] = False
+    with pytest.raises(workflow.WorkflowError):
+        workflow.apply_usage(routed, config, data)
+    # Distinct configured advisers are resolved independently before usage routing.
+    config["adviser_models"]["codex"]["critic"] = ["astra"]
+    separate = workflow.resolve(document, "codex")
+    saturated = copy.deepcopy(snapshot)
+    saturated["anthropic"]["windows"]["week"]["utilization"] = 99
+    assert separate["roles"]["reviewer"]["model"] == "fable"
+    assert separate["roles"]["critic"]["model"] == "astra"
+    assert (
+        workflow.apply_usage(separate, config, saturated)["roles"]["reviewer"]["model"] == "astra"
+    )
+    config["adviser_models"]["codex"]["critic"] = ["fable"]
+    # Shared limits cannot be excluded by model-specific mappings.
+    scoped = copy.deepcopy(snapshot)
+    scoped["openai"]["windows"] = {"primary_window": {"utilization": 96, "window_seconds": 18000}}
+    scoped["openai"]["additional_rate_limits"] = [
+        {
+            "metered_feature": "astra",
+            "windows": {"secondary_window": {"utilization": 1, "window_seconds": 604800}},
+        }
+    ]
+    deployment = workflow.target("astra", config)
+    deployment["usage_windows"] = ["astra/secondary_window"]
+    assert len(workflow.usage_windows(scoped, deployment)) == 2
+    mapped = copy.deepcopy(config)
+    mapped["targets"]["astra"] = {
+        key: value for key, value in deployment.items() if key != "selector"
+    }
+    workflow.validate(mapped)
+    assert workflow.target("astra", mapped)["usage_windows"] == ["astra/secondary_window"]
+    bad_alias = copy.deepcopy(mapped)
+    bad_alias["targets"]["duplicate"] = bad_alias["targets"].pop("astra")
+    with pytest.raises(workflow.WorkflowError, match="canonical selector"):
+        workflow.validate(bad_alias)
+    with pytest.raises(workflow.WorkflowError, match="primary"):
+        workflow.apply_usage(routed, config, scoped)
+    # Production preflight refuses quota before any model-backed probe or receipt write.
+    quota_config = tmp_path / "quota.yaml"
+    quota_config.write_text(yaml.safe_dump(document))
+    original = quota_config.read_bytes()
+    attempted = tmp_path / "model-called"
+    fake = fake_cli(
+        tmp_path, "claude", f"from pathlib import Path\nPath({str(attempted)!r}).touch()\n"
+    )
+    saturated["openai"]["windows"]["week"]["utilization"] = 95
+    refusal = run_manager(
+        quota_config,
+        "preflight",
+        "--receipt",
+        str(tmp_path / "refused.json"),
+        cli=fake,
+        usage_data=saturated,
+    )
+    assert refusal.returncode != 0 and "kickoff refused" in refusal.stderr, refusal.stderr
+    assert not attempted.exists() and not (tmp_path / "refused.json").exists()
+    assert quota_config.read_bytes() == original
+    config["targets"]["restricted"] = {
+        "harness": "claude",
+        "model": "exact-managed-model",
+        "provider": "anthropic",
+        "backend": "managed",
+        "auth": "configured",
+        "efforts": ["high"],
+        "usage_windows": [],
+        "terms": "operator-approved restricted deployment",
+        "credential_env": ["AWS_PROFILE"],
+        "backend_env": {"CLAUDE_CODE_USE_BEDROCK": "1"},
+    }
+    assert workflow.usage_windows(data, workflow.target("restricted", config)) is None
+    config["primary_models"]["claude"] = "restricted"
+    config["allowed_harnesses"] = ["claude"]
+    document["role_models"]["claude"] = {
+        r: {"model": "restricted", "effort": "high"} for r in workflow.ROLES
+    }
+    restricted = workflow.resolve(document, "claude")
+    assert restricted["mode"] == "delegated"
+    assert all(pin["model"] == "restricted" for pin in restricted["roles"].values())
+    workflow.validate(config)
+    config_file = tmp_path / "restricted.yaml"
+    config_file.write_text(yaml.safe_dump(document))
+    rendered = run_manager(
+        config_file,
+        "render-command",
+        "--role",
+        "reviewer",
+        "--venue",
+        "claude",
+        "--model",
+        "restricted",
+        "--effort",
+        "high",
+        "--prompt-file",
+        str(_prompt(tmp_path)),
+        "--result-file",
+        str(tmp_path / "review.json"),
+        "--json",
+    )
+    assert rendered.returncode == 0, rendered.stderr
+    assert "exact-managed-model" in json.loads(rendered.stdout)
+    # Deleting a target cannot leave stale process-global model definitions valid.
+    removed = copy.deepcopy(config)
+    removed["targets"] = {}
+    replacement = tmp_path / "removed-target.json"
+    replacement.write_text(json.dumps(removed))
+    before = config_file.read_bytes()
+    refused_edit = run_manager(config_file, "set-workflow", "--file", str(replacement))
+    assert refused_edit.returncode != 0
+    assert config_file.read_bytes() == before
+    ineligible = copy.deepcopy(config)
+    ineligible["mode"] = "primary"
+    replacement.write_text(json.dumps(ineligible))
+    refused_mode = run_manager(config_file, "set-workflow", "--file", str(replacement))
+    assert refused_mode.returncode != 0
+    assert config_file.read_bytes() == before
+
+    ambient = {
+        "AWS_PROFILE": "fixture-profile",
+        "ANTHROPIC_API_KEY": "unintended",
+        "OPENAI_API_KEY": "unintended",
+        "CLAUDE_CODE_USE_VERTEX": "1",
+    }
+    environment = workflow.child_environment(ambient, "claude", "restricted", config)
+    assert environment["AWS_PROFILE"] == "fixture-profile"
+    assert environment["CLAUDE_CODE_USE_BEDROCK"] == "1"
+    assert (
+        not {"ANTHROPIC_API_KEY", "OPENAI_API_KEY", "CLAUDE_CODE_USE_VERTEX"} & environment.keys()
+    )
+    subscription = workflow.child_environment(ambient, "claude", "fable", config)
+    assert (
+        not {"ANTHROPIC_API_KEY", "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX"}
+        & subscription.keys()
+    )
+    with pytest.raises(workflow.WorkflowError, match="credential environment"):
+        workflow.child_environment({}, "claude", "restricted", config)
+
+    schema = review_artifact_schema("advisory-code")
+    assert "verdict" not in schema["properties"]
+    assert (
+        "blocking"
+        not in schema["properties"]["findings"]["items"]["properties"]["severity"]["enum"]
+    )
+    assert review_artifact_schema("code")["properties"]["verdict"]["enum"] == [
+        "APPROVED",
+        "REVISE",
+    ]
+    report = {
+        "summary": "One serious suggestion",
+        "findings": [
+            {
+                "id": "C1",
+                "severity": "critical",
+                "affected_paths": ["code.py"],
+                "evidence": "A potential extra operating mode",
+                "consequence": "Unneeded complexity",
+                "suggestion": "Add a second transaction protocol",
+            }
+        ],
+    }
+    advisory.check_report(report)
+    reports = [{"report_id": "code-1", "kind": "code", "report": report}]
+    decision = {
+        "candidate_id": "current",
+        "reports_sha256": advisory.digest(reports),
+        "delta_assessment": "No code change needed",
+        "requirements_checked": "Single writer is the approved contract",
+        "dispositions": [
+            {
+                "finding": "code-1:C1",
+                "action": "decline",
+                "reason": "The proposed concurrency mode is outside the target",
+                "verification": "",
+            }
+        ],
+    }
+    advisory.validate_decision(decision, reports, "current", {"code"})
+    decision["dispositions"][0]["action"] = "adopt"
+    with pytest.raises(advisory.AdvisoryError, match="verification"):
+        advisory.validate_decision(decision, reports, "current", {"code"})
+    decision["dispositions"] = []
+    with pytest.raises(advisory.AdvisoryError, match="disposition"):
+        advisory.validate_decision(decision, reports, "current", {"code"})
+    advisory.start(tmp_path, "phase-1", tmp_path / "run-1", "role.code-review", 1, "")
+    with pytest.raises(advisory.AdvisoryError, match="cause"):
+        advisory.start(tmp_path, "phase-1", tmp_path / "run-2", "role.code-review", 1, "")
+    advisory.start(
+        tmp_path,
+        "phase-1",
+        tmp_path / "run-2",
+        "role.code-review",
+        1,
+        "Recheck substantial correction",
+    )
+    with pytest.raises(advisory.AdvisoryError, match="maximum two"):
+        advisory.start(
+            tmp_path,
+            "phase-1",
+            tmp_path / "run-3",
+            "role.code-review",
+            1,
+            "Another correction",
+        )
+
+
+def _prompt(tmp_path: Path) -> Path:
+    path = tmp_path / "prompt.txt"
+    path.write_text("Inspect the candidate against the requirements.")
+    return path

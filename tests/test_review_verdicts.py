@@ -138,6 +138,78 @@ def test_dedupes_across_harnesses_and_drops_template_echoes(tmp_path: Path) -> N
     ]
     assert "REVIEW VERDICTS 4 genuine" in result.stdout
 
+    advice_run = tmp_path / "primary-run"
+    advice_run.mkdir()
+    (advice_run / "run.json").write_text(
+        json.dumps(
+            {
+                "workflow": {"mode": "primary"},
+                "repository_root": "/fixture/proj-a",
+                "phase": "1",
+            }
+        )
+    )
+    rows = [
+        {
+            "report_id": "code-1",
+            "kind": "code",
+            "candidate_id": "a" * 64,
+            "span_id": "s1",
+            "report": {
+                "summary": "One suggestion",
+                "findings": [
+                    {
+                        "id": "F1",
+                        "severity": "high",
+                        "affected_paths": ["code.py"],
+                        "evidence": "Constant observed",
+                        "consequence": "Suggestion assumes a mutable input",
+                        "suggestion": "Add configuration",
+                    }
+                ],
+            },
+        }
+    ]
+    (advice_run / "advisory-reports.json").write_text(json.dumps(rows))
+    import hashlib
+
+    digest = hashlib.sha256(
+        json.dumps(rows, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    (advice_run / "primary-decision.json").write_text(
+        json.dumps(
+            {
+                "candidate_id": "b" * 64,
+                "reports_sha256": digest,
+                "delta_assessment": "Comment added",
+                "requirements_checked": "Constant required",
+                "dispositions": [
+                    {
+                        "finding": "code-1:F1",
+                        "action": "decline",
+                        "reason": "Requirement is a constant",
+                        "verification": "",
+                    }
+                ],
+            }
+        )
+    )
+    extended = run(
+        claude_root,
+        codex_root,
+        "--kind",
+        "all",
+        "--advisory-run",
+        str(advice_run),
+        "--json",
+        str(output),
+    )
+    assert extended.returncode == 0, extended.stderr
+    observed = json.loads(output.read_text())
+    assert observed["verdicts"] == verdicts
+    assert len(observed["advisory_reports"]) == len(observed["primary_decisions"]) == 1
+    assert observed["primary_decisions"][0]["dispositions"][0]["action"] == "decline"
+
 
 def test_running_session_and_explicit_exclusions_are_skipped(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch

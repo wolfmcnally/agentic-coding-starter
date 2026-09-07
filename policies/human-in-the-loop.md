@@ -1,5 +1,7 @@
 # Policy: Human In The Loop
 
+Authority mode follows [four-canonical-agents.md](four-canonical-agents.md). Product primary mode uses independent advice and primary acceptance; delegated product mode retains approval verdicts and bounded revision loops. References below to reviewer assent or mandatory re-review govern delegated work only. Required objective gates and truthful evidence apply in both modes. All methodology work, including teach/learn, follows [review-lanes.md](review-lanes.md): one-shot by the primary, no delegated production or review, and commit/fast-forward-push authority after required checks.
+
 The methodology assumes a human's judgment governs the work. This policy says exactly where that judgment binds — and, because it does not bind everywhere, where the orchestrator proceeds without asking.
 
 The human gate lives at the **seam**: the phase boundary, where the human reads the END block, runs the demo protocol, and decides whether the work is right. It does not live on the commit. A clerical Git handoff is not judgment; it is the place judgment used to be parked.
@@ -11,8 +13,8 @@ Every acceptance criterion is one of two kinds, and the kind decides who closes 
 **Objective criteria close autonomously.** A criterion is objective when all four hold:
 
 - It is **executable** — a shell command, a named test, an analyzer output — with a success condition defined before it was run.
-- It was **independently reviewed** — the implementing role did not review its own work (`four-canonical-agents.md`).
-- A **complete gate** proved it (`build-gates.md`), against the exact candidate the review approved (`orchestration-evidence.md`).
+- It satisfies the applicable **review contract**: product advice and primary dispositions, delegated approval, or primary self-inspection for methodology work (`four-canonical-agents.md`, `review-lanes.md`).
+- A **complete gate** proved it (`build-gates.md`), against the exact candidate accepted by the applicable authority (`orchestration-evidence.md`).
 - Its result is **recorded** and candidate-bound, not asserted.
 
 **Subjective and owner-only criteria always park.** No amount of green closes them:

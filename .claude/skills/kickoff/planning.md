@@ -1,5 +1,14 @@
 # Kickoff — Planning and plan review
 
+## Primary-mode Steps 3–4
+
+When the frozen workflow mode is primary, the invoking instance reads the phase/briefs, writes the coherent implementation plan, settles consequential decisions and uses the existing plan capture and concreteness check. Keep the orchestration.planning span; do not register or launch a planner role. Follow the selected review lane's authorized stage omissions.
+
+For required plan advice, register reviewer on the receipt's target and dispatch in an independent context through the pinned watcher. The watcher selects the advisory schema and atomically records the phase-bound launch allowance. Ingest its report with the actual dispatch candidate and review span. The primary implements, declines or defers recommendations based on evidence. Record consequential dispositions and keep scope decisions with the operator. One comprehensive pass is normal; a second requires `register-role-attempt --cause <concrete reason>` before launch and is the maximum, including failed launches and continuations. Do not re-run a reviewer just to obtain agreement.
+
+Keep plan advice and decisions for final primary acceptance. Then proceed to inline implementation. The remaining planner/reviewer approval loop in this resource is exclusively for delegated mode.
+
+
 Read this resource before executing its branch. Enter through [SKILL.md](SKILL.md); its resource table defines the order. Read [dispatch.md](dispatch.md) before every role invocation. Before any failure, resume or operator-input branch, read [recovery.md](recovery.md).
 
 ### Step 3: Plan

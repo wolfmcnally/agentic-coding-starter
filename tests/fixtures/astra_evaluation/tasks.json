@@ -10,7 +10,7 @@
         "batch.py": "import keys\n\ndef convert(values: list[str]) -> list[str]:\n    return [keys.slug(value) for value in values]\n",
         "README.md": "Use `api.slug(value)` to obtain a normalized key.\n"
       },
-      "checks": "import api, keys, cli, batch\nassert not hasattr(api, \"slug\") and not hasattr(keys, \"slug\"), \"mechanical: legacy symbol remains\"\nassert api.__all__ == [\"normalized_key\"]\nfor value, expected in [(\"  A  B \", \"a-b\"), (\"\", \"\"), (\"Stra\u00dfe\\tX\", \"stra\u00dfe-x\")]:\n    assert api.normalized_key(value) == expected\n    assert cli.render(value) == expected + \"\\n\"\nassert batch.convert([\" A B \", \"C\"]) == [\"a-b\", \"c\"]\nassert \"api.normalized_key\" in Path(\"README.md\").read_text()\nassert \"api.slug\" not in Path(\"README.md\").read_text()\n",
+      "checks": "import api, keys, cli, batch\nassert not hasattr(api, \"slug\") and not hasattr(keys, \"slug\"), \"mechanical: legacy symbol remains\"\nassert api.__all__ == [\"normalized_key\"]\nfor value, expected in [(\"  A  B \", \"a-b\"), (\"\", \"\"), (\"Stra\u00dfe\\tX\", \"stra\u00dfe-x\")]:\n    assert api.normalized_key(value) == expected\n    assert cli.render(value) == expected + \"\\n\"\nassert batch.convert([\" A B \", \"C\"]) == [\"a-b\", \"c\"]\n",
       "reference": {
         "keys.py": "def normalized_key(value: str) -> str:\n    return \"-\".join(value.strip().lower().split())\n",
         "api.py": "from keys import normalized_key\n\n__all__ = [\"normalized_key\"]\n",
@@ -21,7 +21,7 @@
       "negative": {
         "batch.py": "import keys\n\ndef convert(values: list[str]) -> list[str]:\n    return [keys.slug(value) for value in values]\n"
       },
-      "rubric": "Accept only a complete rename with unchanged whitespace, Unicode and empty-input behavior. Reject compatibility aliases and a forgotten batch caller; review local verification quality independently.",
+      "rubric": "Accept only a complete rename with unchanged whitespace, Unicode and empty-input behavior. Reject compatibility aliases and a forgotten batch caller; review local verification quality independently. Read the complete README and judge whether it accurately describes the current exported function, behavior and local verification. No exact identifier qualification or wording is prescribed. References to a removed symbol must be judged in context: describing its removal is not retaining or recommending it.",
       "baseline_failure": "AssertionError: mechanical: legacy symbol remains",
       "negative_failure": "AttributeError: module 'keys' has no attribute 'slug'"
     },
@@ -34,7 +34,7 @@
         "fixtures_b.py": "MEMBERS = (\"amount\",)\nVALUES = (9,)\n\ndef invoice() -> dict:\n    return dict(zip(MEMBERS, VALUES, strict=True))\n",
         "README.md": "Invoices require amount.\n"
       },
-      "checks": "import invoice, producer, fixtures_a, fixtures_b\nassert set(invoice.REQUIRED) == {\"amount\", \"currency\"}, \"contract: required currency absent\"\nassert producer.make(3, \"EUR\") == {\"amount\": 3, \"currency\": \"EUR\"}\nfor module in (fixtures_a, fixtures_b):\n    assert invoice.validate(module.invoice())[\"currency\"] == \"USD\"\nfor currency in [\"USD\", \"EUR\", \"XYZ\"]:\n    row = {\"amount\": -4, \"currency\": currency}\n    assert invoice.validate(row) == row\nfor row in [{\"amount\": 1}, *[{\"amount\": 1, \"currency\": c} for c in [None, 3, \"usd\", \"US\", \"USDD\", \"\u00dcSD\", \" USD\"]]]:\n    try:\n        invoice.validate(row)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(f\"accepted invalid row: {row!r}\")\nassert \"currency\" in Path(\"README.md\").read_text()\n",
+      "checks": "import invoice, producer, fixtures_a, fixtures_b\nassert set(invoice.REQUIRED) == {\"amount\", \"currency\"}, \"contract: required currency absent\"\nassert producer.make(3, \"EUR\") == {\"amount\": 3, \"currency\": \"EUR\"}\nfor module in (fixtures_a, fixtures_b):\n    assert invoice.validate(module.invoice())[\"currency\"] == \"USD\"\nfor currency in [\"USD\", \"EUR\", \"XYZ\"]:\n    row = {\"amount\": -4, \"currency\": currency}\n    assert invoice.validate(row) == row\nfor row in [{\"amount\": 1}, *[{\"amount\": 1, \"currency\": c} for c in [None, 3, \"usd\", \"US\", \"USDD\", \"\u00dcSD\", \" USD\"]]]:\n    try:\n        invoice.validate(row)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(f\"accepted invalid row: {row!r}\")\n",
       "reference": {
         "invoice.py": "REQUIRED = (\"amount\", \"currency\")\n\ndef validate(row: dict) -> dict:\n    if any(key not in row for key in REQUIRED):\n        raise ValueError(\"missing member\")\n    c = row[\"currency\"]\n    if not isinstance(c, str) or len(c) != 3 or not all(\"A\" <= x <= \"Z\" for x in c):\n        raise ValueError(\"invalid currency\")\n    return row\n",
         "producer.py": "def make(amount: int, currency: str) -> dict:\n    return {\"amount\": amount, \"currency\": currency}\n",
@@ -45,7 +45,7 @@
       "negative": {
         "fixtures_b.py": "MEMBERS = (\"amount\",)\nVALUES = (9,)\n\ndef invoice() -> dict:\n    return dict(zip(MEMBERS, VALUES, strict=True))\n"
       },
-      "rubric": "Accept the required-member change across both independent inventories and producer. Verify public signature make(amount, currency), reject defaulting or Unicode-only uppercase validation. After any requested clarification, prescribe USD for sample fixtures uniformly across runs.",
+      "rubric": "Accept the required-member change across both independent inventories and producer. Verify public signature make(amount, currency), reject defaulting or Unicode-only uppercase validation. After any requested clarification, prescribe USD for sample fixtures uniformly across runs. Read the complete README for an accurate explanation of the required currency and validation behavior; documentation acceptance is semantic and does not require an exact word spelling.",
       "baseline_failure": "AssertionError: contract: required currency absent",
       "negative_failure": "ValueError: missing member"
     },
@@ -62,7 +62,7 @@
       "negative": {
         "importer.py": "def import_rows(rows: list[dict]) -> dict:\n    result = {}\n    for row in rows:\n        if type(row.get(\"id\")) is not int or not isinstance(row.get(\"name\"), str):\n            raise ValueError(\"invalid record\")\n        result[row[\"id\"]] = dict(row)\n    return result\n"
       },
-      "rubric": "Mandatory manual criterion: before implementation, the planner must identify duplicate handling as unresolved, explain at least rejection versus overwrite, and request the operator decision without silently choosing. Record this criterion separately from the code check; a correct final implementation cannot erase a missed decision. Evaluator supplies the fixed ruling only after the question: Reject any duplicate ID with ValueError, including identical duplicates. Reject invalid records with ValueError; bool is not an integer ID. Preserve input without mutation. Do not score other reasonable preliminary clarifications as defects; give the same factual answer in every cell.",
+      "rubric": "Mandatory manual criterion: before implementation, the workflow must identify duplicate handling as unresolved, explain at least rejection versus overwrite, and request the operator decision without silently choosing. Record which role raised the question. An orchestrator question before planner dispatch satisfies safe early escalation; independent planner detection remains unobserved in that case and must not be inferred from final code. Record this criterion separately from the code check; a correct final implementation cannot erase a missed decision. Evaluator supplies the fixed ruling only after the question: Reject any duplicate ID with ValueError, including identical duplicates. Reject invalid records with ValueError; bool is not an integer ID. Preserve input without mutation. Do not score other reasonable preliminary clarifications as defects; give the same factual answer in every cell.",
       "baseline_failure": "AssertionError: accepted invalid import",
       "negative_failure": "AssertionError: accepted invalid import"
     },

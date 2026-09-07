@@ -34,7 +34,12 @@ sys.path.insert(0, str(LIB_ROOT))
 # Sourced, not restated. `bin/kickoff-config` constrains generation from the
 # same definitions, so a second copy of the closed sets here would be exactly
 # the drift this arrangement exists to remove.
-from agentic_starter import candidate_boundaries, kickoff_runbook, log_blocks  # noqa: E402
+from agentic_starter import (  # noqa: E402
+    advisory,
+    candidate_boundaries,
+    kickoff_runbook,
+    log_blocks,
+)
 from agentic_starter.execution_telemetry import (  # noqa: E402
     TelemetryError,
     attach_review_metrics,
@@ -577,9 +582,19 @@ def validate_run_dir(run_dir: Path) -> dict[str, Any]:
         "required_orchestration_operations",
         "initial_orchestration_span_id",
         "tool_bundle",
+        "workflow",
     }
     if set(run) != required:
         raise EvidenceError("run metadata has unknown or missing fields")
+    if not isinstance(run["workflow"], dict) or run["workflow"].get("mode") not in {
+        "primary",
+        "delegated",
+    }:
+        raise EvidenceError("invalid frozen workflow")
+    if run["required_initial_role_operations"] != required_initial_roles(
+        run["review_lane"], run["follow_up_route"], run["workflow"]["mode"]
+    ):
+        raise EvidenceError("required role topology differs from workflow")
     if run.get("review_lane") not in REVIEW_LANES:
         raise EvidenceError("run metadata has an unknown review lane")
     if run.get("evidence_lane") not in EVIDENCE_LANES:
@@ -627,7 +642,7 @@ def install_tool_bundle(run_dir: Path) -> dict[str, Any]:
         "kickoff-tree-id": REPO_ROOT / "bin" / "kickoff-tree-id",
         "execution-telemetry": REPO_ROOT / "bin" / "execution-telemetry",
         "kickoff-config": REPO_ROOT / "bin" / "kickoff-config",
-        "kickoff.yaml": REPO_ROOT / "kickoff.yaml",
+        "kickoff.yaml": Path(os.environ.get("KICKOFF_CONFIG_FILE", REPO_ROOT / "kickoff.yaml")),
         "lib/agentic_starter/__init__.py": REPO_ROOT / "lib" / "agentic_starter" / "__init__.py",
         "lib/agentic_starter/finding_schema.py": (
             REPO_ROOT / "lib" / "agentic_starter" / "finding_schema.py"
@@ -647,6 +662,8 @@ def install_tool_bundle(run_dir: Path) -> dict[str, Any]:
         "lib/agentic_starter/log_blocks.py": (
             REPO_ROOT / "lib" / "agentic_starter" / "log_blocks.py"
         ),
+        "lib/agentic_starter/workflow.py": REPO_ROOT / "lib/agentic_starter/workflow.py",
+        "lib/agentic_starter/advisory.py": REPO_ROOT / "lib/agentic_starter/advisory.py",
         "kickoff-command-zero": REPO_ROOT / "bin" / "kickoff-command-zero",
     }
     manifest: list[dict[str, str]] = []
@@ -758,6 +775,8 @@ def command_activate_gate_manifest(arguments: argparse.Namespace) -> None:
 
 def validate_role_preflight_receipt(run_dir: Path, root: Path) -> None:
     receipt = run_dir / "role-preflight.json"
+    if load_json(run_dir / "run.json")["workflow"] != load_json(receipt)["workflow"]:
+        raise EvidenceError("run workflow differs from its frozen preflight receipt")
     if not receipt.is_file():
         raise EvidenceError("run has no role-venue preflight receipt")
     process = subprocess.run(
@@ -786,9 +805,16 @@ def command_validate_preflight(arguments: argparse.Namespace) -> None:
     print("PREFLIGHT VALID")
 
 
-def required_initial_roles(review_lane: str, route: str) -> list[str]:
+def required_initial_roles(review_lane: str, route: str, mode: str = "delegated") -> list[str]:
     if review_lane not in REVIEW_LANES or route not in FOLLOW_UP_ROUTES:
         raise EvidenceError("invalid review lane or follow-up route")
+    if mode == "primary":
+        if route in {"direct-fix", "coder-only"}:
+            return []
+        return sorted(
+            ["role.code-review"]
+            + (["role.plan-review"] if route == "initial" and review_lane == "full" else [])
+        )
     if route == "direct-fix":
         return []
     if route == "coder-only":
@@ -892,6 +918,7 @@ def command_init(arguments: argparse.Namespace) -> None:
     if not authorities:
         raise EvidenceError("at least one --authority is required")
     created_at = now()
+    resolution = load_json(arguments.preflight_receipt)["workflow"]
     validate_kickoff_context(
         root,
         arguments.phase,
@@ -930,8 +957,9 @@ def command_init(arguments: argparse.Namespace) -> None:
             "review_lane": arguments.review_lane,
             "evidence_lane": arguments.evidence_lane,
             "follow_up_route": arguments.follow_up_route,
+            "workflow": resolution,
             "required_initial_role_operations": required_initial_roles(
-                arguments.review_lane, arguments.follow_up_route
+                arguments.review_lane, arguments.follow_up_route, resolution["mode"]
             ),
             "required_orchestration_operations": required_orchestration_operations(
                 arguments.follow_up_route, arguments.review_lane
@@ -960,6 +988,7 @@ def command_init(arguments: argparse.Namespace) -> None:
             "findings": [],
         },
     )
+    atomic_json(run_dir / "advisory-reports.json", [])
     (run_dir / "gates.jsonl").touch()
     (run_dir / "gate-reviews.jsonl").touch()
     (run_dir / "role-attempts.jsonl").touch()
@@ -1283,6 +1312,12 @@ def validate_role_record(record: dict[str, Any], run: dict[str, Any]) -> None:
     if set(record) != required or record.get("schema_version") != SCHEMA_VERSION:
         raise EvidenceError("invalid role-attempt record schema")
     operation = record.get("operation")
+    if run["workflow"]["mode"] == "primary":
+        if operation not in REVIEW_OPERATIONS or record.get("harness") == "native":
+            raise EvidenceError("primary mode only dispatches independent review instances")
+        selected = run["workflow"]["roles"][record["role"]]
+        if record.get("model") != selected["model"] or record.get("effort") != selected["effort"]:
+            raise EvidenceError("role differs from frozen primary workflow")
     if operation not in ROLE_OPERATIONS or record.get("role") != ROLE_OPERATIONS[operation]:
         raise EvidenceError("role-attempt operation and role do not agree")
     if record.get("harness") not in ROLE_HARNESSES:
@@ -1344,6 +1379,8 @@ def command_register_role_attempt(arguments: argparse.Namespace) -> None:
         raise EvidenceError("duplicate role operation/attempt registration")
     append_jsonl(arguments.run_dir / "role-attempts.jsonl", record)
     atomic_json(arguments.output, record)
+    if arguments.cause:
+        atomic_json(Path(str(arguments.output) + ".cause.json"), {"cause": arguments.cause})
     if arguments.harness == "native":
         # An external dispatch gets its spans built by `kickoff-config watch`.
         # A native one leaves the orchestrator to reproduce that recipe by
@@ -1746,7 +1783,9 @@ def validate_reviewed_bookkeeping(
     run_dir: Path, root: Path, affected: list[str] | None = None
 ) -> None:
     """Bookkeeping excluded from identity is not permission to change reviewed bytes."""
-    snapshot_path = run_dir / "change-tree-candidate.json"
+    snapshot_path = run_dir / "primary-tree-candidate.json"
+    if not snapshot_path.exists():
+        snapshot_path = run_dir / "change-tree-candidate.json"
     if not snapshot_path.exists():
         snapshot_path = run_dir / "reviewed-tree-candidate.json"
     snapshot = load_json(snapshot_path)
@@ -1936,6 +1975,12 @@ def command_capture_plan(arguments: argparse.Namespace) -> None:
         "rebase_required": bool(drift) or bool(arguments.rebase_reason),
         "rebase_reasons": sorted(set(arguments.rebase_reason)),
     }
+    stored = arguments.run_dir / "plans" / (manifest["plan_sha256"] + ".md")
+    stored.parent.mkdir(exist_ok=True)
+    if not stored.exists():
+        stored.write_text(current_text)
+    if hashlib.sha256(stored.read_bytes()).hexdigest() != manifest["plan_sha256"]:
+        raise EvidenceError("captured plan content changed")
     atomic_json(arguments.run_dir / "plan-change.json", manifest)
     atomic_json(arguments.run_dir / "candidate.json", candidate)
     atomic_json(arguments.run_dir / "product-candidate.json", product)
@@ -2094,9 +2139,259 @@ def validate_finding(value: Any, index: int) -> dict[str, Any]:
     }
 
 
+def command_start_advice(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    record = load_json(arguments.registration)
+    validate_role_record(record, run)
+    if record not in load_jsonl(arguments.run_dir / "role-attempts.jsonl"):
+        raise EvidenceError("advice registration is not recorded")
+    if run["workflow"]["mode"] != "primary":
+        return
+    plan_id = None
+    if record["operation"] == "role.plan-review":
+        plan_id = load_json(arguments.run_dir / "plan-change.json")["plan_sha256"]
+        stored = arguments.run_dir / "plans" / (plan_id + ".md")
+        if hashlib.sha256(stored.read_bytes()).hexdigest() != plan_id:
+            raise EvidenceError("plan advice requires the captured plan bytes")
+    cause_file = Path(str(arguments.registration) + ".cause.json")
+    cause = load_json(cause_file)["cause"] if cause_file.exists() else ""
+    try:
+        claim = advisory.start(
+            Path(run["repository_root"]),
+            run["phase"],
+            arguments.run_dir,
+            record["operation"],
+            record["attempt"],
+            cause,
+        )
+    except advisory.AdvisoryError as exc:
+        raise EvidenceError(str(exc)) from exc
+    atomic_json(
+        arguments.run_dir / f"advice-launch-{record['role']}-{record['attempt']}.json",
+        claim,
+    )
+    if plan_id is not None:
+        atomic_json(
+            arguments.run_dir / f"advice-plan-{record['attempt']}.json", {"plan_sha256": plan_id}
+        )
+    print("ADVICE LAUNCH RECORDED")
+
+
+def command_ingest_advice(arguments: argparse.Namespace) -> None:
+    validate_run_dir(arguments.run_dir)
+    document = (
+        load_json(arguments.input) if arguments.input else read_role_artifact(arguments.artifact)
+    )
+    try:
+        advisory.check_report(document)
+    except advisory.AdvisoryError as exc:
+        raise EvidenceError(str(exc)) from exc
+    dispatches = [
+        d
+        for d in load_role_dispatches(arguments.run_dir)
+        if d["intelligence_span_id"] == arguments.review_span_id and d["accepted"]
+    ]
+    if len(dispatches) != 1 or dispatches[0]["operation"] not in REVIEW_OPERATIONS:
+        raise EvidenceError("advice must join one accepted independent review dispatch")
+    dispatch = dispatches[0]
+    if (
+        dispatch["dispatch_candidate_id"] != arguments.candidate
+        or dispatch["return_candidate_id"] != arguments.candidate
+    ):
+        raise EvidenceError("advice candidate differs from the actual read-only dispatch")
+    reports = load_json(arguments.run_dir / "advisory-reports.json")
+    claims = [
+        r
+        for r in advisory.launches(
+            Path(load_json(arguments.run_dir / "run.json")["repository_root"]),
+            load_json(arguments.run_dir / "run.json")["phase"],
+        )
+        if r["run"] == str(arguments.run_dir.resolve())
+        and r["operation"] == dispatch["operation"]
+        and r["attempt"] == dispatch["attempt"]
+    ]
+    if len(claims) != 1:
+        raise EvidenceError("advice requires its recorded phase launch")
+    identifier = f"{REVIEW_OPERATIONS[dispatch['operation']]}-{claims[0]['pass']}"
+    row = {
+        "report_id": identifier,
+        "kind": REVIEW_OPERATIONS[dispatch["operation"]],
+        "candidate_id": arguments.candidate,
+        "span_id": arguments.review_span_id,
+        "report": document,
+    }
+    if dispatch["operation"] == "role.plan-review":
+        row["plan_sha256"] = load_json(
+            arguments.run_dir / f"advice-plan-{dispatch['attempt']}.json"
+        )["plan_sha256"]
+    if any(r["report_id"] == identifier for r in reports):
+        raise EvidenceError("advisory report is immutable and already recorded")
+    reports.append(row)
+    atomic_json(arguments.run_dir / "advisory-reports.json", reports)
+    print("ADVICE RECORDED; primary disposition owns acceptance")
+
+
+def read_advice_source(source: Path) -> dict[str, Any]:
+    result = subprocess.run(
+        [str(source / "tools/kickoff-evidence"), "advice-source", "--run-dir", str(source)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode:
+        raise EvidenceError(result.stderr.strip() or "prior advisory source validation failed")
+    return json.loads(result.stdout)
+
+
+def command_advice_source(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    if run["workflow"]["mode"] != "primary":
+        raise EvidenceError("advice source must have primary authority")
+    validate_role_preflight_receipt(arguments.run_dir, Path(run["repository_root"]))
+    validate_role_spans(arguments.run_dir, run, require_initial=False)
+    print(
+        json.dumps(
+            {
+                "run": run,
+                "reports": load_json(arguments.run_dir / "advisory-reports.json"),
+                "dispatches": load_role_dispatches(arguments.run_dir),
+            }
+        )
+    )
+
+
+def report_dispatches(
+    run_dir: Path, run: dict[str, Any], report: dict[str, Any]
+) -> list[dict[str, Any]]:
+    source = Path(report.get("source_run", str(run_dir))).resolve()
+    if source == run_dir.resolve():
+        return load_role_dispatches(source)
+    verified = read_advice_source(source)
+    prior = verified["run"]
+    if (prior["repository_root"], prior["phase"], prior["workflow"]["mode"]) != (
+        run["repository_root"],
+        run["phase"],
+        "primary",
+    ):
+        raise EvidenceError("carried advice belongs to another work item or authority mode")
+    original = {key: value for key, value in report.items() if key != "source_run"}
+    if original not in verified["reports"]:
+        raise EvidenceError("carried advice differs from its original report")
+    return verified["dispatches"]
+
+
+def command_carry_advice(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    prior = read_advice_source(arguments.source_run)["run"]
+    if arguments.run_dir.resolve() == arguments.source_run.resolve():
+        raise EvidenceError("carry-advice requires a prior run")
+    if (prior["repository_root"], prior["phase"], prior["workflow"]["mode"]) != (
+        run["repository_root"],
+        run["phase"],
+        run["workflow"]["mode"],
+    ) or run["workflow"]["mode"] != "primary":
+        raise EvidenceError("carry-advice requires the same primary work item")
+    reports = load_json(arguments.run_dir / "advisory-reports.json")
+    for report in load_json(arguments.source_run / "advisory-reports.json"):
+        source = Path(report.get("source_run", str(arguments.source_run))).resolve()
+        carried = {**report, "source_run": str(source)}
+        report_dispatches(arguments.run_dir, run, carried)
+        if any(r["report_id"] == report["report_id"] and r != carried for r in reports):
+            raise EvidenceError("conflicting carried advisory report identity")
+        if carried not in reports:
+            reports.append(carried)
+    atomic_json(arguments.run_dir / "advisory-reports.json", reports)
+    print("ADVICE CARRIED; original identities and pass budget retained; reassess final delta")
+
+
+def validate_primary_acceptance(run_dir: Path, run: dict[str, Any]) -> None:
+    reports = load_json(run_dir / "advisory-reports.json")
+    decision_path = run_dir / "primary-decision.json"
+    if not decision_path.exists():
+        raise EvidenceError("primary acceptance decision is missing")
+    required = {REVIEW_OPERATIONS[op] for op in run["required_initial_role_operations"]}
+    try:
+        advisory.validate_decision(
+            load_json(decision_path),
+            reports,
+            product_manifest(Path(run["repository_root"]))["candidate_id"],
+            required,
+        )
+    except advisory.AdvisoryError as exc:
+        raise EvidenceError(str(exc)) from exc
+    starts = advisory.launches(Path(run["repository_root"]), run["phase"])
+    dispatches = load_role_dispatches(run_dir)
+    for dispatch in dispatches:
+        claimed = [
+            r
+            for r in starts
+            if r["run"] == str(run_dir.resolve())
+            and r["operation"] == dispatch["operation"]
+            and r["attempt"] == dispatch["attempt"]
+        ]
+        if dispatch["accepted"] and len(claimed) != 1:
+            raise EvidenceError("advisory dispatch lacks one phase-bound launch claim")
+    for operation in REVIEW_OPERATIONS:
+        matching = [r for r in starts if r["operation"] == operation]
+        if len(matching) > 2 or any(r["pass"] == 2 and not r["cause"].strip() for r in matching):
+            raise EvidenceError("advisory pass budget or second-pass cause violated")
+    for report in reports:
+        if report["kind"] == "plan":
+            plan_id = validate_candidate_id(report.get("plan_sha256"), "advised plan identity")
+            source = Path(report.get("source_run", str(run_dir)))
+            stored = source / "plans" / (plan_id + ".md")
+            if hashlib.sha256(stored.read_bytes()).hexdigest() != plan_id:
+                raise EvidenceError("advised plan bytes differ from their recorded identity")
+        if not any(
+            d["accepted"]
+            and d["intelligence_span_id"] == report["span_id"]
+            and d["dispatch_candidate_id"] == report["candidate_id"]
+            and d["return_candidate_id"] == report["candidate_id"]
+            for d in report_dispatches(run_dir, run, report)
+        ):
+            raise EvidenceError("advisory report does not match its independent dispatch")
+
+
+def command_accept_primary(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    if run["workflow"]["mode"] != "primary":
+        raise EvidenceError("delegated work requires its ordinary review approvals")
+    value = load_json(arguments.input)
+    # The tool supplies identity and report binding, never the model.
+    if not isinstance(value, dict) or set(value) != {
+        "delta_assessment",
+        "requirements_checked",
+        "dispositions",
+    }:
+        raise EvidenceError(
+            "primary input needs delta_assessment, requirements_checked, dispositions"
+        )
+    reports = load_json(arguments.run_dir / "advisory-reports.json")
+    value.update(
+        candidate_id=product_manifest(Path(run["repository_root"]))["candidate_id"],
+        reports_sha256=advisory.digest(reports),
+    )
+    required = {REVIEW_OPERATIONS[op] for op in run["required_initial_role_operations"]}
+    try:
+        advisory.validate_decision(value, reports, value["candidate_id"], required)
+    except advisory.AdvisoryError as exc:
+        raise EvidenceError(str(exc)) from exc
+    atomic_json(
+        arguments.run_dir / "primary-tree-candidate.json",
+        tree_manifest(Path(run["repository_root"])),
+    )
+    atomic_json(arguments.run_dir / "primary-decision.json", value)
+    validate_primary_acceptance(arguments.run_dir, run)
+    print("PRIMARY DECISION RECORDED; objective gates remain required")
+
+
 def command_ingest_findings(arguments: argparse.Namespace) -> None:
     # Flag consistency is settled before any work, so a malformed invocation
     # fails immediately rather than after the whole artifact is validated.
+    mode_run = validate_run_dir(arguments.run_dir)
+    if mode_run["workflow"]["mode"] == "primary":
+        command_ingest_advice(arguments)
+        return
     if arguments.review_span_id is not None and arguments.no_review_span is not None:
         raise EvidenceError("--review-span-id and --no-review-span are mutually exclusive")
     if arguments.no_review_span is not None and not arguments.no_review_span.strip():
@@ -2723,7 +3018,18 @@ def validate_role_spans(
         if sorted(attempts) != list(range(1, max(attempts) + 1)):
             raise EvidenceError(f"role attempts are not contiguous for {operation}")
     for operation in run["required_initial_role_operations"]:
-        if require_initial and (operation, 1) not in keys and run.get("evidence_lane") != "light":
+        if (
+            require_initial
+            and (operation, 1) not in keys
+            and run.get("evidence_lane") != "light"
+            and not (
+                run["workflow"]["mode"] == "primary"
+                and any(
+                    r["kind"] == REVIEW_OPERATIONS.get(operation) and "source_run" in r
+                    for r in load_json(run_dir / "advisory-reports.json")
+                )
+            )
+        ):
             # In the light evidence lane role registration is validated when
             # present, never required; the run metadata records the demotion.
             raise EvidenceError(f"missing required initial role attempt: {operation}")
@@ -3743,7 +4049,7 @@ def validate_preclose_telemetry(run: dict[str, Any], run_dir: Path, root: Path) 
     spans = validate_preacceptance_topology(run, run_dir, root)
     # Light-lane review metrics ride the omission ledger instead of the span
     # (`review-metrics-omitted.jsonl`); the join requirement is full-lane only.
-    if run.get("evidence_lane") != "light":
+    if run.get("evidence_lane") != "light" and run["workflow"]["mode"] == "delegated":
         validate_review_metrics({"spans": spans}, run_dir)
 
 
@@ -3931,7 +4237,7 @@ def command_timing_summary(arguments: argparse.Namespace) -> None:
     degraded = validate_role_spans(arguments.run_dir, run)
     validate_orchestration_spans(bundle, run)
     derived_metrics: list[dict[str, Any]] = []
-    if run.get("evidence_lane") != "light":
+    if run.get("evidence_lane") != "light" and run["workflow"]["mode"] == "delegated":
         derived_metrics = validate_review_metrics(bundle, arguments.run_dir)
     gates = load_jsonl(arguments.run_dir / "gates.jsonl")
     for line_number, gate in enumerate(gates, 1):
@@ -3949,9 +4255,23 @@ def command_timing_summary(arguments: argparse.Namespace) -> None:
     # Same reason as telemetry_incomplete: a consumer reading the JSON must be
     # able to see that a pass's integers were recomputed rather than measured.
     projection["derived_review_metrics"] = derived_metrics
+    projection["authority_mode"] = run["workflow"]["mode"]
+    if run["workflow"]["mode"] == "primary":
+        reports = load_json(arguments.run_dir / "advisory-reports.json")
+        decision_file = arguments.run_dir / "primary-decision.json"
+        decision = load_json(decision_file) if decision_file.exists() else None
+        projection["advisory_reports"] = len(reports)
+        projection["primary_dispositions"] = decision["dispositions"] if decision else None
     if arguments.format == "json":
         print(json.dumps(projection, sort_keys=True, separators=(",", ":")))
         return
+    print_timing_markdown(projection)
+
+
+def print_timing_markdown(projection: dict[str, Any]) -> None:
+    """Render the finalized projection for direct inclusion in public logs."""
+    degraded = projection["telemetry_incomplete"]
+    derived_metrics = projection["derived_review_metrics"]
     labels = (
         ("Makespan", "makespan_ns"),
         ("Intelligence", "intelligence_ns"),
@@ -3964,7 +4284,7 @@ def command_timing_summary(arguments: argparse.Namespace) -> None:
     )
     print("### Execution timing")
     print()
-    print(f"- Trace: `{projection['trace_id']}`")
+    print(f"Execution trace: {projection['trace_id']}")
     print(f"- Outcome: `{projection['outcome']}`")
     for label, key in labels:
         value = projection[key]
@@ -3990,7 +4310,7 @@ def command_timing_summary(arguments: argparse.Namespace) -> None:
             fields = ", ".join(f"`{field}`" for field in item["missing_fields"])
             print(
                 f"- `{item['operation']}` attempt {item['attempt']} — wait span "
-                f"`{item['span_id']}` is missing {fields}. {item['cause']}"
+                f"{item['span_id']} is missing {fields}. {item['cause']}"
             )
         print()
         print(
@@ -4016,7 +4336,7 @@ def command_timing_summary(arguments: argparse.Namespace) -> None:
             )
             print(
                 f"- `{item['operation']}` attempt {item['attempt']} — review span "
-                f"`{item['span_id']}`, refusal class `{item['refusal_class']}`, "
+                f"{item['span_id']}, refusal class `{item['refusal_class']}`, "
                 f"{standing}: findings_reported {item['findings_reported']}, "
                 f"actionable_findings {item['actionable_findings']}. "
                 f"{item['cause']}"
@@ -4264,7 +4584,7 @@ def command_validate(arguments: argparse.Namespace) -> None:
     # Derived measurements are integrity claims and are always recomputed.
     # Missing measurements block acceptance, while integrity validation may
     # still describe an honestly incomplete run without inventing success.
-    if run.get("evidence_lane") != "light":
+    if run.get("evidence_lane") != "light" and run["workflow"]["mode"] == "delegated":
         unmeasured = unmeasured_review_passes(arguments.run_dir, run)
         if acceptance and unmeasured:
             named = ", ".join(
@@ -4283,6 +4603,8 @@ def command_validate(arguments: argparse.Namespace) -> None:
     # Protect reviewed bookkeeping at every validation level, while the run
     # can still capture the changed surface and obtain a fresh review.
     validate_reviewed_bookkeeping(arguments.run_dir, Path(run["repository_root"]))
+    if run["workflow"]["mode"] == "primary" and acceptance:
+        validate_primary_acceptance(arguments.run_dir, run)
     change_path = arguments.run_dir / "change.json"
     if change_path.exists():
         change = load_json(change_path)
@@ -4598,6 +4920,8 @@ def command_status(arguments: argparse.Namespace) -> None:
         json.dumps(
             {
                 "phase": run["phase"],
+                "workflow": run["workflow"],
+                "advisory_reports": advisory.read(arguments.run_dir / "advisory-reports.json", []),
                 "closure": closure,
                 "observed_role_operations": present,
                 "missing_acceptance_role_operations": missing,
@@ -4832,6 +5156,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="action", required=True)
 
+    source = subparsers.add_parser("advice-source")
+    add_run_dir(source)
+    source.set_defaults(handler=command_advice_source)
+    carry = subparsers.add_parser("carry-advice")
+    add_run_dir(carry)
+    carry.add_argument("--source-run", type=Path, required=True)
+    carry.set_defaults(handler=command_carry_advice)
+    start_advice = subparsers.add_parser("start-advice")
+    add_run_dir(start_advice)
+    start_advice.add_argument("--registration", type=Path, required=True)
+    start_advice.set_defaults(handler=command_start_advice)
+    accept_primary = subparsers.add_parser("accept-primary")
+    add_run_dir(accept_primary)
+    accept_primary.add_argument("--input", type=Path, required=True)
+    accept_primary.set_defaults(handler=command_accept_primary)
+
     init = subparsers.add_parser("init")
     init.add_argument("--run-dir", type=Path, required=True)
     init.add_argument("--root", type=Path, default=Path.cwd())
@@ -4856,6 +5196,7 @@ def build_parser() -> argparse.ArgumentParser:
     register.add_argument("--effort")
     register.add_argument("--reason", choices=sorted(ROLE_REASONS), required=True)
     register.add_argument("--output", type=Path, required=True)
+    register.add_argument("--cause", default="")
     register.set_defaults(handler=command_register_role_attempt)
 
     role_validate = subparsers.add_parser("validate-role-attempt")
@@ -5025,7 +5366,11 @@ def build_parser() -> argparse.ArgumentParser:
             "validator still checks what a strict schema subset cannot express."
         ),
     )
-    schema.add_argument("--kind", choices=sorted(REVIEW_KINDS), required=True)
+    schema.add_argument(
+        "--kind",
+        choices=sorted([*REVIEW_KINDS, "advisory-plan", "advisory-code"]),
+        required=True,
+    )
     schema.add_argument("--output", type=Path)
     schema.set_defaults(handler=command_schema)
 

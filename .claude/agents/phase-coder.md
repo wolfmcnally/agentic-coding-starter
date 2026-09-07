@@ -1,17 +1,16 @@
 ---
 name: phase-coder
-description: >-
-  Implement code for a phase from an approved implementation plan. Writes
-  idiomatic code in the project's primary language, runs focused iteration
-  and revision-close checks, and reports created or modified files.
-  Language- and surface-agnostic;
-  follows the conventions in CLAUDE.md and the policies in policies/.
+description: Implement delegated-mode product work and run focused checks. Primary-mode implementation stays on the invoking instance.
 tools: Read, Write, Edit, Grep, Glob, Bash, WebFetch
 ---
 
 # Phase Coder
 
 Implement code for a phase based on an approved implementation plan. Produce clean, idiomatic, buildable code that follows the plan closely.
+
+## Invocation scope
+
+This separate role runs only for delegated product work. In primary mode the invoking instance performs planning and coding inline; do not create this agent to impersonate the primary. Methodology work and teach/learn are always primary one-shot with commit/push authority and no delegated roles, subject to required checks.
 
 ## Inputs
 

@@ -7,6 +7,15 @@ scope: The canonical statement of the methodology this template implements. Auth
 
 # The Agentic Coding Methodology
 
+## Primary ownership and independent advice
+
+As of 2026-09-07, the primary use case is a configured SOTA instance that owns orchestration, planning, implementation and acceptance. A comparable or stronger model in another permitted provider's harness normally supplies independent plan and code advice; a single-provider environment uses fresh instances of the primary model. One comprehensive pass per stage is normal, a second needs recorded cause, and two is the maximum. Advisers report evidence and severity without veto; the primary decides corrections and records consequential dispositions. Objective requirements and both full gates remain binding.
+
+A constrained primary uses separate planner/coder roles and the established approval-gated reviewer/critic loops. Detailed references to mandatory reviewer approval or four-role delegation below describe that constrained product branch. Eligibility is maintained configuration, not a benchmark claim. Backend and handling restrictions prevail over preferred routing. Optional kickoff usage checks refuse a primary at >=95% of any applicable limit and substitute the primary for a secondary above 95% weekly; absent tooling does not prevent execution.
+
+All methodology work itself, including teach/learn knowledge transfer, is always one-shot by the invoking primary across harnesses and capability tiers, without delegated production or independent review. The primary owns adaptation, self-checks, required gates, commit and fast-forward push within authorized scope. This standing delivery grant does not expand scope or waive custody and human decisions. No product phase or repeated approval ceremony is needed for authorized methodology work.
+
+
 A methodology for writing software with AI coding agents in a way that scales beyond ad-hoc prompting. Each step involves conversing with or using LLMs. Apply it when scoping or structuring a coding project — not when answering one-off coding questions.
 
 ## Rule One surrounds the sequence
@@ -23,7 +32,7 @@ The operative skill is [`.claude/skills/rule-one/SKILL.md`](../.claude/skills/ru
 
 3. **Brief → architecture document.** Decide *how*. This probably involves the LLM researching Best Current Practices (BCPs) for each technical aspect: which libraries, which protocols, which data formats, which platform conventions. The architecture document lives under `briefs/` too (or `ARCHITECTURE.md` at the root for very large efforts).
 
-4. **Repo-level policies.** Put policies in place that enforce standards and practices. Examples: each completed phase must be incremental and testable; the repo tracks which phases are complete, in progress, up next, or yet to start; **objective acceptance is independently reviewed and gate-proved, while the human owns subjective and owner-only judgment** — gate-proved work is then committed and fast-forward-pushed by default, which is delivery rather than acceptance. Policies live under `policies/`. Every phase honors every policy.
+4. **Repo-level policies.** Put policies in place that enforce standards and practices. Examples: each completed phase must be incremental and testable; the repo tracks which phases are complete, in progress, up next, or yet to start; **objective acceptance satisfies its review contract and is gate-proved, while the human owns subjective and owner-only judgment** — gate-proved work is then committed and fast-forward-pushed by default, which is delivery rather than acceptance. Policies live under `policies/`. Every phase honors every policy.
 
 5. **Brief + architecture → phased plan.** Break the work down by phase. Each phase is independently testable, mostly independently deliverable, and has a clearly defined goal and acceptance criteria. Phases live under `plan/`; the spine is `plan/INDEX.md`. Major phases are written *after* the brief (step 2) and architecture (step 3) exist — without those, the phase plan is speculation. If you find yourself wanting to plan phases before there's a primary brief, go back to step 2.
 
@@ -85,10 +94,10 @@ The orchestrator (`kickoff`) is the fifth participant. It delegates initial impl
 - **Every completed phase is incremental and testable** (step 4).
 - **Prefer conceptual economy.** Among designs that satisfy the same requirements and invariants, choose the one that leaves fewer independent concepts, states, paths, representations, authorities, and exceptions for the next reader to understand; never substitute line, file, or abstraction counts for that judgment.
 - **Every initial phase implementation passes the code critic**, whichever review lane it declares; repeat review on follow-ups is risk- and size-based (steps 7–8).
-- **The human owns subjective and owner-only acceptance; objective acceptance is independently reviewed and gate-proved** (steps 4, 8, 10).
+- **The human owns subjective and owner-only acceptance; objective acceptance satisfies its review contract and is gate-proved** (steps 4, 8, 10).
 - **The orchestrator writes code only for eligible small, low-risk follow-up corrections** (step 8).
 - **Closing a phase requires recorded evidence and a lessons-harvest answer**, not just a green test run (step 9).
-- **Research authority follows the role across harnesses.** Planner and reviewer may originate search and retrieve; coder and critic retrieve only plan- or brief-identified sources and same-host structural neighbors. The ambient resource set is allow-by-default, but no named MCP server or plugin is presumed available.
+- **Research authority follows ownership across harnesses.** The primary retains planning/research authority during inline implementation under one shared budget. In delegated mode, Planner and reviewer may originate search and retrieve; coder and critic retrieve only plan- or brief-identified sources and same-host structural neighbors. The ambient resource set is allow-by-default, but no named MCP server or plugin is presumed available.
 - **Closing has two gates.** The complete candidate-bound sequence runs before evidence finalization and tracked bookkeeping; a second bare full gate runs on the resulting handoff tree, after which no tracked write is permitted.
 - **Unstarted phases and authorized children are mutable**; preserve completed history while revising future work (step 11).
 

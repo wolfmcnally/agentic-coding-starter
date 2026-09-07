@@ -8,7 +8,7 @@ scope: Canonical primer on this repository for a general audience, from working 
 # The presence of this block is what marks the brief as a treatise.
 # `directives` is append-only: a reversal is a new dated entry, never an edit.
 treatise:
-  updated: 2026-09-05
+  updated: 2026-09-07
 
   purpose: >-
     Explain what this repository is for and how its parts work, to a reader who
@@ -48,7 +48,7 @@ treatise:
       - The repository's purpose as an opinionated, evolving practice collection.
       - The claim that the project, rather than the conversation, holds the state.
       - The three failures the method answers, and one answer per failure.
-      - The four roles, the two-run close, and the acceptance boundary.
+      - Primary ownership, independent advice, constrained-model roles, two test runs, and human acceptance.
       - The lessons ledger and the hub-and-spoke transfer between projects.
       - The honest costs, including where enforcement is written rather than mechanized.
       - Where to find the repository and the two ways to start using it.
@@ -167,6 +167,17 @@ treatise:
         changes to the method itself are implemented directly and independently
         reviewed rather than run through the four-role loop.
 
+    - date: 2026-09-07
+      ruling: >-
+        The operator approved primary-owned planning and coding, advisory-only
+        review capped at two passes per stage, graceful provider and capability
+        fallbacks, and one-shot methodology work including teach and learn.
+      effect: >-
+        Replaced the default four-specialist explanation with primary ownership
+        and independent advice. Methodology changes use the primary directly,
+        including verification, commit, and fast-forward push. The existing
+        private rendering predates this revision and has not been republished.
+
   renderings:
     - format: artifact
       url: https://claude.ai/code/artifact/d1bf77fe-e6d5-46a3-8599-c5e00ff69de4
@@ -202,6 +213,8 @@ treatise:
 ---
 
 # Wolf's Agentic Coding Starter Kit
+
+
 
 *An introduction*
 
@@ -294,24 +307,25 @@ able to show its work. A brief never cites a policy. If it did, the thinking
 would depend on the rule that was derived from the thinking, and neither one
 could be read on its own afterward.
 
-## Nothing is accepted on its author's word
+## One primary, independent advice, and tests
 
-Work on a phase passes through four specialists, each with a narrow job. A planner turns the phase into a file-by-file plan and writes no code. A plan reviewer approves that plan or sends it back. A coder implements the approved plan. A code critic reads the result and approves it or sends it back. A fifth participant, the orchestrator, moves work between them, keeps the records, and runs the tests.
+A capable primary agent plans the phase and writes its code. Keeping those jobs in one conversation preserves the reasoning behind the implementation. A separate agent examines the plan, and later examines the code. When both providers are available and permitted, that second opinion normally comes from the other provider. With one subscription, it comes from a fresh instance of the same model.
 
-| Role | Writes code | Job |
-|---|---|---|
-| Planner | No | Turn one phase into a file-by-file plan |
-| Plan reviewer | No | Approve the plan or send it back |
-| Coder | Yes | Implement the approved plan |
-| Code critic | No | Approve the result or send it back |
+The second opinion is advice. It describes evidence, severity, likely consequences, and suggested corrections. The primary decides what to adopt, decline, or defer, and records its reasons for consequential decisions. One review of each stage is normal. The primary may request a second for a recorded reason; there is no third. Corrections must still pass the tests, and a suggestion cannot excuse an unmet requirement.
 
-No role reviews its own output. Round-trips between them are bounded: the loop continues while each pass shrinks the list of open problems, and stops for a human when the same complaint keeps returning, which means the fix is not reaching whatever generates the problem.
+| Work | Responsible agent |
+|---|---|
+| Planning and implementation | The same primary instance |
+| Independent plan and code advice | A separate instance, preferably from another provider |
+| Decisions, tests, and delivery | The primary |
 
-The four-role loop is for building the product. Changes to the method itself take a shorter route: once a person has approved what the change should accomplish, it is implemented directly and then read once by an independent reviewer, with the same tests and the same closing paperwork. The reason is practical. Running the full loop over the instructions that define the loop means planning a change to the planner's own brief, which produces rounds of paperwork about paperwork and very little work. Independent review is what actually catches the defect, so that is the part kept.
+Some environments restrict which models can be used. When the primary is a less capable model, the method retains four separate specialists: planner, plan reviewer, coder, and code critic. Their approval loops remain bounded. Project restrictions determine which providers and service arrangements are permitted.
+
+Changes to the method itself always belong to the primary alone. This includes transferring improvements between repositories. The primary assesses the authorized scope, implements it, checks its work, runs the required tests, and commits and pushes the result. It does not create another planning or review loop around the methodology.
 
 Every test result is stamped with a fingerprint of the exact version of the project it ran against. Change any relevant file and the old result stops counting, because it was evidence about a version that no longer exists.
 
-This is why a phase ends with the full test suite running **twice**. The first run proves the code the critic approved. Then the orchestrator writes the closing paperwork: flip the status, append the log entry, file the lessons, generate the report. Those writes change the project. So the suite runs again against the version actually being handed over, and after that, nothing may be written at all.
+This is why a phase ends with the full test suite running **twice**. The first run proves the implementation the primary is ready to accept. Then the orchestrator writes the closing paperwork: flip the status, append the log entry, file the lessons, generate the report. Those writes change the project. So the suite runs again against the version actually being handed over, and after that, nothing may be written at all.
 
 > A test run that certified a version nobody will ever have is not a test run.
 
@@ -323,7 +337,7 @@ If the checking is this thorough, what is the human for?
 
 Every acceptance criterion sorts into two kinds.
 
-**Closes on evidence.** It can be run as a command, it was reviewed by someone other than its author, the full suite proved it against that exact version, and the result was recorded rather than asserted.
+**Closes on evidence.** It can be run as a command, it satisfies the applicable review contract, the full suite proved it against that exact version, and the result was recorded rather than asserted.
 
 **Waits for a person.** Does this feel right to use. Is this the right feature at all. Does the audio sound clean, does the page look wrong. Anything needing a password or a credit card. And the phase's hands-on demo, until someone has actually tried it. The agent is forbidden from claiming any of these.
 
@@ -335,7 +349,7 @@ Two properties bound that authority.
 
 **What stops a phase is a failed check, never an open judgment.** A failed test, an unmet command-line criterion, or an unresolved decision blocks the phase. A pending human judgment does not.
 
-The human's attention goes to the seam between phases: the closing entry and the hands-on demo. And the code critic blocks on a criterion filed under the wrong kind, since a judgment call dressed as an automated check would let a phase claim proof it does not have.
+The human's attention goes to the seam between phases: the closing entry and the hands-on demo. The primary must correct a criterion filed under the wrong kind: a judgment call described as an automated check cannot support a claim of proof.
 
 The trade is real in one direction: a phase can be delivered and then judged wrong, and the fix is a follow-up rather than an unpublished draft.
 
@@ -384,7 +398,7 @@ a leading slash; in Codex, a dollar sign. The set is small on purpose.
 | `teach` | The inverse: proposes what this repository should send out to another one. |
 | `sweep` | Audits the accumulated rules, briefs, skills, and lessons for staleness and contradiction, and proposes what to retire. |
 | `demo` | Walks you through a phase's hands-on demo one visible action at a time, without repairing the product mid-demo. |
-| `roles` | Changes which model runs which of the four roles. |
+| `roles` | Configures model routing and the available review arrangements. |
 | `treatise` | Produces an explanation like this one from the repository's own authority. |
 | `methodology` | Restates the eleven steps, for a session that needs the reminder without reading the whole brief. |
 | `rule-one` | Turns a correction, failure, or surprise into a durable lesson instead of a repeated mistake. |

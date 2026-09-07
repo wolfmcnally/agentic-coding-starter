@@ -1,17 +1,26 @@
 ---
 title: Astra-era development workflow
-date: 2026-09-05
+date: 2026-09-07
 status: implemented
 scope: local
 ---
 
 # Astra-era development workflow
 
+## Primary ownership and independent advice
+
+As of 2026-09-07, the primary use case is a configured SOTA instance that owns orchestration, planning, implementation and acceptance. A comparable or stronger model in another permitted provider's harness normally supplies independent plan and code advice; a single-provider environment uses fresh instances of the primary model. One comprehensive pass per stage is normal, a second needs recorded cause, and two is the maximum. Advisers report evidence and severity without veto; the primary decides corrections and records consequential dispositions. Objective requirements and both full gates remain binding.
+
+A constrained primary uses separate planner/coder roles and the established approval-gated reviewer/critic loops. Detailed references to mandatory reviewer approval or four-role delegation below describe that constrained product branch. Eligibility is maintained configuration, not a benchmark claim. Backend and handling restrictions prevail over preferred routing. Optional kickoff usage checks refuse a primary at >=95% of any applicable limit and substitute the primary for a secondary above 95% weekly; absent tooling does not prevent execution.
+
+All methodology work itself, including teach/learn knowledge transfer, is always one-shot by the invoking primary across harnesses and capability tiers, without delegated production or independent review. The primary owns adaptation, self-checks, required gates, commit and fast-forward push within authorized scope. This standing delivery grant does not expand scope or waive custody and human decisions. No product phase or repeated approval ceremony is needed for authorized methodology work.
+
+
 The operator approved this design on 2026-09-04. It is a target contract, not a model benchmark. The work upgrades this template while preserving independent review, full close gates, candidate custody, and human acceptance.
 
 ## Model routing
 
-Keep role_models as the single execution authority. Add apply-preset quality|balanced|economy with optional --review same-harness|cross-vendor. A preset expands to ordinary pins, preserving other configuration and comments. Omitted review mode is same-harness. Quality with same-harness review is the shipped/reset/stamp default.
+Keep role_models as the delegated execution authority, alongside workflow authority and adviser routing. Add apply-preset quality|balanced|economy with optional --review same-harness|cross-vendor. A preset expands to ordinary pins, preserving other configuration and comments. Omitted review mode is same-harness. These presets retain delegated-mode utility. The shipped/reset/stamp default is now auto primary ownership with configured cross-provider advisers and same-primary fallback.
 
 Quality selects Astra for all Codex roles and Fable for all Claude roles; balanced changes only the coder to Sol/Opus respectively; economy selects Sol/Opus for every role. All begin at high effort. Cross-vendor changes reviewer and critic only: quality/balanced select Fable from Codex and Astra from Claude; economy selects Opus from Codex and Sol from Claude. Separate review contexts remain mandatory; vendor diversity is an explicit option whose incremental value remains a hypothesis to measure.
 
@@ -23,7 +32,7 @@ As of 2026-09-04; retrieved 2026-09-04: the [official factual excerpt](../docs/o
 
 A required Claude review invocation on that date emitted `type: system`, `subtype: init`, `model: claude-opus-5`, and `claude_code_version: 2.1.261`. This qualifies those primary field paths; it emitted no effort field. Auxiliary usage-model entries are not primary role identity. No Codex primary model field is qualified here. Missing observations remain unreported.
 
-The operator approved shipping quality/same-harness defaults with fail-closed availability. Missing Astra or Fable entitlement prevents kickoff until the operator selects an available preset or explicit pins through the manager, `roles`, or direct editing. Preset editing requires no model call. These remain dated observations about API identifiers and local CLI state, not a claim of account entitlement, live Astra qualification, or completed comparative evaluation.
+The earlier upgrade shipped quality/same-harness defaults with fail-closed availability; the primary-ownership update above replaces that default. Missing Astra or Fable entitlement prevents kickoff until the operator selects an available preset or explicit pins through the manager, `roles`, or direct editing. Preset editing requires no model call. These remain dated observations about API identifiers and local CLI state, not a claim of account entitlement, live Astra qualification, or completed comparative evaluation.
 
 ## Coherent outcomes
 
@@ -63,9 +72,9 @@ The surfaces this contract named for extended proof are qualified in the governe
 
 **A wrong control is qualified explicitly.** `tests/test_mirror_parity.py` deletes each kickoff stage resource in a copied tree and asserts that the harness-parity checker still reports success while the resource assertion fails. Directory parity is thereby proved *insufficient* for resource delivery — the automatic-injection question and the later-retrieval question are separate, and the proof says so in executable form rather than in prose.
 
-### Live qualification batch — prepared, unrun, separately priced
+### Live instruction-loading qualification — observed, with limits
 
-This batch requires operator authorization and a stated price before any run. Nothing below has been executed, and no result from it is claimed anywhere in this repository.
+As of 2026-09-07: the authorized eight invocations ran in four native paired sessions. All eight retrieved the current instructed resource and wrote the correct JSON file. Six terminal responses also matched the exact JSON-only contract; Opus wrapped both correct objects in Markdown fences. Requested Codex model identity remained unreported by provider events; Claude model identities were observed. These are narrow instruction-loading observations, not general model rankings. Actual subscription billing was unavailable; CLI dollar estimates are not billed cost.
 
 The concrete [evaluation pack](../tests/fixtures/astra_evaluation/README.md) fixes the disposable loading files, native prompts, initial/resumed oracles and local wrong controls. Matrix: four models (Astra, Fable, Sol, Opus) x initial and resumed invocation. Each cell runs a disposable instruction-loading fixture outside the reviewable tree and records the provider-reported model and effort, the harness version, the permission posture actually granted, and any observable failure. Policy refusals are covered by synthetic events rather than by provoking a live refusal, so the batch never depends on a provider declining to answer.
 
@@ -77,9 +86,11 @@ Fail-closed reading rules, which matter more than the runs themselves:
 
 Cost shape before authorization: the batch is dominated by per-invocation model charges across eight invocations (four paired initial/resumed sessions), not by repository work. Price it per model from current published rates on the day it runs, present the total to the operator, and record the actual spend against the estimate afterward.
 
-### Comparative evaluation — prepared, unrun, separately priced
+### Comparative evaluation — attempted, qualification incomplete
 
-Four fixed tasks, chosen to separate capability from ceremony: a **mechanical edit** (a rename and its forced call sites), a **cross-file contract change** (a required member added to a contract with independent fixture inventories), a **consequential design** task (an unresolved decision the planner must surface rather than settle), and a **difficult repair** (a defect whose obvious fix is wrong). The [evaluation pack](../tests/fixtures/astra_evaluation/README.md) supplies exact public starting files and prompts, private executable checks, manual rubrics, reference solutions and wrong-repair controls. Keep evaluator artifacts outside a verified implementer filesystem boundary; without that boundary held-out qualification is unavailable. The consequential-design task requires a separately observed decision request before the fixed ruling is revealed. Local control qualification does not constitute a model result.
+As of 2026-09-07: the original attempts and the first pair in a separately identified corrected batch did not complete delivery within their fixed budgets. The corrected pair produced identical runtime implementations, both approved at first code critique with passing full implementation gates. Generated-log formatting and an invalid documentation substring oracle were exposed and corrected for future use. The [evaluation pack status](../tests/fixtures/astra_evaluation/README.md) preserves failed, interrupted and unstarted outcomes. Full comparative qualification remains open; these samples do not support a preset ranking or phase-size claim.
+
+Four fixed tasks, intended to separate capability from ceremony: a **mechanical edit** (a rename and its forced call sites), a **cross-file contract change** (a required member added to a contract with independent fixture inventories), a **consequential design** task (an unresolved decision the workflow must surface rather than settle, recording which role asked), and a **difficult repair** (a defect whose obvious fix is wrong). The [evaluation pack](../tests/fixtures/astra_evaluation/README.md) supplies exact public starting files and prompts, private executable checks, manual rubrics, reference solutions and wrong-repair controls. Keep evaluator artifacts outside a verified implementer filesystem boundary; without that boundary held-out qualification is unavailable. The consequential-design task requires a separately observed decision request before the fixed ruling is revealed. Local control qualification does not constitute a model result.
 
 Initial batch: four tasks across quality, balanced and economy in one selected harness — twelve complete runs. Cross-vendor review and effort variation are a separate batch requiring separate budget approval; vendor diversity remains a hypothesis to measure, never a presumed benefit.
 
@@ -87,19 +98,19 @@ Comparison is **per accepted outcome**, aggregating whatever phases a run took, 
 
 | Metric | Source | Availability |
 |---|---|---|
-| Behavior and escaped defects | Fixed evaluation checks plus independent manual rubrics | Prepared; model outcomes unrun |
+| Behavior and escaped defects | Fixed evaluation checks plus independent manual rubrics | Partial observed outcomes; documentation-oracle failure qualified separately |
 | Review rounds and their cause | `bin/review-verdicts`, including `--coder-evidence` | Complete |
 | Elapsed time | `bin/execution-telemetry` spans; overlap-safe unions | Complete |
 | Operator intervention | `bin/execution-telemetry` park intervals, reported separately from run time | Complete |
 | Input and output tokens | `bin/kickoff-config watch`, `usage_scope: invocation` | **Claude venue only** |
 | Cache and reasoning tokens | Not captured by any current surface | **Unavailable — do not report** |
-| Actual cost | Derived from tokens where captured, else provider billing | Partial; unknown where tokens are unavailable |
+| Actual cost | Provider billing; token-derived figures are estimates only | Unavailable for the observed subscription runs |
 
 The two limitations in that table are load-bearing. Token counts come from the Claude result stream, so a Codex-venue run reports `usage_scope: unavailable` and its usage is unknown rather than zero. Cache and reasoning breakdowns are read by nothing today; a comparison that wants them must first extend the telemetry, and until then the honest output omits the column. Missing measurement is unknown, never zero.
 
 ### What remains explicitly pending
 
-Offline qualification closes on its own and is closed. Every paid item above is prepared and unrun. No performance claim, no cost-per-outcome figure, and no statement that one preset outperforms another exists in this repository, and none may be written until the corresponding batch has actually run under operator authorization. Local fixtures establish repository behavior; they establish neither account entitlement nor model performance.
+Offline qualification is complete. Instruction-loading observations and incomplete workflow attempts are recorded above. Complete native workflow qualification, a comparative delivery matrix and cost per accepted outcome remain unproved. Preserve the failed attempts and frozen scoring; any repaired experiment requires a separately identified batch and its own authorized call count and budget. Existing model pins remain unchanged. Local controls establish instrument behavior, not general model performance or optimal phase size.
 
 ### Exclusions
 

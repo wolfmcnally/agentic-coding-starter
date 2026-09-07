@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import contextlib
+import io
 import re
+import runpy
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -254,6 +258,34 @@ def _exercise_transfer_recipes(tmp_path: Path) -> None:
         header = "".join(line for line in catalog if not line.startswith("|"))
         header += "".join(table_rows[:2])
         (destination / "docs/README.md").write_text(header)
+        for module in ("workflow.py", "advisory.py"):
+            relative = "lib/agentic_starter/" + module
+            assert relative in inventory, f"{name}: missing workflow runtime {relative}"
+            target = destination / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(REPO_ROOT / relative, target)
+        copied = runpy.run_path(str(destination / "lib/agentic_starter/workflow.py"))
+        import copy
+
+        pins = {
+            "role_models": {
+                "default": {
+                    role: {"model": "default"}
+                    for role in ("planner", "reviewer", "coder", "critic")
+                }
+            },
+            "workflow": copy.deepcopy(copied["DEFAULT_WORKFLOW"]),
+        }
+        pins["workflow"]["allowed_harnesses"] = ["codex"]
+        resolved = copied["resolve"](pins, "codex")
+        assert resolved["mode"] == "primary"
+        assert resolved["roles"]["coder"]["execution"] == "inline"
+        assert resolved["roles"]["critic"]["model"] == "astra"
+        for skill_name in ("teach", "learn"):
+            transfer = (destination / ".claude/skills" / skill_name / "SKILL.md").read_text()
+            assert "No delegated planning/coding, independent review/critique" in transfer
+            assert "commit and fast-forward push" in transfer
+            assert "already-authorized" in transfer
         _assert_transferred_resources(destination)
         _assert_transfer_exclusions(destination)
         for resource in RESOURCES:
@@ -331,6 +363,8 @@ def test_every_gate_required_executable_propagates() -> None:
         "policies/orchestration-control-plane.md",
         "lib/agentic_starter/candidate_boundaries.py",
         "lib/agentic_starter/kickoff_runbook.py",
+        "lib/agentic_starter/workflow.py",
+        "lib/agentic_starter/advisory.py",
         "lib/agentic_starter/log_blocks.py",
         "tests/test_kickoff_control_plane.py",
         "tests/test_log_control_plane.py",
@@ -388,3 +422,83 @@ def test_material_review_counts_are_reproducible(tmp_path: Path) -> None:
             "produced it; a relayed number is remeasured or attributed plainly as unverified",
         ),
     )
+    _exercise_published_timing(tmp_path / "published-timing")
+
+
+def _exercise_published_timing(published: Path) -> None:
+    """The starter-only guard accepts real rendered metrics and rejects commit refs."""
+    renderer = runpy.run_path(str(REPO_ROOT / "bin/kickoff-evidence"))["print_timing_markdown"]
+    projection = {
+        "trace_id": "d" * 32,
+        "outcome": "success",
+        "makespan_ns": 1,
+        "intelligence_ns": 1,
+        "gate_ns": 0,
+        "reconciliation_ns": 0,
+        "wait_ns": 0,
+        "retry_ns": 0,
+        "failed_ns": 0,
+        "unattributed_ns": 0,
+        "overlap_note": "Category totals are interval unions and may overlap.",
+        "slowest_spans": [],
+        "telemetry_incomplete": [],
+        "derived_review_metrics": [],
+    }
+    normal = io.StringIO()
+    with contextlib.redirect_stdout(normal):
+        renderer(projection)
+    published.mkdir()
+    subprocess.run(["git", "init", "-b", "master"], cwd=published, check=True, capture_output=True)
+    report = published / "LOG.md"
+    # Optional records carry separate opaque span identifiers. Exercise their
+    # rendering without falsifying the real trace used by the CLI above.
+    overlay = dict(projection)
+    overlay["telemetry_incomplete"] = [
+        {
+            "operation": "role.plan",
+            "attempt": 1,
+            "span_id": "b" * 32,
+            "missing_fields": ["first_event_seconds"],
+            "cause": "Fixture metadata absent.",
+        }
+    ]
+    overlay["derived_review_metrics"] = [
+        {
+            "operation": "role.plan-review",
+            "attempt": 1,
+            "span_id": "c" * 32,
+            "corroborated": False,
+            "superseded": False,
+            "refusal_class": "fixture",
+            "findings_reported": 0,
+            "actionable_findings": 0,
+            "cause": "Fixture overlay.",
+        }
+    ]
+    rendered = io.StringIO()
+    with contextlib.redirect_stdout(rendered):
+        renderer(overlay)
+    combined = normal.getvalue() + "\n" + rendered.getvalue()
+    assert "b" * 32 in combined and "c" * 32 in combined
+    assert "Telemetry-incomplete role attempts" in combined
+    assert "Derived review convergence metrics" in combined
+    report.write_text(combined)
+    subprocess.run(["git", "add", "LOG.md"], cwd=published, check=True)
+    anonymized = subprocess.run(
+        [str(REPO_ROOT / "bin/check-anonymization.sh")],
+        cwd=published,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert anonymized.returncode == 0, anonymized.stdout + anonymized.stderr
+    report.write_text(combined + "\ncommit " + "a" * 40 + "\n")
+    rejected = subprocess.run(
+        [str(REPO_ROOT / "bin/check-anonymization.sh")],
+        cwd=published,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert rejected.returncode == 1
+    assert "Commit-SHA-like tokens" in rejected.stdout

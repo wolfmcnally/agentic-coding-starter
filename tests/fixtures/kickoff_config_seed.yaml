@@ -6,11 +6,27 @@
 
 version: 1
 
+# Authority and deployment selection; explicit pins describe the invoking model.
+workflow:
+  mode: delegated
+  primary_models: {claude: fable, codex: astra}
+  eligible_primary_models: [astra, fable]
+  review_preference: cross-vendor
+  adviser_models:
+    claude:
+      reviewer: [astra]
+      critic: [astra]
+    codex:
+      reviewer: [fable]
+      critic: [fable]
+  allowed_harnesses: [claude, codex]
+  targets: {}
+
 # Optional project- or harness-specific keys may be added here. The current
 # manager preserves unknown extension data without interpreting it.
 extensions: {}
 
-# Quality/same-harness defaults: strong roles with explicit high effort.
+# Delegated role defaults. Primary mode plans/codes inline and prefers cross-provider advice.
 # Which model and implied harness runs each canonical role. A harness section
 # overrides `default` when that harness orchestrates kickoff.
 role_models:

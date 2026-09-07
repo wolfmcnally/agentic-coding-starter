@@ -39,6 +39,9 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+from agentic_starter import advisory  # noqa: E402
+
 VERDICT_PATTERN = re.compile(r"## Verdict: (APPROVED|REVISE)")
 HEADER_AT_START = re.compile(r"^## Verdict: (APPROVED|REVISE)\s*\n")
 FENCED_JSON_PATTERN = re.compile(r"```json\s*\n(.*?)\n\s*```", re.S)
@@ -190,7 +193,11 @@ def coder_evidence_in(
             found.append({"surface": "report", "text": body})
     for item in found:
         item.update(
-            {"project": Path(cwd).name if cwd else "?", "date": date, "source": str(source)}
+            {
+                "project": Path(cwd).name if cwd else "?",
+                "date": date,
+                "source": str(source),
+            }
         )
     return found
 
@@ -286,7 +293,12 @@ def re_aimed_ids(verdicts: list[dict[str, Any]]) -> list[tuple[str, str, str, in
         for item in verdict["findings"]:
             if item.get("state") not in ACTIONABLE_STATES:
                 continue
-            key = (verdict["project"], verdict["source"], verdict["kind"], str(item.get("id", "")))
+            key = (
+                verdict["project"],
+                verdict["source"],
+                verdict["kind"],
+                str(item.get("id", "")),
+            )
             evidence_by_id[key].add(str(item.get("evidence", "")).strip())
     return sorted(
         (project, kind, identifier, len(texts))
@@ -335,6 +347,34 @@ def print_summary(verdicts: list[dict[str, Any]], kinds: tuple[str, ...]) -> Non
         print(f"  {project:<24} {kind:<5} {identifier:<12} {count} objections")
 
 
+def read_advisory_runs(
+    paths: list[Path],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Read canonical observations; do not infer advice from quoted transcript prose."""
+    reports: dict[str, dict[str, Any]] = {}
+    decisions = []
+    for directory in paths:
+        run = json.loads((directory / "run.json").read_text())
+        if run["workflow"]["mode"] != "primary":
+            raise ValueError("advisory-run requires primary authority")
+        project = Path(run["repository_root"]).name
+        rows = json.loads((directory / "advisory-reports.json").read_text())
+        for row in rows:
+            advisory.check_report(row["report"])
+            if row["kind"] not in KINDS:
+                raise ValueError("invalid advisory stage")
+            key = advisory.digest(
+                [run["repository_root"], run["phase"], row["report_id"], row["report"]]
+            )
+            reports.setdefault(key, {"key": key, "project": project, "phase": run["phase"], **row})
+        decision_path = directory / "primary-decision.json"
+        if decision_path.exists():
+            decision = json.loads(decision_path.read_text())
+            advisory.validate_decision(decision, rows, decision["candidate_id"], set())
+            decisions.append({"project": project, "phase": run["phase"], **decision})
+    return list(reports.values()), decisions
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--since-days", type=int, default=31)
@@ -360,13 +400,24 @@ def main() -> int:
         action="store_true",
         help="also harvest the coder's Failure Analysis statements",
     )
+    parser.add_argument(
+        "--advisory-run",
+        type=Path,
+        action="append",
+        default=[],
+        help="read primary advice and dispositions from a run (repeatable)",
+    )
     arguments = parser.parse_args()
     excluded = {item for item in arguments.exclude_session if item}
     for variable in SESSION_ENVIRONMENT:
         value = os.environ.get(variable, "").strip()
         if value:
             excluded.add(value)
-    if not arguments.claude_root.is_dir() and not arguments.codex_root.is_dir():
+    if (
+        not arguments.advisory_run
+        and not arguments.claude_root.is_dir()
+        and not arguments.codex_root.is_dir()
+    ):
         print("review-verdicts: neither trace root exists", file=sys.stderr)
         return 2
     verdicts, statements = harvest(
@@ -376,12 +427,24 @@ def main() -> int:
         excluded=excluded,
         coder_evidence=arguments.coder_evidence,
     )
+    try:
+        advice, decisions = read_advisory_runs(arguments.advisory_run)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        print(f"review-verdicts: invalid advisory evidence: {exc}", file=sys.stderr)
+        return 2
     if arguments.project:
         wanted = set(arguments.project)
         verdicts = [item for item in verdicts if item["project"] in wanted]
         statements = [item for item in statements if item["project"] in wanted]
+        advice = [item for item in advice if item["project"] in wanted]
+        decisions = [item for item in decisions if item["project"] in wanted]
     kinds = KINDS if arguments.kind == "all" else (arguments.kind,)
     print_summary(verdicts, kinds)
+    if arguments.advisory_run:
+        print(
+            f"Advisory observations: {len(advice)}; primary decisions: {len(decisions)} "
+            "(excluded from verdict and rejection statistics)"
+        )
     if excluded:
         print(f"\nExcluded sessions: {', '.join(sorted(excluded))}")
     if arguments.coder_evidence:
@@ -395,6 +458,8 @@ def main() -> int:
             "unclassified": [item for item in verdicts if item["kind"] == "unknown"],
             "excluded_sessions": sorted(excluded),
             "coder_evidence": statements,
+            "advisory_reports": [item for item in advice if item["kind"] in kinds],
+            "primary_decisions": decisions,
         }
         arguments.json.write_text(json.dumps(payload, indent=1), encoding="utf-8")
         print(f"\nDATASET {arguments.json}")

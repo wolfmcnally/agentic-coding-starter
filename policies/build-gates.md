@@ -1,5 +1,7 @@
 # Policy: Repository-Owned Toolchain Contract
 
+Authority mode follows [four-canonical-agents.md](four-canonical-agents.md). Product primary mode uses independent advice and primary acceptance; delegated product mode retains approval verdicts and bounded revision loops. References below to reviewer assent or mandatory re-review govern delegated work only. Required objective gates and truthful evidence apply in both modes. All methodology work, including teach/learn, follows [review-lanes.md](review-lanes.md): one-shot by the primary, no delegated production or review, and commit/fast-forward-push authority after required checks.
+
 Every methodology-following repository owns one canonical, atomic interface
 for provisioning and verifying itself:
 
@@ -233,8 +235,7 @@ gate, a phase-prescribed acceptance command, or pre-push full-gate custody.
 
 If the handoff gate fails, the phase is not complete. Reopen the current
 uncommitted close, correct or regenerate the close artifact, and rerun the bare
-gate. A failure that exposes an implementation defect routes back through
-review and invalidates the prior implementation-candidate gate. Never write a
+gate. A failure that exposes an implementation defect invalidates the prior implementation-candidate gate and follows the selected authority mode; it does not automatically order another advisory pass or introduce methodology review. Never write a
 tracked "gate passed" claim after the handoff gate; its ignored candidate- and
 environment-bound receipt is the durable proof.
 

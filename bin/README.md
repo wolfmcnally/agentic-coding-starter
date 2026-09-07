@@ -254,7 +254,7 @@ PEP 723 `ruamel.yaml`. Governed by
 ./bin/kickoff-config reset models
 ```
 
-Presets replace all concrete harness role pins while preserving the base layer, comments and other sections; omitted review mode is same-harness. Quality/same-harness is the shipped/reset default. The [role policy](../policies/role-models.md#independent-review-and-portable-presets) owns the matrix. These editing operations make no model call, so an unavailable model can be replaced before retrying fail-closed preflight.
+Presets replace all concrete harness role pins while preserving the base layer, comments and other sections; omitted review mode is same-harness. Quality/same-harness is the shipped/reset default. The [role policy](../policies/role-models.md#authority-providers-and-graceful-fallback) owns the matrix. These editing operations make no model call, so an unavailable model can be replaced before retrying fail-closed preflight.
 
 Watcher diagnostics distinguish requested `model`/`effort` from optional `harness_version`, `observed_model`, `observed_effort`, and `observation_errors`. Missing observations render as `unreported`; provider aliases and auxiliary usage maps are not evidence of a changed request. See [reporting semantics](../policies/role-models.md#end-block-reporting).
 
@@ -610,3 +610,11 @@ Scans every tracked file for the two *mechanizable* leak classes — real absolu
 ```
 
 Starter-only: this script enforces [`policies/anonymize-log-references.md`](../policies/anonymize-log-references.md), which exists because *this* template repo is public. `stamp` and `teach` do not transfer it — a private downstream project has nothing to anonymize against itself. The `bin/` convention and the triage policy above **are** universal and do propagate.
+
+## Primary authority and advisory evidence
+
+`kickoff-config show workflow` explains inline ownership, independent advisers and fallback routing. `set-workflow --file <json>` atomically installs a complete workflow configuration; `preflight` applies optional usage limits before model probes and freezes the resolved route. Presets select the delegated workflow explicitly.
+
+`kickoff-evidence` registers only independent reviewers in primary mode. Its watcher-owned `start-advice` consumes the phase-wide pass allowance. `ingest-findings` stores advisory reports separately; `accept-primary --input <json>` records primary dispositions and final-candidate acceptance; `carry-advice --source-run <prior>` preserves observations across continuations. Status and timing distinguish advisory observations from delegated verdicts. Shared implementation lives in `lib/agentic_starter/workflow.py` and `lib/agentic_starter/advisory.py`; transfer them with the managers and finding schema.
+
+`review-verdicts --advisory-run <run-directory>` reads canonical advisory observations and primary decisions into separate dataset arrays, without treating declined advice as a rejection loop. Repeat the option for selected runs; historical transcript verdict harvesting remains unchanged. A stored primary decision is historical evidence, not proof that today's working tree is accepted.

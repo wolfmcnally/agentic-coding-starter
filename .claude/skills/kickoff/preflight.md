@@ -1,5 +1,12 @@
 # Kickoff — Preflight and phase entry
 
+## Resolve authority and usage first
+
+Before Step 0a, inspect the invoking model metadata and the explicit `workflow.primary_models` pin. `./bin/kickoff-config show workflow` displays the configured resolution. For the actual kickoff, `preflight --primary-model <selector> --receipt <path>` resolves the confirmed primary, applies allowed destinations, consults optional `llm-usage`, then probes only the selected independent targets. The primary refuses at >=95% of any applicable limit; a secondary >95% weekly becomes a fresh primary instance. Missing usage tooling proceeds normally. Follow `policies/role-models.md` for errors, backends and identity evidence.
+
+Use the receipt's workflow roles and mode for the whole run. In primary mode planner/coder entries are inline and are neither probed nor dispatched. The separate role-pin resolution described below is the delegated branch. Startup telemetry, authority capture and both gates remain shared. Primary-mode authorized child decomposition is written directly by the primary, not a planner agent.
+
+
 Read this resource before executing its branch. Enter through [SKILL.md](SKILL.md); its resource table defines the order. Before any failure, resume or operator-input branch, read [recovery.md](recovery.md).
 
 ### Step 0a: Resolve per-role model/venue

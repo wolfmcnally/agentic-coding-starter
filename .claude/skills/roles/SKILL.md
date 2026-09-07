@@ -15,6 +15,13 @@ last-reviewed: 2026-08-10
 
 # Roles — Pin models/harnesses to the four canonical roles
 
+## Workflow selection
+
+Product defaults are `workflow.mode: auto` and cross-provider advisory preference. An eligible primary plans/codes inline; a constrained primary uses delegated roles. `./bin/kickoff-config show workflow` shows the configured authority and role execution. `set-workflow --file <json>` updates the complete workflow section atomically; `reset workflow` restores defaults. Existing quality/balanced/economy presets explicitly select delegated mode and edit its role pins. Do not describe dormant planner/coder pins as active in primary mode. Use explicit deployment targets for managed backends; preserve credential/handling restrictions. Kickoff consults optional usage tooling before model preflight.
+
+The ordinary four-role pin commands below remain available for delegated work. Methodology changes to this configuration are primary one-shot, without independent review, with commit/push authority after required checks.
+
+
 Set which model/harness the `kickoff` skill uses for each of its four roles, scoped by
 which harness is orchestrating. This is a thin wrapper over the deterministic
 `bin/kickoff-config` manager — the parse, validate, round-trip-safe section update, and atomic write are mechanical (per
@@ -33,7 +40,7 @@ which harness is orchestrating. This is a thin wrapper over the deterministic
   - `sol`, `terra`, `luna` — `codex --model gpt-5.6-sol|terra|luna`.
 - **Reasoning effort:** a separate optional field, validated against the selector-specific supported subset in [`policies/role-models.md`](../../../policies/role-models.md#human-editable-configuration). Native `default` rejects explicit effort; `ultra` is not enabled. Omission retains configured effort.
 
-Resolution for a role under harness `H`: `H`'s section, else the `default` section, else native. The shipped/reset preset is quality/same-harness. The authoritative matrix and cross-vendor selection are in [`policies/role-models.md`](../../../policies/role-models.md#independent-review-and-portable-presets).
+Resolution for a role under harness `H`: `H`'s section, else the `default` section, else native. The shipped/reset workflow uses auto authority and cross-provider preference; the role-pin bundles below describe delegated mode. The authoritative matrix and cross-vendor selection are in [`policies/role-models.md`](../../../policies/role-models.md#authority-providers-and-graceful-fallback).
 
 ## Parse arguments
 
@@ -90,5 +97,5 @@ Once `./bin/kickoff-config show` validates the edited configuration, commit that
 ## Notes
 
 - The config file is `kickoff.yaml` at the repo root and is deliberately human-editable. `roles` is a convenient validated editor for its `role_models` section, not its owner.
-- `roles` is universal — carried into every project `stamp` derives; every derived project has the same four roles and the same portable quality/same-harness default.
+- `roles` is universal — carried into every project `stamp` derives; every derived project has the same four roles and the same portable auto/primary workflow default.
 - Presets are an editor operation over `claude:`/`codex:` role pins, not a second runtime setting. Existing target pins remain authoritative until explicitly edited.

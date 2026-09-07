@@ -175,6 +175,37 @@ def review_artifact_schema(kind: str) -> dict[str, Any]:
     only the findings array would silently drop the orchestration contract that
     header exists to satisfy.
     """
+    if kind.startswith("advisory-"):
+        if kind.removeprefix("advisory-") not in REVIEW_KINDS:
+            raise ValueError("unknown advisory stage")
+        fields = {
+            "id": {"type": "string"},
+            "severity": {
+                "type": "string",
+                "enum": ["critical", "high", "medium", "low", "informational"],
+            },
+            "affected_paths": {"type": "array", "items": {"type": "string"}},
+            "evidence": {"type": "string"},
+            "consequence": {"type": "string"},
+            "suggestion": {"type": "string"},
+        }
+        return {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "summary": {"type": "string"},
+                "findings": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": fields,
+                        "required": list(fields),
+                    },
+                },
+            },
+            "required": ["summary", "findings"],
+        }
     return {
         # No `$schema` declaration. Claude's `--json-schema` resolves the value
         # as a meta-schema it must already hold, and rejects the whole document

@@ -1,5 +1,8 @@
 # Wolf's Agentic Coding Starter Kit
 
+Methodology work is primary one-shot with commit/push authority after required checks, including teach/learn, without delegated planning/coding or independent review. Product work defaults to eligible-primary planning/coding with bounded advisory review, preferring a permitted cross-provider SOTA adviser. Single-provider users get independent same-model instances; constrained primaries retain the delegated approval workflow. See `policies/review-lanes.md` and `policies/role-models.md`.
+
+
 *An opinionated starting point for building software with AI coding agents.*
 
 **Wolf McNally**
@@ -30,11 +33,11 @@ Start with an idea and turn it into a brief. The brief describes what you want t
 
 ### 2. Execute
 
-The `kickoff` skill runs one phase at a time. One role plans, another reviews the plan, a third writes the code, and a fourth reviews the result. The author of an artifact does not provide its only judgment.
+The `kickoff` skill runs one phase at a time. A capable primary instance plans and codes, with independent plan and code advice normally supplied through the other provider. One pass per stage is normal; a second requires a recorded reason, and two is the maximum. The primary decides which findings to adopt. A single-provider environment uses fresh instances of the same model; constrained primaries retain the four-role approval workflow.
 
 ### 3. Prove and deliver
 
-After review, the repository runs its checks against the exact version that was reviewed. Work that can be checked objectively closes only after independent review and the complete test and policy suite pass. Anything that requires product or other human judgment, a manual inspection, or someone to take custody of an artifact still waits for a person. Once the objective work is complete, `kickoff` commits it and fast-forward pushes it when the repository has a suitable upstream. It does not choose remotes or perform destructive Git operations.
+The repository runs its checks against the exact implementation the primary accepts. Advice remains associated with the version it inspected; later corrections require fresh checks and a primary assessment, rather than automatic re-review. Objective work closes only when its applicable review contract and the complete test and policy suite are satisfied. Anything that requires product or other human judgment, a manual inspection, or someone to take custody of an artifact still waits for a person. Once the objective work is complete, `kickoff` commits it and fast-forward pushes it when the repository has a suitable upstream. It does not choose remotes or perform destructive Git operations.
 
 The root [candidate-partition.yaml](candidate-partition.yaml) distinguishes implementation-affecting files from bookkeeping. Administrative updates preserve review evidence for unchanged implementation, while both full close gates and complete-tree delivery checks remain required.
 

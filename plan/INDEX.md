@@ -1,5 +1,8 @@
 # Phased Execution Plan — Agentic Coding Starter Template
 
+Methodology work is primary one-shot with commit/push authority after required checks, including teach/learn, without delegated planning/coding or independent review. Product work defaults to eligible-primary planning/coding with bounded advisory review, preferring a permitted cross-provider SOTA adviser. Single-provider users get independent same-model instances; constrained primaries retain the delegated approval workflow. See `policies/review-lanes.md` and `policies/role-models.md`.
+
+
 This directory is the phased execution plan for *this* repository. It is the authoritative source for what to build, in what order, and under what invariants.
 
 If you cloned this template to start a new project, replace this `plan/` with your project's plan. Phase 1 here is a placeholder that exists so the first `kickoff` invocation has something to do; the real first phase is yours to write.
@@ -48,7 +51,7 @@ row is `🚧`; a complete project has zero; more than one is always invalid.
 
 ## Methodology work is not phase work
 
-Improving the methodology this template ships — its instructions, policies, briefs, skills, role definitions, orchestration code and their proofs — does not belong in `plan/`. It routes through direct implementation, one independent review and the required checks, per [`../policies/review-lanes.md`](../policies/review-lanes.md). `plan/` is for product work: the thing the template is being used to build. In this repository that surface is `project/`, and Phase 1 is the placeholder that hands it to you.
+Improving the methodology this template ships — its instructions, policies, briefs, skills, role definitions, orchestration code and their proofs — does not belong in `plan/`. It routes through primary one-shot implementation and the required checks, with commit/push authority and no independent review, per [`../policies/review-lanes.md`](../policies/review-lanes.md). `plan/` is for product work: the thing the template is being used to build. In this repository that surface is `project/`, and Phase 1 is the placeholder that hands it to you.
 
 That methodology is this template's subject matter does not make it this template's product. The distinction is what keeps a derived project's plan legible after `stamp`.
 

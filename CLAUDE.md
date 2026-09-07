@@ -42,7 +42,7 @@ Use `./bin/setup`, `./bin/test [args...]`, `./bin/check all`, `./bin/python`. Re
 
 ## Model & review venue
 
-`kickoff.yaml`: model/effort pins, timeouts, research budgets. `roles` edits pins or expands presets. Default: quality/same-harness; cross-vendor review is explicit. Live preflight precedes mutation.
+`kickoff.yaml`: model/effort pins, timeouts, research budgets. `roles` edits pins or expands presets. Default: eligible primary plans/codes inline; cross-provider advisory review is preferred, with a fresh same-provider instance when unavailable or disallowed. Constrained primaries use delegated approval gates. Live preflight precedes mutation.
 
 ## Project-specific skills
 
@@ -163,13 +163,13 @@ Rationale: [methodology](briefs/methodology.md#operating-invariants-and-vocabula
 - **Concrete uses; one home.** No speculative abstraction without a second present use. Consolidate at three copies; prefer fewer concepts. Use scripts for deterministic work and intelligence for contextual judgment.
 - **Authority direction.** Policies prevail; plans refine and outrank briefs. Fix ambiguity at its owner; briefs never cite policies or plans.
 - **Coherent outcomes.** Multiple surfaces and absent children do not require splitting. Split only at consequential decisions, independently accepted prerequisites, deployment/migration/human seams or demonstrated coherence limits. Ordinary internals belong to the coder; consequential scope stays approved. Never merge completed phases.
-- **Empirical acceptance and independent review.** Name falsifying checks and manual criteria. Discover broadly, batch evidenced blockers, separate optional advice, preserve stable findings; rebase on changed authority, scope, risk or lost continuity. Preserve the role policy’s 600-line/growth/stall/ten-cycle limits.
+- **Empirical acceptance and product review.** Name falsifying checks and manual criteria. Discover broadly, batch evidenced blockers, separate optional advice, preserve stable findings; rebase on changed authority, scope, risk or lost continuity. Product primary mode uses advisory reports and at most two passes per stage for recorded cause; delegated mode preserves the role policy’s 600-line/growth/stall/ten-cycle limits. Methodology work requires no independent review.
 - **Candidate-bound assurance.** Product identity binds review; full-tree identity binds gate non-mutation and delivery. Declared-authority and reviewed-bookkeeping checks remain independent. Unknown tracked classifications refuse; unknown nonignored untracked paths and `candidate-partition.yaml` itself stay active.
-- **Two full gates.** Focused iteration precedes critique. The orchestrator runs the full implementation-candidate sequence ending in `./bin/check all`; accepted close precedes captured status mutation. After all bookkeeping, run the second bare full handoff gate; no tracked write follows success. Bind prospective child completion; parent completion requires separate acceptance.
+- **Two full gates.** Focused iteration precedes product critique; methodology work is self-checked by the primary. The orchestrator runs the full implementation-candidate sequence ending in `./bin/check all`; accepted close precedes captured status mutation. After all bookkeeping, run the second bare full handoff gate; no tracked write follows success. Bind prospective child completion; parent completion requires separate acceptance.
 - **Execution truth.** One append-only trace, exact joins and overlap-safe unions; separately report operator-input parks. Missing measurement is unknown, never zero. Finalize evidence before sanitized offline reports.
-- **Safe acceleration.** Use substantial, obvious low-risk time savings within scope, preserving correctness, coverage, determinism, independent review and both gates. No optimization tangents.
+- **Safe acceleration.** Use substantial, obvious low-risk time savings within scope, preserving correctness, coverage, determinism, the selected product review contract and both gates. No optimization tangents.
 - **Atomic toolchain.** Runtime, metadata, lockfile, setup, focused/full tests, receipts, proofs and callers move together. Use repository wrappers; bad overrides and failed probes never fall back. Keep scratch captures outside the reviewable tree or explicitly ignored.
-- **Methodology routing.** Approved improvements, including here: implement directly, independently review, run required checks. Full phase roles require operator direction. Read [review lanes](policies/review-lanes.md).
+- **Methodology routing.** All authorized methodology work, including `teach` and `learn`, is one-shot by the primary with commit and fast-forward-push authority after required checks. No delegated planning/coding or independent review/critique. Applies across harnesses and model tiers. Read [review lanes](policies/review-lanes.md).
 - **Portable parity.** Canonical sources and thin mirrors; repo-relative committed paths; isolated deliverable. Greenfield replacement and delivery/human-judgment boundaries follow the hard rules.
 
 ### Activity log (`LOG.md`)

@@ -1,23 +1,26 @@
 # Policy: Per-Role Model Pinning (harness-aware)
 
-Each canonical `kickoff` role may select a model and optional reasoning effort, scoped by which harness is orchestrating. The model determines the delegated CLI; `{model: default}` runs natively. Orchestration and build gates always stay on the current session model.
+Each canonical `kickoff` role may select a model and optional reasoning effort, scoped by which harness is orchestrating. The model determines the delegated CLI in delegated mode; `{model: default}` runs natively. Primary mode keeps orchestration, planning, coding and gates on the current instance.
 
-## Independent review and portable presets
+## Authority, providers and graceful fallback
 
-Every review runs in a separate role context with the canonical review contract. Same-harness review preserves that independence. Cross-vendor review is an explicit option whose incremental value should be measured; model strength alone does not establish decorrelation or better defect detection. Review lane and model/venue selection are orthogonal.
+`workflow` in `kickoff.yaml` owns `mode: auto|primary|delegated`, explicit `primary_models` pins per harness, `eligible_primary_models`, `review_preference: cross-vendor|same-harness`, `allowed_harnesses`, ordered `adviser_models` per invoking harness and review role, and deployment `targets`. Auto resolves an eligible primary to inline planning/coding and independent advisory review; other configured primaries use delegated approval-gated roles. Unknown deployment identities require explicit configuration. An explicit primary request cannot elevate an ineligible model. The invoking session must compare its actual harness/model metadata with the primary pin and use `preflight --primary-model <selector>` on disagreement; a configured identity is not provider-reported proof.
 
-`bin/kickoff-config apply-preset quality|balanced|economy [--review same-harness|cross-vendor]` expands the selected preset into ordinary `role_models` pins for both concrete harness sections. Omitted review mode means `same-harness`. There is no persisted preset selector or runtime router. Applying a preset replaces all concrete role selections, preserves the base `default` layer and other configuration/comments, validates the complete document, and writes atomically. It makes no model call and requires no preflight.
+Shipped primary pins are Astra for Codex and Fable for Claude, as operator-selected starting points, not measured rankings. Cross-provider SOTA review is preferred when permitted. Single-provider users select permitted harnesses; review uses a fresh instance of the same primary model. The primary's capability determines authority, not the adviser's vendor or relative strength. Explicitly configured weaker advisers remain advisory when the primary is eligible.
 
-| Preset | Orchestrating harness | Planner | Reviewer | Coder | Critic |
-|---|---|---|---|---|---|
-| quality | codex | astra | astra | astra | astra |
-| quality | claude | fable | fable | fable | fable |
-| balanced | codex | astra | astra | sol | astra |
-| balanced | claude | fable | fable | opus | fable |
-| economy | codex | sol | sol | sol | sol |
-| economy | claude | opus | opus | opus | opus |
+`show workflow` displays the resolution; `set-workflow --file <json>` validates and atomically replaces just that section. `reset workflow` restores its defaults. Existing quality/balanced/economy `apply-preset` commands are explicit delegated role bundles; they select delegated mode. Ordinary `role_models` pins remain authoritative in delegated mode. Resetting all or stamping ships auto primary selection with cross-provider preference. Planner/coder pins are dormant when those activities run inline.
 
-All preset pins use `high` effort. Quality/same-harness is the shipped, reset and stamp default. Cross-vendor changes reviewer and critic only: quality/balanced use Fable from Codex and Astra from Claude; economy uses Opus from Codex and Sol from Claude. These are operator-approved starting points, not measured rankings. A missing required CLI or model entitlement fails preflight; select an available preset or explicit pins through the manager, `roles`, or direct editing before restarting.
+Resolve restrictions before usage queries and model probes. Missing cross-provider executables use the allowed same-provider primary instance. Other access failures are explicit; do not reinterpret transient errors or terminal policy refusals as permission to switch provider or billing route. Freeze the resolved mode, targets, usage outcome and fallback reasons in the receipt and run. Reconfiguration never erases earlier advice or resets its two-pass limit.
+
+### Optional kickoff usage check
+
+Before model-backed preflight, phase mutation or log writes, consult `llm-usage --json` once if the executable is on PATH. If absent, proceed normally with usage unavailable. Do not install it or require a replacement service. Primary utilization **>=95% in any applicable window** refuses kickoff. Secondary reviewer/critic utilization **>95% in an applicable weekly window** substitutes a fresh primary-model instance. Exactly 95% does not trigger secondary substitution. Primary refusal wins, and shared account windows still apply to both instances. Preserve the selected authority mode and access posture when substituting.
+
+Associate shared and model-scoped limits with the selected account/backend; subscription usage does not describe a separate managed deployment. Unsupported backends proceed as not-covered. Installed-tool errors, malformed values, ambiguous relevant windows and stale cached data are errors, never zero usage. An unrelated failed provider does not invalidate complete relevant data. Compare unrounded percentages; report the triggering window and reset when available. No polling loop, reset redemption, paid overflow or automatic primary change is authorized.
+
+### Explicit deployment targets
+
+A custom selector in `workflow.targets` declares `harness`, exact `model`, `provider`, `backend`, `auth: subscription|configured`, supported `efforts`, applicable `usage_windows` (empty uses known shared/model windows), `terms`, `credential_env`, and `backend_env`. Configured backends require a nonempty operator-supplied handling authority in `terms`; successful preflight is not ZDR certification. Use the existing harness's configured backend and credentials. Subscription targets scrub ambient API keys; configured targets retain their intended backend credentials. A selector must identify one actual route; never use an alias to silently change providers. New cloud SDK adapters and resource provisioning are outside this contract.
 
 ## Human-editable configuration
 
@@ -55,11 +58,7 @@ Harness sections `claude` and `codex` override the base `default` layer. Roles `
 
 Effort is a separate optional field; omission retains the selected CLI/model's configured effort. The table is a supported subset, not a claim that other settings cannot exist. `ultra` is not enabled. Invalid model/venue or model/effort combinations fail before write or spawn. Capability metadata is not live entitlement; recipient-local preflight remains decisive for execution.
 
-The routing, timeout, run-budget, and research-budget schemas are strict:
-unknown harnesses, roles, or fields fail validation so direct-edit typos cannot
-disappear silently. Project-specific data belongs under top-level `extensions`,
-where arbitrary keys are preserved and ignored by the current resolver. Invalid
-configuration fails before any command runs or write occurs.
+The routing, workflow, timeout, run-budget, and research-budget schemas are strict: unknown harnesses, roles, or fields fail validation so direct-edit typos cannot disappear silently. Project-specific data belongs under top-level `extensions`, where arbitrary keys are preserved and ignored by the current resolver. Invalid configuration fails before any command runs or write occurs.
 
 ## Manager and direct edits
 
@@ -116,7 +115,7 @@ shared probe digest. All-native routing writes the same schema with no targets.
 Production credential scrubs, model/effort and research flags, stdin closure,
 approval posture, and read-only/write-enabled access still apply.
 
-Preflight is fail-closed. A missing CLI, unusable authentication, unavailable model, network or sandbox error, flag incompatibility, timeout, malformed response, wrong challenge response, stale configuration, or incomplete target set aborts `kickoff` before phase state exists. There is no native fallback for an upstream prerequisite failure.
+Preflight is fail-closed. A missing CLI, unusable authentication, unavailable model, network or sandbox error, flag incompatibility, timeout, malformed response, wrong challenge response, stale configuration, or incomplete target set aborts `kickoff` before phase state exists. Only the declared preflight/usage fallback above may change a target; other upstream failures have no implicit native fallback.
 
 ## Invocation and resume
 
@@ -235,3 +234,11 @@ mechanics but never donor operational state.
 - [`role-timeouts.md`](role-timeouts.md) owns execution budgets, process-group termination, telemetry, and recalibration.
 - [`mechanistic-vs-intelligence.md`](mechanistic-vs-intelligence.md) puts validation and editing in `bin/kickoff-config`; model-choice judgment stays with the human or `roles` interpretation.
 - [`human-in-the-loop.md`](human-in-the-loop.md) still governs completion and delivery: a delegated venue may not commit, push, advance a gate, or claim subjective acceptance, whichever vendor reviewed. Only the orchestrator delivers, and only after the phase closes with every gate green.
+
+### Configured backend credentials
+
+Custom workflow targets declare `credential_env` (names of existing environment variables to preserve) and `backend_env` (exact non-secret routing switches). Managed targets require explicit backend routing and a nonempty `terms` authority. Subscription dispatch scrubs direct API credentials and managed-routing overrides; configured dispatch restores only its declared credential names and routing switches. Missing declared credentials refuse. Model identifiers must be unambiguous across targets. Harness configuration remains operator-owned; these declarations neither certify compliance nor grant a new service destination.
+
+Shared usage windows always apply, even with an explicit `usage_windows` mapping. Additional named groups use `group/window` identifiers; an unmapped additional group whose applicability is unknown refuses instead of silently ignoring a possible limit. Explicitly inactive windows are excluded. The usage adapter records what the installed CLI supplies and cannot recover missing provider fields that an upstream formatter has already replaced with defaults.
+
+In primary mode, each review role tries its ordered `adviser_models` selectors permitted by `allowed_harnesses`, followed by a fresh instance of the primary. A same-harness preference goes directly to that fresh primary instance. Missing executables may advance through this declared list; usage-driven substitution goes directly to the primary as specified above. Review effort comes from the corresponding role pin; a fallback uses the target default effort. The operator may configure different reviewers and critics without changing inline planner/coder ownership.

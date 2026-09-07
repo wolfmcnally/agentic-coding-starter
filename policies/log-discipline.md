@@ -1,5 +1,7 @@
 # Policy: Activity Log Discipline
 
+Authority mode follows [four-canonical-agents.md](four-canonical-agents.md). Product primary mode uses independent advice and primary acceptance; delegated product mode retains approval verdicts and bounded revision loops. References below to reviewer assent or mandatory re-review govern delegated work only. Required objective gates and truthful evidence apply in both modes. All methodology work, including teach/learn, follows [review-lanes.md](review-lanes.md): one-shot by the primary, no delegated production or review, and commit/fast-forward-push authority after required checks.
+
 `LOG.md` is the **append-only** record of what has been done to this repository. It is written by the writers named in the table below, never by hand. Do not hand-edit historical entries.
 
 ## What `LOG.md` is

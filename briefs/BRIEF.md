@@ -7,13 +7,22 @@ scope: Entry-point brief for this repository. Describes what the starter templat
 
 # Agentic Coding Starter Template — Product Brief
 
+## Primary ownership and independent advice
+
+As of 2026-09-07, the primary use case is a configured SOTA instance that owns orchestration, planning, implementation and acceptance. A comparable or stronger model in another permitted provider's harness normally supplies independent plan and code advice; a single-provider environment uses fresh instances of the primary model. One comprehensive pass per stage is normal, a second needs recorded cause, and two is the maximum. Advisers report evidence and severity without veto; the primary decides corrections and records consequential dispositions. Objective requirements and both full gates remain binding.
+
+A constrained primary uses separate planner/coder roles and the established approval-gated reviewer/critic loops. Detailed references to mandatory reviewer approval or four-role delegation below describe that constrained product branch. Eligibility is maintained configuration, not a benchmark claim. Backend and handling restrictions prevail over preferred routing. Optional kickoff usage checks refuse a primary at >=95% of any applicable limit and substitute the primary for a secondary above 95% weekly; absent tooling does not prevent execution.
+
+All methodology work itself, including teach/learn knowledge transfer, is always one-shot by the invoking primary across harnesses and capability tiers, without delegated production or independent review. The primary owns adaptation, self-checks, required gates, commit and fast-forward push within authorized scope. This standing delivery grant does not expand scope or waive custody and human decisions. No product phase or repeated approval ceremony is needed for authorized methodology work.
+
+
 A repository template for building software with AI coding agents under a structured planner → reviewer → coder → critic methodology. It is harness-agnostic: the same canonical files drive Claude Code, Codex CLI, and any other agent host that reads project-level instructions and agent definitions.
 
 ## Thesis
 
 Coding with AI agents is high-leverage but easy to do badly. Without structure, you get plans nobody reviewed, code nobody checked, and a workspace whose state is impossible to reconstruct from its files. This template keeps the important parts of the work in the repository: the brief (what), the architecture (how), the plan (in what order), the log (what actually happened), and the policies (what's off-limits). Every session starts from a known state and ends by updating it.
 
-The result is a workflow where each phase is incremental and testable. Objective work closes after independent review and the repository's checks prove it; manual, subjective, product, and custody judgments still wait for a person.
+The result is a workflow where each phase is incremental and testable. Objective work closes after its applicable review contract and the repository's checks prove it; manual, subjective, product, and custody judgments still wait for a person.
 
 ## Catalog
 

@@ -20,6 +20,11 @@ last-reviewed: 2026-08-26
 
 # Sweep-coding — Calibrate the coder ↔ critic loop from its own record
 
+## Advisory evidence
+
+Keep primary-mode advisory reports and primary dispositions separate from delegated APPROVED/REVISE verdicts. Declined advice is not a failed review or a revision loop. Analyze the actual primary decision and its observed consequence; do not infer defects from finding count or severity alone. Methodology changes resulting from this skill are implemented one-shot by the primary with required checks and commit/push authority, without delegated planning/coding or independent review. Existing operator authority over unresolved rule changes remains intact.
+
+
 The code critic's verdicts and the coder's revision reports are both in the
 harness transcripts verbatim: every `CODE-F` finding with its evidence and
 state history, and every Failure Analysis in which the coder says why the
@@ -135,3 +140,5 @@ Those of the lifecycle, plus one: **quote the coder's Failure Analysis when
 attributing a category to the coder** — it is the only sensor in this loop
 that speaks in the first person, and a category the coder already diagnosed
 in its own words is a rule waiting to be written, not a finding to argue.
+
+For primary-mode runs in scope, pass their canonical evidence directories through `review-verdicts --advisory-run <run-directory>`; read `advisory_reports` and `primary_decisions` separately from the historical verdict arrays. Do not infer binding decisions from quoted advisory prose.
