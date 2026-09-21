@@ -22,6 +22,12 @@ count preserved by any write. It is rewritten or deleted, never shipped as
 coverage. (A month of code reviews across three derived projects put this
 shape first among all findings.)
 
+## A fixture is built the way the real producer builds it
+
+When a fixture stands in for an artifact another component produces, construct it the way that component constructs it, including the parts the code under test is supposed to ignore. A selection rule is only tested when the fixture contains something to reject, and a fixture assembled from what the test expects to find proves the fixture.
+
+In a donor project a hand-built package held four files, so the test asserted that the engine filed four; a real package also contains a copy of its own source media, which the code would have filed a second time and read whole into memory. The assertion passed for a reason unrelated to the behavior it named. The cheap check is one listing of a genuine artifact compared against the fixture, before any count is trusted.
+
 ## What counts as an acceptance criterion
 
 A criterion is acceptable when it is:

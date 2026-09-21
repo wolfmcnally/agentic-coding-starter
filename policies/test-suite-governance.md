@@ -34,7 +34,7 @@ result pass.
 ## Removal and growth
 
 Deleted and consolidated proofs MUST leave the executable estate completely.
-Their dead fixtures, helpers, mutation rows, and caller wiring leave with them.
+Their dead fixtures, helpers, and caller wiring leave with them.
 Skipping, deselecting, renaming, quarantining, or hiding a proof is not removal.
 A consolidated proof names a retained executable replacement; a deleted proof
 explains why it has no independent contract.
@@ -43,6 +43,10 @@ The default post-reset family and leaf budgets are zero. A new proof requires a
 named active contract or risk, independent oracle, red witness, non-subsumption
 account, and either a named approved positive budget or a compensating retirement.
 Validation fails closed when any admission or budget evidence is absent.
+
+A **red witness is recorded at construction, not re-run at close.** A mutant exists to vet a proof while that proof is being written: apply the intended defect, watch the named case fail at the assertion that encodes the guarantee, restore the code byte-exactly, and watch it pass. The mutant is then discarded. What the estate retains is the record — the defect tried, the exact command, the failing node and its failure text, and the clean result after restoration — in the family's `mutation_evidence`. No mutation patch or standing mutation battery is committed, and no close gate runs one.
+
+What this gives up is worth stating: a committed mutant re-proves on every run that its bound case still catches its fault, which guards against a proof being weakened later. That standing guarantee is traded for a gate that fails only for reasons of correctness, since a patch anchored on source lines breaks whenever the guarded function is edited. A reviewer who suspects a proof has been weakened re-applies the recorded defect.
 
 After the reset, retirement is itself an append-only event. A
 `proof_retirement` may target only one currently active baseline or admitted

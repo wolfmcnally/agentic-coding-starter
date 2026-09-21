@@ -43,12 +43,20 @@ Every acceptance criterion is one of two kinds, and the kind decides who closes 
 Any of these stops the commit or the push, is reported truthfully, and is never worked around:
 
 - An **unexpected path** in `git status`, or a shared file whose hunks cannot be attributed safely — this checkout may be shared with a concurrent session, so `git add -A` and `git add .` are forbidden outright. The complete staging rule is [`commit-staging.md`](commit-staging.md).
-- A **hook refusal**. Never retried around, never bypassed.
+- A **hook refusal** whose cause or safe correction is unresolved, or whose correction would exceed existing authorization. Never retried around, never bypassed. A diagnosed, agent-owned refusal is finished under § Correcting a diagnosed hook refusal below.
 - A **missing or ambiguous upstream**, a **rejected push**, **divergence**, or **residual dirt** after the push.
 
 An open parked criterion is **not** on that list. It does not park delivery; it stays open for the user after the phase is delivered, and the END block records it as such.
 
 None of those authorizes the orchestrator to select a remote, create an upstream, force, tag, reconcile history, or bypass a hook. Those are destructive or custody-bearing Git boundaries and they belong to the human, always.
+
+## Correcting a diagnosed hook refusal
+
+When a hook rejects a commit, read its complete diagnostic and name the failed requirement before deciding whether to stop. If the cause is understood, the defect is in the agent's own work, and the correction is safe and within the authorization already granted, correct it and finish ordinary delivery without asking again. A known formatting or validation mistake is work to finish, not by itself a decision for the user.
+
+Preserve the rejection as evidence. Make the smallest attributable correction, leave other writers' work and committed history untouched, stage the corrected paths, and rerun the rejecting check against the staged content where the check supports it. Renew every required check whose candidate changed, including the full handoff gate after any tracked edit, then retry the ordinary commit with all hooks enabled. Run a staged hook requirement directly before paying for expensive qualification when it can be run directly.
+
+This authorizes correction, never circumvention. Do not disable, weaken or bypass a hook, conceal its findings, manufacture a passing result, or retry unchanged input hoping for a different outcome. If the cause, the ownership, the remedy, or the authority stays uncertain — or the same refusal recurs without a newly justified correction — park and report the unresolved condition. Permission, custody, remote selection and the destructive Git boundaries are unchanged.
 
 ## What the human does
 

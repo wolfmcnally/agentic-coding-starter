@@ -18,6 +18,10 @@ At close record actual paths, scope departures, primary self-check, exact candid
 
 Primary mode plans and codes inline. A normal full lane obtains one advisory plan report and one advisory code report. A light or explicitly invoked product one-shot lane retains its documented stage omissions. Every stage that does run is advisory in primary mode, and the two-pass limit applies across continuations. A changed candidate does not automatically require another advisory pass. In delegated mode the existing approval and convergence rules below apply. All remaining references to reviewer approval, required finding resolution, or coder delegation in the lane procedures refer to delegated mode only.
 
+Finish every candidate edit before launching an advisory or independent pass, and keep the candidate frozen until it returns. While a reviewer runs, confine local work to reads and to artifacts outside the captured candidate — diagnostics, ignored comparison scripts, unrelated separately scoped work. Queue even a correct fix until the report arrives. Tests are candidate bytes too: adding a missing test during a dispatch moves the candidate exactly as a source edit does, and "it is only a test" is the form this mistake takes each time it recurs.
+
+The evidence guard already refuses a dispatch whose candidate moved, and useful findings do not make that dispatch accepted evidence. The correct response to a refused dispatch is to keep the report as observations, adopt whatever it verified, and record the pass as failed — not to relabel it or to reset the allowance. In a donor project this cost three attempts across two phases and exhausted the configured allowance before any accepted review existed.
+
 ## The three initial lanes
 
 | Lane | Pipeline | When |

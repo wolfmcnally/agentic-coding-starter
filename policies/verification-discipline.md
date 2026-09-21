@@ -13,6 +13,18 @@ actually inspected and any material surface the instrument could not see. Do
 not turn unavailable evidence, an empty query, or an unsupported format into
 "none found."
 
+## Both silent directions
+
+A check has two silent directions, and both must be closed. One that can only say *good* turns an absent resource or a failed query into reassurance. One that can only say *found* — or that reports success after examining nothing — is the mirror image: a process search whose pattern matches its own command line, a collision count that counts unrelated rows, a comparison that exits zero reporting "0 needing a reason" because every input failed to resolve and unresolved inputs were never counted against it. Every check states what it examined, and fails when that is nothing. The false-green catalogue is in [`acceptance-empirical.md`](acceptance-empirical.md) § "A check must be able to fail"; this is its other half.
+
+Motivating incidents, cited per the doctrine's growth rule (donor project, three occurrences): an orphan-process check run after a stopped dispatch, a slug-collision count, and a mirror-parity tool that reported agreement over inputs it had never resolved.
+
+## Give a refusing command its own block
+
+A command that can refuse is run alone, and its refusal is read before the next command starts. A compound block continues past a failed member, so the refusal is never read and every later command runs against the state the failed one was supposed to establish.
+
+Two places attract the chained block, and neither is reviewed the way new work is. **Repair**: the mistake is visible, the whole fix is in view, and writing it as one block is the natural expression of undoing it properly. **Delivery**: stage, commit and push feel like a single motion. In a donor project the repair case produced a permanently uncertifiable record — a refusing cancel was followed by two commands that ran anyway, against a span that was still open — and the delivery case pushed a commit whose message described an entire sweep after its staging step had refused and carried only part of it. A repair is new work and takes the discipline of new work.
+
 ## A grep lead is not a finding
 
 Search output identifies candidates for inspection. It becomes evidence only

@@ -85,3 +85,9 @@ Accepted evidence close may validate an external proposed ledger using `--ledger
 The close record binds both ledger digests and the accepted product. Apply the exact proposed ledger and run the same close command with `--verify-handoff` before any further ripple or arrow edits. This verification checks the actual ledger, product and child continuation; it does not certify delivery or replace the final full handoff gate. The ordinary catalog checker and standalone log writer retain their checks against the live ledger.
 
 A prospective close may additionally advance at most one existing not-started phase to next, selected in dependency order during close preparation. This exact marker transition is bound with the completion markers; it prevents a final-child close from creating an idle incomplete ledger without a next phase.
+
+## Where the next marker must sit after a child close
+
+A close asks where the marker *must be now*, never where it already sat. A phase started by name rather than by following the marker leaves the marker somewhere else for the whole phase, and a closing orchestrator that reasons from the ledger's current state records that it "stays where it was" — three times running, in a donor project, while the count-based ledger check passed each time because exactly one marker was present.
+
+So the rule is positional, not numeric: when a child closes and its parent stays 🚧, the ⬅️ marker must sit on a non-completed direct child of that parent, or on nothing, and it moves in the same edit as the status flip. `bin/check-catalogs --closing-phase` refuses a marker stranded elsewhere and names both where it sits and which children were available. A close that deliberately queues work outside the parent's subtree — the dependency-ordered successor is elsewhere — passes `--next-marker-reason` and records that reason in the close block.

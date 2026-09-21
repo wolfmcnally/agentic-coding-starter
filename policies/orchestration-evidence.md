@@ -30,6 +30,9 @@ dependencies, the immediately preceding completed phase as authorities, and the
 fresh `bin/kickoff-config preflight --receipt` artifact for the resolved role
 topology. A missing, stale, malformed, or differently configured receipt refuses
 initialization and final validation.
+
+Never declare a contract file the approved plan will change — a policy, brief, document or fixture in the phase's own write set. The manifest hashes whole files, so such a declaration guarantees an authority-drift refusal at acceptance; place the acceptance seam after the planned edits instead. This is not a licence to work outside declared authority: a file the phase must edit *and* reason from is a scope question for the operator, not a silent omission. `plan/INDEX.md` remains declared — its start flip precedes capture and its close transition is bound separately by the accepted close.
+
 Original files remain authoritative; the manifest is an index and drift
 sensor, not a summary that replaces them.
 

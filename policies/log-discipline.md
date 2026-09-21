@@ -161,6 +161,7 @@ This block records a correction to an already authorized goal; it does not reope
    historical blocks remain append-only.
 6. **Chronology corrections move effective time, never bytes.** A later exact `LOG CHRONOLOGY CORRECTION` block binds one earlier block digest, repeats its recorded anchor, and supplies a strictly later effective anchor no later than the correction record. Duplicate, missing, ambiguous, or backward corrections refuse.
 7. **One bounded mechanical repair.** A novel bookkeeping failure may receive one in-memory-validated atomic repair under `policies/orchestration-control-plane.md`. A second attempt, ambiguity, substantive change, recurring signature, or failed byte verification parks.
+8. **A diagnosed hook failure may correct the uncommitted block.** A hook that rejects the commit may name a defect in the block the orchestrator just wrote, and the remedy is a correction rather than another appended block. Under [`human-in-the-loop.md`](human-in-the-loop.md) § Correcting a diagnosed hook refusal, retain the rejected bytes, verify the committed prefix before and after the smallest targeted correction, and run `bin/check-log-prefix --staged --require-terminal-lessons` against the newly staged content before renewing the required gates. This narrow exception never authorizes changing committed bytes, moving a block outside `bin/log-relocate`, or rewriting another writer's work.
 
 ## Why append-only
 

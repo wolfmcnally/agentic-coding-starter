@@ -29,7 +29,7 @@ Greenfield projects move faster when the agent is allowed — required, even —
 
 1. Pick the new shape.
 2. Replace the old shape directly — rename, refactor, change the schema.
-3. Update *every* call site, fixture, test, sample data file, and reference in briefs/plan/docs to the new contract.
+3. Update *every* call site, fixture, test, sample data file, and reference in briefs/plan/docs to the new contract. The caller inventory includes the extensionless executables under `bin/` and `.githooks/`: search without a file-suffix filter, or the search reports a complete sweep over the subset of callers that happen to carry an extension. Replace an interface's importers before the module they import, so a managed launcher that must run the follow-up edit does not stop importing midway.
 4. Delete the old shape's code, tests, and documentation.
 5. Note the change in the phase's END block (the LOG entry is the audit trail of breaking changes).
 

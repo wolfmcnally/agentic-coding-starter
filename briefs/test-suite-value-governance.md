@@ -19,7 +19,7 @@ A repository adopting this method freezes its whole pre-reset estate, inventorie
 both parameter-collapsed families and expanded executable leaves, and dispositions
 every proof as retain, consolidate, or delete. Retaining everything for a later
 audit is not adoption. The reset removes dominated test bodies together with dead
-fixtures, helpers, mutation rows, and caller wiring; skipped, deselected, renamed,
+fixtures, helpers, and caller wiring; skipped, deselected, renamed,
 or hidden proofs still count as present.
 
 The one-time reset targets no more than 20% of both frozen family and leaf counts.

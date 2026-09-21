@@ -244,7 +244,9 @@ def check_phase_ledger(ledger: Path | None = None) -> None:
         )
 
 
-def check_closing_phase(phase: str, ledger: Path | None = None) -> None:
+def check_closing_phase(
+    phase: str, ledger: Path | None = None, next_marker_reason: str | None = None
+) -> None:
     """A completed child cannot leave its parent with no truthful continuation."""
     if "." not in phase:
         return
@@ -290,6 +292,24 @@ def check_closing_phase(phase: str, ledger: Path | None = None) -> None:
             f"closing child Phase {phase} must close parent Phase {parent} or leave it 🚧 "
             "with another drafted incomplete direct child",
         )
+        return
+    if next_marker_reason:
+        return
+    queued = [child for child, (marker, _) in entries.items() if marker == NEXT_MARKER]
+    if len(queued) != 1:
+        return
+    target = queued[0]
+    if target == parent or target.startswith(f"{parent}."):
+        return
+    report(
+        "plan-close",
+        "plan/INDEX.md",
+        f"closing child Phase {phase} leaves parent Phase {parent} 🚧 with drafted "
+        f"incomplete {', '.join(f'Phase {child}' for child in sorted(siblings))}, but "
+        f"the {NEXT_MARKER} marker "
+        f"sits on Phase {target}; move it to a non-completed child of Phase {parent} in "
+        "the same edit, or pass --next-marker-reason to record why the queue is elsewhere",
+    )
 
 
 def frontmatter_lines(text: str) -> list[tuple[int, str]]:
@@ -644,6 +664,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--closing-phase")
     parser.add_argument("--ledger-file", type=Path, help="validate a prospective phase ledger")
+    parser.add_argument(
+        "--next-marker-reason",
+        help="record why a child close queues work outside the closing parent's subtree",
+    )
     arguments = parser.parse_args()
     try:
         instructions = (ROOT / "CLAUDE.md").read_bytes().decode("utf-8")
@@ -657,7 +681,9 @@ def main() -> int:
     check_docs_catalog()
     check_phase_ledger(arguments.ledger_file)
     if arguments.closing_phase:
-        check_closing_phase(arguments.closing_phase, arguments.ledger_file)
+        check_closing_phase(
+            arguments.closing_phase, arguments.ledger_file, arguments.next_marker_reason
+        )
     check_phase_files()
     check_markdown_links()
     if DRIFT:

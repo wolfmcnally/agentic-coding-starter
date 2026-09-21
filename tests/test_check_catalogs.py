@@ -120,6 +120,8 @@ def test_tracked_markdown_deleted_from_worktree_is_not_read_as_a_source(
     _assert_child_close_requires_parent_close_or_another_drafted_child(tmp_path / "stranded-child")
     _assert_child_close_accepts_parent_close(tmp_path / "closed-parent")
     _assert_child_close_accepts_drafted_incomplete_sibling(tmp_path / "queued-sibling")
+    _assert_child_close_refuses_a_next_marker_outside_the_parent(tmp_path / "stale-marker")
+    _assert_a_recorded_reason_permits_a_next_marker_elsewhere(tmp_path / "declared-marker")
 
 
 def _assert_instruction_delivery(root: Path) -> None:
@@ -474,4 +476,43 @@ def _assert_child_close_accepts_drafted_incomplete_sibling(tmp_path: Path) -> No
         )
     )
     result = run(root, "--closing-phase", "1.1")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def _stranded_marker_root(tmp_path: Path) -> Path:
+    """A child close whose parent keeps a drafted child while ⬅️ sits on Phase 2."""
+    root = fixture(tmp_path, first="🚧", second="⬅️")
+    (root / "plan" / "phase-1.2.md").write_text("# Phase 1.2\n")
+    (root / "plan" / "INDEX.md").write_text(
+        INDEX.format(first="🚧", second="⬅️").replace(
+            "| Phase 2 | Second | ⬅️ |",
+            "| Phase 1.1 | Child one | ✅ |\n"
+            "| Phase 1.2 | Child two | ⏳ |\n"
+            "| Phase 2 | Second | ⬅️ |",
+        )
+    )
+    return root
+
+
+def _assert_child_close_refuses_a_next_marker_outside_the_parent(tmp_path: Path) -> None:
+    root = _stranded_marker_root(tmp_path)
+
+    result = run(root, "--closing-phase", "1.1")
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "sits on Phase 2" in result.stdout
+    assert "Phase 1.2" in result.stdout
+
+
+def _assert_a_recorded_reason_permits_a_next_marker_elsewhere(tmp_path: Path) -> None:
+    root = _stranded_marker_root(tmp_path)
+
+    result = run(
+        root,
+        "--closing-phase",
+        "1.1",
+        "--next-marker-reason",
+        "Phase 2 is the dependency-ordered successor",
+    )
+
     assert result.returncode == 0, result.stdout + result.stderr
