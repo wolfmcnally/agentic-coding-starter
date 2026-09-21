@@ -22,12 +22,7 @@ audit is not adoption. The reset removes dominated test bodies together with dea
 fixtures, helpers, and caller wiring; skipped, deselected, renamed,
 or hidden proofs still count as present.
 
-The one-time reset targets no more than 20% of both frozen family and leaf counts.
-That pressure is subordinate to effectiveness: the retained estate must recall at
-least 80% of a frozen local historical-defect corpus, kill at least 80% of a held-
-out local mutant corpus, and keep direct proof for every applicable critical-risk
-class. If the cap and those floors cannot coexist, the repository parks for its
-owner instead of changing the denominator or silently retaining the estate.
+The one-time reset targets a declared fraction of both frozen family and leaf counts — a fifth in a repository pruning an overgrown estate, all of it in one that was stamped yesterday and whose baseline is already someone else's reset. That pressure is subordinate to effectiveness: the retained estate must meet its declared recall over a frozen local historical-defect corpus and a held-out local mutant corpus, and keep direct proof for every applicable critical-risk class. The corpus sizes are declared too, and a new repository declares none, because it has no defect history yet and borrowing another project's is not evidence about its own code. A class with no cases reports as unmeasured rather than as zero or as passing, and the declaration grows as the repository accumulates real defects to freeze. If the cap and those floors cannot coexist, the repository parks for its owner instead of changing the denominator or silently retaining the estate.
 Corpus case metadata and mutation-patch bytes are digest-bound to the observed
 effectiveness report so a nominally frozen holdout cannot drift after execution.
 

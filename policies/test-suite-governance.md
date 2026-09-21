@@ -16,13 +16,19 @@ Initial adoption MUST:
 3. Disposition every baseline proof exactly once as `retain`, `consolidate`, or
    `delete` in an append-only ledger. Each row MUST carry its contract, oracle,
    red witness, nearest overlap, replacement evidence, and standalone rationale.
-4. Keep current families and leaves at or below 20% of the frozen denominators.
-5. Demonstrate at least 80% recall over a frozen local historical-defect corpus
-   and at least 80% kill recall over a held-out local mutant corpus.
+4. Keep current families and leaves at or below the declared `max_families_ratio`
+   and `max_leaves_ratio` of the frozen denominators.
+5. Demonstrate at least the declared recall over a frozen local historical-defect
+   corpus and at least the declared kill recall over a held-out local mutant
+   corpus, each holding at least its declared case floor.
 6. Retain direct executable proof for every applicable custody, security,
    authority, concurrency, atomicity, corruption, recovery, public-contract,
    schema, deploy, and core-success risk. An inapplicable class requires a
    rationale and an activation trigger.
+
+**The ceilings and case floors are recipient-declared; the floors on effectiveness are not.** `reset_limits` carries `max_families_ratio`, `max_leaves_ratio`, `min_historical_cases`, and `min_mutant_cases` alongside the recall minimums, and a repository declares the values its own history can support. This template declares 0.2 ratios and twelve cases per class because it reset an overgrown estate and has the defect history to prove the result. A freshly stamped recipient declares ratios of 1.0 and an empty-but-frozen corpus, because its baseline *is* the template's post-reset estate: a compliant 20% reset would discard four fifths of the universal machinery's direct proofs, and it has no defect history to recall. `reassess` widens the declaration as phase history accrues — each ratified lesson and closed defect is a case the recipient can freeze, and the floors rise with them.
+
+What never moves: the recall minimums over whatever corpus exists, direct proof for every applicable critical risk, the zero-net-growth budget, frozen selection before holdout execution, and digest binding. A class with no declared floor and no cases is reported as **unmeasured** — never as zero, never as passing — and the report names it, so an empty corpus cannot be read as a clean one.
 
 The historical corpus may guide selection. Selection MUST be frozen before the
 holdout runs. Every case's command and mutation-patch digest MUST bind the
@@ -44,7 +50,7 @@ named active contract or risk, independent oracle, red witness, non-subsumption
 account, and either a named approved positive budget or a compensating retirement.
 Validation fails closed when any admission or budget evidence is absent.
 
-A **red witness is recorded at construction, not re-run at close.** A mutant exists to vet a proof while that proof is being written: apply the intended defect, watch the named case fail at the assertion that encodes the guarantee, restore the code byte-exactly, and watch it pass. The mutant is then discarded. What the estate retains is the record — the defect tried, the exact command, the failing node and its failure text, and the clean result after restoration — in the family's `mutation_evidence`. No mutation patch or standing mutation battery is committed, and no close gate runs one.
+A **red witness is recorded at construction, not re-run at close.** A mutant exists to vet a proof while that proof is being written: apply the intended defect, watch the named case fail at the assertion that encodes the guarantee, restore the code byte-exactly, and watch it pass. The mutant is then discarded. What the estate retains is the named defect in the family's `mutation_evidence`; the close record that admitted the proof carries the command, the failing node and the clean result after restoration. A name in that list is a claim that the mutation was applied, observed red at the named assertion, and restored — never a plan to try it. No mutation patch or standing mutation battery is committed, and no close gate runs one.
 
 What this gives up is worth stating: a committed mutant re-proves on every run that its bound case still catches its fault, which guards against a proof being weakened later. That standing guarantee is traded for a gate that fails only for reasons of correctness, since a patch anchored on source lines breaks whenever the guarded function is edited. A reviewer who suspects a proof has been weakened re-applies the recorded defect.
 

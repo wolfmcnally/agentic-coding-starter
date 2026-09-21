@@ -4831,7 +4831,9 @@ def _append_failure_once(path: Path, record: dict[str, Any]) -> None:
     append_jsonl(path, record)
 
 
-def _validate_phase_close(root: Path, phase: str, ledger: Path | None = None) -> None:
+def _validate_phase_close(
+    root: Path, phase: str, ledger: Path | None = None, next_marker_reason: str | None = None
+) -> None:
     checker = root / "bin" / "check-catalogs"
     process = subprocess.run(
         [
@@ -4839,6 +4841,7 @@ def _validate_phase_close(root: Path, phase: str, ledger: Path | None = None) ->
             "--closing-phase",
             phase,
             *(["--ledger-file", str(ledger)] if ledger else []),
+            *(["--next-marker-reason", next_marker_reason] if next_marker_reason else []),
         ],
         cwd=root,
         capture_output=True,
@@ -4864,19 +4867,23 @@ def _close_transition(
         raise EvidenceError("close transition may change only the closing phase status")
     changes = []
     next_changes = 0
+    unqueue_changes = 0
     allowed = {phase, *(parents or [])}
     for old, new in zip(original, proposed, strict=True):
         if old == new:
             continue
-        if (
-            old.lstrip().startswith("|")
-            and re.search(r"\bPhase\s+\d+(?:\.\d+)*", old)
-            and old.count("⏳") == 1
-            and new == old.replace("⏳", "⬅️")
-        ):
+        is_phase_row = bool(
+            old.lstrip().startswith("|") and re.search(r"\bPhase\s+\d+(?:\.\d+)*", old)
+        )
+        if is_phase_row and old.count("⏳") == 1 and new == old.replace("⏳", "⬅️"):
             next_changes += 1
             if next_changes > 1:
                 raise EvidenceError("close transition may queue at most one next phase")
+            continue
+        if is_phase_row and old.count("⬅️") == 1 and new == old.replace("⬅️", "⏳"):
+            unqueue_changes += 1
+            if unqueue_changes > 1:
+                raise EvidenceError("close transition may unqueue at most one next phase")
             continue
         if (
             not old.lstrip().startswith("|")
@@ -4891,6 +4898,11 @@ def _close_transition(
     if set(changes) != allowed or len(changes) != len(allowed):
         raise EvidenceError(
             "close transition requires exactly the authorized active phase completions"
+        )
+    if unqueue_changes and not next_changes:
+        raise EvidenceError(
+            "close transition may unqueue a next phase only when it queues another; "
+            "an unpaired unqueue would leave the ledger with no truthful continuation"
         )
     return {
         "before_sha256": hashlib.sha256(before).hexdigest(),
@@ -4958,7 +4970,7 @@ def command_close(arguments: argparse.Namespace) -> int:
         actual = hashlib.sha256((root / "plan/INDEX.md").read_bytes()).hexdigest()
         if actual != transition["after_sha256"]:
             raise EvidenceError("handoff ledger differs from accepted transition")
-        _validate_phase_close(root, run["phase"])
+        _validate_phase_close(root, run["phase"], None, arguments.next_marker_reason)
         print("close ledger verified; full handoff gate remains required")
         return 0
     outcome = arguments.outcome
@@ -5133,7 +5145,9 @@ def command_close(arguments: argparse.Namespace) -> int:
                         "parent acceptance failed: " + checked_parent.stderr.strip()
                     )
                 finalized_trace(engine_root=root, trace_id=parent_run["telemetry_trace_id"])
-            _validate_phase_close(root, run["phase"], arguments.ledger_after)
+            _validate_phase_close(
+                root, run["phase"], arguments.ledger_after, arguments.next_marker_reason
+            )
             append_text_once(root / "LOG.md", log_block)
         atomic_json(
             closure_path,
@@ -5469,6 +5483,10 @@ def build_parser() -> argparse.ArgumentParser:
     close.add_argument("--failure-record", type=Path)
     close.add_argument("--ledger-after", type=Path)
     close.add_argument("--parent-run", type=Path)
+    close.add_argument(
+        "--next-marker-reason",
+        help="why this close queues work outside the closing parent's subtree",
+    )
     close.add_argument("--verify-handoff", action="store_true")
     close.add_argument("--required-final-command")
     close.set_defaults(handler=command_close)

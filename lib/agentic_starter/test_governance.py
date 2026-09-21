@@ -666,15 +666,26 @@ def validate(root: Path) -> dict[str, Any]:
         if isinstance(case, dict) and isinstance(case.get("id"), str)
     }
     recall: dict[str, float] = {}
-    for evidence_class, limit_key in (
-        ("historical_defect", "min_historical_recall"),
-        ("holdout_mutant", "min_mutant_recall"),
+    unmeasured: list[str] = []
+    for evidence_class, limit_key, floor_key in (
+        ("historical_defect", "min_historical_recall", "min_historical_cases"),
+        ("holdout_mutant", "min_mutant_recall", "min_mutant_cases"),
     ):
         expected = [
             case for case in cases if isinstance(case, dict) and case.get("class") == evidence_class
         ]
-        if len(expected) != 12:
-            errors.append(f"{evidence_class} corpus must contain exactly 12 cases")
+        declared_floor = limits.get(floor_key, 0)
+        if not isinstance(declared_floor, int) or isinstance(declared_floor, bool):
+            errors.append(f"{floor_key} must be an integer")
+            declared_floor = 0
+        elif declared_floor < 0:
+            errors.append(f"{floor_key} must not be negative")
+            declared_floor = 0
+        if len(expected) < declared_floor:
+            errors.append(
+                f"{evidence_class} corpus holds {len(expected)} cases, "
+                f"below the declared floor of {declared_floor}"
+            )
         evidence = [row for row in effectiveness if row.get("evidence_class") == evidence_class]
         observed = [row for row in evidence if row.get("observed") is True]
         for row in evidence:
@@ -698,6 +709,10 @@ def validate(root: Path) -> dict[str, Any]:
         ]
         minimum = limits.get(limit_key)
         if not evidence:
+            if declared_floor == 0 and not expected:
+                # An empty declared corpus is unmeasured, never zero and never passing.
+                unmeasured.append(evidence_class)
+                continue
             errors.append(f"audit ledger has no {evidence_class} evidence")
             continue
         if not isinstance(minimum, (int, float)) or not 0 <= minimum <= 1:
@@ -719,6 +734,7 @@ def validate(root: Path) -> dict[str, Any]:
         "families": current["counts"]["families"],
         "leaves": current["counts"]["leaves"],
         "recall": recall,
+        "recall_unmeasured": sorted(unmeasured),
         "dispositions": {
             state: sum(row.get("disposition") == state for row in disposition_rows)
             for state in ("retain", "consolidate", "delete")

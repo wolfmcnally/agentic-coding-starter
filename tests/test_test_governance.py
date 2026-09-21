@@ -130,6 +130,8 @@ def test_recall_below_eighty_percent_fails_closed(
         governance.validate(REPO_ROOT)
 
     monkeypatch.setattr(governance, "load_ledger", original)
+    _assert_corpus_floor_is_declared_not_constant(monkeypatch)
+    _assert_an_empty_declared_corpus_reports_unmeasured(monkeypatch)
     original_yaml = governance.load_yaml
 
     def drifted(path: Path):
@@ -278,3 +280,63 @@ def test_report_reproduces_reset_ratios() -> None:
     assert payload["current"] == {"families": 108, "leaves": 126}
     assert payload["family_ratio"] < 0.2
     assert payload["leaf_ratio"] < 0.2
+
+
+def _manifest_with(limits: dict[str, object]) -> dict[str, object]:
+    manifest = copy.deepcopy(governance.load_yaml(REPO_ROOT / "tests/proof-estate.yaml"))
+    manifest["reset_limits"].update(limits)
+    return manifest
+
+
+def _patched_yaml(monkeypatch: pytest.MonkeyPatch, manifest, corpus=None) -> None:
+    original_yaml = governance.load_yaml
+
+    def patched(path: Path):
+        if path.name == "proof-estate.yaml":
+            return copy.deepcopy(manifest)
+        if corpus is not None and path.name == "corpus.yaml":
+            return copy.deepcopy(corpus)
+        return original_yaml(path)
+
+    monkeypatch.setattr(governance, "load_yaml", patched)
+
+
+def _assert_corpus_floor_is_declared_not_constant(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A recipient declares its corpus floor; the estate must meet the number it declared."""
+    with monkeypatch.context() as patch:
+        _patched_yaml(patch, _manifest_with({"min_mutant_cases": 13}))
+        with pytest.raises(governance.GovernanceError, match="below the declared floor of 13"):
+            governance.validate(REPO_ROOT)
+    with monkeypatch.context() as patch:
+        _patched_yaml(patch, _manifest_with({"min_historical_cases": "twelve"}))
+        with pytest.raises(governance.GovernanceError, match="min_historical_cases must be"):
+            governance.validate(REPO_ROOT)
+
+
+def _assert_an_empty_declared_corpus_reports_unmeasured(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A freshly stamped recipient has no defect history; that reads as unmeasured, not as zero."""
+    original_ledger = governance.load_ledger
+    with monkeypatch.context() as patch:
+        _patched_yaml(
+            patch,
+            _manifest_with(
+                {
+                    "min_historical_cases": 0,
+                    "min_mutant_cases": 0,
+                    "max_families_ratio": 1.0,
+                    "max_leaves_ratio": 1.0,
+                }
+            ),
+            corpus={"selection_frozen": True, "cases": []},
+        )
+
+        def empty_effectiveness(path: Path):
+            if path.name.endswith("effectiveness.jsonl"):
+                return []
+            return original_ledger(path)
+
+        patch.setattr(governance, "load_ledger", empty_effectiveness)
+        summary = governance.validate(REPO_ROOT)
+    assert summary["state"] == "valid"
+    assert summary["recall"] == {}
+    assert summary["recall_unmeasured"] == ["historical_defect", "holdout_mutant"]

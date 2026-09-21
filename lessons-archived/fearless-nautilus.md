@@ -1,10 +1,12 @@
 ---
 slug: fearless-nautilus
 title: The accepted close can queue a next marker only where none exists, so it cannot move a stale one
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: bin
 filed: 2026-09-20
+closed: 2026-09-21
+graduated_to: bin/kickoff-evidence
 source: learn
 occurrences:
   - date: 2026-09-20

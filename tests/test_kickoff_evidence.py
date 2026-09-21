@@ -930,11 +930,15 @@ def _assert_complete_synthetic_kickoff(
         (repository / "plan/phase-1.1.md").write_text(
             "# Child qualification\n\n[Parent](phase-1.md)\n"
         )
+        # The next marker starts stranded on unrelated work, as it does when a
+        # phase is started by name: the close must move it, not inherit it.
         child_row = (
             "| [Phase 1.1](phase-1.1.md) | Qualification child | 🚧 |\n"
-            "| [Phase 1.2](phase-1.2.md) | Next child | ⬅️ |\n"
+            "| [Phase 1.2](phase-1.2.md) | Next child | ⏳ |\n"
+            "| [Phase 9](phase-9.md) | Unrelated later work | ⬅️ |\n"
         )
         (repository / "plan/phase-1.2.md").write_text("# Next child\n")
+        (repository / "plan/phase-9.md").write_text("# Unrelated later work\n")
         if final_child:
             child_row = (
                 "| [Phase 1.1](phase-1.1.md) | Qualification child | 🚧 |\n"
@@ -1588,8 +1592,36 @@ def _assert_complete_synthetic_kickoff(
             "Next major | ⏳".encode(), "Next major | ⬅️".encode()
         )
         close_arguments += ("--parent-run", str(parent_run))
+    if phase == "1.1" and not final_child:
+        expected_index = expected_index.replace(
+            "Next child | ⏳".encode(), "Next child | ⬅️".encode()
+        ).replace("Unrelated later work | ⬅️".encode(), "Unrelated later work | ⏳".encode())
     ledger_after.write_bytes(expected_index)
     close_arguments += ("--ledger-after", str(ledger_after))
+    if phase == "1.1" and not final_child:
+        stranded = captured_index.replace(
+            "Qualification child | 🚧".encode(), "Qualification child | ✅".encode()
+        )
+        ledger_after.write_bytes(stranded)
+        refused_stranded = run(*close_arguments)
+        assert refused_stranded.returncode == 2
+        assert "sits on Phase 9" in refused_stranded.stderr
+        assert not (run_dir / "closure.json").exists()
+        accepted_elsewhere = run(
+            *close_arguments, "--next-marker-reason", "Phase 9 is the ordered successor"
+        )
+        assert accepted_elsewhere.returncode == 0, accepted_elsewhere.stderr
+        (run_dir / "closure.json").unlink()
+        ledger_after.write_bytes(
+            stranded.replace(
+                "Unrelated later work | ⬅️".encode(), "Unrelated later work | ⏳".encode()
+            )
+        )
+        refused_unpaired = run(*close_arguments)
+        assert refused_unpaired.returncode == 2
+        assert "may unqueue a next phase only when it queues another" in refused_unpaired.stderr
+        assert not (run_dir / "closure.json").exists()
+        ledger_after.write_bytes(expected_index)
     for invalid in (
         expected_index.replace(b"Retain both close gates.", b"Omit the handoff gate."),
         expected_index.replace(
