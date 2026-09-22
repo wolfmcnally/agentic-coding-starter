@@ -21,7 +21,14 @@ the list was composed.
      before committing; if that cannot be established safely, park delivery.
    - **Moved path.** A rename or archive move invalidates a path list that names
      the source. Stage and verify the destination path so later content edits
-     are not silently omitted.
+     are not silently omitted. `git add` is **atomic over its pathspec list**:
+     one path that matches nothing aborts the whole invocation and stages none
+     of the others, so a single stale entry silently leaves every intended file
+     unstaged. `git mv` and `git rm` stage their own halves; re-naming them in a
+     later `git add` is what triggers the abort. Verify staging by the index —
+     `git diff --cached --name-only` — never by the `git status` file list,
+     which prints a path whether it is staged or not. *(Graduated from
+     `puzzling-unicorn`, 3 occurrences — `lessons-archived/puzzling-unicorn.md`.)*
 4. **Inspect the staged candidate and the resulting commit.** Read the staged
    diff before committing. Afterward, compare `git show --stat --oneline HEAD`
    with the intended file list. A successful exit proves that Git created a

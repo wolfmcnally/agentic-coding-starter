@@ -163,6 +163,8 @@ This block records a correction to an already authorized goal; it does not reope
 7. **One bounded mechanical repair.** A novel bookkeeping failure may receive one in-memory-validated atomic repair under `policies/orchestration-control-plane.md`. A second attempt, ambiguity, substantive change, recurring signature, or failed byte verification parks.
 8. **A diagnosed hook failure may correct the uncommitted block.** A hook that rejects the commit may name a defect in the block the orchestrator just wrote, and the remedy is a correction rather than another appended block. Under [`human-in-the-loop.md`](human-in-the-loop.md) § Correcting a diagnosed hook refusal, retain the rejected bytes, verify the committed prefix before and after the smallest targeted correction, and run `bin/check-log-prefix --staged --require-terminal-lessons` against the newly staged content before renewing the required gates. This narrow exception never authorizes changing committed bytes, moving a block outside `bin/log-relocate`, or rewriting another writer's work.
 
+9. **Read the clock, then write the record.** Capture a measured field, look at the value, and write the record from what you read. Never compose a timestamped block and the command that reads the clock in one breath: the value written is then an estimate, and in an append-only log a wrong one costs a correction block — which can carry its own wrong timestamp and cost a second. This generalizes past timestamps to any field that is *measured* rather than chosen. *(Graduated from `vengeful-shoebill`, 3 occurrences — `lessons-archived/vengeful-shoebill.md`.)*
+
 ## Why append-only
 
 Two reasons:

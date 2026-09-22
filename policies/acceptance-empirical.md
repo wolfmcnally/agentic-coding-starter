@@ -22,11 +22,15 @@ count preserved by any write. It is rewritten or deleted, never shipped as
 coverage. (A month of code reviews across three derived projects put this
 shape first among all findings.)
 
+**Derive the falsifier from what the check cannot distinguish.** A mutation taken from the fault the proof was designed to catch shows only that the control fires in the direction it was aimed. Name the property the check claims and the quantity it actually measures, then construct a wrong implementation that preserves the measured quantity while violating the property: incomplete enumeration behind a count, structured input reduced to tokens, a state claim represented by a total, a refusal verified only by an exit status. That projection gap is the falsifier worth recording. Qualify the harness against known-good code first — a baseline that fails for its own reasons must stop the run, never be counted as detection. *(Graduated from `attentive-dolphin`, 3 occurrences — `lessons-archived/attentive-dolphin.md`. Six deliberate mutations all caught while four wrong implementations passed the same suite; an assay that counted its own copying defect as a detection; a fixture that accepted an unrelated startup crash as a successful rejection.)*
+
 ## A fixture is built the way the real producer builds it
 
 When a fixture stands in for an artifact another component produces, construct it the way that component constructs it, including the parts the code under test is supposed to ignore. A selection rule is only tested when the fixture contains something to reject, and a fixture assembled from what the test expects to find proves the fixture.
 
 In a donor project a hand-built package held four files, so the test asserted that the engine filed four; a real package also contains a copy of its own source media, which the code would have filed a second time and read whole into memory. The assertion passed for a reason unrelated to the behavior it named. The cheap check is one listing of a genuine artifact compared against the fixture, before any count is trusted.
+
+The same holds for a lifecycle rather than an artifact: a proof of an orchestration lifecycle exercises the production authority inventory and its real status transitions, not a component stand-in. Passing component tests do not establish that a complete phase can close — the combination is where the contradictions live, and every one of them here was found by extending the lifecycle fixture rather than by reading a rule. *(Graduated from `classy-kangaroo`, 5 occurrences — `lessons-archived/classy-kangaroo.md`: a status mutation drifting a whole-file authority, cross-run executable custody, final-child marker advancement, a repeated nested close, and a continuation's parent validation.)*
 
 ## What counts as an acceptance criterion
 

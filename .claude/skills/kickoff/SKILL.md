@@ -8,7 +8,7 @@ description: >-
   CLAUDE.md and phase file declare which build gates to run.
   Invoke as /kickoff in Claude Code or $kickoff in Codex (picks up the ⬅️
   phase); append "phase N" to target a specific phase.
-last-reviewed: 2026-09-04
+last-reviewed: 2026-09-21
 ---
 
 # Kickoff: Single-Phase Session

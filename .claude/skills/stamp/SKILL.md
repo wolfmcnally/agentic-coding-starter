@@ -9,7 +9,7 @@ description: >-
   the new project's name and primary language. Invoke as /stamp <directory>
   [<description>] in Claude Code or $stamp <directory> [<description>] in Codex.
 argument-hint: "<directory> [<description>]"
-last-reviewed: 2026-09-04
+last-reviewed: 2026-09-21
 ---
 
 # Stamp — Bootstrap a new agentic-coding project

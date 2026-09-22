@@ -10,7 +10,7 @@ description: >-
   $roles in Codex; arguments show, set, reset, or apply a preset to the pins.
 argument-hint: "[<harness>] <role>: <model> [effort <level>], ... | preset <quality|balanced|economy> [same-harness|cross-vendor] | reset"
 allowed-tools: Bash
-last-reviewed: 2026-08-10
+last-reviewed: 2026-09-21
 ---
 
 # Roles — Pin models/harnesses to the four canonical roles

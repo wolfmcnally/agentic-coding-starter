@@ -11,7 +11,7 @@ description: >-
   /sweep in Claude Code or $sweep in Codex; an optional focus argument narrows
   the pass (e.g. "skills", "lessons", "policies").
 argument-hint: "[<focus>]"
-last-reviewed: 2026-08-25
+last-reviewed: 2026-09-21
 ---
 
 # Sweep — Prune and graduate the rule surfaces

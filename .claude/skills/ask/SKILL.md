@@ -10,6 +10,7 @@ description: >-
   triggers it, so it can never fire while the work is unattended.
 disable-model-invocation: true
 argument-hint: "[optional topic to scope the questions]"
+last-reviewed: 2026-09-21
 ---
 
 # Ask Skill

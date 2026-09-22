@@ -7,6 +7,7 @@ description: >-
   reusable lesson. Use when an approach is corrected, a command or test fails
   unexpectedly, results contradict assumptions, work gets thrown away, context
   keeps being re-explained, or an insight is worth preserving for future work.
+last-reviewed: 2026-09-21
 ---
 
 # Rule One: Continuous Self-Improvement
@@ -155,7 +156,7 @@ Then do one of the following:
 Lead with the future action, include enough reason to prevent blind
 application, and preserve the terminology and conventions of the destination.
 
-Before creating a test, hook, lint rule, mutation row, or guard, name the active requirement, how correctness is judged, and the nearest existing enforcement. When the same requirement is proved in the same way, strengthen the existing proof or proof family instead of creating another. Similarity alone does not justify consolidation: preserve independent evidence for distinct failures. Read the local proof inventory, admission criteria, and budget before authoring; a new incident does not by itself establish a new proof family.
+Before creating a test, hook, lint rule, or guard, name the active requirement, how correctness is judged, and the nearest existing enforcement. When the same requirement is proved in the same way, strengthen the existing proof or proof family instead of creating another. Similarity alone does not justify consolidation: preserve independent evidence for distinct failures. Read the local proof inventory, admission criteria, and budget before authoring; a new incident does not by itself establish a new proof family.
 
 Mechanization follows discernment. Use a guard when the environment supports
 one and a settled requirement is mechanically recognizable. A guard can
