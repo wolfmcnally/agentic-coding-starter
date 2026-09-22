@@ -1,10 +1,12 @@
 ---
 slug: classy-kangaroo
 title: Exercise lifecycle mutations against the same authorities used in production
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: test
 filed: 2026-09-04
+closed: 2026-09-21
+graduated_to: policies/acceptance-empirical.md
 source: kickoff
 occurrences:
   - date: 2026-09-04
@@ -26,3 +28,5 @@ The approved preparation sequence puts final authority edits and the in-progress
 The diagnostic lesson is about lifecycle coverage, not about relaxing authority integrity. No generic ledger normalization or new recovery mechanism is ratified by this entry.
 
 The approved readiness repair subsequently exercised distinct pinned parent runs, a three-level final-child rollup, exact next-marker advancement, and retries both before and after applying the ledger. Tampered transition records refuse independently of their claimed status. These observations extend the executable lifecycle proof; they do not graduate this lesson. The earlier unresolved child-close statement records the preparation state, not the repaired implementation.
+
+Graduated 2026-09-21. Folded into `policies/acceptance-empirical.md` § "A fixture is built the way the real producer builds it" rather than opening a second rule: a proof of an orchestration lifecycle exercises the production authority inventory and its real status transitions, because passing component tests do not establish that a complete phase can close. All five occurrences were found by extending the lifecycle fixture, which is the executable half of the same remedy.

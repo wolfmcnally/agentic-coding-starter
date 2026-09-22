@@ -1,10 +1,12 @@
 ---
 slug: puzzling-unicorn
 title: A `git add` naming one path that no longer exists stages NOTHING, and `git status` still lists every file
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-24
+closed: 2026-09-21
+graduated_to: policies/commit-staging.md
 source: learn
 occurrences:
   - date: 2026-08-21
@@ -52,3 +54,5 @@ This matters more here now that `kickoff` delivers accepted phases itself
 delivery step stages explicit paths, and archiving a `user-actions/` or
 `lessons/` file with `git mv` during the same close is exactly the setup for the
 silent direction.
+
+Graduated 2026-09-21. A third occurrence landed in this repository, the loud direction: a twelve-path `git add` named a lesson file whose deletion `git mv` had already staged, and the invocation aborted without staging any of the other eleven. `policies/commit-staging.md` rule 3's moved-path bullet now carries the mechanism — `git add` is atomic over its pathspec list — and the index-column verification that distinguishes staged from unstaged.

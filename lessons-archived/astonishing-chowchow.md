@@ -1,10 +1,12 @@
 ---
 slug: astonishing-chowchow
 title: The repair path is where a chained block is most tempting and least examined
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: invariant
 filed: 2026-08-24
+closed: 2026-09-21
+graduated_to: policies/verification-discipline.md
 source: learn
 occurrences:
   - date: 2026-08-20
@@ -37,3 +39,5 @@ Two corollaries:
   explicit "record this as incomplete" verb, the record can say what went wrong in
   its own terms; where it has none, an uncorrectable record is simply wrong with
   no way to say so.
+
+Closed 2026-09-21. The entry asserted that this repository already held the chaining rule; it did not, which a 2026-09-20 `learn` assessment confirmed by finding no such text. The rule landed that day in `CLAUDE.md`'s execution-truth invariant and in `policies/verification-discipline.md` § "Give a refusing command its own block", which names repair and delivery as the two places it recurs — this entry's own finding.

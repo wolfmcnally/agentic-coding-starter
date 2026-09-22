@@ -1,10 +1,12 @@
 ---
 slug: optimal-echidna
 title: A battery that aborts on first failure reports a partial result in the grammar of a complete one
-status: candidate
+status: superseded
 scope: methodology
 proposed_surface: test
 filed: 2026-08-17
+closed: 2026-09-21
+graduated_to: policies/verification-discipline.md
 source: learn
 occurrences:
   - date: 2026-08-16
@@ -30,3 +32,5 @@ how many were not executed, so the reader can see the claim's boundary.
 Locally relevant: this repository's `bin/check all` is fail-fast sequential —
 a lint failure means the test and policy gates never ran, and nothing in the
 output says so.
+
+Closed 2026-09-21 as superseded. The general principle is already stated in `policies/verification-discipline.md` § "State the blind spot": a clean report names what was actually inspected and any material surface the instrument could not see. The specific machinery — a committed fail-fast mutation battery whose abort summary read like a complete verdict — was retired from this methodology on 2026-09-20, so the occurrence class can no longer arise here.

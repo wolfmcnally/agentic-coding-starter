@@ -1,10 +1,12 @@
 ---
 slug: attentive-dolphin
 title: Derive mutation batteries from what the measurement cannot distinguish
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: agent
 filed: 2026-08-26
+closed: 2026-09-21
+graduated_to: policies/acceptance-empirical.md
 source: learn
 occurrences:
   - date: 2026-08-21
@@ -38,3 +40,5 @@ its silence cannot masquerade as evidence.
 The local recurrence inverted the signal: nonzero exit was the proxy for detecting a seeded defect, but the copying step itself broke a healthy mirror. Complete diagnostics identified the symlink assertion rather than the intended defect. Preserve symlinks in disposable copies and require the same command to pass before applying its mutation; a baseline failure must stop the assay, not increase recall. This correction strengthens the instrument under its existing accuracy contract; it does not graduate this candidate lesson or make the frozen corpus comprehensive.
 
 The independent review found the same projection gap in a new instrument: requiring a traceback rejected successful wrong repairs but accepted unrelated startup crashes. Each fixed control now names its expected exception type and message, and a startup-failure counterexample proves that unrelated errors refuse qualification. This is a distinct observation in the evaluation pack, not another occurrence counted from rerunning the assay incident.
+
+Graduated 2026-09-21 into `policies/acceptance-empirical.md` § "A test carries its falsifier": name the property claimed and the quantity measured, construct a wrong implementation that preserves the measurement while violating the property, and qualify the harness against known-good code before any detection is counted. The entry's original vocabulary of standing mutation batteries did not survive the 2026-09-20 retirement of committed mutants; the rule was graduated in the construction-time red-witness form instead.

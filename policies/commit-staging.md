@@ -27,12 +27,28 @@ the list was composed.
      unstaged. `git mv` and `git rm` stage their own halves; re-naming them in a
      later `git add` is what triggers the abort. Verify staging by the index —
      `git diff --cached --name-only` — never by the `git status` file list,
-     which prints a path whether it is staged or not. *(Graduated from
-     `puzzling-unicorn`, 3 occurrences — `lessons-archived/puzzling-unicorn.md`.)*
+     which prints a path whether it is staged or not. **A name is still not
+     content.** When `git mv` staged a rename and the moved file was edited
+     afterward, the path appears in `--name-only` while the index holds the
+     pre-edit bytes; only `git diff --cached --stat` or the staged diff itself
+     distinguishes them, which is why rule 4's read is not optional. A commit
+     that ships a rename without its content is the silent direction of this
+     defect: it succeeds, its file list matches the intent exactly, and the
+     working tree keeps the edits that never left it. *(Graduated from
+     `puzzling-unicorn`, 3 occurrences — `lessons-archived/puzzling-unicorn.md`;
+     the name-is-not-content clause added the same day, after it recurred.)*
 4. **Inspect the staged candidate and the resulting commit.** Read the staged
    diff before committing. Afterward, compare `git show --stat --oneline HEAD`
    with the intended file list. A successful exit proves that Git created a
    commit, not that the commit contains what was intended.
+5. **Verify before the push, in its own block.** The post-commit checks —
+   `git show --stat`, a clean `git status`, residual-dirt inspection — decide
+   whether the commit is fit to publish, so chaining them behind the push in one
+   command block runs them after the irreversible step and turns a catchable
+   mistake into a published one. Residual modification on a path the commit just
+   claimed means the commit is short. This is the delivery case of the rule that
+   a command whose refusal or result must be read gets its own block
+   (`verification-discipline.md`).
 
 ## Corollaries
 

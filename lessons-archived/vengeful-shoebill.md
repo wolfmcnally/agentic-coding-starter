@@ -1,10 +1,12 @@
 ---
 slug: vengeful-shoebill
 title: Never compose a timestamped record in the same command that reads the clock
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-17
+closed: 2026-09-21
+graduated_to: policies/log-discipline.md
 source: learn
 occurrences:
   - date: 2026-08-13
@@ -30,3 +32,5 @@ than *chosen*: capture the measurement, look at it, then write. Composing the
 record and taking the measurement in one breath means writing what you expect
 instead of what is true — the small, cheap form of the failure the
 instrument-trust rules keep finding at larger scale.
+
+Graduated 2026-09-21. A third occurrence landed in this repository: a METHODOLOGY SCOPE block was composed with an estimated timestamp and appended before the clock was read, six hours off. It was uncommitted, so the header was corrected in place and the committed prefix re-verified. The rule now stands as invariant 9 in `policies/log-discipline.md` — read the clock, then write the record with the value you read, for any field that is measured rather than chosen.
