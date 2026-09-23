@@ -133,9 +133,9 @@ MODELS = (
 CODEX_MODELS = {
     "codex": None,
     "astra": "gpt-6-astra",
-    "sol": "gpt-5.6-sol",
+    "sol": "gpt-6-sol",
     "terra": "gpt-5.6-terra",
-    "luna": "gpt-5.6-luna",
+    "luna": "gpt-6-luna",
 }
 CLAUDE_MODELS = {"claude": None, "opus": "opus", "fable": "fable"}
 MODEL_EFFORTS = {
@@ -145,6 +145,8 @@ MODEL_EFFORTS["codex"] = ("low", "medium", "high", "xhigh")
 MODEL_EFFORTS["default"] = ()
 EFFORTS = tuple(dict.fromkeys(effort for values in MODEL_EFFORTS.values() for effort in values))
 PRESETS = ("quality", "balanced", "economy")
+# Provider-recommended starting effort for the lead coding models; escalation models start high.
+PRESET_EFFORTS = {"opus": "medium", "sol": "medium", "fable": "high", "astra": "high"}
 REVIEW_MODES = ("same-harness", "cross-vendor")
 ROLE_OPERATIONS = {
     "planner": "role.plan",
@@ -176,6 +178,8 @@ def preset_models(
         if review == "cross-vendor":
             for role in ("reviewer", "critic"):
                 roles[role]["model"] = other_economical if preset == "economy" else other_strong
+        for pin in roles.values():
+            pin["effort"] = PRESET_EFFORTS[pin["model"]]
         models[harness] = roles
     return models
 

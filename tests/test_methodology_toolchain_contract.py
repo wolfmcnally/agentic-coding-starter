@@ -280,7 +280,7 @@ def _exercise_transfer_recipes(tmp_path: Path) -> None:
         resolved = copied["resolve"](pins, "codex")
         assert resolved["mode"] == "primary"
         assert resolved["roles"]["coder"]["execution"] == "inline"
-        assert resolved["roles"]["critic"]["model"] == "astra"
+        assert resolved["roles"]["critic"]["model"] == "sol"
         for skill_name in ("teach", "learn"):
             transfer = (destination / ".claude/skills" / skill_name / "SKILL.md").read_text()
             assert "No delegated planning/coding, independent review/critique" in transfer

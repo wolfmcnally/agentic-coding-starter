@@ -223,6 +223,8 @@ def test_scoped_edit_preserves_extensions_comments_and_timeouts(tmp_path: Path) 
             ("opus", "sol", "opus", "sol"),
         ),
     }
+    # Independent oracle: provider-recommended starting effort per model (As of 2026-09-23).
+    starting_effort = {"opus": "medium", "sol": "medium", "fable": "high", "astra": "high"}
     for (preset, review), expected in matrices.items():
         options = () if review == "same-harness" else ("--review", review)
         result = run_manager(config, "apply-preset", preset, *options)
@@ -232,7 +234,7 @@ def test_scoped_edit_preserves_extensions_comments_and_timeouts(tmp_path: Path) 
         assert document["role_models"]["default"] == base
         for harness, models in zip(("codex", "claude"), expected, strict=True):
             assert document["role_models"][harness] == {
-                role: {"model": model, "effort": "high"}
+                role: {"model": model, "effort": starting_effort[model]}
                 for role, model in zip(
                     ("planner", "reviewer", "coder", "critic"), models, strict=True
                 )
@@ -540,9 +542,9 @@ class TestGeneratedInvocationRecipes:
 
         for model, venue, wire in (
             ("astra", "codex", "gpt-6-astra"),
-            ("sol", "codex", "gpt-5.6-sol"),
+            ("sol", "codex", "gpt-6-sol"),
             ("terra", "codex", "gpt-5.6-terra"),
-            ("luna", "codex", "gpt-5.6-luna"),
+            ("luna", "codex", "gpt-6-luna"),
             ("fable", "claude", "fable"),
             ("opus", "claude", "opus"),
         ):
@@ -729,7 +731,7 @@ else:
             assert document["targets"]
             assert all(target["cli"] == venue for target in document["targets"])
             assert all(
-                target["model"] == ("opus" if venue == "claude" else "gpt-5.6-sol")
+                target["model"] == ("opus" if venue == "claude" else "gpt-6-sol")
                 for target in document["targets"]
             )
             assert all(
@@ -764,17 +766,21 @@ def _assert_primary_routing_and_usage(tmp_path: Path) -> None:
         "inline",
         "inline",
     ]
+    assert routed["primary_model"] == "sol"
     assert [routed["roles"][r]["model"] for r in ("reviewer", "critic")] == [
         "fable",
         "fable",
     ]
+    assert workflow.resolve(document, "claude")["primary_model"] == "opus"
+    for escalation, harness in (("astra", "codex"), ("fable", "claude")):
+        assert workflow.resolve(document, harness, escalation)["mode"] == "primary"
     config["allowed_harnesses"] = ["codex"]
-    assert workflow.resolve(document, "codex")["roles"]["reviewer"]["model"] == "astra"
+    assert workflow.resolve(document, "codex")["roles"]["reviewer"]["model"] == "sol"
     config["allowed_harnesses"] = ["codex", "claude"]
-    assert workflow.resolve(document, "codex", "sol")["mode"] == "delegated"
+    assert workflow.resolve(document, "codex", "terra")["mode"] == "delegated"
     config["mode"] = "primary"
     with pytest.raises(workflow.WorkflowError, match="eligible"):
-        workflow.resolve(document, "codex", "sol")
+        workflow.resolve(document, "codex", "terra")
     config["mode"] = "auto"
 
     snapshot = {
@@ -806,7 +812,7 @@ def _assert_primary_routing_and_usage(tmp_path: Path) -> None:
                 )
     for window, percent, wanted in [
         ("week", 95, "fable"),
-        ("week", 95.001, "astra"),
+        ("week", 95.001, "sol"),
         ("short", 100, "fable"),
     ]:
         data = copy.deepcopy(snapshot)
@@ -836,30 +842,28 @@ def _assert_primary_routing_and_usage(tmp_path: Path) -> None:
     saturated["anthropic"]["windows"]["week"]["utilization"] = 99
     assert separate["roles"]["reviewer"]["model"] == "fable"
     assert separate["roles"]["critic"]["model"] == "astra"
-    assert (
-        workflow.apply_usage(separate, config, saturated)["roles"]["reviewer"]["model"] == "astra"
-    )
+    assert workflow.apply_usage(separate, config, saturated)["roles"]["reviewer"]["model"] == "sol"
     config["adviser_models"]["codex"]["critic"] = ["fable"]
     # Shared limits cannot be excluded by model-specific mappings.
     scoped = copy.deepcopy(snapshot)
     scoped["openai"]["windows"] = {"primary_window": {"utilization": 96, "window_seconds": 18000}}
     scoped["openai"]["additional_rate_limits"] = [
         {
-            "metered_feature": "astra",
+            "metered_feature": "sol",
             "windows": {"secondary_window": {"utilization": 1, "window_seconds": 604800}},
         }
     ]
-    deployment = workflow.target("astra", config)
-    deployment["usage_windows"] = ["astra/secondary_window"]
+    deployment = workflow.target("sol", config)
+    deployment["usage_windows"] = ["sol/secondary_window"]
     assert len(workflow.usage_windows(scoped, deployment)) == 2
     mapped = copy.deepcopy(config)
-    mapped["targets"]["astra"] = {
+    mapped["targets"]["sol"] = {
         key: value for key, value in deployment.items() if key != "selector"
     }
     workflow.validate(mapped)
-    assert workflow.target("astra", mapped)["usage_windows"] == ["astra/secondary_window"]
+    assert workflow.target("sol", mapped)["usage_windows"] == ["sol/secondary_window"]
     bad_alias = copy.deepcopy(mapped)
-    bad_alias["targets"]["duplicate"] = bad_alias["targets"].pop("astra")
+    bad_alias["targets"]["duplicate"] = bad_alias["targets"].pop("sol")
     with pytest.raises(workflow.WorkflowError, match="canonical selector"):
         workflow.validate(bad_alias)
     with pytest.raises(workflow.WorkflowError, match="primary"):

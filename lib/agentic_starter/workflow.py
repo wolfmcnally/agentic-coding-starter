@@ -16,17 +16,17 @@ from typing import Any
 ROLES = ("planner", "reviewer", "coder", "critic")
 BUILTIN_TARGETS = {
     "astra": ("codex", "gpt-6-astra"),
-    "sol": ("codex", "gpt-5.6-sol"),
+    "sol": ("codex", "gpt-6-sol"),
     "terra": ("codex", "gpt-5.6-terra"),
-    "luna": ("codex", "gpt-5.6-luna"),
+    "luna": ("codex", "gpt-6-luna"),
     "fable": ("claude", "fable"),
     "opus": ("claude", "opus"),
 }
 
 DEFAULT_WORKFLOW = {
     "mode": "auto",
-    "primary_models": {"claude": "fable", "codex": "astra"},
-    "eligible_primary_models": ["astra", "fable"],
+    "primary_models": {"claude": "opus", "codex": "sol"},
+    "eligible_primary_models": ["opus", "sol", "fable", "astra"],
     "review_preference": "cross-vendor",
     "adviser_models": {
         "claude": {"reviewer": ["astra"], "critic": ["astra"]},

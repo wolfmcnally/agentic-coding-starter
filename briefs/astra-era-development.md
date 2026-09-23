@@ -22,7 +22,7 @@ The operator approved this design on 2026-09-04. It is a target contract, not a 
 
 Keep role_models as the delegated execution authority, alongside workflow authority and adviser routing. Add apply-preset quality|balanced|economy with optional --review same-harness|cross-vendor. A preset expands to ordinary pins, preserving other configuration and comments. Omitted review mode is same-harness. These presets retain delegated-mode utility. The shipped/reset/stamp default is now auto primary ownership with configured cross-provider advisers and same-primary fallback.
 
-Quality selects Astra for all Codex roles and Fable for all Claude roles; balanced changes only the coder to Sol/Opus respectively; economy selects Sol/Opus for every role. All begin at high effort. Cross-vendor changes reviewer and critic only: quality/balanced select Fable from Codex and Astra from Claude; economy selects Opus from Codex and Sol from Claude. Separate review contexts remain mandatory; vendor diversity is an explicit option whose incremental value remains a hypothesis to measure.
+Quality selects Astra for all Codex roles and Fable for all Claude roles; balanced changes only the coder to Sol/Opus respectively; economy selects Sol/Opus for every role. Sol and Opus begin at medium effort, Astra and Fable at high (see the lead-model update below). Cross-vendor changes reviewer and critic only: quality/balanced select Fable from Codex and Astra from Claude; economy selects Opus from Codex and Sol from Claude. Separate review contexts remain mandatory; vendor diversity is an explicit option whose incremental value remains a hypothesis to measure.
 
 Add astra mapped to gpt-6-astra. Declare supported effort by model and venue, using supported CLI capability rather than API-only claims. Preserve selected model/effort on initial and resumed invocations. Record requested settings, harness version, and provider-reported actual model/effort when available; absent reports remain unreported. No silent model downgrade. Preflight is still required before phase mutation. Substitution requires governed recovery and satisfaction of the selected model and authority requirements; terminal policy refusals never justify generic retries or provider switching.
 
@@ -33,6 +33,19 @@ As of 2026-09-04; retrieved 2026-09-04: the [official factual excerpt](../docs/o
 A required Claude review invocation on that date emitted `type: system`, `subtype: init`, `model: claude-opus-5`, and `claude_code_version: 2.1.261`. This qualifies those primary field paths; it emitted no effort field. Auxiliary usage-model entries are not primary role identity. No Codex primary model field is qualified here. Missing observations remain unreported.
 
 The earlier upgrade shipped quality/same-harness defaults with fail-closed availability; the primary-ownership update above replaces that default. Missing Astra or Fable entitlement prevents kickoff until the operator selects an available preset or explicit pins through the manager, `roles`, or direct editing. Preset editing requires no model call. These remain dated observations about API identifiers and local CLI state, not a claim of account entitlement, live Astra qualification, or completed comparative evaluation.
+
+## Lead-model update
+
+As of 2026-09-22 (Anthropic) and 2026-09-23 (OpenAI living page); retrieved 2026-09-23. Both providers now name a lead coding model below their most capable one, and the shipped primaries follow them.
+
+- **Anthropic.** The [pinned model and effort excerpt](../docs/anthropic-opus-5-5-model-effort.md) says to start with Claude Opus 5.5 for most workloads and to use Fable 5.1 for demanding reasoning and long-horizon agentic work, or when evaluations of Opus 5.5 at higher effort still fall short. Opus 5.5 defaults to `medium`, and Anthropic advises an effort sweep rather than carrying settings over from Opus 5. Anthropic reports Opus 5.5 ahead of Fable 5.1 on its agentic-coding benchmarks at lower cost; those are vendor figures, not repository measurements.
+- **OpenAI.** The [pinned Codex model-selection excerpt](../docs/openai-codex-model-selection.md) recommends Sol for everyday work and complex coding, Astra for the hardest end-to-end work, and a starting effort of Medium for Sol, High for Luna and Light (`low`) for Astra. The `sol` and `luna` selectors now resolve to `gpt-6-sol` and `gpt-6-luna`; `terra` has no GPT-6 successor and stays `gpt-5.6-terra`.
+
+Consequences: the shipped primaries are Opus for Claude and Sol for Codex, both at `medium`, and all four models are eligible primaries. Advisers are unchanged (Astra reviews Claude work and Fable reviews Codex work), so the strongest cross-provider model still reviews. Preset pins give Opus and Sol `medium` and keep Fable and Astra at `high`. For Astra, OpenAI's Light/`low` start is general Codex guidance, not coding-specific, so the high-effort review and quality pins are unchanged.
+
+Local observations on 2026-09-23: the Claude CLI 2.1.280 `opus` alias reported `claude-opus-5-5` in its `system`/`init` event, and `fable` reported `claude-fable-5-1`. Codex CLI 0.154.0 with a ChatGPT sign-in rejected `gpt-6-sol` and `gpt-6-luna` as unsupported. After the operator upgraded the installed Codex CLI to 0.156.1 that same day, it answered with `gpt-6-sol`. A Codex primary therefore needs CLI 0.156.1 or later. With an older CLI, preflight refuses rather than falling back to another model.
+
+The Opus instruction-loading observations above describe Opus 5, not Opus 5.5, and the comparative-evaluation gap stands. Anthropic's prompting guide for Opus 5.5 notes that, on long unattended tasks, it may end a turn with a progress report rather than a tool call. A delegated Opus role whose run ends that way without its required output is incomplete, not finished. That behavior is unverified in this repository.
 
 ## Coherent outcomes
 
@@ -110,7 +123,7 @@ The two limitations in that table are load-bearing. Token counts come from the C
 
 ### What remains explicitly pending
 
-Offline qualification is complete. Instruction-loading observations and incomplete workflow attempts are recorded above. Complete native workflow qualification, a comparative delivery matrix and cost per accepted outcome remain unproved. Preserve the failed attempts and frozen scoring; any repaired experiment requires a separately identified batch and its own authorized call count and budget. Existing model pins remain unchanged. Local controls establish instrument behavior, not general model performance or optimal phase size.
+Offline qualification is complete. Instruction-loading observations and incomplete workflow attempts are recorded above. Complete native workflow qualification, a comparative delivery matrix and cost per accepted outcome remain unproved. Preserve the failed attempts and frozen scoring; any repaired experiment requires a separately identified batch and its own authorized call count and budget. Local controls establish instrument behavior, not general model performance or optimal phase size. The 2026-09-23 lead-model update changed pins to follow provider recommendations, not repository measurements.
 
 ### Exclusions
 

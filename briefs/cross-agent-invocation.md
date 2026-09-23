@@ -88,7 +88,7 @@ Flag-by-flag rationale:
   ```
 
   For example, a resumed role with `model: sol` and `effort: medium` adds
-  `--model gpt-5.6-sol -c 'model_reasoning_effort="medium"'` to that command.
+  `--model gpt-6-sol -c 'model_reasoning_effort="medium"'` to that command.
 
   (`resume` reads stdin exactly as `exec` does, so it carries the same `</dev/null` redirect — the stdin-hang bullet above applies to both subcommands.)
 

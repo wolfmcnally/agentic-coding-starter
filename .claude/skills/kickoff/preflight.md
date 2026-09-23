@@ -22,7 +22,7 @@ For an initial implementation or delegated follow-up, resolve once per session b
    - `codex` → the `codex` CLI, its configured default model (no `-m`).
    - `opus` / `fable` → the `claude` CLI, `--model opus|fable`.
    - `astra` → the `codex` CLI, `--model gpt-6-astra`.
-   - `sol` / `terra` / `luna` → the `codex` CLI, `--model gpt-5.6-sol|terra|luna` respectively.
+   - `sol` / `luna` → the `codex` CLI, `--model gpt-6-sol|gpt-6-luna`; `terra` → `--model gpt-5.6-terra`.
    - A separate effort field adds `-c 'model_reasoning_effort="<effort>"'` to Codex initial and resume invocations, or `--effort <effort>` to Claude initial and resume invocations. An absent effort field preserves the configured/default effort.
 
 Remember each role's resolved `(venue, model, effort)` and the orchestrating harness for Steps 3–6 and the Step 10 END block. Freeze this resolution with the run’s tool/config bundle. Roles do not re-resolve during the run, even when implementation edits live pins; new settings begin the next run. A non-`default` model always goes through the CLI recipe — do **not** short-circuit "model == session model" (uniform resolution, no session-model probing).

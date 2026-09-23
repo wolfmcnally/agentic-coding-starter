@@ -9,8 +9,8 @@ version: 1
 # Authority and deployment selection; explicit pins describe the invoking model.
 workflow:
   mode: auto
-  primary_models: {claude: fable, codex: astra}
-  eligible_primary_models: [astra, fable]
+  primary_models: {claude: opus, codex: sol}
+  eligible_primary_models: [opus, sol, fable, astra]
   review_preference: cross-vendor
   adviser_models:
     claude:
