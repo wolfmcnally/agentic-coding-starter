@@ -638,6 +638,8 @@ families:
   - stale-record-read-as-measured
   - undated-recall-accepted
   - stranded-patch-blocks-validation
+  - code-readers-ignored
+  - module-name-mention-missed
   tier: vital
   size: medium
   flake_rate: 0.0

@@ -931,19 +931,21 @@ def _is_document(path: str) -> bool:
 
 
 def _mentions(text: str, path: str) -> bool:
-    """Whether a file names a document: its repository path, or its file name beside its
-    parent directory's name (code that joins ``"policies" / "surfaces.md"``). The stand-in
-    over-selects on a shared name, which costs only time; it misses a document reached
-    through a computed name, which the full gate before a push still catches."""
+    """Whether a file names a path: its repository path, or its file name beside its
+    parent directory's name (code that joins ``"policies" / "surfaces.md"``; a Python
+    module imported as ``package.module``). The stand-in over-selects on a shared name,
+    which costs only time; it misses a path reached through a computed name, which the
+    full gate before a push still catches."""
     if path in text:
         return True
     name = path.rsplit("/", 1)[-1]
     parent = path.rsplit("/", 2)[-2] if "/" in path else None
-    return name in text and (parent is None or parent in text)
+    names = (name, name.removesuffix(".py")) if name.endswith(".py") else (name,)
+    return any(item in text for item in names) and (parent is None or parent in text)
 
 
-def _document_readers(root: Path, documents: list[str]) -> dict[str, list[str]] | None:
-    """Tracked test, library and executable files naming each document; None if unlistable."""
+def _readers(root: Path, documents: list[str]) -> dict[str, list[str]] | None:
+    """Tracked test, library and executable files naming each path; None if unlistable."""
     listed = _run(["git", "ls-files", "--", *DOCUMENT_READER_ROOTS], root, check=False)
     if listed.returncode != 0:
         return None
@@ -1009,6 +1011,7 @@ def selected_families(
         return vital, None
     selected = {family["id"]: family for family in vital}
     unmapped: list[str] = []
+    mapped_code: list[str] = []
     for path in changed:
         matches = [
             family
@@ -1021,6 +1024,8 @@ def selected_families(
             continue
         if len(matches) > 1 and not _is_document(path):
             return families, f"ambiguous-change-map:{path}"
+        if not _is_document(path):
+            mapped_code.append(path)
         # A document several families cover selects all of them: its readers, not one owner,
         # are what it can break.
         for family in matches:
@@ -1033,11 +1038,21 @@ def selected_families(
     if unmapped:
         return families, "unmapped-changes:" + ",".join(sorted(unmapped))
     if documents:
-        readers = _document_readers(root, documents)
+        readers = _readers(root, documents)
         if readers is None:
             return families, "document-readers-unlisted"
         for document in documents:
             for reader in readers[document]:
+                for family in _families_for_reader(families, reader):
+                    selected[family["id"]] = family
+    # Changed code also selects the families of the files that name it: a helper covered by
+    # one family is still exercised by the tests of every module and test that uses it.
+    if mapped_code:
+        readers = _readers(root, mapped_code)
+        if readers is None:
+            return families, "code-readers-unlisted"
+        for path in mapped_code:
+            for reader in readers[path]:
                 for family in _families_for_reader(families, reader):
                     selected[family["id"]] = family
     return list(selected.values()), None

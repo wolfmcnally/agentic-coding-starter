@@ -2086,3 +2086,9 @@ Two consequences were not surfaced during the dialogue: the approved merge takes
 Authorized follow-up, as a separate change: the changed-path selection should add the families of files that name a changed code file, as it already does for documents, closing the shared-helper blind spot described by `fiery-collie` and `grinning-porpoise`. Left open: `rose-hyrax` records one incident twice (row removal is an owner edit); `conscious-inchworm` and `blue-crocodile` share an incident; `traditional-marten`, `unique-orangutan` and `gigantic-puma` bundle incidents with different remedies and should be split before anything graduates.
 
 Lessons: none new. The one full gate follows this record.
+
+## 2026-09-29 17:14 — METHODOLOGY — changed code selects the tests of the files that use it
+
+Operator-authorized follow-up from the lessons sweep. The changed-path selection mapped a code file only to the family that covers it, so a shared helper listed under one family but used by others ran only that family at commit, and breakage elsewhere waited for the full gate before the push (`fiery-collie`, `grinning-porpoise`). Mapped code now also selects the families of tracked test, library and executable files that name it, reusing the reader mapping documents already had; a Python module counts as named when its module name and package directory both appear, as in a dotted import. Unmapped or ambiguously covered code still widens to the full suite. A new proof covers it, with red witnesses for dropping the code readers and for missing the dotted-import form. `policies/build-gates.md` and `bin/README.md` describe it.
+
+Lessons: none new. `fiery-collie` and `grinning-porpoise` stay open for the operator to close against this change. The targeted check passed before this record; the one full gate follows it.

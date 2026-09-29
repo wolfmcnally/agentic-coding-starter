@@ -24,8 +24,8 @@ def test_parameterized_leaves_collapse_to_one_family() -> None:
 
 def test_inventory_counts_executable_families_and_expanded_leaves() -> None:
     observed = governance.inventory(REPO_ROOT)
-    assert observed["counts"] == {"families": 113, "leaves": 131}
-    assert observed["by_kind"]["pytest"] == {"families": 89, "leaves": 107}
+    assert observed["counts"] == {"families": 114, "leaves": 132}
+    assert observed["by_kind"]["pytest"] == {"families": 90, "leaves": 108}
 
 
 def test_live_reset_validates() -> None:
@@ -435,6 +435,44 @@ def test_changed_selection_maps_documents_to_readers_and_widens_on_unmapped_code
         everything,
         "unmapped-changes:unknown",
     )
+
+
+def test_changed_code_selects_the_families_of_files_that_use_it(tmp_path: Path) -> None:
+    def family(name: str, covers: str, tier: str = "changed") -> str:
+        return (
+            f"- id: {name}\n  tier: {tier}\n  kind: pytest\n"
+            f"  selectors: [tests/test_{name}.py]\n  covers: [{covers}]\n"
+            f"  source_paths: [tests/test_{name}.py]\n"
+        )
+
+    files = {
+        "tests/proof-estate.yaml": "families:\n"
+        + family("vital", "known/**", tier="vital")
+        + family("helper", "lib/pkg/helper.py")
+        + family("user", "lib/pkg/user.py")
+        + family("bystander", "lib/pkg/bystander.py"),
+        "known/file": "base\n",
+        "lib/pkg/helper.py": "def shared():\n    return 1\n",
+        "lib/pkg/user.py": "from pkg.helper import shared\n",
+        "lib/pkg/bystander.py": "VALUE = 2\n",
+        "tests/test_caller.py": "import pkg.helper\n",
+    }
+    for name, text in files.items():
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_text(text)
+
+    def git(*arguments: str) -> None:
+        subprocess.run(["git", *arguments], cwd=tmp_path, check=True, capture_output=True)
+
+    git("init", "-q")
+    git("config", "user.email", "test@example.invalid")
+    git("config", "user.name", "Test")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    (tmp_path / "lib/pkg/helper.py").write_text("def shared():\n    return 3\n")
+    chosen, widened = governance.selected_families(tmp_path, "changed", "HEAD")
+    # The module that imports the helper brings its family; the untouched bystander does not.
+    assert ({item["id"] for item in chosen}, widened) == ({"vital", "helper", "user"}, None)
 
 
 def test_report_counts_the_frozen_baseline_and_current_estate() -> None:

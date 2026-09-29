@@ -46,7 +46,7 @@ are stable from any caller directory.
 The governed lanes use the recipient-local `tests/proof-estate.yaml`. Vital
 runs every locally admitted fast family; changed runs the union of every family
 mapped to the live diff. Invalid governance, an unresolved ref, or an unmapped
-code path widens to the full suite. The changed-path selection is the implementation-candidate gate; the handoff gate is the full `bin/check all`.
+code path widens to the full suite; mapped code also selects the families of files that name it. The changed-path selection is the implementation-candidate gate; the handoff gate is the full `bin/check all`.
 
 ### `python` — repository-selected Python
 
