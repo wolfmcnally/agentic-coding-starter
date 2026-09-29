@@ -2042,3 +2042,9 @@ The operator directed two changes on 2026-09-29: learn the donor's targeted test
 Ledger: five renamed or new proofs admitted, three renamed or removed proofs retired, one gate admitted. Red witnesses were recorded at construction for the selection, timing and applicability proofs, each observed red at its assertion and restored byte-exactly; one first attempt that went red by crashing was rewritten to fail at the assertion.
 
 Lessons: one new candidate, `garrulous-armadillo` (line-anchored mutants stranded by edits, and the guard that inverted its own evidence). `quaint-ladybug` from the previous entry describes pressure from the count budget this change removed; it is left for the operator to close. `./bin/lessons validate` passes. The changed-path selection ran as the targeted check before this record (it widened to the full suite because `bin/check` is covered by several families) and passed. Independent review is not applicable to primary one-shot methodology work. The one full gate follows this record.
+
+## 2026-09-29 15:23 — METHODOLOGY — close an obsolete lesson
+
+The operator closed `quaint-ladybug` as obsolete through `ask`: the count budget whose pressure it described was replaced the same day by the time budget. Archived `status: rejected` with a closing note; its remedy was not adopted. Investigating the suite's slowest proof afterwards found that five of its six complete synthetic kickoff replays were appended to that one function after the 2026-08-27 reset, while the count budget made additions to an existing function free; that is historical corroboration of the lesson's mechanism, reported to the operator rather than used to reopen a ruling made minutes earlier.
+
+Lessons: none new. `./bin/lessons validate` passes; the one full gate follows this record.
