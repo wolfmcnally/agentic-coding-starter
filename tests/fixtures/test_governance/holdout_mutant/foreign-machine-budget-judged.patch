@@ -1,0 +1,11 @@
+--- a/lib/agentic_starter/test_governance.py
++++ b/lib/agentic_starter/test_governance.py
+@@ -482,7 +482,7 @@
+     limit = budget["test_lane_seconds"] * (1 + budget["tolerance"])
+     if budget.get("reference_machine") is None:
+         budget_state = "unmeasured: no reference machine is declared"
+-    elif budget["reference_machine"] != fingerprint:
++    elif False:
+         budget_state = "unmeasured: this is not the reference machine"
+     elif total <= limit:
+         budget_state = "within"

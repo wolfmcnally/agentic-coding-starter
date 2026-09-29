@@ -46,7 +46,7 @@ are stable from any caller directory.
 The governed lanes use the recipient-local `tests/proof-estate.yaml`. Vital
 runs every locally admitted fast family; changed runs the union of every family
 mapped to the live diff. Invalid governance, an unresolved ref, or an unmapped
-path widens to the full suite. Both phase-close gates remain `bin/check all`.
+code path widens to the full suite. The changed-path selection is the implementation-candidate gate; the handoff gate is the full `bin/check all`.
 
 ### `python` — repository-selected Python
 
@@ -117,9 +117,11 @@ lockfile. Behavioral coverage lives in
 
 Inventories collapsed families, expanded leaves, gate members, and hook
 commands. It validates the frozen reset, complete disposition/admission ledger,
-20% ceilings, 80% effectiveness floors, digest-bound corpus patches, direct
-critical risks, and zero-growth budget; runs the local mutation assay; selects
-vital/changed lanes; and reports or reassesses the estate. It runs through the
+per-family sizes, the time-budget declaration, 80% effectiveness floors,
+digest-bound corpus patches that still apply, and direct critical risks; judges
+recorded test times (`timing`, with `--samples 3` to confirm a budget overrun);
+runs the local mutation assay; selects vital/changed lanes; and reports or
+reassesses the estate. It runs through the
 repository-selected environment.
 
 ```bash

@@ -39,7 +39,7 @@ The `kickoff` skill runs one phase at a time. A capable primary instance plans a
 
 The repository runs its checks against the exact implementation the primary accepts. Advice remains associated with the version it inspected; later corrections require fresh checks and a primary assessment, rather than automatic re-review. Objective work closes only when its applicable review contract and the complete test and policy suite are satisfied. Anything that requires product or other human judgment, a manual inspection, or someone to take custody of an artifact still waits for a person. Once the objective work is complete, `kickoff` commits it and fast-forward pushes it when the repository has a suitable upstream. It does not choose remotes or perform destructive Git operations.
 
-The root [candidate-partition.yaml](candidate-partition.yaml) distinguishes implementation-affecting files from bookkeeping. Administrative updates preserve review evidence for unchanged implementation, while both full close gates and complete-tree delivery checks remain required.
+The root [candidate-partition.yaml](candidate-partition.yaml) distinguishes implementation-affecting files from bookkeeping. Administrative updates preserve review evidence for unchanged implementation, while both close gates and complete-tree delivery checks remain required.
 
 ### 4. Learn
 

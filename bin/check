@@ -147,6 +147,7 @@ run_policy() {
     run_gate policy-log ./bin/check-log || return $?
     run_gate policy-candidate-partition ./bin/check-candidate-partition || return $?
     run_gate policy-test-governance ./bin/test-governance validate || return $?
+    run_gate policy-test-time ./bin/test-governance timing || return $?
     run_gate policy-anonymization ./bin/check-anonymization.sh || return $?
     echo "CHECK policy PASS"
   )

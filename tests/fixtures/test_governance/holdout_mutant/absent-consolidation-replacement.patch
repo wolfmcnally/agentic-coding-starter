@@ -1,7 +1,6 @@
 --- a/lib/agentic_starter/test_governance.py
 +++ b/lib/agentic_starter/test_governance.py
-@@ -515,7 +515,7 @@
-         if row.get("disposition") == "retain":
+@@ -674,7 +674,7 @@
              if replacement != proof_id:
                  errors.append(f"retained proof self-binding is wrong: {proof_id}")
          elif row.get("disposition") == "consolidate":

@@ -68,7 +68,7 @@ path, normalized mode, and content digest. It contains no file contents and
 does not include ignored runtime state. Every review snapshot, finding
 transition, context packet, and gate record names a candidate identifier.
 
-The root `candidate-partition.yaml` supplies the active/bookkeeping boundary. Product identity binds review and implementation evidence; full-tree identity proves gate non-mutation and the delivered tree. The declaration remains active and is digest-bound. Unclassified tracked paths refuse; unclassified nonignored untracked paths remain included as active. Bookkeeping-only edits preserve product identity without an exception ledger. Declared-authority checks and full snapshots for explicitly reviewed bookkeeping prevent an exclusion from hiding a meaningful change. Both full close gates remain mandatory. The repair tools retain their narrower permissions.
+The root `candidate-partition.yaml` supplies the active/bookkeeping boundary. Product identity binds review and implementation evidence; full-tree identity proves gate non-mutation and the delivered tree. The declaration remains active and is digest-bound. Unclassified tracked paths refuse; unclassified nonignored untracked paths remain included as active. Bookkeeping-only edits preserve product identity without an exception ledger. Declared-authority checks and full snapshots for explicitly reviewed bookkeeping prevent an exclusion from hiding a meaningful change. Both close gates remain mandatory. The repair tools retain their narrower permissions.
 
 ## 3. Thin evidence plane
 

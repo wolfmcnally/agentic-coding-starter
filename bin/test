@@ -46,9 +46,12 @@ python_toolchain_init TEST
 
 cd "$repo_root"
 python_toolchain_probe
+# Every full run leaves its per-test timings where `test-governance timing` reads them.
+full_suite=(-q --junitxml "$repo_root/.kickoff/test-timing/full.xml" -o junit_family=xunit1
+  project/tests tests)
 if [[ $# -eq 0 ]]; then
   exec uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" \
-    python -m pytest -q project/tests tests
+    python -m pytest "${full_suite[@]}"
 fi
 
 run_governed_lane() {
@@ -71,7 +74,7 @@ run_governed_lane() {
   echo "TEST GOVERNED $selection_mode: $selection_reason"
   if [[ "$selection_mode" == "FULL" ]]; then
     exec uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" \
-      python -m pytest -q project/tests tests
+      python -m pytest "${full_suite[@]}"
   fi
   if [[ "$selection_mode" != "FOCUSED" || ${#selection[@]} -lt 3 ]]; then
     echo "TEST ERROR governance selection did not provide runnable selectors" >&2

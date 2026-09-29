@@ -69,11 +69,11 @@ Which criteria the orchestrator may close on its own follows [`human-in-the-loop
 A green result proves only the exact reviewable working tree it exercised. Every
 implementation-gate command is recorded with the candidate id from
 `bin/kickoff-tree-id`. A relevant candidate change invalidates the result;
-staging alone does not. The complete phase-prescribed sequence ends with
-`./bin/check all` once after code-critic approval, and the candidate id must be
+staging alone does not. The phase-prescribed sequence ends with the changed-path selection
+`./bin/test --changed-from '@{upstream}'` once after code-critic approval, and the candidate id must be
 unchanged before and after the sequence. After tracked close bookkeeping changes
-the tree, a second bare `./bin/check all` proves the actual handoff candidate; no
-tracked write follows that gate.
+the tree, the one bare `./bin/check all` proves the actual handoff candidate and
+qualifies the push; no tracked write follows that gate.
 
 During editing and revision, run the smallest falsifying test first and then the
 affected suites. That focused evidence narrows defects efficiently but does not

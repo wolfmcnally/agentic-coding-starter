@@ -6,12 +6,16 @@ import argparse
 import fnmatch
 import hashlib
 import json
+import os
+import platform
 import re
 import shlex
 import shutil
+import statistics
 import subprocess
 import sys
 import tempfile
+import xml.etree.ElementTree as ElementTree
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,7 +23,7 @@ from typing import Any
 
 import yaml
 
-SCHEMA = "agentic.proof_estate.v2"
+SCHEMA = "agentic.proof_estate.v3"
 BASELINE_SCHEMA = "agentic.proof_baseline.v2"
 REQUIRED_FAMILY_FIELDS = {
     "id",
@@ -35,11 +39,13 @@ REQUIRED_FAMILY_FIELDS = {
     "historical_evidence",
     "mutation_evidence",
     "tier",
-    "duration_seconds",
     "flake_rate",
     "replacement_lineage",
 }
 TIERS = {"vital", "changed", "full"}
+SIZES = ("small", "medium", "large")
+TIMING_RECORD = ".kickoff/test-timing/full.xml"
+CONFIRMING_SAMPLES = 3
 KINDS = {"pytest", "gate", "hook"}
 DISPOSITION_FIELDS = {
     "record_type",
@@ -54,7 +60,7 @@ DISPOSITION_FIELDS = {
     "rationale",
     "baseline_inventory_sha256",
 }
-ADMISSION_FIELDS = DISPOSITION_FIELDS | {"compensating_retirement"}
+ADMISSION_FIELDS = DISPOSITION_FIELDS
 RETIREMENT_FIELDS = DISPOSITION_FIELDS
 REPAIR_FIELDS = DISPOSITION_FIELDS
 SELF_BOUND_DISPOSITIONS = {"retain", "repair"}
@@ -320,15 +326,186 @@ def _validate_family_shape(family: Any, index: int) -> list[str]:
     for field in ("contract", "risk_class", "oracle", "admission", "nearest_overlap"):
         if not isinstance(family.get(field), str) or not family.get(field, "").strip():
             errors.append(f"{family_id}: {field} must be nonempty text")
-    if (
-        not isinstance(family.get("duration_seconds"), (int, float))
-        or family.get("duration_seconds", -1) < 0
-    ):
-        errors.append(f"{family_id}: duration_seconds must be nonnegative")
+    if family.get("kind") == "pytest":
+        if family.get("size") not in SIZES:
+            errors.append(f"{family_id}: pytest size must be one of {', '.join(SIZES)}")
+    elif "size" in family:
+        errors.append(f"{family_id}: only pytest families declare a size")
     flake = family.get("flake_rate")
     if not isinstance(flake, (int, float)) or not 0 <= flake <= 1:
         errors.append(f"{family_id}: flake_rate must be between 0 and 1")
     return errors
+
+
+def machine_fingerprint() -> str:
+    """A stable, non-identifying name for this machine; timings compare only within one."""
+    material = "|".join(
+        (platform.node(), platform.system(), platform.machine(), str(os.cpu_count()))
+    )
+    return hashlib.sha256(material.encode()).hexdigest()[:16]
+
+
+def _time_budget_errors(manifest: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    ceilings = manifest.get("size_ceilings_seconds")
+    if (
+        not isinstance(ceilings, dict)
+        or set(ceilings) != set(SIZES)
+        or not all(isinstance(value, (int, float)) and value > 0 for value in ceilings.values())
+    ):
+        errors.append("size_ceilings_seconds must give a positive ceiling for each size")
+    elif not ceilings["small"] < ceilings["medium"] < ceilings["large"]:
+        errors.append("size_ceilings_seconds must increase from small to large")
+    budget = manifest.get("time_budget")
+    if not isinstance(budget, dict):
+        return [*errors, "time_budget must be a mapping"]
+    seconds = budget.get("test_lane_seconds")
+    if not isinstance(seconds, (int, float)) or seconds <= 0:
+        errors.append("time_budget.test_lane_seconds must be positive")
+    tolerance = budget.get("tolerance")
+    if not isinstance(tolerance, (int, float)) or not 0 <= tolerance <= 1:
+        errors.append("time_budget.tolerance must be between 0 and 1")
+    reference = budget.get("reference_machine")
+    if reference is not None and not (
+        isinstance(reference, str) and re.fullmatch(r"[0-9a-f]{16}", reference)
+    ):
+        errors.append("time_budget.reference_machine must be null or a machine fingerprint")
+    return errors
+
+
+def _source_file(reported: str, known: set[str]) -> str | None:
+    """Resolve a file pytest reported relative to its rootdir to one repository test file."""
+    parts = [part for part in reported.split("/") if part not in ("", ".")]
+    while parts and parts[0] == "..":
+        parts.pop(0)
+    relative = "/".join(parts)
+    if relative in known:
+        return relative
+    matches = [path for path in known if path.endswith("/" + relative)]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _junit_sample(path: Path, known: set[str]) -> tuple[float, dict[str, float]] | None:
+    """The suite's wall time and each executed leaf's time, or None when the record is unusable."""
+    try:
+        document = ElementTree.parse(path).getroot()
+    except (OSError, ElementTree.ParseError):
+        return None
+    suites = [document] if document.tag == "testsuite" else list(document.iter("testsuite"))
+    try:
+        total = sum(float(suite.get("time", "")) for suite in suites)
+    except ValueError:
+        return None
+    leaves: dict[str, float] = {}
+    for case in document.iter("testcase"):
+        file_name, classname, name = case.get("file"), case.get("classname", ""), case.get("name")
+        source = _source_file(file_name, known) if file_name and name else None
+        module = Path(source).stem if source else None
+        components = classname.split(".")
+        if source is None or module not in components:
+            return None
+        inner = "::".join(components[len(components) - components[::-1].index(module) :])
+        node = f"{source}::{inner}::{name}" if inner else f"{source}::{name}"
+        try:
+            leaves[f"pytest:{node}"] = float(case.get("time", ""))
+        except ValueError:
+            return None
+    return (total, leaves) if suites and leaves else None
+
+
+def timing(root: Path, samples: int = 0) -> dict[str, Any]:
+    """Judge per-test size ceilings and the test-lane budget from recorded full runs.
+
+    Wall-clock time is noisy, so each check is shaped to survive it: size ceilings are
+    order-of-magnitude bands, the lane budget carries a tolerance, a single run can only
+    raise an advisory, and a budget set on one machine is never judged on another.
+    """
+    manifest = load_yaml(root / "tests/proof-estate.yaml")
+    shape_errors = _time_budget_errors(manifest)
+    if shape_errors:
+        raise GovernanceError("timing configuration invalid:\n- " + "\n- ".join(shape_errors))
+    record = root / TIMING_RECORD
+    current = {
+        proof["id"]: proof for proof in inventory(root)["proofs"] if proof["kind"] == "pytest"
+    }
+    known = {str(proof["source_path"]) for proof in current.values()}
+    runs: list[tuple[float, dict[str, float]]] = []
+    if samples:
+        for index in range(samples):
+            completed = _run([str(root / "bin/test")], root, check=False)
+            sample = _junit_sample(record, known) if completed.returncode == 0 else None
+            if sample is None:
+                raise GovernanceError(f"timing sample {index + 1} did not complete a full run")
+            runs.append(sample)
+    else:
+        sample = _junit_sample(record, known)
+        if sample is not None:
+            runs.append(sample)
+    fingerprint = machine_fingerprint()
+    if not runs:
+        return {
+            "state": "unmeasured",
+            "reason": "no full-run timing record",
+            "machine": fingerprint,
+        }
+    if any(set(leaves) != set(current) for _, leaves in runs):
+        if samples:
+            raise GovernanceError("timing samples do not cover exactly the current pytest estate")
+        return {
+            "state": "unmeasured",
+            "reason": "the timing record predates the current pytest estate",
+            "machine": fingerprint,
+        }
+    families = manifest["families"]
+    ceilings = manifest["size_ceilings_seconds"]
+    violations = []
+    medians: dict[str, float] = {}
+    for proof_id, row in current.items():
+        median = statistics.median(leaves[proof_id] for _, leaves in runs)
+        medians[proof_id] = median
+        proof = Proof(
+            proof_id=row["id"],
+            family_id=row["family"],
+            kind=row["kind"],
+            selector=row["selector"],
+            source_path=row["source_path"],
+        )
+        owners = [family for family in families if _family_claims(family, proof)]
+        if len(owners) != 1:
+            raise GovernanceError(f"timing cannot resolve one family for {proof_id}")
+        size = owners[0]["size"]
+        if median > ceilings[size]:
+            violations.append(
+                f"{proof_id} took {median:.2f}s, over the {size} ceiling of {ceilings[size]}s"
+                f" for family {owners[0]['id']}"
+            )
+    budget = manifest["time_budget"]
+    total = statistics.median(total for total, _ in runs)
+    limit = budget["test_lane_seconds"] * (1 + budget["tolerance"])
+    if budget.get("reference_machine") is None:
+        budget_state = "unmeasured: no reference machine is declared"
+    elif budget["reference_machine"] != fingerprint:
+        budget_state = "unmeasured: this is not the reference machine"
+    elif total <= limit:
+        budget_state = "within"
+    elif len(runs) >= CONFIRMING_SAMPLES:
+        budget_state = "over"
+    else:
+        budget_state = "advisory: over on too few runs to confirm"
+    return {
+        "state": "fail" if violations or budget_state == "over" else "measured",
+        "machine": fingerprint,
+        "samples": len(runs),
+        "test_lane_seconds": round(total, 2),
+        "budget_seconds": budget["test_lane_seconds"],
+        "limit_seconds": round(limit, 2),
+        "budget": budget_state,
+        "size_violations": violations,
+        "slowest": [
+            {"proof": proof_id, "seconds": round(seconds, 2)}
+            for proof_id, seconds in sorted(medians.items(), key=lambda item: -item[1])[:5]
+        ],
+    }
 
 
 def _ratio(numerator: int, denominator: int) -> float:
@@ -399,36 +576,11 @@ def validate(root: Path) -> dict[str, Any]:
         ).hexdigest()
         if declared_baseline_digest != observed_baseline_digest:
             errors.append("baseline inventory digest is stale")
-    limits = manifest.get("reset_limits")
+    limits = manifest.get("effectiveness_floors")
     if not isinstance(limits, dict):
-        errors.append("reset_limits must be a mapping")
+        errors.append("effectiveness_floors must be a mapping")
         limits = {}
-    budget = manifest.get("test_budget_delta", {"families": 0, "leaves": 0})
-    if not isinstance(budget, dict):
-        errors.append("test_budget_delta must be a mapping")
-        budget = {"families": 0, "leaves": 0}
-    for dimension in ("families", "leaves"):
-        baseline_count = baseline.get("counts", {}).get(dimension)
-        current_count = current["counts"][dimension]
-        ratio_limit = limits.get(f"max_{dimension}_ratio")
-        delta = budget.get(dimension, 0)
-        if not isinstance(baseline_count, int) or baseline_count <= 0:
-            errors.append(f"baseline {dimension} count must be positive")
-            continue
-        if not isinstance(ratio_limit, (int, float)) or not 0 < ratio_limit <= 1:
-            errors.append(f"max_{dimension}_ratio must be in (0, 1]")
-            continue
-        if not isinstance(delta, int):
-            errors.append(f"test_budget_delta.{dimension} must be an integer")
-            continue
-        if delta > 0 and not isinstance(manifest.get("budget_approval"), str):
-            errors.append(f"positive {dimension} budget requires a named budget_approval")
-        allowed = int(baseline_count * ratio_limit) + delta
-        if current_count > allowed:
-            errors.append(
-                f"{dimension} cap exceeded: current={current_count} "
-                f"allowed={allowed} baseline={baseline_count}"
-            )
+    errors.extend(_time_budget_errors(manifest))
 
     current_ids = {proof.proof_id for proof in proofs}
     critical = manifest.get("critical_risks")
@@ -530,22 +682,13 @@ def validate(root: Path) -> dict[str, Any]:
             errors.append(f"deleted proof still exists or names a replacement: {proof_id}")
     if not {"delete", "consolidate"} <= dispositions_seen:
         errors.append("reset must contain both delete and consolidate dispositions")
-    reset_retired_ids = {
-        row.get("proof_id")
-        for row in disposition_rows
-        if row.get("disposition") in {"delete", "consolidate"}
-    }
     initial_active = {
         str(row.get("proof_id"))
         for row in disposition_rows
         if row.get("disposition") in SELF_BOUND_DISPOSITIONS
     }
     active = set(initial_active)
-    available_retirements = set(reset_retired_ids)
-    consumed_retirements: set[str] = set()
     seen_retirement_targets: set[str] = set()
-    post_reset_retirement_ids: set[str] = set()
-    post_reset_started = False
     disposition_phase_open = True
     for row in ledger:
         record_type = row.get("record_type")
@@ -555,7 +698,6 @@ def validate(root: Path) -> dict[str, Any]:
             continue
         disposition_phase_open = False
         if record_type == "proof_retirement":
-            post_reset_started = True
             proof_id = row.get("proof_id")
             if set(row) != RETIREMENT_FIELDS:
                 errors.append(f"wrong retirement fields for {proof_id}")
@@ -589,8 +731,6 @@ def validate(root: Path) -> dict[str, Any]:
                 if not isinstance(row.get(field), str) or not row[field]:
                     errors.append(f"missing retirement {field} for {proof_id}")
             active.discard(str(proof_id))
-            available_retirements.add(str(proof_id))
-            post_reset_retirement_ids.add(str(proof_id))
             continue
         if record_type == "proof_repair":
             proof_id = row.get("proof_id")
@@ -622,17 +762,6 @@ def validate(root: Path) -> dict[str, Any]:
         proof_id = row.get("proof_id")
         if row.get("disposition") != "retain" or row.get("replacement") != proof_id:
             errors.append(f"post-baseline admission must retain and self-bind: {proof_id}")
-        compensation = row.get("compensating_retirement")
-        if compensation not in available_retirements:
-            errors.append(f"post-baseline admission lacks an available retirement: {proof_id}")
-        elif compensation in consumed_retirements:
-            errors.append(f"retirement budget is reused by admission: {proof_id}")
-        elif post_reset_started and compensation not in seen_retirement_targets:
-            errors.append(
-                f"post-reset admission is not funded by a post-reset retirement: {proof_id}"
-            )
-        else:
-            consumed_retirements.add(str(compensation))
         if proof_id in active:
             errors.append(f"admission proof is already active: {proof_id}")
         active.add(str(proof_id))
@@ -692,6 +821,18 @@ def validate(root: Path) -> dict[str, Any]:
         patch_sha256 = hashlib.sha256(patch.read_bytes()).hexdigest()
         if case["patch_sha256"] != patch_sha256:
             errors.append(f"effectiveness patch digest drifted: {case['id']}")
+        # A line-anchored mutant goes stale when the code it seeds a defect into is edited,
+        # and its recorded result then describes code that no longer exists. Inside an assay
+        # copy the patch is already applied, so it must reverse-apply there instead; refusing
+        # that would count every mutant as detected by this check rather than by a proof.
+        elif all(
+            _run(["git", "apply", "--check", *direction, str(patch)], root, check=False).returncode
+            for direction in ((), ("--reverse",))
+        ):
+            errors.append(
+                f"effectiveness patch no longer applies: {case['id']};"
+                " re-anchor it to the same defect and rerun the assay"
+            )
     cases_by_id = {
         case["id"]: case
         for case in cases
@@ -774,8 +915,60 @@ def validate(root: Path) -> dict[str, Any]:
         "admissions": len(admission_rows),
         "post_reset_retirements": len(retirement_rows),
         "post_reset_repairs": len(repair_rows),
-        "unspent_retirements": len(post_reset_retirement_ids - consumed_retirements),
     }
+
+
+DOCUMENT_READER_ROOTS = ("tests", "lib", "bin")
+MAX_READER_BYTES = 4 * 1024 * 1024
+
+
+def _is_document(path: str) -> bool:
+    return path.endswith(".md")
+
+
+def _mentions(text: str, path: str) -> bool:
+    """Whether a file names a document: its repository path, or its file name beside its
+    parent directory's name (code that joins ``"policies" / "surfaces.md"``). The stand-in
+    over-selects on a shared name, which costs only time; it misses a document reached
+    through a computed name, which the full gate before a push still catches."""
+    if path in text:
+        return True
+    name = path.rsplit("/", 1)[-1]
+    parent = path.rsplit("/", 2)[-2] if "/" in path else None
+    return name in text and (parent is None or parent in text)
+
+
+def _document_readers(root: Path, documents: list[str]) -> dict[str, list[str]] | None:
+    """Tracked test, library and executable files naming each document; None if unlistable."""
+    listed = _run(["git", "ls-files", "--", *DOCUMENT_READER_ROOTS], root, check=False)
+    if listed.returncode != 0:
+        return None
+    readers: dict[str, list[str]] = {document: [] for document in documents}
+    for candidate in listed.stdout.splitlines():
+        target = root / candidate
+        try:
+            if not target.is_file() or target.stat().st_size > MAX_READER_BYTES:
+                continue
+            text = target.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for document in documents:
+            if _mentions(text, document):
+                readers[document].append(candidate)
+    return readers
+
+
+def _families_for_reader(families: list[dict[str, Any]], reader: str) -> list[dict[str, Any]]:
+    """A reader's families: a test file by selectors or source paths, code by its covers."""
+    found = []
+    for family in families:
+        selector_files = {str(item).split("::", 1)[0] for item in family.get("selectors", [])}
+        patterns = [*family.get("covers", []), *family.get("source_paths", [])]
+        if reader in selector_files or any(
+            fnmatch.fnmatchcase(reader, pattern) for pattern in patterns
+        ):
+            found.append(family)
+    return found
 
 
 def selected_families(
@@ -822,12 +1015,27 @@ def selected_families(
         if not matches:
             unmapped.append(path)
             continue
-        if len(matches) > 1:
+        if len(matches) > 1 and not _is_document(path):
             return families, f"ambiguous-change-map:{path}"
+        # A document several families cover selects all of them: its readers, not one owner,
+        # are what it can break.
         for family in matches:
             selected[family["id"]] = family
+    # A document no family covers selects the families of the files that read it
+    # (none: the vital families
+    # alone); anything else unmapped still widens to the full suite.
+    documents = [path for path in unmapped if _is_document(path)]
+    unmapped = [path for path in unmapped if not _is_document(path)]
     if unmapped:
         return families, "unmapped-changes:" + ",".join(sorted(unmapped))
+    if documents:
+        readers = _document_readers(root, documents)
+        if readers is None:
+            return families, "document-readers-unlisted"
+        for document in documents:
+            for reader in readers[document]:
+                for family in _families_for_reader(families, reader):
+                    selected[family["id"]] = family
     return list(selected.values()), None
 
 
@@ -847,8 +1055,6 @@ def report(root: Path) -> dict[str, Any]:
     return {
         "baseline": baseline["counts"],
         "current": current["counts"],
-        "family_ratio": current["counts"]["families"] / baseline["counts"]["families"],
-        "leaf_ratio": current["counts"]["leaves"] / baseline["counts"]["leaves"],
         "by_kind": current["by_kind"],
     }
 
@@ -937,6 +1143,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     assay_parser.add_argument("--output", type=Path)
     subparsers.add_parser("reassess")
+    timing_parser = subparsers.add_parser("timing")
+    timing_parser.add_argument(
+        "--samples",
+        type=int,
+        default=0,
+        help=(f"run the full suite this many times first; {CONFIRMING_SAMPLES} confirm an overrun"),
+    )
     args = parser.parse_args(argv)
     root = args.repo_root.resolve()
     try:
@@ -978,6 +1191,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.command == "reassess":
             summary = validate(root)
             print(json.dumps({**summary, **report(root)}, indent=2, sort_keys=True))
+        elif args.command == "timing":
+            if args.samples < 0:
+                raise GovernanceError("--samples must not be negative")
+            observed = timing(root, args.samples)
+            print(json.dumps(observed, indent=2, sort_keys=True))
+            print(f"TEST TIME {observed['state'].upper()} budget={observed.get('budget', 'n/a')}")
+            if observed["state"] == "fail":
+                return 1
         return 0
     except GovernanceError as exc:
         print(f"TEST GOVERNANCE ERROR {exc}", file=sys.stderr)

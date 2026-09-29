@@ -50,7 +50,7 @@ The eleven steps govern forward construction. Rule One governs what happens when
    - records primary dispositions and requests a second advisory pass only for recorded cause, never a third;
    - in constrained delegated mode, dispatches planner, reviewer, coder, and critic under the established bounded approval loops.
 
-8. **Acceptance check.** The primary or delegated coder runs focused behavioral checks during implementation. The primary then runs the complete required sequence ending in the implementation-candidate full gate. After accepted close and all tracked bookkeeping, it runs the second bare full handoff gate. No tracked write follows success. Changed implementation invalidates prior gates. Follow-ups use their risk and size classification without automatically requiring another advisory pass. Methodology work always uses direct primary self-inspection and both gates.
+8. **Acceptance check.** The primary or delegated coder runs focused behavioral checks during implementation. The primary then runs the required sequence ending in the changed-path selection, the implementation-candidate gate. After accepted close and all tracked bookkeeping, it runs the one bare full handoff gate, which qualifies the push. No tracked write follows success. Changed implementation invalidates prior gates. Follow-ups use their risk and size classification without automatically requiring another advisory pass. Methodology work always uses direct primary self-inspection, targeted checks before each local commit, and one full gate before the push.
 
 9. **Append-only phase log and lessons harvest.** `LOG.md` opens and closes work on every phase. Closing requires recorded evidence plus the mandatory lessons question: harvest role Process Observations, revision failure analyses, wall-clock observations, and relevant dispositions into `lessons/`; `None` is valid, omission is not.
 
@@ -85,7 +85,7 @@ The orchestrator delegates to four specialist roles. Their names are load-bearin
 - **Every initial product implementation receives the review required by its lane; primary-mode critique is advisory and delegated-mode critique is approval-gated.**
 - **Review, findings, and gates are bound to exact candidate identity.**
 - **Revision rounds use causal packets and widen when continuity is uncertain.**
-- **The orchestrator owns both full close gates; the coder owns focused iteration.**
+- **The orchestrator owns both close gates, including the one full run; the coder owns focused iteration.**
 - **The human owns subjective and owner-only acceptance; objective acceptance satisfies its review contract and is gate-proved.**
 - **The primary plans and codes inline in primary mode and for all methodology work; constrained product work delegates those roles.**
 - **Closing a phase requires recorded evidence and a lessons-harvest answer.**

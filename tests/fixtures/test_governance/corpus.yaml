@@ -108,7 +108,7 @@ cases:
 - id: frozen-baseline-denominator
   class: holdout_mutant
   patch: tests/fixtures/test_governance/holdout_mutant/frozen-baseline-denominator.patch
-  patch_sha256: ef83ade7238fa1404cb606827d4eea4c023d94733de31764ec31e8b87d9f38cd
+  patch_sha256: b8fbe1c3578c4feddad6ecb6e829da8edf3327fbd85d021c71255530663eeabe
   command: ./bin/test tests/test_test_governance.py -q
   cwd: .
   expected: The retained estate rejects the seeded defect.
@@ -124,15 +124,15 @@ cases:
 - id: optional-disposition-evidence
   class: holdout_mutant
   patch: tests/fixtures/test_governance/holdout_mutant/optional-disposition-evidence.patch
-  patch_sha256: 1c511849252695b92cd959e02e77d9ce718dc99f3b0d3f9dfff56b8c05cd5084
+  patch_sha256: 18ebf4a7a0acd9aec2fd5635e31326733c008fa28903af856736265f7708c0d3
   command: ./bin/test tests/test_test_governance.py -q
   cwd: .
   expected: The retained estate rejects the seeded defect.
   owner: test-governance-manager
-- id: family-only-cap
+- id: single-run-confirms-overrun
   class: holdout_mutant
-  patch: tests/fixtures/test_governance/holdout_mutant/family-only-cap.patch
-  patch_sha256: 0b1de721b88aee9e3831ebb4ba646570e55e36b0b60a3672d72a7b623224fbad
+  patch: tests/fixtures/test_governance/holdout_mutant/single-run-confirms-overrun.patch
+  patch_sha256: ed74d064a85bd4ff1eef5e5f28d6953e1baa6576c35913f0540508bd4f220570
   command: ./bin/test tests/test_test_governance.py -q
   cwd: .
   expected: The retained estate rejects the seeded defect.
@@ -145,10 +145,10 @@ cases:
   cwd: .
   expected: The retained estate rejects the seeded defect.
   owner: test-governance-manager
-- id: unauthorized-positive-growth
+- id: foreign-machine-budget-judged
   class: holdout_mutant
-  patch: tests/fixtures/test_governance/holdout_mutant/unauthorized-positive-growth.patch
-  patch_sha256: e63745edce520d1f41065a63117edbbb683b4858051f4cedec30a79586a9f863
+  patch: tests/fixtures/test_governance/holdout_mutant/foreign-machine-budget-judged.patch
+  patch_sha256: d0cc912b79a9455081c5fa2fabba6256687f346e615a6ffcf918146e0cae304d
   command: ./bin/test tests/test_test_governance.py -q
   cwd: .
   expected: The retained estate rejects the seeded defect.
@@ -164,7 +164,7 @@ cases:
 - id: indeterminate-changed-selection
   class: holdout_mutant
   patch: tests/fixtures/test_governance/holdout_mutant/indeterminate-changed-selection.patch
-  patch_sha256: 190232035714bb8c232ee43ffa5f70cc9d0309a116fb5df3f7abdae35783b60b
+  patch_sha256: aa5a2eb37cb76612d39330b649495c491dda170c4b4d04f2135b378368aadc7a
   command: ./bin/test tests/test_test_governance.py -q
   cwd: .
   expected: The retained estate rejects the seeded defect.
@@ -188,7 +188,7 @@ cases:
 - id: absent-consolidation-replacement
   class: holdout_mutant
   patch: tests/fixtures/test_governance/holdout_mutant/absent-consolidation-replacement.patch
-  patch_sha256: 27f9f89f3ba9b4d4701f976795b44306c868fa0218af417bc6f83ed8bfaf35ec
+  patch_sha256: 1b5f4500bc9ab7b8644fb3d191da5c856ba374daa201ba26a516c83bff6be7e9
   command: ./bin/test tests/test_test_governance.py -q
   cwd: .
   expected: The retained estate rejects the seeded defect.

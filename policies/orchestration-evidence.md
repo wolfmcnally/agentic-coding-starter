@@ -145,11 +145,13 @@ Use four levels:
 
 1. focused, smallest falsifying behavioral test or proof during editing;
 2. affected suites and static/structural checks at revision close;
-3. the complete phase-prescribed sequence and `./bin/check all` after
-   code-critic approval, against the unchanged approved implementation
-   candidate;
+3. the phase-prescribed sequence ending in the changed-path selection
+   `./bin/test --changed-from '@{upstream}'` after code-critic approval, against the unchanged
+   approved implementation candidate (it widens itself to the full suite when
+   the change cannot be mapped safely);
 4. a bare `./bin/check all` after every tracked close write, against the actual
-   handoff tree.
+   handoff tree; it is the phase's one full run and its receipt qualifies the
+   push.
 
 Before an expensive acceptance sequence, run `bin/kickoff-command-zero`. It
 validates the manifest, venue receipt, and stage topology; dry-runs every
@@ -171,26 +173,26 @@ that run begins:
    and neither a coder forbidden from the live run nor a read-only critic can
    see that.
 
-The implementation-candidate contract is unchanged: its `./bin/check all`
-runs last against the unchanged approved candidate, and rehearsal rows are
+The implementation-candidate contract is unchanged: its final gate, the
+changed-path selection, runs last against the unchanged approved candidate, and rehearsal rows are
 explicitly non-final. After close bookkeeping changes the tree, the separate
 handoff gate proves that actual tree. Only the discovery of cheap failures
 moves earlier.
 
 Record every candidate-bound implementation gate and its selection reason.
 When the repository exposes governed `vital` or `changed` lanes, use their
-deterministic selection for iteration only after proof-estate validation has
+deterministic selection for iteration and the implementation gate only after proof-estate validation has
 established the retained estate and retain the manager's family/reason record;
 legitimate overlapping mappings select their union. Explicit
 agent-judged selectors remain valid for a named falsifier. Invalid governance,
-unmapped impact, or unsupported execution widens to full. Fast lanes never
-replace levels 3 or 4 above, and full means the complete retained estate after
+unmapped impact, or unsupported execution widens to full. No lane replaces
+level 4 above, and full means the complete retained estate after
 the required local reset rather than a small lane over an untouched shadow
 suite. A relevant candidate change
 invalidates prior gate evidence. Verify candidate identity before and after
 the implementation sequence; mutation by a read-only gate fails the phase.
 `./bin/python bin/kickoff-evidence validate --level acceptance --required-final-command
-"./bin/check all"` is the mechanical implementation acceptance proof and must
+"./bin/test --changed-from '@{upstream}'"` is the mechanical implementation acceptance proof and must
 run immediately after the implementation gate, before status and append-only
 log bookkeeping change the working tree. It also refuses close bookkeeping
 while a finding remains `open`,

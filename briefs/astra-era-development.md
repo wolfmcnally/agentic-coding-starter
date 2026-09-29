@@ -59,7 +59,7 @@ Root instruction budget: 20 KiB maximum (raised from 16 KiB on 2026-09-05), reta
 
 Reviews discover broadly and then distinguish blocking defects from advisory improvements. Batch discoverable blockers on the first review. Each blocker identifies the violated requirement, consequence, evidence, and testable resolution. Revisions preserve stable findings and review changed dependencies, expanding when continuity is uncertain. Count false positives, missed defects, and operational failures as well as implementation errors. Cross-vendor value is a hypothesis to measure, not guaranteed decorrelation.
 
-Focused checks run during implementation. Both full close gates, independent initial critique, active/bookkeeping partition, candidate receipts, proof-estate governance, and human acceptance remain required. Retain timeout and self-resume budgets until evidence supports recalibration. Refresh context guidance from supported harness behavior; advertised API context is not harness capacity.
+Focused checks run during implementation. Both close gates, independent initial critique, active/bookkeeping partition, candidate receipts, proof-estate governance, and human acceptance remain required. Retain timeout and self-resume budgets until evidence supports recalibration. Refresh context guidance from supported harness behavior; advertised API context is not harness capacity.
 
 ## Qualification and evaluation
 

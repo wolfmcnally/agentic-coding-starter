@@ -180,11 +180,11 @@ it covers the changed surface. Uncertain impact selects a broader suite.
 ### Implementation Candidate Gate
 List the complete phase-prescribed sequence the orchestrator runs after
 code-critic approval against the unchanged implementation candidate. It ends
-with:
+with the changed-path selection:
 
-- `./bin/check all`
+- `./bin/test --changed-from '@{upstream}'`
 
-Inspect what that full gate includes. Do not repeat an unchanged component suite immediately before it; any additional acceptance command must prove a distinct property, configuration or environment. Focused iteration and both full close gates remain required.
+The selection widens itself to the full suite when the change cannot be mapped safely; the one full `./bin/check all` runs as the handoff gate after close bookkeeping. Do not repeat an unchanged component suite immediately before a gate that includes it; any additional acceptance command must prove a distinct property, configuration or environment. Focused iteration and both close gates remain required.
 
 Read `policies/build-gates.md` and inspect the complete toolchain contract:
 `bin/setup`, `bin/test`, `bin/check`, any runtime wrapper, runtime pin,

@@ -1,19 +1,21 @@
-schema: agentic.proof_estate.v2
+schema: agentic.proof_estate.v3
 baseline_report: reports/test-governance/starter-pre-reset-baseline.json
 audit_ledger: reports/test-governance/starter-reset.jsonl
 effectiveness_corpus: tests/fixtures/test_governance/corpus.yaml
 effectiveness_report: reports/test-governance/starter-effectiveness.jsonl
-reset_limits:
-  max_families_ratio: 0.2
-  max_leaves_ratio: 0.2
+effectiveness_floors:
   min_historical_recall: 0.8
   min_mutant_recall: 0.8
   min_historical_cases: 12
   min_mutant_cases: 12
-test_budget_delta:
-  families: 0
-  leaves: 0
-budget_approval: null
+size_ceilings_seconds:
+  small: 2
+  medium: 20
+  large: 200
+time_budget:
+  test_lane_seconds: 120
+  tolerance: 0.25
+  reference_machine: a8a904a62251c08b
 critical_risks:
   custody:
     state: applicable
@@ -67,7 +69,7 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: network-hermeticity
@@ -86,7 +88,7 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: atomic-check
@@ -109,7 +111,7 @@ families:
   - invalid-runtime-fallback
   mutation_evidence: []
   tier: vital
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: catalog-integrity
@@ -134,7 +136,7 @@ families:
   - deleted-catalog-source
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: medium
   flake_rate: 0.0
   replacement_lineage: []
 - id: hook-liveness
@@ -154,7 +156,7 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: plan-concreteness
@@ -174,7 +176,7 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: plan-delivery
@@ -194,7 +196,7 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: full-gate-receipt
@@ -216,7 +218,7 @@ families:
   - receipt-candidate-drift
   mutation_evidence: []
   tier: vital
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: execution-dashboard
@@ -237,7 +239,7 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: execution-telemetry
@@ -258,7 +260,7 @@ families:
   - operator-park-union
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: medium
   flake_rate: 0.0
   replacement_lineage: []
 - id: hook-installation
@@ -278,7 +280,7 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: kickoff-configuration
@@ -301,7 +303,7 @@ families:
   - yielded-session-exit
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: medium
   flake_rate: 0.0
   replacement_lineage: []
 - id: orchestration-evidence
@@ -324,13 +326,13 @@ families:
   contract: Every review and gate remains bound to the exact candidate and declared authority.
   risk_class: orchestration-custody
   oracle: Synthetic runs accept only complete internally consistent evidence graphs.
-  admission: The evidence graph is validated as a complete family.
+  admission: The evidence graph is validated as a complete family. It is large because one proof drives a complete synthetic kickoff through the real evidence tool across every role, revision and gate; no smaller boundary exercises that cross-validation, and it is the first candidate for a cheaper split when the time budget tightens.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
   historical_evidence:
   - blocking-finding-finalization
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: large
   flake_rate: 0.0
   replacement_lineage: []
 - id: kickoff-control-plane
@@ -351,7 +353,7 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage:
   - pytest:tests/test_kickoff_tree_id.py::test_tracked_staged_unstaged_and_untracked_changes_affect_identity
@@ -377,7 +379,7 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage:
   - pytest:tests/test_kickoff_tree_id.py::test_symlink_escape_fails_closed
@@ -400,7 +402,7 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: medium
   flake_rate: 0.0
   replacement_lineage: []
 - id: lessons-ledger
@@ -422,7 +424,7 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: methodology-transfer
@@ -449,7 +451,7 @@ families:
   - required-gate-inventory
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: harness-parity
@@ -473,7 +475,7 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: ledger-slugs
@@ -496,7 +498,7 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: pre-commit-contract
@@ -516,7 +518,7 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: research-authority
@@ -540,7 +542,7 @@ families:
   - research-resource-default
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: review-verdict-harvest
@@ -562,7 +564,7 @@ families:
   - active-review-session
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: shell-syntax
@@ -585,7 +587,7 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: test-governance-manager
@@ -614,9 +616,7 @@ families:
   - frozen-baseline-denominator
   - aggregate-disposition
   - optional-disposition-evidence
-  - family-only-cap
   - critical-risk-averaging
-  - unauthorized-positive-growth
   - shadow-proof-removal
   - indeterminate-changed-selection
   - vital-substitutes-for-full
@@ -627,8 +627,15 @@ families:
   - unknown-repair-record-type
   - reset-repair-not-self-bound
   - inactive-repair-target-accepted
+  - documents-widen-when-multiply-covered
+  - document-readers-ignored
+  - joined-name-mention-missed
+  - size-ceiling-ignored
+  - stale-record-read-as-measured
+  - patch-applicability-unchecked
+  - forward-only-applicability
   tier: vital
-  duration_seconds: 0.0
+  size: medium
   flake_rate: 0.0
   replacement_lineage: []
 - id: toolchain-caller-policy
@@ -652,7 +659,7 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: toolchain-entrypoints
@@ -678,7 +685,7 @@ families:
   - symlink-repository-ownership
   mutation_evidence: []
   tier: vital
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: treatise-governance
@@ -699,7 +706,7 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: changed
-  duration_seconds: 0.0
+  size: small
   flake_rate: 0.0
   replacement_lineage: []
 - id: gate-changed
@@ -718,7 +725,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 - id: gate-format
@@ -737,7 +743,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 - id: gate-lint
@@ -756,7 +761,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 - id: gate-policy-anonymization
@@ -775,7 +779,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 - id: gate-policy-catalogs
@@ -794,7 +797,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 - id: gate-policy-config
@@ -813,7 +815,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 - id: gate-policy-execution-dashboards
@@ -832,7 +833,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 - id: gate-policy-harness-parity
@@ -851,7 +851,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 - id: gate-policy-hooks-installed
@@ -870,7 +869,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 - id: gate-policy-log
@@ -889,7 +887,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage:
   - pytest:tests/test_pre_commit.py::test_pre_commit_preserves_governance_failure
@@ -909,7 +906,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 - id: gate-policy-shell-syntax
@@ -928,7 +924,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 - id: gate-policy-test-governance
@@ -947,7 +942,24 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
+  flake_rate: 0.0
+  replacement_lineage: []
+- id: gate-policy-test-time
+  kind: gate
+  selectors:
+  - policy-test-time
+  source_paths:
+  - bin/check
+  covers:
+  - bin/check
+  contract: The full gate judges the recorded test times against size ceilings and the test-lane budget.
+  risk_class: lifecycle-custody
+  oracle: The named gate command remains present and fails the lifecycle step on a size breach or a confirmed overrun.
+  admission: Retained as direct lifecycle wiring for the time budget rather than a substitute for its behavioral proof.
+  nearest_overlap: The timing behavioral proof exercises the judgment; this proof uniquely proves the gate runs it.
+  historical_evidence: []
+  mutation_evidence: []
+  tier: full
   flake_rate: 0.0
   replacement_lineage: []
 - id: gate-policy-toolchain-callers
@@ -966,7 +978,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 - id: gate-policy-treatise
@@ -985,7 +996,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 - id: gate-test
@@ -1004,7 +1014,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 - id: gate-vital
@@ -1023,7 +1032,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 - id: hook-githooks-pre-commit-bin-check-harness-parity
@@ -1042,7 +1050,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 - id: hook-githooks-pre-commit-bin-check-toolchain-callers
@@ -1061,7 +1068,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 - id: hook-githooks-pre-commit-bin-check-log-staged
@@ -1080,7 +1086,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage:
   - pytest:tests/test_kickoff_evidence.py::test_gate_record_rejects_stale_candidate_and_hashes_artifact
@@ -1100,7 +1105,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage: []
 
@@ -1120,7 +1124,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage:
   - pytest:tests/test_kickoff_evidence.py::test_a_proven_disjoint_drift_is_accepted_and_recorded
@@ -1141,7 +1144,6 @@ families:
   historical_evidence: []
   mutation_evidence: []
   tier: full
-  duration_seconds: 0.0
   flake_rate: 0.0
   replacement_lineage:
   - pytest:tests/test_kickoff_evidence.py::test_init_creates_complete_run_scoped_evidence

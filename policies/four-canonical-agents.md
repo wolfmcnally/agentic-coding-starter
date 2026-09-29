@@ -51,7 +51,7 @@ Whether *both* reviewer roles run on a phase's initial implementation is governe
 
 - **`plan-reviewer`** — Reads the same authorities plus the planner's output and may independently research uncertain or volatile claims. Issues a single verdict (`APPROVED` or `REVISE`) at the top of its response and records Process Observations separately from phase findings. May call `AskUserQuestion` to escalate decisions only the human can make.
 
-- **`phase-coder`** — Reads the approved plan and implements it. May retrieve resources the plan or briefs identify, but does not originate research. Runs focused iteration and revision-close checks; the orchestrator owns both full gates. Reports files created/modified, the build-status block, Process Observations, and — on revision rounds — root-cause Failure Analysis in both its human report and Change Evidence.
+- **`phase-coder`** — Reads the approved plan and implements it. May retrieve resources the plan or briefs identify, but does not originate research. Runs focused iteration and revision-close checks; the orchestrator owns both close gates. Reports files created/modified, the build-status block, Process Observations, and — on revision rounds — root-cause Failure Analysis in both its human report and Change Evidence.
 
 - **`code-critic`** — Reads the approved plan, the briefs and policies it cites, and the code diff. May retrieve those authorities and their same-host structural neighbors, but does not originate research. Issues a single verdict (`APPROVED` or `REVISE`) and records Process Observations separately from code findings. Does not rewrite the implementation; only reviews it.
 
@@ -61,7 +61,7 @@ Plans settle intended behavior, exclusions, invariants, consequential interfaces
 
 Initial review discovers broadly across the authorized outcome before classifying observations. Batch real required changes separately from optional advice. Each required finding names its violated requirement, concrete consequence, source evidence and testable resolution. Inspect search matches in context: examples, quotations and negative fixtures can contain a forbidden pattern without violating the rule, and a proxy can invert the meaning. Optional suggestions stay outside the unresolved finding ledger; approval carries no unresolved required finding. Revision findings retain their original identity, authority, evidence and required outcome as specified below; new objections get new ids.
 
-Independent review, the declared lane, empirical acceptance and both full gates remain mandatory regardless of model selection. Byte counts, link checks and first-cycle approval are evidence for their named structural or review properties, never proof of model capability or instruction adherence.
+Independent review, the declared lane, empirical acceptance and both close gates remain mandatory regardless of model selection. Byte counts, link checks and first-cycle approval are evidence for their named structural or review properties, never proof of model capability or instruction adherence.
 
 ## A role never writes its own output file
 

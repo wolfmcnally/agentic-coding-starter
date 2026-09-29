@@ -222,7 +222,8 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
         ),
         (
             f"uv cwd={root} args=run --project {root / 'project'} --locked "
-            "--managed-python python -m pytest -q project/tests tests"
+            f"--managed-python python -m pytest -q --junitxml {root}/.kickoff/test-timing/full.xml "
+            "-o junit_family=xunit1 project/tests tests"
         ),
         f"parity cwd={root}",
         f"callers cwd={root}",
@@ -236,6 +237,7 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
         f"log cwd={root}",
         f"partition cwd={root}",
         f"governance cwd={root} args=validate",
+        f"governance cwd={root} args=timing",
         f"policy cwd={root}",
     ]
     assert "CHECK ALL PASS" in result.stdout

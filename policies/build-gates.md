@@ -92,11 +92,7 @@ full gate and preserves the test runner's exit status.
 When the repository carries the universal proof-estate bundle,
 `--vital` selects every locally admitted vital family and
 `--changed-from <ref>` selects the union of every family mapped to the live
-candidate's changed paths. Both selections are produced by the deterministic
-manager. Invalid governance, an unsupported runner, an unresolved ref, or any
-unmapped or indeterminate changed path widens to the full retained suite. The
-manager also enforces the frozen reset, recall floors, direct-risk proofs,
-zero-net-growth budget, and periodic reassessment. The manifest's family
+candidate's changed paths. A Markdown document no family covers selects the families of the test, library and executable files that name it, or only the vital families when nothing names it; a document several families cover selects all of them. Both selections are produced by the deterministic manager. Invalid governance, an unsupported runner, an unresolved ref, or any unmapped or ambiguously covered code path widens to the full retained suite. Every full run records per-test times for the manager. The manager also enforces the frozen reset, recall floors, direct-risk proofs, per-test size ceilings, the test-lane time budget, and periodic reassessment. The manifest's family
 choices, mappings, risk labels, timings, and effectiveness cases are local
 state; they are never inherited from another repository.
 
@@ -188,7 +184,11 @@ Recurring tools belong in committed development dependencies. Do not use
 ephemeral dependency injection such as an unpinned `uv run --with ...` for a
 repository-owned gate.
 
-## Focused iteration and the two-gate close
+## Targeted tests for local commits; the full gate qualifies a push
+
+The full suite is not rerun for every change. Outside construction phases (methodology work, policy and brief edits, direct fixes, a series of small targeted changes), a change is committed locally once the checks it could conceivably break pass: `./bin/test --changed-from '@{upstream}'` selects them mechanically and widens to the full suite on its own for unmapped or ambiguously covered code. Add format and lint when code changed, and any narrower check the changed surface owns (a ledger, parity, catalog or phase check). The bare `./bin/check all` runs once, on the exact tree about to be pushed; its receipt is what the pre-push hook reuses. Several local commits may share one push and one full gate. A failure that gate finds is repaired before the push, narrowed locally to the commit that caused it; nothing is pushed on a red gate. Construction phases follow the same rule: their implementation-candidate gate is the changed-path selection, and their one full run is the handoff gate.
+
+## Focused iteration and the phase close
 
 The planner's Build Gate Sequence has three explicit parts:
 
@@ -199,13 +199,16 @@ The planner's Build Gate Sequence has three explicit parts:
    for a named falsifier. The plan states why the selection exercises the
    changed surface.
 2. **Implementation-candidate gate** — after code-critic approval, the phase's
-   complete prescribed checks ending with `./bin/check all`, recorded against
-   the unchanged approved implementation candidate.
+   prescribed checks ending with the changed-path selection
+   `./bin/test --changed-from '@{upstream}'`, recorded against the unchanged
+   approved implementation candidate. The selection widens itself to the full
+   suite when the change cannot be mapped safely.
 3. **Handoff gate** — after status, ripple, lessons, END, dashboard, and every
    other tracked close write, a bare `./bin/check all` against the actual tree
-   handed to the user. No tracked write follows a successful handoff gate.
+   handed to the user. It is the phase's one full run, and its receipt
+   qualifies the push. No tracked write follows a successful handoff gate.
 
-Do not place an unchanged component suite immediately before a full gate that already includes it. An additional pre-gate command needs a distinct acceptance property, configuration or environment; running `./bin/test` and then `./bin/check all` under identical conditions does not add coverage. Both full close gates remain mandatory at their separate candidate and handoff seams.
+Do not place an unchanged component suite immediately before a gate that already includes it. An additional pre-gate command needs a distinct acceptance property, configuration or environment. Both close gates remain mandatory at their separate candidate and handoff seams.
 
 A raw ecosystem command is acceptable only for a narrow operation the
 repository interface does not represent; it must still use committed metadata
@@ -228,10 +231,8 @@ fails. The handoff gate writes only ignored receipt state. When the affected
 surface is indeterminate, select a broader suite rather than defaulting to a
 reassuring narrow one.
 
-Governed fast lanes are subject to
-[`test-suite-governance.md`](test-suite-governance.md). They optimize feedback
-only: neither lane can replace the implementation-candidate gate, the handoff
-gate, a phase-prescribed acceptance command, or pre-push full-gate custody.
+Governed lanes are subject to
+[`test-suite-governance.md`](test-suite-governance.md). The changed-path selection is the implementation-candidate gate and the local commit gate; no lane replaces the handoff gate, a phase-prescribed acceptance command, or pre-push full-gate custody.
 
 If the handoff gate fails, the phase is not complete. Reopen the current
 uncommitted close, correct or regenerate the close artifact, and rerun the bare
@@ -267,14 +268,11 @@ leverage may simply be reported and run.
 
 `bin/check-candidate-partition` is a required policy-gate member. It refuses malformed declarations and unclassified tracked files. The opt-in pre-commit hook invokes its `--staged` form against indexed declaration bytes and the complete indexed path inventory. Working-tree edits cannot make an invalid index pass. The declaration and checker propagate with the evidence tools, their shared boundary module, fixtures, and behavioral tests.
 
-Bookkeeping classification preserves product review identity; it does not authorize skipping either full close gate or reusing a full-gate receipt across full-tree or runtime changes. Format checks still cover the complete candidate, including nonignored untracked files.
+Bookkeeping classification preserves product review identity; it does not authorize skipping either close gate or reusing a full-gate receipt across full-tree or runtime changes. Format checks still cover the complete candidate, including nonignored untracked files.
 
 ## Full-gate receipt reuse
 
-Both close gates run: one against the approved implementation candidate and one
-against the post-bookkeeping handoff tree. A receipt is a durable record of a
-completed full gate, not permission to omit either gate or to reuse a result
-across candidates or environments.
+Both close gates run: the changed-path selection against the approved implementation candidate and the one full gate against the post-bookkeeping handoff tree. A receipt is a durable record of a completed full gate, not permission to omit either gate or to reuse a result across candidates or environments.
 
 The opt-in pre-push hook may reuse a receipt only when every non-deleted pushed
 ref is the current `HEAD`, the working tree is clean, the current candidate and

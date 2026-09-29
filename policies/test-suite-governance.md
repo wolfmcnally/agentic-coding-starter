@@ -14,8 +14,7 @@ Initial adoption MUST:
 2. Run a local Pareto assay and physically consolidate or delete dominated
    proofs. Retaining the estate for a later audit is forbidden.
 3. Disposition every baseline proof exactly once as `retain`, `repair`, `consolidate`, or `delete` in an append-only ledger. `repair` keeps the contract active and records that its assertion was corrected, for a proof whose contract is real but whose assertion could not fail. Each row MUST carry its contract, oracle, red witness, nearest overlap, replacement evidence, and standalone rationale.
-4. Keep current families and leaves at or below the declared `max_families_ratio`
-   and `max_leaves_ratio` of the frozen denominators.
+4. Declare a size for every pytest family and a test-lane time budget, and bring the retained estate within both on the reference machine (see [Time budget](#time-budget)).
 5. Demonstrate at least the declared recall over a frozen local historical-defect
    corpus and at least the declared kill recall over a held-out local mutant
    corpus, each holding at least its declared case floor.
@@ -24,9 +23,9 @@ Initial adoption MUST:
    schema, deploy, and core-success risk. An inapplicable class requires a
    rationale and an activation trigger.
 
-**The ceilings and case floors are recipient-declared; the floors on effectiveness are not.** `reset_limits` carries `max_families_ratio`, `max_leaves_ratio`, `min_historical_cases`, and `min_mutant_cases` alongside the recall minimums, and a repository declares the values its own history can support. This template declares 0.2 ratios and twelve cases per class because it reset an overgrown estate and has the defect history to prove the result. A freshly stamped recipient declares ratios of 1.0 and an empty-but-frozen corpus, because its baseline *is* the template's post-reset estate: a compliant 20% reset would discard four fifths of the universal machinery's direct proofs, and it has no defect history to recall. `reassess` widens the declaration as phase history accrues — each ratified lesson and closed defect is a case the recipient can freeze, and the floors rise with them.
+**The case floors and the time budget are recipient-declared; the floors on effectiveness are not.** `effectiveness_floors` carries `min_historical_cases` and `min_mutant_cases` alongside the recall minimums, and a repository declares the values its own history can support. This template declares twelve cases per class because it reset an overgrown estate and has the defect history to prove the result. A freshly stamped recipient declares an empty-but-frozen corpus, because it has no defect history to recall, and a null reference machine until someone on its own hardware records one. `reassess` widens the declaration as phase history accrues — each ratified lesson and closed defect is a case the recipient can freeze, and the floors rise with them.
 
-What never moves: the recall minimums over whatever corpus exists, direct proof for every applicable critical risk, the zero-net-growth budget, frozen selection before holdout execution, and digest binding. A class with no declared floor and no cases is reported as **unmeasured** — never as zero, never as passing — and the report names it, so an empty corpus cannot be read as a clean one.
+What never moves: the recall minimums over whatever corpus exists, direct proof for every applicable critical risk, the size ceilings on whatever machine runs the suite, frozen selection before holdout execution, and digest binding. A class with no declared floor and no cases is reported as **unmeasured** — never as zero, never as passing — and the report names it, so an empty corpus cannot be read as a clean one.
 
 The historical corpus may guide selection. Selection MUST be frozen before the
 holdout runs. Every case's command and mutation-patch digest MUST bind the
@@ -76,41 +75,52 @@ explains why it has no independent contract.
 
 **Every retirement batch passes a preservation review before it lands**, at reset and afterward, whether a phase, a sweep, or a reassessment proposes it. A reviewer who did not choose the retirements compares the removed coverage against the proofs that remain and names each contract that lost its only proof, and each new or carried assertion that cannot fail. Every restored contract gets one deliberate mutation of its production owner, observed red in the keeper and restored byte-exactly, recorded like any other red witness. The review completes when every reported gap is restored or rejected with source evidence. The recall floors are statistical and measure nothing until a corpus exists; this review is the per-contract guard that holds from the first batch.
 
-The default post-reset family and leaf budgets are zero. A new proof requires a named active contract or risk, independent oracle, red witness, non-subsumption account, and either a named approved positive budget or a compensating retirement. Validation fails closed when any admission or budget evidence is absent.
+A new proof requires a named active contract or risk, independent oracle, red witness, and non-subsumption account, recorded as a `proof_admission`, and a declared size for its family. There is no count budget: what an agent may add is limited by the [admission questions](#judging-a-proof) and by the [time budget](#time-budget), not by how many proofs already exist. Validation fails closed when any admission evidence is absent.
 
 A **red witness is recorded at construction, not re-run at close.** A mutant exists to vet a proof while that proof is being written: apply the intended defect, watch the named case fail at the assertion that encodes the guarantee, restore the code byte-exactly, and watch it pass. The mutant is then discarded. What the estate retains is the named defect in the family's `mutation_evidence`; the close record that admitted the proof carries the command, the failing node and the clean result after restoration. A name in that list is a claim that the mutation was applied, observed red at the named assertion, and restored — never a plan to try it. No mutation patch or standing mutation battery is committed, and no close gate runs one.
 
 What this gives up is worth stating: a committed mutant re-proves on every run that its bound case still catches its fault, which guards against a proof being weakened later. That standing guarantee is traded for a gate that fails only for reasons of correctness, since a patch anchored on source lines breaks whenever the guarded function is edited. A reviewer who suspects a proof has been weakened re-applies the recorded defect.
 
-After the reset, retirement and repair are append-only events. A `proof_repair` targets one currently active proof, self-binds, carries the same evidence as a disposition, and changes neither the active set nor any budget; a proof may be repaired more than once.
+After the reset, retirement and repair are append-only events. A `proof_repair` targets one currently active proof, self-binds, carries the same evidence as a disposition, and leaves the active set unchanged; a proof may be repaired more than once.
 
 A `proof_retirement` may target only one currently active baseline or admitted
 proof, exactly once. It records `consolidate` with a named active replacement or
 `delete` with no replacement, plus the same contract, oracle, red-witness,
 overlap, replacement, and rationale evidence as the original reset. Replay
-removes that proof and creates one budget. One later admission may consume that
-budget exactly once. Reset-era dispositions cannot fund admissions appended
-after the post-reset lifecycle begins. The replayed active set MUST equal the
-live inventory; a shadow proof, reused retirement, or missing event refuses.
+removes that proof. Renaming a proof is an admission of the new name followed by
+a consolidating retirement of the old one. The replayed active set MUST equal
+the live inventory; a shadow proof, repeated retirement, or missing event
+refuses.
+
+## Time budget
+
+The cost an estate imposes is the time it takes to run, and a count of proofs is a poor stand-in for it: one subprocess-heavy proof can outweigh a hundred pure ones, and a count cap rewards folding new contracts into existing proofs whose names then stop describing them. Time is governed directly, with each check shaped to survive the noise in wall-clock measurement.
+
+- **Size classes bound each proof.** Every pytest family declares `size: small | medium | large`, and `size_ceilings_seconds` gives each class a per-leaf ceiling roughly an order of magnitude above the last. A family takes the smallest class whose ceiling is at least twice its slowest leaf's measured time, so ordinary noise cannot cross a ceiling. A leaf over its family's ceiling fails, on any machine, from a single run. A `large` family names in its admission why the contract cannot be proved more cheaply.
+- **A lane budget bounds the whole.** `time_budget` declares `test_lane_seconds`, a `tolerance`, and a `reference_machine` fingerprint. The budget is judged only on the machine that set it; anywhere else it reports **unmeasured**, never within or over. A single run over the budget plus tolerance is an **advisory**; only the median of three runs over it (`./bin/test-governance timing --samples 3`) confirms an **over** and fails.
+- **Every full run is measured.** `./bin/test` without arguments records per-leaf times, and the full gate's `policy-test-time` member judges that record. A record that does not cover exactly the current pytest estate is stale and reports unmeasured.
+- **An overrun parks for the owner.** A confirmed overrun is resolved by making proofs cheaper, retiring dominated proofs through the preservation review, or the owner raising the budget. The budget is never raised, the tolerance widened, or a family's size moved up to make a gate pass without the owner's ruling, recorded in the phase or the ledger.
+
+Instruction counting is a steadier measure of CPU-bound work, but it does not see the subprocess, filesystem and waiting time that dominate an agentic repository's proofs, so it is not the governed measure here.
 
 ## Deterministic manager and lanes
 
 The repository manager MUST inventory expanded pytest leaves, collapsed families,
 gate members, and hook commands; validate the frozen baseline, complete ledger,
-caps, budgets, direct risks, corpus, and effectiveness report; select vital and
+sizes, time-budget declaration, direct risks, corpus, frozen patches that still
+apply, and effectiveness report; judge recorded timings; select vital and
 changed lanes; execute assays; and report or reassess the current estate.
 
-Vital and changed are iteration aids. Invalid or indeterminate selection widens
-to full. `./bin/test` without lane arguments, both candidate-bound close gates,
-pre-push custody, and durable receipts always use the full retained estate.
-Pre-commit runs structural validation only and never claims full acceptance.
+The changed-path selection is the local commit gate and the implementation-candidate gate (`policies/build-gates.md`). Invalid or indeterminate selection widens to full. `./bin/test` without lane arguments, the handoff gate, pre-push custody, and durable receipts always use the full retained estate. Pre-commit runs structural validation only and never claims full acceptance.
 
 ## Reassessment and transfer
 
 Every governed sweep MUST run `./bin/test-governance reassess`. It MUST rerun the
 local assay when proof code, selection, corpus, or critical-risk applicability
-changed, and propose further consolidation when a proof is dominated. This is an
-executable shrinkage obligation.
+changed, and propose further consolidation when a proof is dominated. It runs
+`./bin/test-governance timing --samples 3` on the reference machine when one is
+available and reports the slowest proofs and any family whose measured time no
+longer fits its size. This is an executable shrinkage obligation.
 
 The same sweep reads the proofs whose code changed since the previous sweep against the [junk patterns](#judging-a-proof), and makes a layer pass over each contract with more than one proof: it names the keeper at the strongest boundary, preferring a real boundary with a fake dependency over a mocked collaborator, and proposes the other layers for consolidation unless each names a distinct risk. Findings are proposals in the sweep's decision queue; each batch the operator ratifies passes the preservation review before it lands.
 
