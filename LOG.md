@@ -2058,3 +2058,9 @@ Two operator rulings through `ask` on 2026-09-29: split the proof that took half
 **Planted bugs at sweeps.** The effectiveness corpus is now described as the one committed set of patches and a dated measurement: every observation carries its assay date, validation reports recall as of the oldest one, and the between-sweep guard added earlier today that refused stranded patches was removed with its proof. Each sweep reruns the assay and repairs or retires stranded cases. The red-witness rule's contradictory sentence now speaks of red-witness patches only. A new proof covers the date and the between-sweep tolerance; its first draft asserted that the error text lacked the word "apply", which the guard's message ("applies") never contains, so the assertion could not fail. A mutation that restored the guard stayed green, which exposed it; the proof now requires the undated row to be the only error.
 
 Lessons: `quaint-ladybug` (closed earlier today) is corroborated by the split proof's history; `garrulous-armadillo` records the ruling and keeps its second finding open. No new lessons. The one full gate follows this record.
+
+## 2026-09-29 16:12 — METHODOLOGY — tighten the test-lane budget after the split
+
+Operator ruling through `ask`: measure now and tighten. With the machine's load average between 4 and 7, the median of three full runs was 97.1 seconds on the reference machine, down from 114.5 before the split; no leaf exceeded its size ceiling, and the evidence family's slowest proof (15.5 seconds) keeps it `large`. The budget moves from 120 to 100 seconds with the tolerance unchanged at 25%, so only a confirmed three-run median above 125 seconds fails. The operator also left `garrulous-armadillo` open for the next sweep.
+
+Lessons: none. The one full gate follows this record.

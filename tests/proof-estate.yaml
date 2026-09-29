@@ -13,7 +13,7 @@ size_ceilings_seconds:
   medium: 20
   large: 200
 time_budget:
-  test_lane_seconds: 120
+  test_lane_seconds: 100
   tolerance: 0.25
   reference_machine: a8a904a62251c08b
 critical_risks:
