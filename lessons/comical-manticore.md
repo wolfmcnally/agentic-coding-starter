@@ -8,7 +8,9 @@ filed: 2026-08-24
 source: learn
 occurrences:
   - date: 2026-08-21
-    ref: "Donor A — a deliberately cross-repository phase. Two independent surfaces could not express it: finding ingest rejected the critic's sibling-repo paths because relative-path validation refuses any `..` component, and the candidate-id tool hashes the primary tree only, so two rounds of sibling-side edits did not move the candidate id at all"
+    ref: "Donor A — a deliberately cross-repository phase: finding ingest rejected the critic's sibling-repo paths because relative-path validation refuses any `..` component"
+  - date: 2026-08-21
+    ref: "Donor A — the same phase: the candidate-id tool hashes the primary tree only, so two rounds of sibling-side edits did not move the candidate id at all"
   - date: 2026-08-22
     ref: "Donor A — a THIRD surface of the same assumption, and the first that is a hard gate rather than a workaround. The final gate refuses unless every required initial role operation has a registered attempt; that phase's implementation and both reviews executed in the sibling repo, so none was dispatched in the primary one and the evidence run could not be sealed as declared. Resolved truthfully by registering all three as rejected/not-dispatched with a cross-reference to the sibling's trace — honest, and pointed at by nothing in any skill or policy"
 ---
@@ -44,3 +46,7 @@ This is squarely this repo's business: `learn`, `teach`, and `stamp` are all
 cross-repository by construction, and `blazing-cicada` records the ordering
 corollary — where a write set spans repositories, every repository's full gate
 belongs before the first irreversible step.
+
+## Ledger note — 2026-09-29 (graduation considered and held)
+
+The operator held this lesson in the lessons sweep after a recount brought it to three or more occurrences: three distinct surfaces, but the lesson proposes no design to graduate. Reopen when a concrete cross-repository evidence design is proposed.

@@ -1,10 +1,12 @@
 ---
 slug: horned-vicugna
 title: Fixing an instance without sweeping its siblings leaves the defect next door
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: skill
 filed: 2026-08-26
+closed: 2026-09-29
+graduated_to: .claude/agents/phase-coder.md
 source: learn
 occurrences:
   - date: 2026-08-21
@@ -27,3 +29,5 @@ or clears them with reasons.
 The correction is complete only after everything it implicates has been
 examined. A negative sweep is useful evidence because it proves the class, not
 only the reported site, was considered.
+
+Closed 2026-09-29 by the operator in the lessons sweep as already covered: `.claude/agents/phase-coder.md` states this lesson's remedy. No new rule was written.

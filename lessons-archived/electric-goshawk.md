@@ -1,10 +1,12 @@
 ---
 slug: electric-goshawk
 title: A one-off artifact you authored yourself is the most dangerous false convention — it arrives pre-trusted
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-24
+closed: 2026-09-29
+graduated_to: policies/verification-discipline.md
 source: learn
 occurrences:
   - date: 2026-08-20
@@ -49,3 +51,5 @@ guard that could only ever say "fine."
 So when a design depends on a mechanism, ask **two** questions rather than one.
 Does it exist? And if it did not, what would the failure look like — loud, or
 exactly like success?
+
+Closed 2026-09-29 by the operator in the lessons sweep as already covered: `policies/verification-discipline.md` states this lesson's remedy. No new rule was written.

@@ -1,10 +1,12 @@
 ---
 slug: tourmaline-piculet
 title: Cleanup paths must not abort before the record is written
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-16
+closed: 2026-09-29
+graduated_to: policies/orchestration-evidence.md
 source: learn
 occurrences:
   - date: 2026-08-16
@@ -20,3 +22,5 @@ capture its errors so bookkeeping can report them. When a failure leaves no
 evidence of itself, detection-based repair is invalid: make the state
 unreachable or make reconciliation unconditional. Prefer append-then-amend
 records so interruption leaves a partial row rather than none.
+
+Closed 2026-09-29 by the operator in the lessons sweep as already covered: `policies/orchestration-evidence.md` states this lesson's remedy. No new rule was written.

@@ -1,10 +1,11 @@
 ---
 slug: mellow-starling
 title: Grep the suite for the mechanism before recording an untestability claim
-status: candidate
+status: superseded
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-17
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-17
@@ -24,3 +25,5 @@ response, an END block, or a documented limitation), grep the suite for the
 mechanism's fingerprints — the syscall, the fault-point name, the fixture
 pattern. An untestability claim that survives that search is worth recording;
 one that was never subjected to it is a guess wearing a limitation's clothes.
+
+Merged 2026-09-29 into `rousing-bee` by the operator in the lessons sweep: an absence or untestability claim must name the search behind it. Occurrences carried.

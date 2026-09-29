@@ -10,7 +10,9 @@ occurrences:
   - date: 2026-08-12
     ref: "Donor A — one code finding recurred four times at four different sites, then burned the phase's whole convergence lease and parked it"
   - date: 2026-08-12
-    ref: "Donor A — a separate run, two findings, same shape: each regrew four times as the reviewer named one site after another"
+    ref: "Donor A — a separate run: one finding regrew four times as the reviewer named one site after another"
+  - date: 2026-08-12
+    ref: "Donor A — the same separate run: a second, independent finding regrew the same way, site by site"
 ---
 
 The finding said one thing throughout: a fail-closed probe must distinguish "I
@@ -49,3 +51,7 @@ time.
 Kin to `fractal-beetle` (a mode-conditional relaxation must reach every
 enforcement site) — there the class is enumerated by the fix's own scope; here the
 class is discovered only when the instruction stops naming sites.
+
+## Ledger note — 2026-09-29 (graduation considered and held)
+
+The operator held this lesson in the lessons sweep after a recount brought it to three or more occurrences: all three incidents come from one donor's review loop. Reopen on a site-by-site regrowth in a different project or review venue.

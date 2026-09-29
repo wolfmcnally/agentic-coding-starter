@@ -8,9 +8,13 @@ filed: 2026-08-24
 source: learn
 occurrences:
   - date: 2026-08-16
-    ref: "Donor A — two proof ladders were authored with most rungs marked blocked-on-record, and a contradiction reported between sources, while the distinguishing primary records sat unread inside the very scope the ladders were built over. Nothing had been searched for; the gaps in a handful of grep passes were recorded as gaps in the record"
+    ref: "Donor A — a proof ladder was authored with most rungs marked blocked-on-record while the distinguishing primary records sat unread inside its own scope; gaps in a handful of grep passes were recorded as gaps in the record"
+  - date: 2026-08-16
+    ref: "Donor A — a second proof ladder over the same scope, same shape: a contradiction reported between sources with the deciding records never searched for"
   - date: 2026-08-16
     ref: "Donor A — same shape, different costume: a schema parser written against a hand-typed fixture rejected every real store of the format it validated, including a multi-gigabyte index in active use, because the fixture's casing was the author's own. The authoritative declaration was one read away"
+  - date: 2026-08-17
+    ref: "Donor A — a coder reported a parent-directory fsync 'untestable without crashing a kernel'; the delta critic refuted it with two precedents already in that suite: one discriminating directory fsyncs via S_ISDIR on the descriptor, one fault-injecting the exact fsync point. The claim would have shipped as a recorded limitation while the repository already contained two working counterexamples (carried from mellow-starling)"
 ---
 
 A status field whose meaning is "absent" is **a claim about the world**. It was
@@ -60,3 +64,7 @@ Related but distinct: [`policies/verification-discipline.md`](../policies/verifi
 already rejects blacklist-as-closed-world and treats grep as a lead. This is the
 inverse direction — not "I found nothing bad" but "I record that nothing exists,"
 asserted from a search that was never run.
+
+## Ledger note — 2026-09-29 (graduation considered and held)
+
+The operator held this lesson in the lessons sweep after a recount brought it to three or more occurrences: the parser half is already covered by `policies/acceptance-empirical.md`; the rest (an absence claim names its search) needs a sharper rule statement. Reopen with that statement.

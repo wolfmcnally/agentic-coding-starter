@@ -1,10 +1,12 @@
 ---
 slug: flashy-stoat
 title: A constraint restated across registers has no single home; amend it everywhere or collapse it
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: policy
 filed: 2026-09-05
+closed: 2026-09-29
+graduated_to: policies/simplicity-and-consolidation.md
 source: user
 occurrences:
   - date: 2026-09-05
@@ -20,3 +22,5 @@ The failure is not forgetting a particular site. It is that grep finds the phras
 **Two mechanical steps, in order.** After amending a constraint, grep the **bare noun** in the owning file — the subject of the rule, not the sentence you edited — and read every hit, including the ones that look like description rather than rule. Then ask the prior question: why does this constraint have seven statements? Consolidation gives it one home that the others cite, which removes the sweep rather than automating it. The sweep is the workaround; the single home is the fix.
 
 Count occurrences per amendment, not per missed site. A single lapse touching seven places is one observation with wide blast radius, not seven — counting sites would make the threshold trip on how verbose a document happens to be, which is a property of the document rather than of the habit.
+
+Closed 2026-09-29 by the operator in the lessons sweep as already covered: `policies/simplicity-and-consolidation.md` states this lesson's remedy. No new rule was written.

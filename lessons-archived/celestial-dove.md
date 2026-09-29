@@ -1,10 +1,11 @@
 ---
 slug: celestial-dove
 title: A silence resolved in prose needs its own named test row
-status: candidate
+status: superseded
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-26
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-21
@@ -27,3 +28,5 @@ named behavioral criterion showed that no test exercised it.
 **The rule candidate:** every contract silence resolved with behavioral
 consequence receives its own named acceptance criterion. Record an explicit
 mapping from each resolved silence to the test or manual check that binds it.
+
+Merged 2026-09-29 into `notorious-coua` by the operator in the lessons sweep: both remedies give an item no derivation will resurface its own named checklist line. Occurrences carried.

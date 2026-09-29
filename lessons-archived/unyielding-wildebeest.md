@@ -1,10 +1,12 @@
 ---
 slug: unyielding-wildebeest
 title: Close an interrupted orchestration stage before opening recovery
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: test
 filed: 2026-08-26
+closed: 2026-09-29
+graduated_to: .claude/skills/kickoff/preflight.md
 source: learn
 occurrences:
   - date: 2026-08-26
@@ -16,3 +18,5 @@ The current stage must reach a truthful terminal outcome before recovery opens;
 otherwise stage ownership overlaps and the evidence plane should refuse close.
 Make the transition ordering mechanical and test it at the boundary. A failed
 trace stays failed; recovery re-proves the candidate in a fresh supported run.
+
+Closed 2026-09-29 by the operator in the lessons sweep as already covered: `.claude/skills/kickoff/preflight.md` states this lesson's remedy. No new rule was written.

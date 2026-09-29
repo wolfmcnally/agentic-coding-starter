@@ -11,6 +11,8 @@ occurrences:
     ref: "Donor A — a blocking code finding. The approved plan said in its own sentence: also update this one skill file, whose directory enumeration must become manifest enumeration even though it does not carry the deleted filename. It was the single planned file change not made, and appeared in neither the coder's rebase reasons nor its intentionally-unchanged list. The plan named it explicitly BECAUSE nothing mechanical would find it, and that is exactly why it was dropped"
   - date: 2026-08-19
     ref: "Donor A — the mechanism reappeared one level up, at a session boundary rather than inside a plan. A close checklist existed because of this very lesson and held for every item written into it; what it could not hold were items agreed in conversation and never transcribed. After a deliberate compaction, a restatement listed harvest items appearing nowhere in the checklist file. They survived only because the restatement was diffed line-by-line against the checklist and each unmatched item treated as missing rather than as noise"
+  - date: 2026-08-21
+    ref: "Donor A — a behavioral ownership decision appeared in Architecture Decisions but nowhere in Testing Strategy, leaving its branch entirely uncovered (carried from celestial-dove)"
 ---
 
 A phase that derives its work set from a command gets a completeness guarantee for

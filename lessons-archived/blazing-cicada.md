@@ -1,10 +1,11 @@
 ---
 slug: blazing-cicada
 title: Tightening a widely-read resolver is a fixture migration — schedule the full gate inside implementation, not at acceptance
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-24
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-19
@@ -44,3 +45,5 @@ two.
 Kin to `macho-collie` (sweep every independent fixture inventory when a contract
 gains a required member): same tool, different blindness. There the fixtures were
 missing a new member; here they were sized to an old tolerance.
+
+Rejected 2026-09-29 by the operator in the lessons sweep: its remedy (a full-suite run inside implementation) contradicts the same day's ruling that a phase's one full run is the handoff gate. Its missed-breakage incident was carried onto `fiery-collie`.

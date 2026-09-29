@@ -11,6 +11,8 @@ occurrences:
     ref: "Donor A — a runaway long-running ingest read as healthy because its operation count kept rising; activity was mistaken for progress"
   - date: 2026-08-12
     ref: "Donor A — a healthy resume of the same run read as stalled because ledger rows were not growing; new-work was mistaken for progress — the same error inverted, hours later on the same run"
+  - date: 2026-08-12
+    ref: "Donor A — on the same run, a monotonic cursor looked sound and was wrong: the highest index seen during the earlier runaway was used as a ceiling to conclude the resume was minutes from the end, but the cursor was never a position at all"
 ---
 
 Watching one long-running job twice in one day, the orchestrator picked the wrong
@@ -53,3 +55,7 @@ design.** "Flat for N minutes" must be paired with what legitimately produces
 flatness, or the alarm is a coin flip with authority. That is the same defect
 [`policies/acceptance-empirical.md`](../policies/acceptance-empirical.md) names as
 a check that cannot fail, met here from the false-red side.
+
+## Ledger note — 2026-09-29 (graduation considered and held)
+
+The operator held this lesson in the lessons sweep after a recount brought it to three or more occurrences: all three incidents are one run and one subject. Reopen on the same misreading of progress in a different job, tool or repository.

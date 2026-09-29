@@ -1,10 +1,12 @@
 ---
 slug: pinned-heron
 title: Use pinned tools and fail-fast shell composition in active evidence runs
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: skill
 filed: 2026-08-25
+closed: 2026-09-29
+graduated_to: policies/orchestration-evidence.md
 source: learn
 occurrences:
   - date: 2026-08-25
@@ -17,3 +19,5 @@ host-side evidence commands must enable fail-fast and pipe-failure handling,
 validate every generated artifact before ingest, and stop before the manager is
 called if generation failed. Read-only help may use the repository launcher
 before a run; active-run state may not.
+
+Closed 2026-09-29 by the operator in the lessons sweep as already covered: `policies/orchestration-evidence.md` states this lesson's remedy. No new rule was written.

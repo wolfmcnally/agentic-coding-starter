@@ -1,10 +1,11 @@
 ---
 slug: neat-buffalo
 title: Role tool stances are documentation the venue never reads — delegated roles run with the operator's entire plugin surface
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-24
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-18
@@ -52,3 +53,5 @@ Until that lands, the interim control is the one that actually caught both:
 the number.** Count the whole category, not the specific tool — this control was
 written to catch remote git reads and caught a screen-reader because it counted
 every MCP call. **Keep controls broader than the incident that motivated them.**
+
+Rejected 2026-09-29 by the operator in the lessons sweep: `policies/role-models.md` records this risk and deliberately chose allow-by-default ambient tools with per-project narrowing and routing to an enforcing venue, not a default-closed allowlist. Reopen with a new incident of a delegated role misusing an ambient tool.

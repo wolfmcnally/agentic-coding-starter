@@ -1,10 +1,12 @@
 ---
 slug: fictional-junglefowl
 title: Verify append-only writes landed at the true end of the ledger
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: bin
 filed: 2026-08-26
+closed: 2026-09-29
+graduated_to: policies/log-discipline.md
 source: learn
 occurrences:
   - date: 2026-08-23
@@ -23,3 +25,5 @@ append landed at the true end.
 the final record after editing. Prefer a deterministic append helper or an
 explicit end-of-file postcondition, because repeated document structures make
 context anchors inherently ambiguous.
+
+Closed 2026-09-29 by the operator in the lessons sweep as already covered: `policies/log-discipline.md` states this lesson's remedy. No new rule was written.

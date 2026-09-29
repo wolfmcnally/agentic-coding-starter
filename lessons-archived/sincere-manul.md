@@ -1,10 +1,12 @@
 ---
 slug: sincere-manul
 title: When a record's verification is relaxed, ask immediately what is still being published on the strength of it
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-24
+closed: 2026-09-29
+graduated_to: policies/orchestration-evidence.md
 source: learn
 occurrences:
   - date: 2026-08-14
@@ -52,3 +54,5 @@ unmeasured-review-pass latch
 ([`policies/orchestration-evidence.md`](../policies/orchestration-evidence.md))
 are exactly the kind of narrowed verification whose projections must be audited
 alongside them.
+
+Closed 2026-09-29 by the operator in the lessons sweep as already covered: `policies/orchestration-evidence.md` states this lesson's remedy. No new rule was written.

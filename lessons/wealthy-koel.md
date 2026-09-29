@@ -8,7 +8,9 @@ filed: 2026-08-26
 source: learn
 occurrences:
   - date: 2026-08-21
-    ref: "Donor A — a demo's later commands could not resolve, and its repair step expected an outcome a correct implementation could not produce"
+    ref: "Donor A — a demo's later commands could not resolve from the wrapper and parent shell they were written for"
+  - date: 2026-08-21
+    ref: "Donor A — the same demo's repair step expected an outcome a correct implementation could not produce"
 ---
 
 A try-it-yourself protocol looked coherent in prose but failed when executed.

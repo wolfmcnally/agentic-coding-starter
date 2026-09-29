@@ -1,10 +1,11 @@
 ---
 slug: warping-albatross
 title: A staged rename lists its path under --name-only while the index still holds the pre-edit bytes
-status: candidate
+status: superseded
 scope: methodology
 proposed_surface: policy
 filed: 2026-09-21
+closed: 2026-09-29
 source: sweep
 occurrences:
   - date: 2026-09-21
@@ -18,3 +19,5 @@ The instruments then agree with each other and with the intent. `git diff --cach
 Two things this exposes beyond the staging rule itself. **The build gate cannot see it**: `./bin/check all` validates the working tree, which was correct the whole time, so a repository whose *pushed* tree fails its own validator passes every gate. And **the verification ran too late**: commit, push and `git status` were one block, so the residual-modification rows printed after the push had already happened.
 
 **The rule candidate, beyond the clauses already added to `policies/commit-staging.md`:** when a delivery includes a rename, the staged-content read is mandatory rather than advisory, and the post-commit clean-tree check belongs before the push in its own block. Consider whether the delivery step should assert a clean `git status` for every path the commit claims, since that assertion is cheap, mechanical, and is the one surface that was telling the truth.
+
+Superseded 2026-09-29 by the operator in the lessons sweep: `policies/commit-staging.md` already states the name-is-not-content rule graduated from `puzzling-unicorn`; the occurrence was carried there.

@@ -1,10 +1,12 @@
 ---
 slug: pastoral-tarantula
 title: Make initial proof governance produce a measured physical reset
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-27
+closed: 2026-09-29
+graduated_to: policies/verification-discipline.md
 source: learn
 occurrences:
   - date: 2026-08-27
@@ -28,3 +30,5 @@ critical-risk proof, and measured effectiveness. A small fast lane over an
 untouched full suite is not shrinkage. Test counts, runtime, age, and lexical
 similarity remain proxies that can invert the judgment, so the reset binds both
 family and expanded-leaf ceilings to historical and held-out recall.
+
+Closed 2026-09-29 by the operator in the lessons sweep as already covered: `policies/verification-discipline.md` states this lesson's remedy. No new rule was written.

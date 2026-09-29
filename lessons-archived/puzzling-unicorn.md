@@ -13,6 +13,8 @@ occurrences:
     ref: "Donor A — a nine-path `git add` included one file whose deletion `git mv` had already staged; git aborted and staged none of the other eight. Loud: the fatal printed and was caught immediately"
   - date: 2026-08-21
     ref: "Donor A — the silent direction. A five-path `git add` named ledger files `git mv` had already moved. The add aborted, the commit captured only the pre-staged renames — 19 insertions instead of ~127 — and the missing content was reported as landed. `git status --porcelain` had been read as confirmation, but every content row's index column was a space"
+  - date: 2026-09-21
+    ref: "Sweep delivery — six lessons were moved with git mv, then edited; the add named only the modified files, --name-only listed all eighteen paths, and the pushed commit carried the six moved files at their pre-edit content. The pushed tree would fail ./bin/lessons validate; the working tree was correct throughout, so every gate passed (carried from warping-albatross)"
 ---
 
 `git add` is **atomic over its pathspec list**: one path that matches nothing

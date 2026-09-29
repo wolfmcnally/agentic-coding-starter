@@ -1,10 +1,12 @@
 ---
 slug: hypersonic-dugong
 title: Test which guard fired when guards share an error taxonomy
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: test
 filed: 2026-08-24
+closed: 2026-09-29
+graduated_to: policies/review-lanes.md
 source: learn
 occurrences:
   - date: 2026-08-24
@@ -20,3 +22,5 @@ implementation can mutually ratify the wrong guard.
 Tests for precedence should observe the intended guard directly, exercise the
 generic validator separately, and prove downstream parsing or effects remain
 unreachable. The taxonomy matters, but does not identify its speaker.
+
+Closed 2026-09-29 by the operator in the lessons sweep as already covered: `policies/review-lanes.md` states this lesson's remedy. No new rule was written.

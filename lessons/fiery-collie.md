@@ -11,6 +11,8 @@ occurrences:
     ref: "Donor A — a venue-scoping repair. Both the coder's focused selection and the orchestrator's named the same single test file (100 green). The regression lived in a different suite, whose synthetic end-to-end test stubs the external CLI with a script that answers every invocation identically, so a newly added capability probe got the wrong answer and the dispatch refused. Only the full gate reached it"
   - date: 2026-08-18
     ref: "Donor A — same change, second mechanism: a default branch was unreachable from any focused *or* full selection, because the shared test helper always injects the flag that suppresses it. Different mechanism, same consequence — the selection that was run could not have failed"
+  - date: 2026-08-19
+    ref: "Donor A — the plan's focused-test command named none of the fourteen suites that broke when a context resolver stopped resolving by directory presence and started refusing on absent authority. Both the coder and the code critic independently reached the same observation from the diff; the breakage surfaced only at the coder's first full-gate run (carried from blazing-cicada)"
 ---
 
 Two instances in one change, from two different mechanisms: a regression in a file

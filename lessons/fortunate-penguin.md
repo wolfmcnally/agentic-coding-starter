@@ -10,7 +10,9 @@ occurrences:
   - date: 2026-08-10
     ref: "Donor A — an exact public-inventory fixture omitted human-readable descriptions"
   - date: 2026-08-10
-    ref: "Donor A — the exhaustive fixture collapsed unknown sizes into zero and duplicated a hierarchy concept"
+    ref: "Donor A — the exhaustive fixture collapsed unknown sizes into zero"
+  - date: 2026-08-10
+    ref: "Donor A — the same exhaustive fixture duplicated a hierarchy concept"
 ---
 
 An exact-output fixture for a finite public contract must represent every
@@ -21,3 +23,7 @@ semantic hole when representative members omit meaning-bearing fields.
 Where the public variant set is bounded, enumerate it completely and assert
 both structural and semantic fields. Distinguish absent knowledge from a real
 zero and constrain hierarchy at the public boundary.
+
+## Ledger note — 2026-09-29 (graduation considered and held)
+
+The operator held this lesson in the lessons sweep after a recount brought it to three or more occurrences: all three incidents are one fixture on one day. Reopen on the same incompleteness in a different fixture or contract.
