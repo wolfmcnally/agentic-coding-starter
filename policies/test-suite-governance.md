@@ -77,9 +77,11 @@ explains why it has no independent contract.
 
 A new proof requires a named active contract or risk, independent oracle, red witness, and non-subsumption account, recorded as a `proof_admission`, and a declared size for its family. There is no count budget: what an agent may add is limited by the [admission questions](#judging-a-proof) and by the [time budget](#time-budget), not by how many proofs already exist. Validation fails closed when any admission evidence is absent.
 
-A **red witness is recorded at construction, not re-run at close.** A mutant exists to vet a proof while that proof is being written: apply the intended defect, watch the named case fail at the assertion that encodes the guarantee, restore the code byte-exactly, and watch it pass. The mutant is then discarded. What the estate retains is the named defect in the family's `mutation_evidence`; the close record that admitted the proof carries the command, the failing node and the clean result after restoration. A name in that list is a claim that the mutation was applied, observed red at the named assertion, and restored — never a plan to try it. No mutation patch or standing mutation battery is committed, and no close gate runs one.
+A **red witness is recorded at construction, not re-run at close.** A mutant exists to vet a proof while that proof is being written: apply the intended defect, watch the named case fail at the assertion that encodes the guarantee, restore the code byte-exactly, and watch it pass. The mutant is then discarded. What the estate retains is the named defect in the family's `mutation_evidence`; the close record that admitted the proof carries the command, the failing node and the clean result after restoration. A name in that list is a claim that the mutation was applied, observed red at the named assertion, and restored — never a plan to try it. No red-witness patch is committed, and no close gate runs one.
 
 What this gives up is worth stating: a committed mutant re-proves on every run that its bound case still catches its fault, which guards against a proof being weakened later. That standing guarantee is traded for a gate that fails only for reasons of correctness, since a patch anchored on source lines breaks whenever the guarded function is edited. A reviewer who suspects a proof has been weakened re-applies the recorded defect.
+
+**The effectiveness corpus is the one committed set of patches, and it is a dated measurement, not a standing battery.** Its historical-defect and held-out patches are anchored on source lines for the same reason red witnesses are, so edits strand them between measurements, and nothing gates on that. `assay` runs at adoption and at every governed sweep and stamps each observation with its date; validation reports recall with the date of the oldest observation (`recall_as_of`), never as a live property. The sweep's assay refuses a patch that no longer applies; the sweep re-anchors it to the same defect, or retires the case with its rationale, and measures again. (Operator ruling, 2026-09-29.)
 
 After the reset, retirement and repair are append-only events. A `proof_repair` targets one currently active proof, self-binds, carries the same evidence as a disposition, and leaves the active set unchanged; a proof may be repaired more than once.
 
@@ -107,17 +109,17 @@ Instruction counting is a steadier measure of CPU-bound work, but it does not se
 
 The repository manager MUST inventory expanded pytest leaves, collapsed families,
 gate members, and hook commands; validate the frozen baseline, complete ledger,
-sizes, time-budget declaration, direct risks, corpus, frozen patches that still
-apply, and effectiveness report; judge recorded timings; select vital and
+sizes, time-budget declaration, direct risks, corpus, and dated effectiveness
+report; judge recorded timings; select vital and
 changed lanes; execute assays; and report or reassess the current estate.
 
 The changed-path selection is the local commit gate and the implementation-candidate gate (`policies/build-gates.md`). Invalid or indeterminate selection widens to full. `./bin/test` without lane arguments, the handoff gate, pre-push custody, and durable receipts always use the full retained estate. Pre-commit runs structural validation only and never claims full acceptance.
 
 ## Reassessment and transfer
 
-Every governed sweep MUST run `./bin/test-governance reassess`. It MUST rerun the
-local assay when proof code, selection, corpus, or critical-risk applicability
-changed, and propose further consolidation when a proof is dominated. It runs
+Every governed sweep MUST run `./bin/test-governance reassess` and rerun the local
+assay, re-anchoring or retiring any case whose patch no longer applies, and
+propose further consolidation when a proof is dominated. It runs
 `./bin/test-governance timing --samples 3` on the reference machine when one is
 available and reports the slowest proofs and any family whose measured time no
 longer fits its size. This is an executable shrinkage obligation.

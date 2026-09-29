@@ -326,11 +326,15 @@ families:
   contract: Every review and gate remains bound to the exact candidate and declared authority.
   risk_class: orchestration-custody
   oracle: Synthetic runs accept only complete internally consistent evidence graphs.
-  admission: The evidence graph is validated as a complete family. It is large because one proof drives a complete synthetic kickoff through the real evidence tool across every role, revision and gate; no smaller boundary exercises that cross-validation, and it is the first candidate for a cheaper split when the time budget tightens.
+  admission: The evidence graph is validated as a complete family. It is large because its proofs drive whole synthetic phases through the real evidence tool; one thorough lifecycle carries the general checks and three scenario proofs (primary mode, child marker transitions, a nested parent chain) carry only what distinguishes them.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
   historical_evidence:
   - blocking-finding-finalization
-  mutation_evidence: []
+  mutation_evidence:
+  - unpaired-unqueue-accepted
+  - unaccepted-parent-accepted
+  - stale-primary-acceptance-accepted
+  - unchanged-files-reported-as-changed
   tier: changed
   size: large
   flake_rate: 0.0
@@ -632,8 +636,8 @@ families:
   - joined-name-mention-missed
   - size-ceiling-ignored
   - stale-record-read-as-measured
-  - patch-applicability-unchecked
-  - forward-only-applicability
+  - undated-recall-accepted
+  - stranded-patch-blocks-validation
   tier: vital
   size: medium
   flake_rate: 0.0

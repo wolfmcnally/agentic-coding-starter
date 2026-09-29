@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import copy
-import difflib
 import hashlib
+import json
 import shlex
 import subprocess
 import sys
@@ -24,8 +24,8 @@ def test_parameterized_leaves_collapse_to_one_family() -> None:
 
 def test_inventory_counts_executable_families_and_expanded_leaves() -> None:
     observed = governance.inventory(REPO_ROOT)
-    assert observed["counts"] == {"families": 110, "leaves": 128}
-    assert observed["by_kind"]["pytest"] == {"families": 86, "leaves": 104}
+    assert observed["counts"] == {"families": 113, "leaves": 131}
+    assert observed["by_kind"]["pytest"] == {"families": 89, "leaves": 107}
 
 
 def test_live_reset_validates() -> None:
@@ -173,49 +173,44 @@ def test_shadow_deleted_proof_fails_closed(monkeypatch: pytest.MonkeyPatch) -> N
         governance.validate(REPO_ROOT)
 
 
-def test_frozen_patches_must_still_apply_or_already_be_applied(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
+def test_recall_is_a_dated_sweep_measurement(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    source = "lib/agentic_starter/test_governance.py"
-    current = (REPO_ROOT / source).read_text().splitlines(keepends=True)
-    anchor = current.index('SIZES = ("small", "medium", "large")\n')
-    earlier = [*current[:anchor], "SIZES = ()\n", *current[anchor + 1 :]]
-    applied = tmp_path / "applied.patch"
-    applied.write_text(
-        "".join(difflib.unified_diff(earlier, current, f"a/{source}", f"b/{source}"))
-    )
-    # The same seeded change, but anchored on a context line the code no longer has.
-    stale = tmp_path / "stale.patch"
-    stale.write_text(applied.read_text().replace(" TIERS = ", " TIERS_RENAMED = ", 1))
-    assert stale.read_text() != applied.read_text()
-    original = governance.load_yaml
-    chosen = [stale]
-
-    def pointed(path: Path):
-        payload = original(path)
-        if path.name == "corpus.yaml":
-            case = payload["cases"][0]
-            case["patch"] = str(chosen[0])
-            case["patch_sha256"] = hashlib.sha256(chosen[0].read_bytes()).hexdigest()
-        return payload
-
-    def matching_report(path: Path):
-        rows = original_ledger(path)
-        if path.name == "starter-effectiveness.jsonl":
-            rows[0]["patch_sha256"] = hashlib.sha256(chosen[0].read_bytes()).hexdigest()
-        return rows
+    rows = [
+        json.loads(line)
+        for line in (REPO_ROOT / "reports/test-governance/starter-effectiveness.jsonl")
+        .read_text()
+        .splitlines()
+    ]
+    assert governance.validate(REPO_ROOT)["recall_as_of"] == min(row["assayed_on"] for row in rows)
 
     original_ledger = governance.load_ledger
-    monkeypatch.setattr(governance, "load_yaml", pointed)
-    monkeypatch.setattr(governance, "load_ledger", matching_report)
-    with pytest.raises(
-        governance.GovernanceError, match="patch no longer applies: check-mode-arity"
-    ):
+    original_yaml = governance.load_yaml
+    stale = tmp_path / "stale.patch"
+    stale.write_text("--- a/nowhere.py\n+++ b/nowhere.py\n@@ -1,3 +1,3 @@\n a\n-b\n+c\n d\n")
+    stale_digest = hashlib.sha256(stale.read_bytes()).hexdigest()
+
+    def undated(path: Path):
+        loaded = original_ledger(path)
+        if path.name == "starter-effectiveness.jsonl":
+            loaded[0]["assayed_on"] = "last week"
+            loaded[1]["patch_sha256"] = stale_digest
+        return loaded
+
+    def stranded(path: Path):
+        payload = original_yaml(path)
+        if path.name == "corpus.yaml":
+            payload["cases"][1]["patch"] = str(stale)
+            payload["cases"][1]["patch_sha256"] = stale_digest
+        return payload
+
+    monkeypatch.setattr(governance, "load_ledger", undated)
+    monkeypatch.setattr(governance, "load_yaml", stranded)
+    with pytest.raises(governance.GovernanceError) as refused:
         governance.validate(REPO_ROOT)
-    # Inside an assay copy the mutation is already applied; that must not read as a detection.
-    chosen[0] = applied
-    assert governance.validate(REPO_ROOT)["state"] == "valid"
+    # Only the undated row refuses; a patch the code has moved past waits for the next sweep.
+    errors = [line for line in str(refused.value).splitlines() if line.startswith("- ")]
+    assert len(errors) == 1 and errors[0].endswith("has no assay date"), errors
 
 
 def test_critical_risk_requires_a_retained_direct_proof(

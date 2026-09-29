@@ -18,6 +18,7 @@ import tempfile
 import xml.etree.ElementTree as ElementTree
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -73,6 +74,7 @@ EFFECTIVENESS_FIELDS = {
     "command",
     "patch_sha256",
     "output_sha256",
+    "assayed_on",
 }
 
 
@@ -508,6 +510,13 @@ def timing(root: Path, samples: int = 0) -> dict[str, Any]:
     }
 
 
+def _is_iso_date(value: Any) -> bool:
+    try:
+        return isinstance(value, str) and date.fromisoformat(value).isoformat() == value
+    except ValueError:
+        return False
+
+
 def _ratio(numerator: int, denominator: int) -> float:
     if denominator <= 0:
         raise GovernanceError("recall denominator must be positive")
@@ -821,18 +830,6 @@ def validate(root: Path) -> dict[str, Any]:
         patch_sha256 = hashlib.sha256(patch.read_bytes()).hexdigest()
         if case["patch_sha256"] != patch_sha256:
             errors.append(f"effectiveness patch digest drifted: {case['id']}")
-        # A line-anchored mutant goes stale when the code it seeds a defect into is edited,
-        # and its recorded result then describes code that no longer exists. Inside an assay
-        # copy the patch is already applied, so it must reverse-apply there instead; refusing
-        # that would count every mutant as detected by this check rather than by a proof.
-        elif all(
-            _run(["git", "apply", "--check", *direction, str(patch)], root, check=False).returncode
-            for direction in ((), ("--reverse",))
-        ):
-            errors.append(
-                f"effectiveness patch no longer applies: {case['id']};"
-                " re-anchor it to the same defect and rerun the assay"
-            )
     cases_by_id = {
         case["id"]: case
         for case in cases
@@ -840,6 +837,7 @@ def validate(root: Path) -> dict[str, Any]:
     }
     recall: dict[str, float] = {}
     unmeasured: list[str] = []
+    assay_dates: list[str] = []
     for evidence_class, limit_key, floor_key in (
         ("historical_defect", "min_historical_recall", "min_historical_cases"),
         ("holdout_mutant", "min_mutant_recall", "min_mutant_cases"),
@@ -874,6 +872,10 @@ def validate(root: Path) -> dict[str, Any]:
                 errors.append(f"{evidence_class} {row['evidence_id']} command drifted")
             if row["patch_sha256"] != case["patch_sha256"]:
                 errors.append(f"{evidence_class} {row['evidence_id']} patch digest drifted")
+            if not _is_iso_date(row["assayed_on"]):
+                errors.append(f"{evidence_class} {row['evidence_id']} has no assay date")
+            else:
+                assay_dates.append(str(row["assayed_on"]))
         detected = [
             row
             for row in observed
@@ -908,6 +910,8 @@ def validate(root: Path) -> dict[str, Any]:
         "leaves": current["counts"]["leaves"],
         "recall": recall,
         "recall_unmeasured": sorted(unmeasured),
+        # Recall is a measurement from the last assay, taken at a sweep, not a live property.
+        "recall_as_of": min(assay_dates) if assay_dates else None,
         "dispositions": {
             state: sum(row.get("disposition") == state for row in disposition_rows)
             for state in ("retain", "repair", "consolidate", "delete")
@@ -1106,6 +1110,7 @@ def assay(root: Path, *, evidence_class: str | None = None) -> list[dict[str, An
                     "command": case["command"],
                     "patch_sha256": patch_sha256,
                     "output_sha256": hashlib.sha256(output).hexdigest(),
+                    "assayed_on": date.today().isoformat(),
                 }
             )
     return rows

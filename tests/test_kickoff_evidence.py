@@ -857,19 +857,27 @@ def _assert_failed_close_is_truthful_terminal_and_idempotent(
 def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
     repository: Path, tmp_path: Path
 ) -> None:
-    primary_repository = tmp_path / "primary-repo"
-    shutil.copytree(repository, primary_repository, symlinks=True)
-    _assert_complete_synthetic_kickoff(
-        primary_repository, tmp_path / "primary", phase="1", primary=True
-    )
-    final_repository = tmp_path / "final-repo"
-    shutil.copytree(repository, final_repository, symlinks=True)
-    child_repository = tmp_path / "child-repo"
-    shutil.copytree(repository, child_repository, symlinks=True)
-    _assert_complete_synthetic_kickoff(repository, tmp_path / "major", phase="1")
-    _assert_complete_synthetic_kickoff(child_repository, tmp_path / "child", phase="1.1")
+    """The one thorough lifecycle: every general refusal, retry, delivery and stale-gate check."""
+    _assert_complete_synthetic_kickoff(repository, tmp_path / "major", phase="1", thorough=True)
+
+
+def test_primary_mode_kickoff_records_advice_dispositions_and_stale_acceptance(
+    repository: Path, tmp_path: Path
+) -> None:
+    _assert_complete_synthetic_kickoff(repository, tmp_path / "primary", phase="1", primary=True)
+
+
+def test_child_close_moves_a_stranded_next_marker_only_in_pairs(
+    repository: Path, tmp_path: Path
+) -> None:
+    _assert_complete_synthetic_kickoff(repository, tmp_path / "child", phase="1.1")
+
+
+def test_nested_final_child_close_requires_an_accepted_parent_chain(
+    repository: Path, tmp_path: Path
+) -> None:
     parent_run = _assert_complete_synthetic_kickoff(
-        final_repository,
+        repository,
         tmp_path / "parent",
         phase="1",
         final_child=True,
@@ -877,7 +885,7 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
         accept_only=True,
     )
     middle_run = _assert_complete_synthetic_kickoff(
-        final_repository,
+        repository,
         tmp_path / "middle-child",
         phase="1.1",
         final_child=True,
@@ -886,7 +894,7 @@ def test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates(
         accept_only=True,
     )
     _assert_complete_synthetic_kickoff(
-        final_repository,
+        repository,
         tmp_path / "final-child",
         phase="1.1.1",
         final_child=True,
@@ -905,7 +913,13 @@ def _assert_complete_synthetic_kickoff(
     accept_only: bool = False,
     parent_run: Path | None = None,
     primary: bool = False,
+    thorough: bool = False,
 ) -> Path | None:
+    """Drive one synthetic phase through the real evidence tool.
+
+    Only the thorough run repeats the general refusal, retry, delivery and stale-gate
+    checks; the scenario runs keep the assertions that distinguish their scenario.
+    """
     tmp_path.mkdir()
     (repository / "code.py").write_text("VALUE = 1\n")
     write_instruction_resources(repository)
@@ -1257,6 +1271,18 @@ def _assert_complete_synthetic_kickoff(
         role_attempt("role.code-review", "critic", "claude", 1, "initial", model="fable")
         role_attempt("role.code-review", "critic", "claude", 2, "revision", model="fable")
         role_attempt("role.code-review", "critic", "claude", 3, "revision", model="fable")
+    elif not thorough:
+        role_attempt("role.plan", "planner", "native", 1, "initial")
+        role_attempt("role.plan-review", "reviewer", "native", 1, "initial")
+        role_attempt("role.implement", "coder", "native", 1, "initial")
+        implemented = capture(repository, run_dir)
+        assert implemented != initial_product
+        # A chained scenario reuses a repository holding earlier phases' log and ledger
+        # residue; the product delta must still be the code change alone.
+        change = json.loads((run_dir / "change.json").read_text())
+        assert [item["path"] for item in change["changed_files"]] == ["code.py"]
+        assert change["authority_drift"] == []
+        role_attempt("role.code-review", "critic", "native", 1, "initial")
     else:
         role_attempt(
             "role.plan",
@@ -1378,9 +1404,13 @@ def _assert_complete_synthetic_kickoff(
                     findings_reported=0,
                     actionable_findings=0,
                 )
-        assert len(dispatches) == 5
-        assert sum(item["idle_telemetry"] == "available" for item in dispatches) == 3
-        assert sum(item["idle_telemetry"] == "unavailable" for item in dispatches) == 2
+        if thorough:
+            assert len(dispatches) == 5
+            assert sum(item["idle_telemetry"] == "available" for item in dispatches) == 3
+            assert sum(item["idle_telemetry"] == "unavailable" for item in dispatches) == 2
+        else:
+            assert len(dispatches) == 4
+            assert all(item["idle_telemetry"] == "unavailable" for item in dispatches)
     candidate = tree_manifest_for_test(repository)
     assert candidate == implemented
     reviewed = run("mark-reviewed", "--run-dir", str(run_dir), "--expected-candidate", candidate)
@@ -1393,22 +1423,23 @@ def _assert_complete_synthetic_kickoff(
     )
     assert full_tree.returncode == 0, full_tree.stderr
     assert full_tree.stdout.strip() != candidate
-    wrong_identity = run(
-        "run-gate",
-        "--run-dir",
-        str(run_dir),
-        "--candidate",
-        full_tree.stdout.strip(),
-        "--operation",
-        "gate.focused",
-        "--selection-reason",
-        "full-tree identity must not substitute for product identity",
-        "--",
-        "/usr/bin/true",
-        cwd=repository,
-    )
-    assert wrong_identity.returncode != 0
-    assert "candidate mismatch" in wrong_identity.stderr
+    if thorough:
+        wrong_identity = run(
+            "run-gate",
+            "--run-dir",
+            str(run_dir),
+            "--candidate",
+            full_tree.stdout.strip(),
+            "--operation",
+            "gate.focused",
+            "--selection-reason",
+            "full-tree identity must not substitute for product identity",
+            "--",
+            "/usr/bin/true",
+            cwd=repository,
+        )
+        assert wrong_identity.returncode != 0
+        assert "candidate mismatch" in wrong_identity.stderr
     focused = run(
         "run-gate",
         "--run-dir",
@@ -1450,43 +1481,47 @@ def _assert_complete_synthetic_kickoff(
     assert gates[-1]["artifact_sha256"] == hashlib.sha256(artifact.read_bytes()).hexdigest()
     assert gates[-1]["final"]
     assert all(gate["warning_count"] is None for gate in gates)
-    unreviewed = run("validate", "--run-dir", str(run_dir), "--level", "acceptance")
-    assert unreviewed.returncode == 2
-    assert "gate diagnostics remain unreviewed" in unreviewed.stderr
-    wrong_review = run(
-        "review-gate",
-        "--run-dir",
-        str(run_dir),
-        "--gate",
-        "f" * 64,
-        "--warning-count",
-        "0",
-        "--summary",
-        "Wrong execution must refuse.",
-    )
-    assert wrong_review.returncode == 2
-    review_gate_output(run_dir, focused)
-    reviewed = review_gate_output(run_dir, final)
-    review_bytes = (run_dir / "gate-reviews.jsonl").read_bytes()
-    review_gate_output(run_dir, final)
-    assert (run_dir / "gate-reviews.jsonl").read_bytes() == review_bytes
-    key = final.stdout.split("GATE RECORDED ", 1)[1].split(";", 1)[0]
-    correction = [
-        "review-gate",
-        "--run-dir",
-        str(run_dir),
-        "--gate",
-        key,
-        "--warning-count",
-        "2",
-        "--summary",
-        "Two explained fixture warnings; correcting the observation.",
-    ]
-    assert run(*correction).returncode == 2
-    corrected = run(*correction, "--supersedes", reviewed.stdout.split()[2])
-    assert corrected.returncode == 0, corrected.stderr
-    assert len((run_dir / "gates.jsonl").read_text().splitlines()) == 2
-    assert len((run_dir / "gate-reviews.jsonl").read_text().splitlines()) == 3
+    if not thorough:
+        review_gate_output(run_dir, focused)
+        review_gate_output(run_dir, final)
+    if thorough:
+        unreviewed = run("validate", "--run-dir", str(run_dir), "--level", "acceptance")
+        assert unreviewed.returncode == 2
+        assert "gate diagnostics remain unreviewed" in unreviewed.stderr
+        wrong_review = run(
+            "review-gate",
+            "--run-dir",
+            str(run_dir),
+            "--gate",
+            "f" * 64,
+            "--warning-count",
+            "0",
+            "--summary",
+            "Wrong execution must refuse.",
+        )
+        assert wrong_review.returncode == 2
+        review_gate_output(run_dir, focused)
+        reviewed = review_gate_output(run_dir, final)
+        review_bytes = (run_dir / "gate-reviews.jsonl").read_bytes()
+        review_gate_output(run_dir, final)
+        assert (run_dir / "gate-reviews.jsonl").read_bytes() == review_bytes
+        key = final.stdout.split("GATE RECORDED ", 1)[1].split(";", 1)[0]
+        correction = [
+            "review-gate",
+            "--run-dir",
+            str(run_dir),
+            "--gate",
+            key,
+            "--warning-count",
+            "2",
+            "--summary",
+            "Two explained fixture warnings; correcting the observation.",
+        ]
+        assert run(*correction).returncode == 2
+        corrected = run(*correction, "--supersedes", reviewed.stdout.split()[2])
+        assert corrected.returncode == 0, corrected.stderr
+        assert len((run_dir / "gates.jsonl").read_text().splitlines()) == 2
+        assert len((run_dir / "gate-reviews.jsonl").read_text().splitlines()) == 3
     validated = run(
         "validate",
         "--run-dir",
@@ -1504,21 +1539,25 @@ def _assert_complete_synthetic_kickoff(
         outcome="success",
     )
     finalize_trace(engine_root=repository, trace_id=root.trace_id)
-    json_summary = run("timing-summary", "--run-dir", str(run_dir), "--format", "json")
-    markdown = run("timing-summary", "--run-dir", str(run_dir), "--format", "markdown")
-    assert json_summary.returncode == markdown.returncode == 0
-    projection = json.loads(json_summary.stdout)
-    if primary:
-        assert projection["authority_mode"] == "primary"
-        assert projection["advisory_reports"] == 3
-        assert len(projection["primary_dispositions"]) == 3
+    if not (thorough or primary):
+        json_summary = None
     else:
-        assert projection["retry_ns"] > 0
-        assert projection["failed_ns"] > 0
-    for slow in projection["slowest_spans"]:
-        assert slow["operation"] in markdown.stdout
+        json_summary = run("timing-summary", "--run-dir", str(run_dir), "--format", "json")
+    if json_summary is not None:
+        markdown = run("timing-summary", "--run-dir", str(run_dir), "--format", "markdown")
+        assert json_summary.returncode == markdown.returncode == 0
+        projection = json.loads(json_summary.stdout)
+        if primary:
+            assert projection["authority_mode"] == "primary"
+            assert projection["advisory_reports"] == 3
+            assert len(projection["primary_dispositions"]) == 3
+        else:
+            assert projection["retry_ns"] > 0
+            assert projection["failed_ns"] > 0
+        for slow in projection["slowest_spans"]:
+            assert slow["operation"] in markdown.stdout
 
-    assert f"Execution trace: {projection['trace_id']}" in markdown.stdout
+        assert f"Execution trace: {projection['trace_id']}" in markdown.stdout
 
     close_text = (
         f"## 2026-01-01 10:00 — END\n\nPhase {phase} — accepted implementation\n"
@@ -1539,32 +1578,33 @@ def _assert_complete_synthetic_kickoff(
         "--required-final-command",
         "./bin/check all",
     )
-    for relative, replacement, diagnostic in (
-        (
-            "policies/delivery.md",
-            b"# Delivery\n\nGoverning edits are now permitted.\n",
-            "declared authority changed; re-review in a fresh evidence run",
-        ),
-        (
-            "plan/INDEX.md",
-            captured_index.replace(b"Retain both close gates.", b"Omit the handoff gate."),
-            "reviewed bookkeeping changed; capture and re-review: plan/INDEX.md",
-        ),
-    ):
-        target = repository / relative
-        try:
-            target.write_bytes(replacement)
-            refused = run(*close_arguments)
-            assert refused.returncode == 2, refused.stdout + refused.stderr
-            expected = (
-                "primary acceptance is stale"
-                if primary and relative == "policies/delivery.md"
-                else diagnostic
-            )
-            assert expected in refused.stderr
-            assert not (run_dir / "closure.json").exists()
-        finally:
-            target.write_bytes(governing_bytes[relative])
+    if thorough or primary:
+        for relative, replacement, diagnostic in (
+            (
+                "policies/delivery.md",
+                b"# Delivery\n\nGoverning edits are now permitted.\n",
+                "declared authority changed; re-review in a fresh evidence run",
+            ),
+            (
+                "plan/INDEX.md",
+                captured_index.replace(b"Retain both close gates.", b"Omit the handoff gate."),
+                "reviewed bookkeeping changed; capture and re-review: plan/INDEX.md",
+            ),
+        ):
+            target = repository / relative
+            try:
+                target.write_bytes(replacement)
+                refused = run(*close_arguments)
+                assert refused.returncode == 2, refused.stdout + refused.stderr
+                expected = (
+                    "primary acceptance is stale"
+                    if primary and relative == "policies/delivery.md"
+                    else diagnostic
+                )
+                assert expected in refused.stderr
+                assert not (run_dir / "closure.json").exists()
+            finally:
+                target.write_bytes(governing_bytes[relative])
     assert all((repository / name).read_bytes() == body for name, body in governing_bytes.items())
     if accept_only and parent_run is None:
         closed = run(*close_arguments)
@@ -1622,17 +1662,18 @@ def _assert_complete_synthetic_kickoff(
         assert "may unqueue a next phase only when it queues another" in refused_unpaired.stderr
         assert not (run_dir / "closure.json").exists()
         ledger_after.write_bytes(expected_index)
-    for invalid in (
-        expected_index.replace(b"Retain both close gates.", b"Omit the handoff gate."),
-        expected_index.replace(
-            "Prepared dependency | ✅".encode(), "Prepared dependency | 🚧".encode()
-        ),
-    ):
-        ledger_after.write_bytes(invalid)
-        refused = run(*close_arguments)
-        assert refused.returncode == 2
-        assert "close transition" in refused.stderr
-        assert not (run_dir / "closure.json").exists()
+    if thorough:
+        for invalid in (
+            expected_index.replace(b"Retain both close gates.", b"Omit the handoff gate."),
+            expected_index.replace(
+                "Prepared dependency | ✅".encode(), "Prepared dependency | 🚧".encode()
+            ),
+        ):
+            ledger_after.write_bytes(invalid)
+            refused = run(*close_arguments)
+            assert refused.returncode == 2
+            assert "close transition" in refused.stderr
+            assert not (run_dir / "closure.json").exists()
     ledger_after.write_bytes(expected_index)
     if parent_run is not None:
         wrong_parent = run(*close_arguments, "--parent-run", str(run_dir))
@@ -1660,35 +1701,40 @@ def _assert_complete_synthetic_kickoff(
             finally:
                 parent_closure.write_bytes(clean_closure)
     closed = run(*close_arguments)
-    repeated = run(*close_arguments)
-    assert closed.returncode == repeated.returncode == 0, closed.stderr + repeated.stderr
+    assert closed.returncode == 0, closed.stderr
+    if thorough:
+        repeated = run(*close_arguments)
+        assert repeated.returncode == 0, repeated.stderr
     assert (repository / "LOG.md").read_text().count(close_text) == 1
     closure = json.loads((run_dir / "closure.json").read_text())
     assert closure["status"] == "complete" and closure["outcome"] == "accepted"
     assert index.read_bytes() == captured_index
     if accept_only:
         return run_dir
-    record_path = run_dir / "closure.json"
-    clean_record = record_path.read_bytes()
-    try:
-        corrupted = json.loads(clean_record)
-        corrupted["ledger_transition"]["after_sha256"] = corrupted["ledger_transition"][
-            "before_sha256"
-        ]
-        record_path.write_text(json.dumps(corrupted))
-        refused_record = run(*close_arguments, "--verify-handoff")
-        assert refused_record.returncode == 2
-        assert "closure identity" in refused_record.stderr
-    finally:
-        record_path.write_bytes(clean_record)
-    missing_bookkeeping = run(*close_arguments, "--verify-handoff")
-    assert missing_bookkeeping.returncode == 2
-    assert "handoff ledger differs" in missing_bookkeeping.stderr
+    if thorough:
+        record_path = run_dir / "closure.json"
+        clean_record = record_path.read_bytes()
+        try:
+            corrupted = json.loads(clean_record)
+            corrupted["ledger_transition"]["after_sha256"] = corrupted["ledger_transition"][
+                "before_sha256"
+            ]
+            record_path.write_text(json.dumps(corrupted))
+            refused_record = run(*close_arguments, "--verify-handoff")
+            assert refused_record.returncode == 2
+            assert "closure identity" in refused_record.stderr
+        finally:
+            record_path.write_bytes(clean_record)
+        missing_bookkeeping = run(*close_arguments, "--verify-handoff")
+        assert missing_bookkeeping.returncode == 2
+        assert "handoff ledger differs" in missing_bookkeeping.stderr
     index.write_bytes(expected_index)
     retried = run(*close_arguments)
     assert retried.returncode == 0, retried.stderr
     verified = run(*close_arguments, "--verify-handoff")
     assert verified.returncode == 0, verified.stderr
+    if not thorough:
+        return None
     handoff = subprocess.run(
         [str(repository / "bin/check"), "all"],
         cwd=repository,

@@ -25,6 +25,7 @@ or hidden proofs still count as present.
 The one-time reset brings the estate within a declared test-lane time budget and gives every family a size class; a repository stamped yesterday declares the time its inherited estate already takes. That pressure is subordinate to effectiveness: the retained estate must meet its declared recall over a frozen local historical-defect corpus and a held-out local mutant corpus, and keep direct proof for every applicable critical-risk class. The corpus sizes are declared too, and a new repository declares none, because it has no defect history yet and borrowing another project's is not evidence about its own code. A class with no cases reports as unmeasured rather than as zero or as passing, and the declaration grows as the repository accumulates real defects to freeze. If the budget and those floors cannot coexist, the repository parks for its owner instead of changing the denominator or silently retaining the estate.
 Corpus case metadata and mutation-patch bytes are digest-bound to the observed
 effectiveness report so a nominally frozen holdout cannot drift after execution.
+The corpus is measured, not maintained: its patches are anchored on source lines, so ordinary edits strand them, and keeping every one applicable between measurements would tax most changes to guard a number that is only read at maintenance time. Each sweep reruns the assay, repairs or retires stranded cases, and records the date, so recall is always reported as of a measurement.
 
 ## Evidence makes removal reviewable
 
