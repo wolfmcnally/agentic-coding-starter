@@ -50,6 +50,8 @@ If a surface is greenfield (the directory doesn't exist before its introduction 
 
 Before finalizing File Changes, apply `policies/verification-discipline.md`'s changed-contract sweep during planning. Search for the old names and values in callers, fixtures, tests, validation rules, and mutation-patch context; follow any actual dependency that must change for the proposed behavior. Inspect matches before deciding they need edits. Put necessary edits in File Changes and consequential non-changes under Intentionally unchanged neighbors. Repeat the affected search when review changes a target or requirement; no separate trace report is required.
 
+Give every change that no derivation or check will re-surface its own line in File Changes or Testing Strategy: a file named only in prose, a decision recorded under Architecture Decisions, an agreement reached in conversation. A plan that is otherwise derived is trusted to be complete, so the item written as a sentence is the one nothing finds again.
+
 ### 3. Check consequential facts for freshness
 
 Follow the freshness procedure in `policies/research-authority.md`: identify potentially changing facts that could invalidate this plan, check the targeted version against its authority, and record concise evidence in Architecture Decisions. Independently verify non-obvious protocol, algorithm, or library behavior when the implementation depends on it.

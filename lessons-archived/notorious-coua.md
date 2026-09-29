@@ -1,10 +1,12 @@
 ---
 slug: notorious-coua
 title: A plan-named carve-out is the one item no derivation can re-surface — give it its own checklist line
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-24
+closed: 2026-09-29
+graduated_to: .claude/agents/phase-planner.md
 source: learn
 occurrences:
   - date: 2026-08-19
@@ -39,3 +41,5 @@ line in the file — and a context compaction preserves task state while sheddin
 exactly this kind of unfiled agreement. That is why this repo's continuation-packet
 discipline treats "what was agreed but not yet written down" as the first thing to
 transcribe at a seam.
+
+Graduated 2026-09-29 by the operator: three incidents on three surfaces (a file change named only in prose, a decision recorded without a test, a conversation agreement never filed). The planner gives every change no derivation will re-surface its own line in File Changes or Testing Strategy.

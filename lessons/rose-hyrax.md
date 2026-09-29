@@ -9,8 +9,6 @@ source: learn
 occurrences:
   - date: 2026-08-20
     ref: "Donor A — a 1.7 GB evidence tree written inside a cloud-synced working copy carried none of the exclusion attributes that would keep it out of sync. The sync client burned a full core on the churn; the repo's own store code enforces exactly that discipline, and the phase's own evidence root violated it"
-  - date: 2026-08-20
-    ref: "Donor A — same incident, the cause: earlier runs assembled the same artifacts under system temp directories, unsynced BY NATURE. The gap appeared when the root moved into the working copy, and nothing about that move announced that the artifact's sync posture had changed. Detected by the operator noticing the machine's fans spin up, not by any check"
 ---
 
 An artifact root inherits properties from where it lives: whether it is synced,
@@ -39,3 +37,7 @@ that verification captures go to a scratch path rather than a bare filename
 ([`CLAUDE.md`](../CLAUDE.md)): that rule protects the *candidate id* from stray
 files; this one protects the *machine* from artifacts the tree was never meant to
 carry.
+
+## Ledger note — 2026-09-29
+
+The operator removed a second occurrence row that described this incident's cause rather than a separate incident (one row per observation). Its text: "Donor A — same incident, the cause: earlier runs assembled the same artifacts under system temp directories, unsynced BY NATURE. The gap appeared when the root moved into the working copy, and nothing about that move announced that the artifact's sync posture had changed. Detected by the operator noticing the machine's fans spin up, not by any check"

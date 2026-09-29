@@ -1,10 +1,12 @@
 ---
 slug: fiery-collie
 title: Focused test selection is a performance choice that trades away exactly the coverage cross-file regressions live in
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-24
+closed: 2026-09-29
+graduated_to: policies/build-gates.md
 source: learn
 occurrences:
   - date: 2026-08-18
@@ -43,3 +45,5 @@ This is the risk side of the focused-to-final ladder this repo already runs
 ([`policies/orchestration-evidence.md`](../policies/orchestration-evidence.md)):
 the ladder is right, and its focused rungs are evidence about a chosen set, never
 about the change.
+
+Closed 2026-09-29 by the operator as covered: the changed-path selection now also selects the families of files that name changed code, so a shared helper's users are tested at commit, and the full gate before the push still backstops anything reached by a computed name.

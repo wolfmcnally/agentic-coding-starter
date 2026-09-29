@@ -2092,3 +2092,9 @@ Lessons: none new. The one full gate follows this record.
 Operator-authorized follow-up from the lessons sweep. The changed-path selection mapped a code file only to the family that covers it, so a shared helper listed under one family but used by others ran only that family at commit, and breakage elsewhere waited for the full gate before the push (`fiery-collie`, `grinning-porpoise`). Mapped code now also selects the families of tracked test, library and executable files that name it, reusing the reader mapping documents already had; a Python module counts as named when its module name and package directory both appear, as in a dotted import. Unmapped or ambiguously covered code still widens to the full suite. A new proof covers it, with red witnesses for dropping the code readers and for missing the dotted-import form. `policies/build-gates.md` and `bin/README.md` describe it.
 
 Lessons: none new. `fiery-collie` and `grinning-porpoise` stay open for the operator to close against this change. The targeted check passed before this record; the one full gate follows it.
+
+## 2026-09-29 17:54 — METHODOLOGY — three lesson rulings
+
+Operator rulings through `ask`: `fiery-collie` and `grinning-porpoise` closed as covered by the same day's code-reader selection in `policies/build-gates.md`; `notorious-coua` graduated (three incidents on three surfaces) as one sentence in `.claude/agents/phase-planner.md`: every change no derivation will re-surface gets its own line in File Changes or Testing Strategy; `rose-hyrax`'s second occurrence row, which described the first incident's cause, removed, with its text kept in a ledger note. Every remaining lesson at three or more occurrences carries an operator hold.
+
+Lessons: none new. The one full gate follows this record.
