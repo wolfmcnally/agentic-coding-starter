@@ -1,10 +1,12 @@
 ---
 slug: garrulous-armadillo
 title: Editing proof-manager code can silently strand line-anchored frozen mutants; the gate never checked that they still apply
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: policy
 filed: 2026-09-29
+closed: 2026-09-29
+graduated_to: policies/test-suite-governance.md
 source: learn
 occurrences:
   - date: 2026-09-29
@@ -22,3 +24,5 @@ Open for ratification: whether a patch that no longer applies should also requir
 The guard's first version inverted its own evidence. It refused any patch that did not apply forward, but inside an assay copy the mutant is already applied, so every mutant whose command ran the governance tests was "detected" by the guard itself rather than by a proof: holdout recall read 12/12, including a case the corpus has recorded as a miss since the reset. The tell was a known miss turning into a detection with no change to the proof that should catch it. The shipped guard accepts a patch that applies forward or in reverse, and its admitted proof checks both directions. A check added to the code the assay mutates has to be read as a potential detector in every assay copy, not only against the live tree.
 
 Operator ruling, 2026-09-29, the same day: the corpus is a dated measurement taken at each sweep, not a standing battery kept applicable between sweeps. The validation guard described above was removed; the sweep's assay refuses a stranded patch and the sweep repairs or retires it, and validation reports recall with its assay date. What remains open here is the second finding: a check added to code the assay mutates must be read as a potential detector inside every assay copy.
+
+Graduated by the operator in the 2026-09-29 sweep: `policies/test-suite-governance.md` § Removal and growth now requires a check added to code the corpus mutates to be shown not to fire merely because a planted defect is present in the assay copy.

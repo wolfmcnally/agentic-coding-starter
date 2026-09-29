@@ -159,25 +159,20 @@ declared selector; checks format; and proves both the exact committed-log prefix
 and effective log chronology, stopping at the first refusal. Cheap structural
 failure must not spend the full-gate budget.
 
-**Rehearse before an expensive or irreversible acceptance step.** When a phase's
-acceptance includes a long or externally-irreversible run — a live data
-migration, a deploy, a bulk external operation — the complete gate and the
-affected consumer probes run *first*, as recorded **non-final** rows, before
-that run begins:
-
-1. `./bin/check all` green, so cheap failures surface in minutes rather than
-   after hours of irreversible work;
-2. every identity the change touched resolved through its **production
-   consumer**, not merely inspected in place — a data repair that satisfies
-   file-and-ledger inspection can still fail the first thing that consumes it,
-   and neither a coder forbidden from the live run nor a read-only critic can
-   see that.
+**Probe consumers before an expensive or irreversible acceptance step.** When a
+phase's acceptance includes a long or externally-irreversible run — a live data
+migration, a deploy, a bulk external operation — every identity the change
+touched is first resolved through its **production consumer**, as recorded
+**non-final** rows, before that run begins: a data repair that satisfies
+file-and-ledger inspection can still fail the first thing that consumes it, and
+neither a coder forbidden from the live run nor a read-only critic can see that.
+No full-suite rehearsal precedes the irreversible run; the phase's one full run
+is the handoff gate (operator ruling, 2026-09-29).
 
 The implementation-candidate contract is unchanged: its final gate, the
-changed-path selection, runs last against the unchanged approved candidate, and rehearsal rows are
-explicitly non-final. After close bookkeeping changes the tree, the separate
-handoff gate proves that actual tree. Only the discovery of cheap failures
-moves earlier.
+changed-path selection, runs last against the unchanged approved candidate, and
+consumer-probe rows are explicitly non-final. After close bookkeeping changes
+the tree, the separate handoff gate proves that actual tree.
 
 Record every candidate-bound implementation gate and its selection reason.
 When the repository exposes governed `vital` or `changed` lanes, use their
@@ -545,7 +540,7 @@ historical schema reader or migration shim.
 
 ## Prospective ledger transition at accepted close
 
-The accepted `close` interface supports `--ledger-after <file>` and, for separately accepted parent completion, `--parent-run <run>`. The external proposal changes only the closing phase's active marker to completed, optionally including its independently accepted parent's marker. Declared authority remains unchanged through acceptance. The closure identity binds the proposal's before/after digests, accepted product and parent closure identity when present. Invalid or conflicting transitions refuse before log mutation. The same close command with `--verify-handoff` verifies the applied ledger and product; this checkpoint precedes further bookkeeping and never replaces the second full gate. See [phase-status.md](phase-status.md) for continuation requirements.
+The accepted `close` interface supports `--ledger-after <file>` and, for separately accepted parent completion, `--parent-run <run>`. The external proposal changes only the closing phase's active marker to completed, optionally including its independently accepted parent's marker. Declared authority remains unchanged through acceptance. The closure identity binds the proposal's before/after digests, accepted product and parent closure identity when present. Invalid or conflicting transitions refuse before log mutation. The same close command with `--verify-handoff` verifies the applied ledger and product; this checkpoint precedes further bookkeeping and never replaces the handoff gate. See [phase-status.md](phase-status.md) for continuation requirements.
 
 A prospective close may additionally advance at most one existing not-started phase to next, selected in dependency order during close preparation. This exact marker transition is bound with the completion markers; it prevents a final-child close from creating an idle incomplete ledger without a next phase.
 

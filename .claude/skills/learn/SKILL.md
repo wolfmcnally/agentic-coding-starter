@@ -10,7 +10,7 @@ description: >-
   /learn <donor-dir> [<desc>] in Claude Code or $learn <donor-dir> [<desc>]
   in Codex.
 argument-hint: "<donor-dir> [<desc>]"
-last-reviewed: 2026-09-21
+last-reviewed: 2026-09-29
 ---
 
 # Learn — Absorb patterns from another repo into this repo

@@ -7,7 +7,7 @@ description: >-
   reusable lesson. Use when an approach is corrected, a command or test fails
   unexpectedly, results contradict assumptions, work gets thrown away, context
   keeps being re-explained, or an insight is worth preserving for future work.
-last-reviewed: 2026-09-21
+last-reviewed: 2026-09-29
 ---
 
 # Rule One: Continuous Self-Improvement

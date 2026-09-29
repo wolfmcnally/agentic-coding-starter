@@ -1,6 +1,6 @@
 # Policy: Review Lanes and Proportional Follow-ups
 
-Product work selects authority mode before review intensity. The primary mode and constrained delegated mode are governed by [four-canonical-agents.md](four-canonical-agents.md); venue selection is governed by [role-models.md](role-models.md). The initial lanes below describe which review stages run, not who owns acceptance. Both full close gates remain required.
+Product work selects authority mode before review intensity. The primary mode and constrained delegated mode are governed by [four-canonical-agents.md](four-canonical-agents.md); venue selection is governed by [role-models.md](role-models.md). The initial lanes below describe which review stages run, not who owns acceptance. Both close gates remain required.
 
 ## Methodology improvements: primary one-shot, with delivery authority
 

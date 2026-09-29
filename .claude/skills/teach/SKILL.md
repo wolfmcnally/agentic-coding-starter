@@ -10,7 +10,7 @@ description: >-
   /teach <target-dir> [<desc>] in Claude Code or $teach <target-dir> [<desc>]
   in Codex.
 argument-hint: "<target-dir> [<desc>]"
-last-reviewed: 2026-09-21
+last-reviewed: 2026-09-29
 ---
 
 # Teach — Apply patterns from this repo to another repo

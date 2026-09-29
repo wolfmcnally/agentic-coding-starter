@@ -204,6 +204,6 @@ passes this object unchanged to
 - Propagate errors cleanly. Avoid silent fallbacks. A failure becomes a typed error the orchestrator can classify; it does not become a silently-degraded result.
 - Add an inline comment only when a non-obvious invariant truly needs explanation. The pattern "self-documenting code + the rare necessary comment" applies.
 - Do not write commit messages, commit, or push. The orchestrator owns delivery, and only after independent criticism and a green close.
-- Do not claim `./bin/check all` passed unless the orchestrator supplied the exact result from the named implementation-candidate or handoff gate.
+- Do not claim `./bin/check all` passed unless the orchestrator supplied the exact result from the handoff gate, the only gate that runs it.
 
 **Your report is your terminal message, not a file you write.** The path you were given for it is written by the harness when your turn ends; anything you write there during the turn is overwritten by that terminal summary. Never write to your own required-output path. See `policies/four-canonical-agents.md` § A role never writes its own output file.

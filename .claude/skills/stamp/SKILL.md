@@ -9,7 +9,7 @@ description: >-
   the new project's name and primary language. Invoke as /stamp <directory>
   [<description>] in Claude Code or $stamp <directory> [<description>] in Codex.
 argument-hint: "<directory> [<description>]"
-last-reviewed: 2026-09-21
+last-reviewed: 2026-09-29
 ---
 
 # Stamp — Bootstrap a new agentic-coding project
@@ -470,7 +470,7 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - `<dest>/bin/kickoff-config show` runs; `<dest>/bin/README.md` retains its universal entry but **not** the `### check-anonymization.sh` entry.
 - `<dest>/bin/kickoff-tree-id` and `<dest>/bin/kickoff-evidence` are executable; their behavioral tests pass.
 - `<dest>/bin/check-receipt` is executable and `<dest>/tests/test_check_receipt.py` passes; successful full gates retain a complete durable log and exact candidate/environment receipt; Python receipts identify the runtime selected by `<dest>/bin/python`, including its executable and base-executable identities, while dirty, changed-runtime, corrupt, non-`HEAD`, descriptor-error, and query-error pushes fail closed to the full gate.
-- `<dest>/bin/test-governance validate` passes against a destination-local `tests/proof-estate.yaml`; its frozen pre-reset baseline, disposition ledger, current inventory, effectiveness evidence, and reset summary all agree; local reports contain no Starter values; the retained estate stays within both declared reset ceilings; both destination-local recall floors are at least 80% over whatever corpus is declared, with empty classes reported as unmeasured; and every applicable critical risk retains direct proof. An unassayed destination remains full-only.
+- `<dest>/bin/test-governance validate` passes against a destination-local `tests/proof-estate.yaml`; its frozen pre-reset baseline, disposition ledger, current inventory, effectiveness evidence, and reset summary all agree; local reports contain no Starter values; the retained estate stays within its size ceilings and time budget; both destination-local recall floors are at least 80% over whatever corpus is declared, with empty classes reported as unmeasured; and every applicable critical risk retains direct proof. An unassayed destination remains full-only.
 - `<dest>/bin/lessons validate` and `<dest>/bin/check-catalogs` are executable and pass against the fresh destination (empty ledger, synced catalogs, one `⬅️`); a `.gitkeep` exists in each of `lessons/`, `lessons-archived/`, `user-actions/`, and `user-actions-archived/`, and no Starter ledger entries were copied into any of the four.
 - Every executable `<dest>/bin/check` requires before it runs a gate is present and executable: `kickoff-tree-id`, `kickoff-evidence`, `kickoff-config`, `check-receipt`, `execution-telemetry`, `check-execution-dashboards`, `check-harness-parity`, `check-toolchain-callers`, `lessons`, `treatise`, `check-catalogs`, `check-hooks-installed`, `check-shell-syntax`, `new-name`. This is the fastest way to catch an incomplete copy: `bin/check` fails closed on the first one missing, before any gate runs.
 - `<dest>/lib/agentic_starter/` exists and `<dest>/bin/execution-telemetry --help` runs; `<dest>/reports/execution/` carries `index.html`, `index-data.js`, and `assets/`, and `<dest>/bin/check-execution-dashboards` reports `EXECUTION DASHBOARDS PASS (0 phases)` against the fresh archive.

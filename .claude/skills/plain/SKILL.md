@@ -11,7 +11,7 @@ description: >-
   Codex to recompose a message that missed the register; agents follow it
   without being asked whenever the audience is the operator.
 argument-hint: "[<what to recompose>]"
-last-reviewed: 2026-08-25
+last-reviewed: 2026-09-29
 ---
 
 # Plain — the operator register

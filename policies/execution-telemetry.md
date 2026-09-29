@@ -206,7 +206,7 @@ charts, clipped labels, misleading hierarchy, or DOM-only interactions fail.
 
 Kickoff closes in this order:
 
-1. unchanged approved implementation candidate passes its complete gate;
+1. unchanged approved implementation candidate passes its changed-path gate;
 2. evidence and exact timing validate;
 3. telemetry finalizes;
 4. status, ripple, and lessons update;

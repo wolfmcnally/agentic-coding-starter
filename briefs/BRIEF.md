@@ -9,7 +9,7 @@ scope: Entry-point brief for this repository. Describes what the starter templat
 
 ## Primary ownership and independent advice
 
-As of 2026-09-07, the primary use case is a configured SOTA instance that owns orchestration, planning, implementation and acceptance. A comparable or stronger model in another permitted provider's harness normally supplies independent plan and code advice; a single-provider environment uses fresh instances of the primary model. One comprehensive pass per stage is normal, a second needs recorded cause, and two is the maximum. Advisers report evidence and severity without veto; the primary decides corrections and records consequential dispositions. Objective requirements and both full gates remain binding.
+As of 2026-09-07, the primary use case is a configured SOTA instance that owns orchestration, planning, implementation and acceptance. A comparable or stronger model in another permitted provider's harness normally supplies independent plan and code advice; a single-provider environment uses fresh instances of the primary model. One comprehensive pass per stage is normal, a second needs recorded cause, and two is the maximum. Advisers report evidence and severity without veto; the primary decides corrections and records consequential dispositions. Objective requirements and both close gates remain binding.
 
 A constrained primary uses separate planner/coder roles and the established approval-gated reviewer/critic loops. Detailed references to mandatory reviewer approval or four-role delegation below describe that constrained product branch. Eligibility is maintained configuration, not a benchmark claim. Backend and handling restrictions prevail over preferred routing. Optional kickoff usage checks refuse a primary at >=95% of any applicable limit and substitute the primary for a secondary above 95% weekly; absent tooling does not prevent execution.
 
@@ -36,9 +36,9 @@ See [`CLAUDE.md` — Project briefs](../CLAUDE.md#project-briefs) and [`CLAUDE.m
 - **A `kickoff` skill.** A phase orchestrator that delegates to four specialist agents and writes `LOG.md`. Invoke it as `/kickoff` in Claude Code or `$kickoff` in Codex. Authoritative source: `.claude/skills/kickoff/SKILL.md`.
 - **Candidate-bound orchestration evidence.** Complete first reviews,
   deterministic revision packets, stable finding identities, focused
-  convergence checks, a complete implementation-candidate gate against the
-  unchanged approved candidate, and a post-bookkeeping handoff gate against
-  the actual delivered tree. Authoritative source:
+  convergence checks, a changed-path implementation-candidate gate against the
+  unchanged approved candidate, and one full post-bookkeeping handoff gate
+  against the actual delivered tree. Authoritative source:
   [`incremental-orchestration.md`](incremental-orchestration.md).
 - **Four canonical agent roles.** `phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`. Names are load-bearing; `kickoff` invokes them by name. Defined under `.claude/agents/` and mirrored to `.codex/agents/`.
 - **A `stamp` skill.** Stamps out a new project from this template into a different directory, with light configuration. Invoke it as `/stamp` in Claude Code or `$stamp` in Codex.

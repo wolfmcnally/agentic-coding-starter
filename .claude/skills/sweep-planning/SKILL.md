@@ -15,7 +15,7 @@ description: >-
   the canonical home of the review-loop sweep lifecycle that sweep-coding
   follows.
 argument-hint: "[<days>] [project=<name> ...]"
-last-reviewed: 2026-08-26
+last-reviewed: 2026-09-29
 ---
 
 # Sweep-planning — Calibrate the review loop from its own record

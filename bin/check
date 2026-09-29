@@ -17,8 +17,8 @@ usage() {
 Usage: ./bin/check [all|lint|format|test|policy|vital|changed <ref>]
 
 Run the repository's build gates. The default and authoritative mode is "all".
-Vital and changed are governed iteration lanes and never produce a full-gate
-receipt.
+Vital and changed are governed lanes (changed is the local-commit and
+implementation-candidate gate) and never produce a full-gate receipt.
 EOF
 }
 

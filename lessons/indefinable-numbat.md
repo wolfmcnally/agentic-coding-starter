@@ -9,6 +9,8 @@ source: user
 occurrences:
   - date: 2026-09-05
     ref: "Treatise refresh — reports/test-governance/starter-current.json was the only in-repo artifact from which the published proof counts could be checked without executing the toolchain, and no gate references or regenerates it"
+  - date: 2026-09-29
+    ref: "Starter — the effectiveness report was cited as current recall though nothing regenerated it between sweeps; resolved by dating every observation and reporting recall as of the oldest"
 ---
 
 A snapshot report is convenient exactly because it answers a question without running anything. That is also what makes it dangerous as a citation: nothing recomputes it, so it drifts silently, and the next reader who trusts it inherits whatever was true on the day it was written.

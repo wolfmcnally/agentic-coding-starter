@@ -30,7 +30,7 @@ What never moves: the recall minimums over whatever corpus exists, direct proof 
 The historical corpus may guide selection. Selection MUST be frozen before the
 holdout runs. Every case's command and mutation-patch digest MUST bind the
 observed report to the exact frozen corpus, and holdout misses MUST remain
-recorded. When the caps, recall floors, and direct-risk obligations cannot
+recorded. When the size ceilings, time budget, recall floors, and direct-risk obligations cannot
 coexist, work parks for the owner. The denominator never changes to make a
 result pass.
 
@@ -81,7 +81,7 @@ A **red witness is recorded at construction, not re-run at close.** A mutant exi
 
 What this gives up is worth stating: a committed mutant re-proves on every run that its bound case still catches its fault, which guards against a proof being weakened later. That standing guarantee is traded for a gate that fails only for reasons of correctness, since a patch anchored on source lines breaks whenever the guarded function is edited. A reviewer who suspects a proof has been weakened re-applies the recorded defect.
 
-**The effectiveness corpus is the one committed set of patches, and it is a dated measurement, not a standing battery.** Its historical-defect and held-out patches are anchored on source lines for the same reason red witnesses are, so edits strand them between measurements, and nothing gates on that. `assay` runs at adoption and at every governed sweep and stamps each observation with its date; validation reports recall with the date of the oldest observation (`recall_as_of`), never as a live property. The sweep's assay refuses a patch that no longer applies; the sweep re-anchors it to the same defect, or retires the case with its rationale, and measures again. (Operator ruling, 2026-09-29.)
+**The effectiveness corpus is the one committed set of patches, and it is a dated measurement, not a standing battery.** Its historical-defect and held-out patches are anchored on source lines for the same reason red witnesses are, so edits strand them between measurements, and nothing gates on that. `assay` runs at adoption and at every governed sweep and stamps each observation with its date; validation reports recall with the date of the oldest observation (`recall_as_of`), never as a live property. The sweep's assay refuses a patch that no longer applies; the sweep re-anchors it to the same defect, or retires the case with its rationale, and measures again. (Operator ruling, 2026-09-29.) A check added to code the corpus mutates must be shown not to fire merely because a planted defect is present in the assay copy; otherwise the check itself becomes the detector and recall rises with no proof behind it.
 
 After the reset, retirement and repair are append-only events. A `proof_repair` targets one currently active proof, self-binds, carries the same evidence as a disposition, and leaves the active set unchanged; a proof may be repaired more than once.
 

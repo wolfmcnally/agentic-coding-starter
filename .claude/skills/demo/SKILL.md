@@ -5,7 +5,7 @@ description: >-
   time. Explain the purpose of the next action, let the user perform or observe
   it, answer questions without advancing, and preserve a durable resume point.
   Use when the user asks to run, try, or work through a phase demo interactively.
-last-reviewed: 2026-08-23
+last-reviewed: 2026-09-29
 ---
 
 # Demo — Interactive human evaluation

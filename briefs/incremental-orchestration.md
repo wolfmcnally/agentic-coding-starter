@@ -9,7 +9,7 @@ scope: Universal design for reducing repeated review and verification work while
 
 ## Primary ownership and independent advice
 
-As of 2026-09-07, the primary use case is a configured SOTA instance that owns orchestration, planning, implementation and acceptance. A comparable or stronger model in another permitted provider's harness normally supplies independent plan and code advice; a single-provider environment uses fresh instances of the primary model. One comprehensive pass per stage is normal, a second needs recorded cause, and two is the maximum. Advisers report evidence and severity without veto; the primary decides corrections and records consequential dispositions. Objective requirements and both full gates remain binding.
+As of 2026-09-07, the primary use case is a configured SOTA instance that owns orchestration, planning, implementation and acceptance. A comparable or stronger model in another permitted provider's harness normally supplies independent plan and code advice; a single-provider environment uses fresh instances of the primary model. One comprehensive pass per stage is normal, a second needs recorded cause, and two is the maximum. Advisers report evidence and severity without veto; the primary decides corrections and records consequential dispositions. Objective requirements and both close gates remain binding.
 
 A constrained primary uses separate planner/coder roles and the established approval-gated reviewer/critic loops. Detailed references to mandatory reviewer approval or four-role delegation below describe that constrained product branch. Eligibility is maintained configuration, not a benchmark claim. Backend and handling restrictions prevail over preferred routing. Optional kickoff usage checks refuse a primary at >=95% of any applicable limit and substitute the primary for a secondary above 95% weekly; absent tooling does not prevent execution.
 
@@ -19,15 +19,16 @@ All methodology work itself, including teach/learn knowledge transfer, is always
 The planner, plan reviewer, coder, code critic, orchestrator, and human remain
 distinct functions. Efficiency comes from making their evidence incremental,
 not from removing independent judgment: first reviews are complete, revision
-reviews are bound to the causal delta, local verification is focused, and one
-complete prescribed gate sequence proves the unchanged approved candidate.
+reviews are bound to the causal delta, local verification is focused, the
+changed-path selection proves the unchanged approved candidate, and one full
+gate proves the tree handed over.
 Where a repository has adopted proof-estate governance, the deterministic
 `vital` and `changed` lanes operate only over its validated retained estate and
 make that focus attributable: each selected family names its contract and
 oracle, overlapping mappings form a union, and uncertain impact widens to the
 full retained suite. The initial whole-estate reset and periodic reassessment
-are prerequisites, not work those fast lanes perform. The complete gate still
-closes the candidate.
+are prerequisites, not work those lanes perform. The one full gate still closes
+the phase and qualifies the push.
 
 This design complements
 [`deterministic-orchestration.md`](deterministic-orchestration.md). The current
@@ -165,13 +166,14 @@ bound to the actual handoff tree:
 2. **Revision close.** Run affected suites and structural or static checks
    selected from the change surface. Record why the selection is sufficient;
    indeterminate impact fails closed to broader verification.
-3. **Implementation-candidate close.** After code-critic approval, run the phase's complete
-   prescribed sequence and the repository's authoritative full gate once
-   against the unchanged candidate.
+3. **Implementation-candidate close.** After code-critic approval, run the phase's
+   prescribed sequence ending in the changed-path selection against the
+   unchanged candidate; it widens itself to the full suite when the change
+   cannot be mapped safely.
 4. **Handoff close.** Finalize evidence, apply only the tracked close writes
-   declared by the protocol, then run the authoritative full gate again as a
-   bare command against the actual tree handed to the user. No tracked write
-   follows a successful handoff gate.
+   declared by the protocol, then run the authoritative full gate once as a
+   bare command against the actual tree handed to the user; it qualifies the
+   push. No tracked write follows a successful handoff gate.
 
 Any relevant candidate change invalidates the implementation-candidate gate.
 Either gate mutating the candidate is itself a failure. A failed handoff gate
@@ -285,7 +287,7 @@ The design is realized when:
 - revision packets are deterministic projections with disclosed omissions;
 - authority drift and named risk boundaries force a review rebase;
 - gate records reject stale candidates;
-- the authoritative full gate still closes every completed phase; and
+- the one authoritative full gate still closes every completed phase; and
 - exact timing summaries derive from trace joins and interval unions, and every
   completed phase produces a deterministic, sanitized, offline HTML report;
 - obvious high-leverage wall-clock improvements are considered

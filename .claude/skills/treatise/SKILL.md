@@ -7,7 +7,7 @@ description: >-
   user asks for a treatise, white paper, architecture explainer, or durable
   public-facing account of why a project works the way it does.
 argument-hint: "<topic> [for <audience>] [as <format>]"
-last-reviewed: 2026-08-23
+last-reviewed: 2026-09-29
 ---
 
 # Treatise — Explain a repository outward

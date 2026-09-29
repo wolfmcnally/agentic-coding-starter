@@ -114,8 +114,9 @@ runs the same wrapper against the staged blob. Neither substitutes for the
 full gate.
 
 A repository with governed proof lanes also exposes `vital` and
-`changed <ref>` as iteration-only modes that delegate to the matching
-`bin/test` selection. They do not write or satisfy a full-gate receipt.
+`changed <ref>` modes that delegate to the matching `bin/test` selection;
+`changed` is the local-commit and implementation-candidate gate. Neither writes
+or satisfies a full-gate receipt.
 
 A project may add named modes but does not remove or weaken `all`. Unknown
 modes and extra arguments are usage errors. Every entry point preserves child
@@ -319,7 +320,7 @@ Behavioral tests prove:
 - invocation from outside the repository root;
 - exact setup, full-test, focused-test, runtime, and gate mappings;
 - proof-estate inventory, ownership, surface drift, selection-union, widening,
-  unsupported-runner, and stale-effectiveness behavior when governed lanes are
+  unsupported-runner, and undated-effectiveness behavior when governed lanes are
   present;
 - pinned runtime and locked/frozen toolchain invocation;
 - a real dependency-chain load/run probe before success;

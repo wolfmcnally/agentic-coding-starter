@@ -11,7 +11,7 @@ description: >-
   /sweep in Claude Code or $sweep in Codex; an optional focus argument narrows
   the pass (e.g. "skills", "lessons", "policies").
 argument-hint: "[<focus>]"
-last-reviewed: 2026-09-21
+last-reviewed: 2026-09-29
 ---
 
 # Sweep — Prune and graduate the rule surfaces
@@ -51,7 +51,7 @@ Run the mechanical checks first — they are deterministic and their output anch
 2. `./bin/lessons validate` — ledger schema health.
 3. `./bin/lessons candidates` — graduation-ready lessons (≥3 occurrences).
 4. `./bin/test-governance reassess` when the proof-estate bundle exists —
-   frozen family/leaf ceilings, complete dispositions and admissions, direct
+   frozen baseline, complete dispositions and admissions, direct
    critical risks, effectiveness floors, sizes, and the time-budget declaration. Run
    `./bin/test-governance timing --samples 3` on the reference machine. Rerun `assay`
    every sweep, re-anchor or retire any case whose patch no longer applies, and carry

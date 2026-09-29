@@ -15,7 +15,7 @@ description: >-
   or $sweep-coding in Codex; optional arguments set the window in days and
   project=<name> filters.
 argument-hint: "[<days>] [project=<name> ...]"
-last-reviewed: 2026-08-26
+last-reviewed: 2026-09-29
 ---
 
 # Sweep-coding — Calibrate the coder ↔ critic loop from its own record
