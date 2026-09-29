@@ -241,6 +241,36 @@ def test_positive_growth_requires_named_approval(
     with pytest.raises(governance.GovernanceError, match="retirement budget is reused"):
         governance.validate(REPO_ROOT)
 
+    repair_mode = ["active"]
+
+    def repaired_lifecycle(path: Path):
+        rows = original_ledger(path)
+        if path.name != "starter-reset.jsonl":
+            return rows
+        retained = next(row for row in rows if row.get("disposition") == "retain")
+        if repair_mode[0] == "reset":
+            retained["disposition"] = "repair"
+            return rows
+        retired = next(row for row in rows if row.get("record_type") == "proof_retirement")
+        target = retained if repair_mode[0] == "active" else retired
+        repair = {**target, "record_type": "proof_repair", "disposition": "repair"}
+        repair["replacement"] = target["proof_id"]
+        repair.pop("compensating_retirement", None)
+        return [*rows, repair]
+
+    monkeypatch.setattr(governance, "load_ledger", original_ledger)
+    unrepaired = governance.validate(REPO_ROOT)
+    monkeypatch.setattr(governance, "load_ledger", repaired_lifecycle)
+    summary = governance.validate(REPO_ROOT)
+    assert summary["post_reset_repairs"] == 1
+    assert summary["unspent_retirements"] == unrepaired["unspent_retirements"]
+    repair_mode[0] = "reset"
+    summary = governance.validate(REPO_ROOT)
+    assert summary["dispositions"]["repair"] == 1
+    repair_mode[0] = "retired"
+    with pytest.raises(governance.GovernanceError, match="repair target is not active"):
+        governance.validate(REPO_ROOT)
+
 
 def test_changed_selection_widens_on_an_unmapped_path(tmp_path: Path) -> None:
     (tmp_path / "tests").mkdir()

@@ -624,6 +624,9 @@ families:
   - absent-consolidation-replacement
   - declared-corpus-floor
   - unmeasured-empty-corpus
+  - unknown-repair-record-type
+  - reset-repair-not-self-bound
+  - inactive-repair-target-accepted
   tier: vital
   duration_seconds: 0.0
   flake_rate: 0.0

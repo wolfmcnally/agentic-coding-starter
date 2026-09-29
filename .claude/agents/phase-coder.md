@@ -87,6 +87,8 @@ Do not hand back broken code. A focused green result is evidence for its named s
 
 **Every test names its falsifier.** For each test you add or materially change, name the one-line mutation of the code under test that would turn it red, and record the pair in Change Evidence `falsifiers`. If you cannot name one, the test is scoring a stand-in for the property — the implementation's own output, a constant lifted from the code, a count preserved by any write — and it is rewritten or deleted before handoff, per `policies/acceptance-empirical.md`. This is the largest category of code findings and the one you can close alone.
 
+**Every new test passes the admission gate.** Before writing a test, answer the four admission questions in `policies/test-suite-governance.md` § Judging a proof, and check it against that section's junk patterns. A test that needs an export, flag, or injection hook no production caller uses moves to the real boundary instead of adding the seam. A regression test is observed red on the pre-fix code before the fix lands.
+
 Remain sensitive to human wall-clock cost while implementing. If an operation materially dominates the work and a substantial, low-risk improvement is reasonably apparent, make one bounded assessment and use an existing safe acceleration when available. Otherwise surface the concrete opportunity once and continue. Do not pursue marginal savings, invent fixed thresholds, start speculative profiling, attempt unproven parallelism, expand the phase, or weaken effectiveness, coverage, determinism, review, or either close gate.
 
 ### 6. Report

@@ -54,7 +54,7 @@ Run the mechanical checks first — they are deterministic and their output anch
    frozen family/leaf ceilings, complete dispositions and admissions, direct
    critical risks, effectiveness floors, and zero-net-growth. Rerun `assay`
    when proof code, selection, corpus, or risk applicability changed, and carry
-   every dominated-proof finding into the decision queue.
+   every dominated-proof finding into the decision queue. Then make the junk-pattern read and layer pass that `policies/test-suite-governance.md` § Reassessment and transfer requires; each proposed retirement is decided individually, and each ratified batch passes that policy's preservation review before it is applied.
 
 Then the judgment audits, each producing candidate findings:
 

@@ -56,6 +56,8 @@ DISPOSITION_FIELDS = {
 }
 ADMISSION_FIELDS = DISPOSITION_FIELDS | {"compensating_retirement"}
 RETIREMENT_FIELDS = DISPOSITION_FIELDS
+REPAIR_FIELDS = DISPOSITION_FIELDS
+SELF_BOUND_DISPOSITIONS = {"retain", "repair"}
 EFFECTIVENESS_FIELDS = {
     "record_type",
     "evidence_id",
@@ -463,7 +465,13 @@ def validate(root: Path) -> dict[str, Any]:
     disposition_rows = [row for row in ledger if row.get("record_type") == "proof_disposition"]
     admission_rows = [row for row in ledger if row.get("record_type") == "proof_admission"]
     retirement_rows = [row for row in ledger if row.get("record_type") == "proof_retirement"]
-    known_record_types = {"proof_disposition", "proof_admission", "proof_retirement"}
+    repair_rows = [row for row in ledger if row.get("record_type") == "proof_repair"]
+    known_record_types = {
+        "proof_disposition",
+        "proof_admission",
+        "proof_retirement",
+        "proof_repair",
+    }
     unknown_record_types = sorted(
         {
             str(row.get("record_type"))
@@ -494,7 +502,7 @@ def validate(root: Path) -> dict[str, Any]:
         if set(row) != DISPOSITION_FIELDS:
             errors.append(f"wrong disposition fields for {row.get('proof_id')}")
             continue
-        if row.get("disposition") not in {"retain", "delete", "consolidate"}:
+        if row.get("disposition") not in SELF_BOUND_DISPOSITIONS | {"delete", "consolidate"}:
             errors.append(f"invalid disposition for {row.get('proof_id')}")
             continue
         dispositions_seen.add(str(row["disposition"]))
@@ -512,7 +520,7 @@ def validate(root: Path) -> dict[str, Any]:
             errors.append(f"stale disposition baseline for {row.get('proof_id')}")
         proof_id = row.get("proof_id")
         replacement = row.get("replacement")
-        if row.get("disposition") == "retain":
+        if row.get("disposition") in SELF_BOUND_DISPOSITIONS:
             if replacement != proof_id:
                 errors.append(f"retained proof self-binding is wrong: {proof_id}")
         elif row.get("disposition") == "consolidate":
@@ -528,7 +536,9 @@ def validate(root: Path) -> dict[str, Any]:
         if row.get("disposition") in {"delete", "consolidate"}
     }
     initial_active = {
-        str(row.get("proof_id")) for row in disposition_rows if row.get("disposition") == "retain"
+        str(row.get("proof_id"))
+        for row in disposition_rows
+        if row.get("disposition") in SELF_BOUND_DISPOSITIONS
     }
     active = set(initial_active)
     available_retirements = set(reset_retired_ids)
@@ -581,6 +591,28 @@ def validate(root: Path) -> dict[str, Any]:
             active.discard(str(proof_id))
             available_retirements.add(str(proof_id))
             post_reset_retirement_ids.add(str(proof_id))
+            continue
+        if record_type == "proof_repair":
+            proof_id = row.get("proof_id")
+            if set(row) != REPAIR_FIELDS:
+                errors.append(f"wrong repair fields for {proof_id}")
+                continue
+            if proof_id not in active:
+                errors.append(f"repair target is not active: {proof_id}")
+            if row.get("disposition") != "repair" or row.get("replacement") != proof_id:
+                errors.append(f"repair must self-bind with disposition repair: {proof_id}")
+            if row.get("baseline_inventory_sha256") != baseline.get("inventory_sha256"):
+                errors.append(f"stale repair baseline for {proof_id}")
+            for field in (
+                "contract",
+                "oracle",
+                "red_witness",
+                "nearest_overlap",
+                "replacement_evidence",
+                "rationale",
+            ):
+                if not isinstance(row.get(field), str) or not row[field]:
+                    errors.append(f"missing repair {field} for {proof_id}")
             continue
         if record_type != "proof_admission":
             continue
@@ -737,10 +769,11 @@ def validate(root: Path) -> dict[str, Any]:
         "recall_unmeasured": sorted(unmeasured),
         "dispositions": {
             state: sum(row.get("disposition") == state for row in disposition_rows)
-            for state in ("retain", "consolidate", "delete")
+            for state in ("retain", "repair", "consolidate", "delete")
         },
         "admissions": len(admission_rows),
         "post_reset_retirements": len(retirement_rows),
+        "post_reset_repairs": len(repair_rows),
         "unspent_retirements": len(post_reset_retirement_ids - consumed_retirements),
     }
 
