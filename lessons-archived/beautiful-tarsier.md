@@ -1,10 +1,11 @@
 ---
 slug: beautiful-tarsier
 title: An instrument whose production firings are all comparator false positives is measuring its model, not the work
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-11
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-11
@@ -28,3 +29,5 @@ treat an all-comparator record over N firings as an automatic demotion trigger
 defect (a false-red comparison against a moving reference); this is the
 longitudinal version, detectable only from the instrument's outcome record
 over time. One family observed so far — filed, not codified.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

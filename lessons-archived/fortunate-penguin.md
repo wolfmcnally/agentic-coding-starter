@@ -1,10 +1,11 @@
 ---
 slug: fortunate-penguin
 title: Make exhaustive contract fixtures semantically complete
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-10
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-10
@@ -27,3 +28,5 @@ zero and constrain hierarchy at the public boundary.
 ## Ledger note — 2026-09-29 (graduation considered and held)
 
 The operator held this lesson in the lessons sweep after a recount brought it to three or more occurrences: all three incidents are one fixture on one day. Reopen on the same incompleteness in a different fixture or contract.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

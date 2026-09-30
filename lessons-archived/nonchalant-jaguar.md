@@ -1,10 +1,11 @@
 ---
 slug: nonchalant-jaguar
 title: Do not pin live source structure before retrieval evidence exists
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: skill
 filed: 2026-08-25
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-25
@@ -18,3 +19,5 @@ pin admission criteria and a bounded observation procedure, not invent the
 representation's shape. Assign the actual template pin to the first authorized
 role that can retrieve it, stamp the evidence date, and require fresh review of
 the resulting parser contract.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

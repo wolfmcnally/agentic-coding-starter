@@ -1,10 +1,11 @@
 ---
 slug: godlike-coyote
 title: Normalize the denominator before comparing throughput numbers — the unnormalized reading skews encouraging
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-24
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-16
@@ -51,3 +52,5 @@ justifies a change to gates, iteration, or reuse is exactly such a comparison, a
 [`policies/verification-discipline.md`](../policies/verification-discipline.md)
 already requires a material count to carry its reproduction procedure. A rate needs
 its denominator on the same terms.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

@@ -411,6 +411,12 @@ outside this tool.
 ./bin/lessons candidates
 ```
 
+Open lessons with no new occurrence in sixty days, proposed at the next sweep for closing as not recurring:
+
+```bash
+./bin/lessons aged
+```
+
 Governed by [`policies/lessons.md`](../policies/lessons.md); behavioral
 coverage lives in `tests/test_lessons.py`.
 

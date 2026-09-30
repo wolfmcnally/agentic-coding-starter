@@ -1,10 +1,11 @@
 ---
 slug: favorite-shellfish
 title: A catch for a child silently misses helpers that raise the root exception
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-26
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-21
@@ -26,3 +27,5 @@ dispatch tables over leaves silently mishandle legitimate root values.
 **The rule candidate:** before reasoning over child types, enumerate every site
 that raises or returns the root itself. Any root producer is outside a
 leaf-specific catch or dispatch rule and must be handled deliberately.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

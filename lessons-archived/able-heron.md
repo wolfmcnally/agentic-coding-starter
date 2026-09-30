@@ -1,10 +1,11 @@
 ---
 slug: able-heron
 title: Progress needs a position against a known total; activity and new-work both lie, in opposite directions
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-24
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-12
@@ -59,3 +60,5 @@ a check that cannot fail, met here from the false-red side.
 ## Ledger note — 2026-09-29 (graduation considered and held)
 
 The operator held this lesson in the lessons sweep after a recount brought it to three or more occurrences: all three incidents are one run and one subject. Reopen on the same misreading of progress in a different job, tool or repository.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

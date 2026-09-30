@@ -18,6 +18,7 @@ import yaml
 
 DEFAULT_ROOT = Path(__file__).resolve().parents[1]
 GRADUATION_THRESHOLD = 3
+AGING_DAYS = 60
 SLUG_PATTERN = re.compile(r"^[a-z]+-[a-z]+$")
 
 OPEN_DIRECTORY = "lessons"
@@ -111,6 +112,9 @@ def validate_lesson(path: Path, archived: bool) -> dict[str, Any]:
         raise LedgerError(f"source must be one of {sorted(SOURCES)}")
     require_iso_date(metadata["filed"], "filed")
     metadata["occurrence_count"] = validate_occurrences(metadata["occurrences"])
+    metadata["last_seen"] = max(
+        date.fromisoformat(str(entry["date"])) for entry in metadata["occurrences"]
+    )
     if archived:
         if "closed" not in metadata:
             raise LedgerError("archived lesson missing closed date")
@@ -204,6 +208,16 @@ def command_candidates(lessons: list[dict[str, Any]]) -> int:
     return 0
 
 
+def command_aged(lessons: list[dict[str, Any]], as_of: date) -> int:
+    """Open lessons whose newest occurrence is at least AGING_DAYS old: proposed at the
+    next sweep for closing as not recurring."""
+    for lesson in lessons:
+        if lesson["archived"] or (as_of - lesson["last_seen"]).days < AGING_DAYS:
+            continue
+        print(f"{render(lesson)}\tlast seen {lesson['last_seen'].isoformat()}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Validate and query the lessons ledger (policies/lessons.md)."
@@ -223,6 +237,11 @@ def build_parser() -> argparse.ArgumentParser:
         "candidates",
         help=f"list open lessons with >= {GRADUATION_THRESHOLD} occurrences",
     )
+    aged_parser = subparsers.add_parser(
+        "aged",
+        help=f"list open lessons with no new occurrence in {AGING_DAYS} days",
+    )
+    aged_parser.add_argument("--as-of", type=date.fromisoformat, default=date.today())
     return parser
 
 
@@ -237,6 +256,8 @@ def main() -> int:
         return command_validate(lessons)
     if arguments.action == "list":
         return command_list(lessons, arguments.scope, arguments.status)
+    if arguments.action == "aged":
+        return command_aged(lessons, arguments.as_of)
     return command_candidates(lessons)
 
 

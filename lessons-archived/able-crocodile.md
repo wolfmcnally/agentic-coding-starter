@@ -1,10 +1,11 @@
 ---
 slug: able-crocodile
 title: Derive instrumentation from the thing being protected, not from the thing being tested
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: agent
 filed: 2026-08-26
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-21
@@ -27,3 +28,5 @@ thing). Derive from the protected surface rather than from the subject.
 When the protected surface cannot be closed completely, state exactly what the
 instrument covers and pair it with a structural prohibition on the routes it
 cannot observe. Do not promote partial observation into a universal claim.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

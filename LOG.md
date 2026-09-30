@@ -2098,3 +2098,15 @@ Lessons: none new. `fiery-collie` and `grinning-porpoise` stay open for the oper
 Operator rulings through `ask`: `fiery-collie` and `grinning-porpoise` closed as covered by the same day's code-reader selection in `policies/build-gates.md`; `notorious-coua` graduated (three incidents on three surfaces) as one sentence in `.claude/agents/phase-planner.md`: every change no derivation will re-surface gets its own line in File Changes or Testing Strategy; `rose-hyrax`'s second occurrence row, which described the first incident's cause, removed, with its text kept in a ledger note. Every remaining lesson at three or more occurrences carries an operator hold.
 
 Lessons: none new. The one full gate follows this record.
+
+## 2026-09-29 18:06 — METHODOLOGY — lessons: methodology-only scope, aging, intake filter
+
+Operator direction: keep only lessons about the methodology itself, age out lessons that stop recurring, and never ingest lessons that are not about the methodology. Of the 61 open lessons, 55 came through `learn` and 48 rest entirely on one source project's incidents.
+
+**Scope test.** `policies/lessons.md` now defines `scope: methodology` by the remedy, not the insight: the lesson must change how agents plan, review, implement, verify, gate, deliver, record evidence, route roles, keep the ledger, or transfer the methodology. Sound general engineering, testing, performance or domain practice is `local`. Applying it, the operator confirmed closing 25 open lessons as rejected (not methodology-specific), including three held earlier the same day; 36 remain open.
+
+**Intake.** `learn` applies the scope test to each donor lesson whatever the donor labeled it, and files only those that pass, both from the donor ledger and from its own application return path. `kickoff`'s harvest classifies scope by the same test.
+
+**Aging.** A candidate whose newest occurrence is sixty days old is proposed at the next sweep for closing as not recurring, in one batch; a new occurrence resets it, and an aged-out lesson reopens by appended occurrence. `./bin/lessons aged` lists them; nothing qualifies today (the oldest is fifty days), and twenty-nine will by late October. A new proof covers the query, with red witnesses for aging by first rather than newest occurrence (which a single-occurrence fixture could not catch until a recurring lesson was added) and for an off-by-one boundary. The sweep skill runs it and proposes the scope cut in template repos.
+
+Lessons: none new. The targeted check widened itself to the full suite and passed; the one full gate follows this record.

@@ -1,10 +1,11 @@
 ---
 slug: rousing-bee
 title: A status that names the record must be earned by a search, or it launders retrieval failure as record absence
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-24
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-16
@@ -68,3 +69,5 @@ asserted from a search that was never run.
 ## Ledger note — 2026-09-29 (graduation considered and held)
 
 The operator held this lesson in the lessons sweep after a recount brought it to three or more occurrences: the parser half is already covered by `policies/acceptance-empirical.md`; the rest (an absence claim names its search) needs a sharper rule statement. Reopen with that statement.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

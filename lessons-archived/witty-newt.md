@@ -1,10 +1,11 @@
 ---
 slug: witty-newt
 title: A field nothing compares is not evidence
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-26
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-22
@@ -26,3 +27,5 @@ The timestamp described the observation rather than the observed fact.
 rule, or comparison, count its behavioral readers. Search for sites that
 compare or branch on it, not merely sites that store or print it. A field with
 no comparisons is provenance or decoration until evidence proves otherwise.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

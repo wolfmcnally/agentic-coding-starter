@@ -1,10 +1,11 @@
 ---
 slug: skilled-skylark
 title: A field name copied from prose is an assertion, and a wrong field name returns absence, not an error
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-24
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-20
@@ -32,3 +33,5 @@ the one document written to stop someone else hitting it. Corrections propagate 
 **messages** but persist as **text**, and the text you are writing right now is not
 covered by the message you just sent. **When you relay a correction, grep your own
 in-flight artifacts for the thing you just corrected.**
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

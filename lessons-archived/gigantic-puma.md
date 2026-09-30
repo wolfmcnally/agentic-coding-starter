@@ -1,10 +1,11 @@
 ---
 slug: gigantic-puma
 title: Whichever success/failure surface sits outside the failure-replacement boundary will eventually lie
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-24
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-17
@@ -40,3 +41,5 @@ The repair also shows the right decomposition: properties that *authorize* writi
 evidence belong inside the replacement boundary. This repo's full-gate receipts
 ([`policies/build-gates.md`](../policies/build-gates.md)) are exactly such a
 durable success record, and are the first place to apply the heuristic.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

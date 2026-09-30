@@ -1,10 +1,11 @@
 ---
 slug: curvy-zebra
 title: An independent oracle validates arithmetic, not semantics — it can agree perfectly and still answer the wrong question
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-24
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-12
@@ -55,3 +56,5 @@ handed to the reviewer as a claim to attack on semantics, not as a target to
 match — and any spec gap the orchestrator resolves before dispatch is labeled a
 *resolution under test*, with the reviewer asked explicitly whether the quantity
 is the right one, not merely whether the code computes it correctly.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

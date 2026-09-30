@@ -1,10 +1,11 @@
 ---
 slug: traditional-marten
 title: A performance fixture that omits accumulated state green-lights the path the real workload fails
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-24
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-11
@@ -40,3 +41,5 @@ a benchmark that is *correctly* measuring the wrong dimension.
 
 Kin to `rustling-frog` (name the cost class at the seam): that entry is about the
 code shape that produces the cost; this is about the fixture that cannot detect it.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

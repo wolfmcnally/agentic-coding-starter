@@ -1,10 +1,11 @@
 ---
 slug: manipulative-silkworm
 title: A specification MUST that binds a writer is not a validity predicate a reader may assert
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-24
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-14
@@ -56,3 +57,5 @@ Sibling of the graduated rule *route on the authoritative property, not a
 convenient stand-in* ([`CLAUDE.md`](../CLAUDE.md)), which is about reading the
 wrong *field*. This is about applying the right field's rule to the wrong
 *party*.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

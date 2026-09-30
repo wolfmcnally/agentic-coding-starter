@@ -120,3 +120,21 @@ def test_candidates_applies_graduation_threshold_to_open_lessons_only(
 
     assert result.returncode == 0, result.stderr
     assert [line.split("\t")[0] for line in result.stdout.splitlines()] == ["amber-finch"]
+
+
+def test_aged_lists_open_lessons_with_no_new_occurrence_in_sixty_days(ledger: Path) -> None:
+    write_open_lesson(ledger, "amber-finch")
+    recent = write_open_lesson(ledger, "copper-vole")
+    recent.write_text(recent.read_text().replace("date: 2026-08-01", "date: 2026-09-15"))
+    # An old lesson that recurred recently is judged by its newest occurrence.
+    recurred = write_open_lesson(ledger, "dusky-wren", occurrences=2)
+    recurred.write_text(recurred.read_text().replace("date: 2026-08-02", "date: 2026-09-15"))
+    (ledger / "lessons-archived" / "silver-heron.md").write_text(VALID_ARCHIVED)
+
+    # Fifty-nine days after the old lesson's only occurrence nothing has aged yet.
+    early = run("aged", "--as-of", "2026-09-29", root=ledger)
+    assert early.returncode == 0, early.stderr
+    assert early.stdout == ""
+    late = run("aged", "--as-of", "2026-09-30", root=ledger)
+    assert [line.split("\t")[0] for line in late.stdout.splitlines()] == ["amber-finch"]
+    assert late.stdout.rstrip().endswith("last seen 2026-08-01")

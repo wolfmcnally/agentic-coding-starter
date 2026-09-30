@@ -1,10 +1,11 @@
 ---
 slug: divergent-scorpion
 title: Preserve a dependency's ownership boundary before extending it
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: brief
 filed: 2026-08-25
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-25
@@ -20,3 +21,5 @@ Do not turn a consumer-owned snapshot into a substrate-owned immutable
 generation protocol merely because reproducibility sounds desirable. Preserve
 the dependency's established modes, then add only capabilities that fit its
 existing ownership boundary.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

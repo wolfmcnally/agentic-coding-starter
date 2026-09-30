@@ -1,10 +1,11 @@
 ---
 slug: nonchalant-ladybug
 title: Test integrity relationships rather than only field validity
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-10
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-10
@@ -21,3 +22,5 @@ with equivalent metadata but different complete bytes.
 Carry the identity established by the ownership-creating operation through the
 first consumer and every later consumer and cleanup step. Securing only the
 later half of a time-of-check/time-of-use chain does not secure the relationship.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

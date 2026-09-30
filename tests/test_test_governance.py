@@ -24,8 +24,8 @@ def test_parameterized_leaves_collapse_to_one_family() -> None:
 
 def test_inventory_counts_executable_families_and_expanded_leaves() -> None:
     observed = governance.inventory(REPO_ROOT)
-    assert observed["counts"] == {"families": 114, "leaves": 132}
-    assert observed["by_kind"]["pytest"] == {"families": 90, "leaves": 108}
+    assert observed["counts"] == {"families": 115, "leaves": 133}
+    assert observed["by_kind"]["pytest"] == {"families": 91, "leaves": 109}
 
 
 def test_live_reset_validates() -> None:

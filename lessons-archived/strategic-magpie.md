@@ -1,10 +1,11 @@
 ---
 slug: strategic-magpie
 title: Scope command-arity exceptions to the mode that needs them
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: test
 filed: 2026-08-27
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-27
@@ -22,3 +23,5 @@ When one command mode needs a different arity, validate argument count inside
 each dispatch branch. Do not widen a global ceiling and assume the branches
 will reject what they do not consume. Preserve negative tests for every older
 mode while adding the new mode's valid and invalid forms.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

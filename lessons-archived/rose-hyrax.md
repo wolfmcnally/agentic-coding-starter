@@ -1,10 +1,11 @@
 ---
 slug: rose-hyrax
 title: Moving an artifact root silently changes the environmental properties its old location supplied for free
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: invariant
 filed: 2026-08-24
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-20
@@ -41,3 +42,5 @@ carry.
 ## Ledger note — 2026-09-29
 
 The operator removed a second occurrence row that described this incident's cause rather than a separate incident (one row per observation). Its text: "Donor A — same incident, the cause: earlier runs assembled the same artifacts under system temp directories, unsynced BY NATURE. The gap appeared when the root moved into the working copy, and nothing about that move announced that the artifact's sync posture had changed. Detected by the operator noticing the machine's fans spin up, not by any check"
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

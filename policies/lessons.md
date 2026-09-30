@@ -55,7 +55,9 @@ graduated_to: policies/role-timeouts.md   # required when codified — the surfa
 ```
 
 - `scope: local` — the lesson binds only this project (a convention, a quirk of this codebase or its tooling).
-- `scope: methodology` — the lesson generalizes to the methodology itself and is an upstream candidate for the starter template. In the starter itself, most lessons are `methodology`.
+- `scope: methodology` — the lesson's remedy would change the methodology itself: how agents plan, review, implement, verify, gate, deliver, record evidence, route roles, keep this ledger, or transfer the methodology — a change to the template's policies, skills, agents, briefs, or tooling. It is an upstream candidate for the starter template.
+
+**The scope test is the remedy, not the insight.** A lesson that is sound general engineering, testing, performance, or domain practice — true of any codebase — is `local`, however well it generalizes, because it would change none of the methodology's surfaces. The starter's ledger holds only `methodology` lessons: `learn` ingests no other kind, and a lesson that fails the test is closed as `rejected` (not methodology-specific) rather than kept open. (Operator ruling, 2026-09-29, after 25 of 61 open lessons failed this test.)
 - `proposed_surface` names where the rule would land if ratified; the graduating human may override it.
 
 No other new frontmatter keys without amending this policy.
@@ -113,6 +115,8 @@ The generator filters connective filler tokens and checks the candidate against 
 1. **File or recur.** When a harvest (see "Who writes" below) surfaces a candidate lesson, first check both directories for an existing entry stating the same lesson. If one exists, **append an occurrence** to it rather than filing a duplicate; if it is archived as `rejected`, appending a new occurrence with fresh evidence is how the case for reconsideration is made. Otherwise file a new `lessons/<slug>.md` with `status: candidate` and one occurrence.
 2. **Stabilize.** A lesson graduates on the strength of recurrence, not eloquence. The working threshold is **three occurrences** — codifying on first sight tends to lock in rules that haven't seen their variations. The human may graduate a lesson earlier at their discretion; agents may not.
 3. **Graduate (human-only).** Graduation is a user-ratified edit to the target surface plus archival of the lesson: set `status: codified`, add `closed:` and `graduated_to:`, and move the file to `lessons-archived/`. Agents *propose* graduation — as `DECIDE`-style items in a phase's END block or a `sweep` plan — and never apply it. A rejected proposal is archived `status: rejected`; a lesson absorbed by another is `status: superseded`.
+
+4. **Age out.** A candidate whose newest occurrence is sixty days old is proposed at the next sweep for closing as `rejected` (not recurring), in one batched decision the human can pull items out of. `./bin/lessons aged` lists them. A new occurrence resets the clock, and an aged-out lesson reopens the usual way: a new occurrence with fresh evidence appended to the archived entry. A lesson the human held is aged like any other; the hold records why it did not graduate, not a reason to keep it open.
 
 Archived files **stay on disk** — they are the audit trail linking every rule back to the incidents that earned it, and the record of what was considered and declined.
 

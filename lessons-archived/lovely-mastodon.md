@@ -1,10 +1,11 @@
 ---
 slug: lovely-mastodon
 title: Proving a program resolves by executing it makes the verification a side-effect engine
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: test
 filed: 2026-08-17
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-16
@@ -37,3 +38,5 @@ carriers stubbed on PATH with assertions against a call log.
 that execution *does*. A probe must reach the property and stop short of the
 behavior. Where it cannot, the program is not probeable by execution and needs
 a different proof.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

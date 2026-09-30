@@ -1,10 +1,11 @@
 ---
 slug: rustling-frog
 title: Name the cost class at the seam — an O(corpus) read inside a per-item loop is invisible to every phase-scoped review
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: agent
 filed: 2026-08-24
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-11
@@ -43,3 +44,5 @@ one place a composition cost can be caught by the process that exists — the
 critic reads the merged code, not only the change. It complements this repo's
 human-wall-clock-efficiency invariant, which is about the operator's elapsed wait;
 this is about the growth curve that produces it.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

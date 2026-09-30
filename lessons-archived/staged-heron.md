@@ -1,10 +1,11 @@
 ---
 slug: staged-heron
 title: Archive format upgrades need a mixed-version migration path
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: bin
 filed: 2026-08-23
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-23
@@ -19,3 +20,5 @@ Provide either a backward-readable summarizer for the bounded migration window
 or a two-phase bulk rewrite that stages every member and atomically swaps only
 after the complete index validates. Per-member mutation plus an all-members-new
 invariant is not a safe migration path.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).

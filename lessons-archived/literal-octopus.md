@@ -1,10 +1,11 @@
 ---
 slug: literal-octopus
 title: Interpret instrument exit codes from their contract
-status: candidate
+status: rejected
 scope: methodology
 proposed_surface: test
 filed: 2026-08-23
+closed: 2026-09-29
 source: learn
 occurrences:
   - date: 2026-08-23
@@ -20,3 +21,5 @@ Before routing on an external tool's status, qualify the full status domain
 from its documented behavior and pin representative nonzero values in a test.
 A wrapper may normalize a count into its own enum, but must not invent binary
 semantics merely because most Unix commands use them.
+
+Rejected 2026-09-29 by the operator as not methodology-specific: its remedy is sound general engineering or source-project practice, but it would change none of this template's rules, roles, skills or tooling, which is what `scope: methodology` requires (`policies/lessons.md`).
