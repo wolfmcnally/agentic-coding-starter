@@ -93,6 +93,7 @@ def test_every_universal_skill_propagates_with_its_codex_mirror(tmp_path: Path) 
     )
     assert "plain" in universal, "the operator register is a universal skill"
     assert "ask" in universal, "the operator-invoked decision inventory is a universal skill"
+    assert "refactor" in universal, "the behavior-preserving cleanup pass is a universal skill"
     for skill in universal:
         canonical = f".claude/skills/{skill}/SKILL.md"
         mirror = f".agents/skills/{skill}"

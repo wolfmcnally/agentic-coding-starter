@@ -69,6 +69,7 @@ See also [universal skills](#universal-skills).
 - [Dated loading and continuity guidance](briefs/session-context-compaction.md)
 - [Proof-estate design](briefs/test-suite-value-governance.md)
 - [Minimal methodology scaffold](briefs/mini-method.md)
+- [Refactoring method and sources](briefs/refactoring-methodology.md)
 
 ## Policies catalog
 
@@ -127,6 +128,7 @@ Every applicable policy binds.
 - [treatise](.claude/skills/treatise/SKILL.md)
 - [plain](.claude/skills/plain/SKILL.md)
 - [ask](.claude/skills/ask/SKILL.md)
+- [refactor](.claude/skills/refactor/SKILL.md)
 
 ### Canonical roles and mirrors
 

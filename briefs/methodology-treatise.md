@@ -404,6 +404,7 @@ a leading slash; in Codex, a dollar sign. The set is small on purpose.
 | `rule-one` | Turns a correction, failure, or surprise into a durable lesson instead of a repeated mistake. |
 | `plain` | Rewrites a message meant for you into plain terms: what happened and what it costs, not how the machinery works. |
 | `ask` | Puts a decision in front of you with real options. Only you can start it; no agent may. |
+| `refactor` | Cleans up code without changing what it does. Small local improvements are applied; larger ones are proposed to you. |
 | `sweep-planning`, `sweep-coding` | Read months of past reviews to find why plans and code kept getting sent back, then propose fixes to the roles themselves. |
 
 `learn`, `teach`, and `sweep` are the machinery behind the evolving half of the

@@ -129,6 +129,7 @@ A project derived from this template contains the following **portable structure
     deterministic-orchestration.md  # Draft: deterministic kickoff loop (copied verbatim)
     harness-self-improvement.md # Lessons capture, pruning, and propagation
     session-context-compaction.md # Managing compaction during long runs
+    refactoring-methodology.md # Method and dated sources behind the refactor skill
     <topic>.md             # Project-specific topic briefs as they appear
 
   docs/
@@ -175,6 +176,7 @@ A project derived from this template contains the following **portable structure
       treatise/SKILL.md    # Universal: audience-specific outward explanation
       plain/SKILL.md       # Universal: the register for addressing the operator
       ask/SKILL.md         # Universal: operator-invoked inventory of open decisions
+      refactor/SKILL.md    # Universal: behavior-preserving refactoring and simplification pass
       # stamp is NOT carried over — the new project doesn't need to stamp
       # out more projects from itself by default
     agents/
@@ -206,6 +208,7 @@ A project derived from this template contains the following **portable structure
       treatise
       plain
       ask
+      refactor
       # stamp is NOT mirrored here either — starter-only
 
   tooling/                 # ONLY when the deliverable is not Python: the
@@ -271,6 +274,7 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.claude/skills/treatise/SKILL.md` (universal publication-gated long-form synthesis; governed by `policies/treatise.md`)
 - `.claude/skills/plain/SKILL.md` (universal operator register; governs every message addressed to the operator)
 - `.claude/skills/ask/SKILL.md` (universal operator-invoked inventory of open decisions; never model-triggered)
+- `.claude/skills/refactor/SKILL.md` (universal behavior-preserving refactoring and simplification pass; reasoning in `briefs/refactoring-methodology.md`)
 - `.claude/settings.json` (portable harness defaults; `worktree.bgIsolation: none` disables implicit background worktrees without disabling explicit ones)
 - `.claude/agents/phase-planner.md`
 - `.claude/agents/plan-reviewer.md`
@@ -290,6 +294,7 @@ These files encode the methodology itself, not any particular product. Copy them
 - `.agents/skills/treatise` (directory symlink → `../../.claude/skills/treatise`)
 - `.agents/skills/plain` (directory symlink → `../../.claude/skills/plain`)
 - `.agents/skills/ask` (directory symlink → `../../.claude/skills/ask`)
+- `.agents/skills/refactor` (directory symlink → `../../.claude/skills/refactor`)
 - `AGENTS.md` symlink → `CLAUDE.md`
 - Every file under `policies/` (these are universal by design)
 - `docs/README.md` — the pinned-document catalog shape (header and column contract) with every row dropped; pinned content is project state and never transfers
@@ -320,6 +325,7 @@ These files encode the methodology itself, not any particular product. Copy them
 - `briefs/session-context-compaction.md` (managing harness context compaction during long orchestration runs)
 - `briefs/mini-method.md` (the minimal subset a derived project can hand to its own small sub-projects; such a sub-project graduates back through `teach`)
 - `briefs/test-suite-value-governance.md` (proof attribution, recipient-local assays, and governed fast-feedback lanes)
+- `briefs/refactoring-methodology.md` (the method and dated sources behind the `refactor` skill; travels with that skill)
 - The skeletal headings/structure of `plan/INDEX.md`
 - The skeletal frontmatter shape for `plan/phase-*.md` (`id`, `title`, `depends_on`, `informs`, optional `review_lane` per `policies/review-lanes.md`)
 - The START/END block format for `LOG.md`
@@ -423,9 +429,10 @@ Then create the empty directory shape:
 .claude/skills/treatise/
 .claude/skills/plain/
 .claude/skills/ask/
+.claude/skills/refactor/
 .claude/agents/
 .codex/agents/
-.agents/skills/        # (the thirteen skill entries here are directory symlinks
+.agents/skills/        # (the fourteen skill entries here are directory symlinks
                        #  to ../../.claude/skills/<name>, created in Step 5)
 briefs/
 docs/
@@ -452,7 +459,7 @@ In this exact order (each feeds the next):
      - `## Project briefs` — `briefs/` entries specific to this project (initially `BRIEF.md` only).
      - `## Project surfaces` — the deliverable (location, language, seed code description).
      - `## Project conventions` — language, tooling, build-gate command shape.
-     - `## Project-specific skills` — any beyond the universal thirteen. Omit if none.
+     - `## Project-specific skills` — any beyond the universal fourteen. Omit if none.
 
 3. **`AGENTS.md`** — symlink to `CLAUDE.md`:
    ```bash
@@ -485,13 +492,14 @@ Copy verbatim, then adapt project names and surface-specific build-gate commands
 - `.claude/skills/treatise/SKILL.md`
 - `.claude/skills/plain/SKILL.md`
 - `.claude/skills/ask/SKILL.md`
+- `.claude/skills/refactor/SKILL.md`
 - `.claude/settings.json`
 - `.claude/agents/phase-planner.md`
 - `.claude/agents/plan-reviewer.md`
 - `.claude/agents/phase-coder.md`
 - `.claude/agents/code-critic.md`
 - `.codex/agents/*.toml`
-- `.agents/skills/{kickoff,methodology,rule-one,learn,teach,roles,sweep,sweep-planning,sweep-coding,demo,treatise,plain,ask}` (directory symlinks → `../../.claude/skills/<name>`)
+- `.agents/skills/{kickoff,methodology,rule-one,learn,teach,roles,sweep,sweep-planning,sweep-coding,demo,treatise,plain,ask,refactor}` (directory symlinks → `../../.claude/skills/<name>`)
 
 Port Rule One as one atomic methodology unit:
 
@@ -622,7 +630,7 @@ Before declaring the bootstrap complete, verify:
 - `bin/check-catalogs` accepts the initial idle ledger with exactly one `⬅️` and resolves every current-candidate internal Markdown link.
 - `head -1 LOG.md` is `# Activity Log`.
 - `ls .claude/agents/` lists exactly the four canonical role files.
-- Each of `.claude/skills/{kickoff,methodology,rule-one,learn,teach,roles,sweep,sweep-planning,sweep-coding,demo,treatise,plain,ask}/` contains `SKILL.md`, and each corresponding `.agents/skills/<name>` entry is a directory symlink to `../../.claude/skills/<name>`.
+- Each of `.claude/skills/{kickoff,methodology,rule-one,learn,teach,roles,sweep,sweep-planning,sweep-coding,demo,treatise,plain,ask,refactor}/` contains `SKILL.md`, and each corresponding `.agents/skills/<name>` entry is a directory symlink to `../../.claude/skills/<name>`.
 - `briefs/rule-one-diagnostic-learning.md` exists alongside the Rule One skill.
 - `bin/lessons validate`, `bin/check-catalogs`, and their behavioral tests pass against the empty initial ledger and Phase 1 status table.
 - `bin/kickoff-config show` succeeds and `kickoff.yaml` contains valid `role_models`, `role_timeouts`, and `research_budgets` sections.
@@ -724,11 +732,12 @@ Bootstrap is complete when **all** of the following hold:
 [ ] .claude/skills/treatise/SKILL.md exists (verbatim from template)
 [ ] .claude/skills/plain/SKILL.md exists (verbatim from template)
 [ ] .claude/skills/ask/SKILL.md exists (verbatim from template)
+[ ] .claude/skills/refactor/SKILL.md exists (verbatim from template)
 [ ] .claude/skills/stamp/ does NOT exist (starter-only meta-skill)
 [ ] .claude/agents/{phase-planner,plan-reviewer,phase-coder,code-critic}.md
     exist, adapted for this project
 [ ] .codex/agents/*.toml mirrors exist
-[ ] .agents/skills/{kickoff,methodology,rule-one,learn,teach,roles,sweep,sweep-planning,sweep-coding,demo,treatise,plain,ask} exist as directory
+[ ] .agents/skills/{kickoff,methodology,rule-one,learn,teach,roles,sweep,sweep-planning,sweep-coding,demo,treatise,plain,ask,refactor} exist as directory
     symlinks to ../../.claude/skills/<name> (the canonical skill directory)
 [ ] .agents/skills/stamp does NOT exist (starter-only, must not propagate)
 [ ] .claude/settings.json sets worktree.bgIsolation to none while explicit
