@@ -53,7 +53,7 @@ A mechanical pre-publish gate ships with the repo:
 bin/check-anonymization.sh
 ```
 
-It scans every tracked file for the two *mechanizable* leak classes — real absolute / home paths and commit-SHA-like tokens — and exits non-zero on any finding. It optionally reads a gitignored local name denylist (`bin/anonymization-denylist.local`, seeded from the committed `.example`) and greps for those private project names too; because the denylist is gitignored, the names it lists are never themselves committed. Run it before any push, and wire it into CI when the repo gains a CI config. The script catches paths and SHAs deterministically; **verbatim project names framed in prose remain a `code-critic` / human judgment call** — grep can't enumerate "names that happen to be private."
+It scans every tracked file, and every new file not yet staged (skipping only what the ignore rules exclude), for the two *mechanizable* leak classes — real absolute / home paths and commit-SHA-like tokens — and exits non-zero on any finding. It optionally reads a gitignored local name denylist (`bin/anonymization-denylist.local`, seeded from the committed `.example`) and greps for those private project names too; because the denylist is gitignored, the names it lists are never themselves committed. Run it before any push, and wire it into CI when the repo gains a CI config. The script catches paths and SHAs deterministically; **verbatim project names framed in prose remain a `code-critic` / human judgment call** — grep can't enumerate "names that happen to be private."
 
 ## Plan-reviewer / code-critic enforcement
 

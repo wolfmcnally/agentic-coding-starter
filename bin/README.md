@@ -610,7 +610,7 @@ Behavioral coverage lives in `tests/test_new_name.py`.
 
 ### `check-anonymization.sh` — pre-publish leak guard *(starter-only)*
 
-Scans every tracked file for the two *mechanizable* leak classes — real absolute/home paths and commit-SHA-like tokens — and exits non-zero on any finding. Optionally reads a gitignored local name denylist (`bin/anonymization-denylist.local`, seeded from the committed `.example`) and greps for those private names too. Run it before any push.
+Scans every tracked file, and every new file not yet staged, for the two *mechanizable* leak classes — real absolute/home paths and commit-SHA-like tokens — and exits non-zero on any finding. Optionally reads a gitignored local name denylist (`bin/anonymization-denylist.local`, seeded from the committed `.example`) and greps for those private names too. Run it before any push.
 
 ```bash
 ./bin/check-anonymization.sh          # scan; exit 1 on findings

@@ -503,3 +503,28 @@ def _exercise_published_timing(published: Path) -> None:
     )
     assert rejected.returncode == 1
     assert "Commit-SHA-like tokens" in rejected.stdout
+
+
+def test_leak_scan_reads_new_files_before_they_are_staged(tmp_path: Path) -> None:
+    """A new file is scanned while still untracked; an ignored one is not.
+
+    The full gate can run before a delivery is staged, so a scan that read
+    only tracked content would print its clean line over files it never saw.
+    """
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-b", "master"], cwd=repo, check=True, capture_output=True)
+    (repo / ".gitignore").write_text("ignored.md\n")
+    subprocess.run(["git", "add", ".gitignore"], cwd=repo, check=True)
+    leak = "commit " + "a" * 40 + "\n"
+    scan = [str(REPO_ROOT / "bin/check-anonymization.sh")]
+
+    (repo / "ignored.md").write_text(leak)
+    clean = subprocess.run(scan, cwd=repo, capture_output=True, text=True, check=False)
+    assert clean.returncode == 0, clean.stdout + clean.stderr
+
+    (repo / "new.md").write_text(leak)
+    rejected = subprocess.run(scan, cwd=repo, capture_output=True, text=True, check=False)
+    assert rejected.returncode == 1, rejected.stdout + rejected.stderr
+    assert "new.md" in rejected.stdout
+    assert "ignored.md" not in rejected.stdout

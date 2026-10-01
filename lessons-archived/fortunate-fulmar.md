@@ -1,10 +1,12 @@
 ---
 slug: fortunate-fulmar
 title: The leak scan reads only tracked content, so a full gate run before staging never scans the new files it is about to deliver
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: bin
 filed: 2026-10-01
+closed: 2026-10-01
+graduated_to: bin/check-anonymization.sh
 source: user
 occurrences:
   - date: 2026-10-01
@@ -18,3 +20,5 @@ The anonymization check searches with `git grep`, which reads tracked content on
 Both observations were on the same day. In the first, a new file was untracked during the full gate and was then committed and pushed; it happened to contain nothing the scan looks for. In the second, the standalone check printed its clean line over a tree with five new untracked paths, and the staged rerun found a hit in one of them: digest fragments in backticks that the scan reads as commit identifiers. That hit was caught only because the check's own clean line says "tracked files", which prompted staging before the full gate.
 
 What should be done differently: the scan should cover nonignored untracked files as the candidate-identity tooling already does, or refuse while any exist, so that its clean line cannot be vacuous. Until then, stage new files before the full gate.
+
+Graduated on 2026-10-01 at two occurrences by the operator's decision: the scan now searches untracked files as well, a proof covers it, and the policy describing the scan says so.

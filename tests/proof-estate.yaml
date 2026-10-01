@@ -455,7 +455,8 @@ families:
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
   historical_evidence:
   - required-gate-inventory
-  mutation_evidence: []
+  mutation_evidence:
+  - leak-scan-ignores-untracked
   tier: changed
   size: small
   flake_rate: 0.0

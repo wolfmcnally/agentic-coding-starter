@@ -2160,3 +2160,27 @@ Lessons: `lively-gerbil` filed, methodology scope — the first plan prescribed 
 Addition to the record at 13:58, written before delivery. The full gate that followed that record failed at its last check: the pack's README quoted digest fragments in backticks, which the anonymization scan reads as commit identifiers. The fragments were removed; the pack's digests are reproduced by its own `digest` command and need no copy in prose.
 
 Lessons: `fortunate-fulmar` filed, methodology scope, two occurrences — the scan reads tracked content only, so a full gate run before staging never scans the new files it is about to deliver. The earlier `sol` change went out that way; its one new file contained nothing the scan looks for. Here the new files were staged first, which is the only reason the gate saw the hit. The one full gate follows this record.
+
+## 2026-10-01 14:21 — METHODOLOGY SCOPE
+
+Three operator rulings through `ask` on 2026-10-01, ratified in session before any implementation. They follow the two deliveries recorded earlier the same day.
+
+**Ruling 1 — Sol keeps `medium`.** GPT-6.1 Sol's starting effort stays `medium`, although the vendor now says to begin at the client's default, which the Codex CLI reports as `low`. Authorized outcome: the open action `pistachio-dove` is closed with that disposition and the Astra-era brief records the ruling. Surfaces: `user-actions/pistachio-dove.md` moved to `user-actions-archived/`, `briefs/astra-era-development.md`. No configuration changes.
+
+**Ruling 2 — remove the two skill sentences that changed nothing, and re-run.** The revision of the `refactor` skill added a clause defining what a caller observes with a sentence that the amount of work is not among it, and a sentence telling the model to apply the local part of a fix that is not fully local; neither changed the behavior it targeted. Authorized outcome: both come out, the four skill sessions are run again on the resulting text to confirm nothing regresses, and the brief and the pack's README record the result. Surfaces: `.claude/skills/refactor/SKILL.md`, `briefs/refactoring-methodology.md`, `tests/fixtures/refactor_evaluation/README.md`. The pack and its scoring rules do not change.
+
+**Ruling 3 — the leak scan reads new files that are not yet staged.** Authorized outcome: the anonymization check also covers nonignored untracked files, so its clean line cannot be vacuous when the full gate runs before staging, with a test that fails if it stops doing so. This graduates `fortunate-fulmar` at two occurrences, by the operator's decision. Surfaces: `bin/check-anonymization.sh`, its test, `policies/anonymize-log-references.md` where it describes what the scan covers, and the lesson's move to `lessons-archived/`. Delivered as its own commit.
+
+**Exclusions.** No effort value changes. No new wording is tried in the skill beyond the removal. `lively-gerbil` stays a candidate. No change to gate composition, to what the scan looks for, or to delivery authority.
+
+## 2026-10-01 14:23 — METHODOLOGY — leak scan reads unstaged new files
+
+Ruling 3 of the scope recorded earlier this hour: the anonymization check reads new files that are not yet staged.
+
+**What changed.** `bin/check-anonymization.sh` now searches untracked files as well as tracked ones in all three of its scans, skipping only what the ignore rules exclude, and its clean line says so. `policies/anonymize-log-references.md` and `bin/README.md` describe the wider coverage. A new proof in `tests/test_methodology_toolchain_contract.py` plants the same leak in an ignored file, which must pass, and in a new untracked file, which must be rejected by name; it is admitted in the proof estate's ledger and named in `tests/proof-estate.yaml`. `fortunate-fulmar` is archived as codified at two occurrences, by the operator's decision.
+
+**Red witness.** With the untracked-file search removed from the commit-identifier scan, `./bin/test tests/test_methodology_toolchain_contract.py::test_leak_scan_reads_new_files_before_they_are_staged` failed at the assertion that the new file is rejected; the script was restored byte-exactly and the proof passed.
+
+**Scope departures.** None.
+
+Lessons: none new; `fortunate-fulmar` graduated by this change. The proof estate validates. Independent review is not applicable because this is primary one-shot methodology work. The changed-path check follows this record and the one full gate precedes the push.
