@@ -2222,3 +2222,27 @@ The ruling recorded in the scope just above: one sentence tried against the rema
 **Remaining for the operator.** Unchanged: whether the skill's reports read well and its apply boundary feels right on real code. The new sentence loosens caution for an undocumented extension point in a published library; nothing in the evaluation exercises that case.
 
 Lessons: `keen-crocodile` filed, methodology scope — when an instruction does not take, read the model's stated reason before writing the next one. Independent review is not applicable because this is primary one-shot methodology work. The one full gate follows this record.
+
+## 2026-10-01 15:28 — METHODOLOGY SCOPE
+
+One operator ruling, given in session on 2026-10-01 before any implementation.
+
+**Ruling — a survey covers the code under active development, not everything tracked.** The `refactor` skill's `survey` scope was exercised for the first time, as a dry run on disposable clones of a derived project in which one product is the active development target and another is retired but retained. Both models surveyed the whole repository and spent most of their proposals on the retired product's tooling, which that project's own conventions place outside ordinary work; the operator pointed this out. Authorized outcome: the `survey` scope is restated as the code the project is actively developing, staying with the current target wherever the project's instruction files name one or mark parts as retired, retained or frozen, unless the operator names something else; the survey is run again on fresh clones to check that proposals stay with the active product; and the brief records the dry run and the change. Surfaces: `.claude/skills/refactor/SKILL.md`, `briefs/refactoring-methodology.md`, `briefs/methodology.md` where it describes the scope.
+
+**Exclusions.** No bound on delegation or on a survey's size is added; the operator was offered that and did not take it up. The evaluation pack does not change. The derived project is not modified, and is not named in any committed file.
+
+## 2026-10-01 15:33 — METHODOLOGY — refactor skill: survey covers active code
+
+The ruling recorded in the scope just above: a survey covers the code under active development.
+
+**What changed.** In `.claude/skills/refactor/SKILL.md` the `survey` scope is now the code the project is actively developing, proposals only, staying with the current target wherever the project's instruction files name one or mark parts as retired, retained or frozen, unless the operator names something else; the description says the same. `briefs/refactoring-methodology.md` records the dry run and the reason for the scope, and `briefs/methodology.md` describes the scope the same way. The skill is still 61 lines.
+
+**Dry run.** Four sessions on disposable clones of a derived project, two before the change and two after, one each under Claude Code on Opus 5.5 and Codex on GPT-6.1 Sol. No session changed a file in its clone, and the project itself was never written to. Before the change both models surveyed everything tracked and most of their proposals concerned a retired product; the operator pointed that out. After it both stayed with the active product and the shared code it uses, named what they left alone, and shared five findings where the first pair had shared one that was in scope. Opus's second run took four minutes without delegating, against eleven minutes with four delegated readers. Of six claims from the second pair checked against the code, five held and one was only partly checked.
+
+**Scope departures.** None.
+
+**Primary's error, recorded.** The primary scored the first pair of reports by whether their claims were true and reported the run as a success, without checking the claims against the project's stated scope, which it had read before the run. The repository's rule about naming the property a check stands in for already covers this; it was not applied.
+
+**Remaining for the operator.** The skill has still never applied a change to real code, run with its default scope, or run inside a phase. A survey has no bound on its size or on delegation; the operator was offered one and did not take it up.
+
+Lessons: `brilliant-polecat` filed, methodology scope — a scope no evaluation run exercised is unverified, however well the others scored. Independent review is not applicable because this is primary one-shot methodology work. The one full gate follows this record.

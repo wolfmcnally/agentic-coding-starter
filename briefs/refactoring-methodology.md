@@ -96,6 +96,16 @@ The four figures are the skill as first written, after one revision of its wordi
 
 Fable's count went from 8 to 7 and back to 8 across the wordings on one run each, which is within what chance alone could produce.
 
+### Dry run of `survey` on a real project, 2026-10-01
+
+The pack exercises only a named target, so the `survey` scope was first run for real: on disposable clones of a derived project of about 41,000 lines in which one product is the active development target and another is retired but retained, and whose own conventions make cleanup of the retired product a separately approved decision. One session ran under Claude Code on Opus 5.5 and one under Codex on GPT-6.1 Sol. The project itself was not touched.
+
+As first written, `survey` covered "the whole deliverable". Both models applied nothing, and what they reported was accurate where it was checked, but most of it concerned the retired product's tooling. One of Sol's five proposals was about the active product. Opus took eleven minutes, delegated to four readers, and led its report with defects in retired code. The operator pointed out that all of that was out of scope. The primary had checked whether the claims were true and had not checked whether they belonged in the survey.
+
+The scope was restated as the code the project is actively developing, staying with the current target wherever the project's instruction files name one or mark parts as retired, retained or frozen. Run again on fresh clones, both models stayed with the active product and the shared code it uses, and each said what it had left alone. Opus finished in four minutes without delegating, at about a fifth of the usage it reported the first time. The two reports shared five findings where the first pair had shared one that was in scope. Of six claims checked against the code, five held and one was only partly checked.
+
+The dry run says nothing about applying changes to real code, about the default scope, or about a pass inside a phase; none of those has been exercised outside the pack.
+
 ### Limits of this evaluation
 
 One small package and one run per arm and wording, twenty-one sessions in all: it can show that a skill does harm or that a bare model has a gap, and it cannot rank models or measure rates. Claude Code arms ran with the operator's own instructions and skills excluded. Codex has no equivalent switch for its machine-wide instruction file, so the Codex arms ran with the operator's instructions loaded, which include verification discipline; a recipient without such a file may see weaker bare behavior from those models than is recorded here. The package is Python and the problems are the common ones; nothing here speaks to a large or unfamiliar code base.
@@ -104,7 +114,7 @@ One small package and one run per arm and wording, twenty-one sessions in all: i
 
 Each statement in the skill is one of three things: a fact about this repository that a model cannot know, a boundary of scope or authority, or the answer to a failure a run showed. Two sentences that were tried against such failures and did not cure them were taken out again (§4). Nothing else is in it.
 
-- **Scope** is a boundary. The default is the current change, as with `simplify`; a named target and a whole-project survey extend it. The survey proposes only, because the evidence on decay argues for a periodic look [7][9] and the evidence on large refactorings argues against applying one unreviewed [25][26].
+- **Scope** is a boundary. The default is the current change, as with `simplify`; a named target and a survey extend it. The survey proposes only, because the evidence on decay argues for a periodic look [7][9] and the evidence on large refactorings argues against applying one unreviewed [25][26]. It covers the code under active development, not everything tracked, because the first real survey spent most of its effort on a retired product (§4).
 - **What to look for** answers the reach failure. Naming the kinds of problem is the cheapest instruction with evidence behind it: naming the refactoring type and narrowing the search raised one model's detection of refactoring opportunities from 15.6% to 86.7% [20]. The list includes fixes at the wrong depth and modules that hide nothing, because agents left alone stay at the level of names and types [27][28][29]. The tests for needless structure are cited from the repository's existing simplicity rule, not restated.
 - **Who decides** answers the authority failure. A change is applied when it stays inside one module and alters nothing another module, an outside caller, or a stored format can observe, judged by the callers, subclasses and overrides that exist; anything else is proposed; cross-cutting work becomes a phase sketch and is not started.
 - **Done** is the definition in §1.

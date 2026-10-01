@@ -9,7 +9,7 @@ description: >-
   when the user asks to refactor, simplify, tidy, clean up, or de-slop code, or
   to survey a code base for such work. Invoke as /refactor in Claude Code or
   $refactor in Codex; an optional argument names a path, module or symbol, or
-  `survey` for a proposal-only pass over the whole deliverable.
+  `survey` for a proposal-only pass over the code under active development.
 argument-hint: "[<path|module|symbol> | survey]"
 last-reviewed: 2026-10-01
 ---
@@ -22,7 +22,7 @@ Refactoring changes how code is written and nothing about what it does. An ordin
 
 - **No argument:** the current change — commits not yet upstream plus the working tree — and the functions those changes sit in.
 - **A path, module or symbol:** that target.
-- **`survey`:** the whole deliverable, proposals only. Start where the history shows the code changing most.
+- **`survey`:** the code the project is actively developing, proposals only. Where the project's instruction files name a current target or mark parts as retired, retained or frozen, stay with the current target unless the operator names something else. Start where the history shows the code changing most.
 
 Policies, briefs and skills are not code. They belong to [`sweep`](../sweep/SKILL.md).
 
