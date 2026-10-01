@@ -2110,3 +2110,33 @@ Operator direction: keep only lessons about the methodology itself, age out less
 **Aging.** A candidate whose newest occurrence is sixty days old is proposed at the next sweep for closing as not recurring, in one batch; a new occurrence resets it, and an aged-out lesson reopens by appended occurrence. `./bin/lessons aged` lists them; nothing qualifies today (the oldest is fifty days), and twenty-nine will by late October. A new proof covers the query, with red witnesses for aging by first rather than newest occurrence (which a single-occurrence fixture could not catch until a recurring lesson was added) and for an off-by-one boundary. The sweep skill runs it and proposes the scope cut in template repos.
 
 Lessons: none new. The targeted check widened itself to the full suite and passed; the one full gate follows this record.
+
+## 2026-10-01 13:31 — METHODOLOGY SCOPE
+
+Four operator rulings through `ask` on 2026-10-01, ratified in session before any implementation, and three points the primary settled from existing rules.
+
+**Ruling 1 — move the `sol` selector to GPT-6.1 Sol.** Authorized outcome: `sol` resolves to `gpt-6.1-sol` wherever the mapping is stated, the pinned OpenAI model-selection excerpt is re-pinned to the current page, and every citation of that pin is re-read against the new text. Surfaces: `bin/kickoff-config`, `lib/agentic_starter/workflow.py`, `tests/test_kickoff_config.py`, `policies/role-models.md`, `.claude/skills/kickoff/preflight.md`, `.claude/skills/roles/SKILL.md`, `briefs/astra-era-development.md`, `briefs/cross-agent-invocation.md`, `docs/openai-codex-model-selection.md`, `docs/README.md`. Delivered first, as its own change.
+
+**Ruling 2 — a universal `refactor` skill, built and delivered.** Authorized outcome: a behavior-preserving refactoring and simplification skill that runs the same way under both harnesses and travels with `stamp` and `teach`; a methodology brief carrying the method and dated citations; and an evaluation pack. The skill is one file under 100 lines stating scope, authority, the definition of done and delivery by citation; any further instruction must answer a failure observed in the evaluation. Surfaces: `.claude/skills/refactor/`, `.agents/skills/refactor`, `briefs/refactoring-methodology.md`, `tests/fixtures/refactor_evaluation/`, and the skill inventories in `CLAUDE.md`, `README.md`, `.claude/skills/stamp/SKILL.md`, `.claude/skills/teach/SKILL.md`, `briefs/agentic-bootstrap.md`, `briefs/methodology.md`, `briefs/eacp-pattern-map.md`, `tests/test_methodology_toolchain_contract.py`, and `tests/proof-estate.yaml` only if the new paths are otherwise unmapped.
+
+**Ruling 3 — evaluate all four models.** Opus, Fable, Sol and Astra, each with a bare request and with the skill, plus one run of Claude Code's bundled `simplify`; the bare baseline runs before the skill is written, and no task or scoring rule changes after results are seen.
+
+**Ruling 4 — the skill may apply local changes.** Changes confined to one module that touch no public interface are applied and tested; anything larger is proposed, and cross-cutting work is handed off as a phase sketch.
+
+**Settled by the primary.** The skill ships standalone and is not wired into `kickoff`; the brief is cataloged under Methodology briefs; sources are cited by URL with `As of` and `Retrieved` dates and no new pin is added for them.
+
+**Exclusions.** No starting effort changes for any model: the vendor's new effort wording for GPT-6.1 Sol is recorded, not adopted. GPT-6 Sol is not kept as a second selector. No new policy, `bin/` script, log kind or dependency. No change to `kickoff`, the four role definitions, gate composition or delivery authority.
+
+## 2026-10-01 13:35 — METHODOLOGY — sol selector moves to GPT-6.1 Sol
+
+Ruling 1 of the scope recorded at 13:31 the same day. The operator directed that the `sol` selector move to GPT-6.1 Sol before the refactoring-skill evaluation runs on it.
+
+**What changed.** `sol` now resolves to `gpt-6.1-sol` in `bin/kickoff-config` and `lib/agentic_starter/workflow.py`, with `tests/test_kickoff_config.py`, the selector table in `policies/role-models.md`, `.claude/skills/kickoff/preflight.md`, `.claude/skills/roles/SKILL.md` and `briefs/cross-agent-invocation.md` following. `docs/openai-codex-model-selection.md` is re-pinned to the vendor page as read today, with its catalog row in `docs/README.md`. `briefs/astra-era-development.md` gains a dated GPT-6.1 Sol section, and its earlier OpenAI paragraph, which cited the pin for wording the pin no longer contains, now states that wording as a dated observation. GPT-6 Sol is not kept as a second selector.
+
+**Scope departures.** Two, both forced by keeping true statements true, neither changing any effort value. `policies/role-models.md` called `medium` the provider-recommended start for both lead models; for GPT-6.1 Sol the vendor now says to start at the client's default, so the sentence says `medium` is the repository's adopted start for Sol. A comment in `bin/kickoff-config` said the same and was reworded. One sentence in `briefs/cross-agent-invocation.md` still claimed `sol` and `luna` kept GPT-5.6 mappings, which had been false since 2026-09-23; it now states all four mappings.
+
+**Evidence.** The vendor page was fetched as HTML and its sentences extracted to text; the pin carries the recommended-models, selection and reasoning-effort sentences. A live one-line request with `gpt-6.1-sol` under a ChatGPT sign-in was refused by Codex CLI 0.156.1 and answered by 0.159.3 run without installing. The operator then upgraded the installed CLI to 0.159.3 and it answered the same request. The CLI's cached model list is shared between Codex clients and was rewritten twice during this pass, once without the 6.1 entry, so the cache is not evidence of entitlement.
+
+**Remaining for the operator.** `user-actions/pistachio-dove.md`: whether Sol should start lower than `medium`, since the client's default for GPT-6.1 Sol is `low`. An older standalone Codex 0.153.4 is still later on this machine's PATH, shadowed by the upgraded one.
+
+Lessons: none. The changed-path selection widened itself to the full suite because `bin/kickoff-config` maps ambiguously, and passed, 109 tests, before this record. Independent review is not applicable because this is primary one-shot methodology work. The one full gate follows this record.

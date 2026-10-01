@@ -542,7 +542,7 @@ class TestGeneratedInvocationRecipes:
 
         for model, venue, wire in (
             ("astra", "codex", "gpt-6-astra"),
-            ("sol", "codex", "gpt-6-sol"),
+            ("sol", "codex", "gpt-6.1-sol"),
             ("terra", "codex", "gpt-5.6-terra"),
             ("luna", "codex", "gpt-6-luna"),
             ("fable", "claude", "fable"),
@@ -731,7 +731,7 @@ else:
             assert document["targets"]
             assert all(target["cli"] == venue for target in document["targets"])
             assert all(
-                target["model"] == ("opus" if venue == "claude" else "gpt-6-sol")
+                target["model"] == ("opus" if venue == "claude" else "gpt-6.1-sol")
                 for target in document["targets"]
             )
             assert all(

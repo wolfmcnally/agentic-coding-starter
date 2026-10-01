@@ -1,13 +1,13 @@
-Choose Astra when a task needs the strongest capability across multiple steps and tools. Sol suits everyday work and complex coding, and Luna suits clear, repeatable tasks.
+For complex coding and agentic workflows, use GPT-6.1 Sol when available to your account and client. Use Luna for focused, repeatable tasks. Select gpt-6.1-sol or gpt-6-luna in your model picker or saved configuration when available.
+
+Choose Astra when a task needs the strongest capability across steps and tools. GPT-6.1 Sol offers near-Astra performance at a lower cost than Astra. Use GPT-6.1 Sol when available to your account and client, and Luna for clear, repeatable tasks.
 
 Astra, for the hardest end-to-end work.
 
-Sol, for everyday and complex work. Choose Sol for ambiguous, difficult, or high-value tasks that need extra analysis, judgment, or polish, such as complex code changes, deep research, or polished documents.
+GPT-6.1 Sol, for repeated, long-running work. Consider GPT-6.1 Sol for work across code, apps, and documents when cost matters. Keep Astra for your most demanding work.
 
 Pick a reasoning effort
 
-Start with Medium for Sol, High for Luna, or Light for Astra. In configuration, Astra’s Light setting is low. Increase the effort for tasks that need more planning, analysis, or checking.
+For GPT-6.1 Sol, start with the reasoning effort available by default in your client and adjust based on the task. Start with High for Luna or Light for Astra.
 
-Reasoning efforts don’t map exactly between model generations. Try a familiar task at a lower setting and adjust based on the result.
-
-On Plus, Pro, Business, Enterprise, and Edu plans, choose GPT-6 Sol (gpt-6-sol) when available.
+In configuration, Astra’s Light setting is low. Increase the effort for tasks that need more planning, analysis, or checking.

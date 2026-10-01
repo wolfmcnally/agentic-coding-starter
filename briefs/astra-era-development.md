@@ -1,6 +1,6 @@
 ---
 title: Astra-era development workflow
-date: 2026-09-07
+date: 2026-10-01
 status: implemented
 scope: local
 ---
@@ -39,11 +39,19 @@ The earlier upgrade shipped quality/same-harness defaults with fail-closed avail
 As of 2026-09-22 (Anthropic) and 2026-09-23 (OpenAI living page); retrieved 2026-09-23. Both providers now name a lead coding model below their most capable one, and the shipped primaries follow them.
 
 - **Anthropic.** The [pinned model and effort excerpt](../docs/anthropic-opus-5-5-model-effort.md) says to start with Claude Opus 5.5 for most workloads and to use Fable 5.1 for demanding reasoning and long-horizon agentic work, or when evaluations of Opus 5.5 at higher effort still fall short. Opus 5.5 defaults to `medium`, and Anthropic advises an effort sweep rather than carrying settings over from Opus 5. Anthropic reports Opus 5.5 ahead of Fable 5.1 on its agentic-coding benchmarks at lower cost; those are vendor figures, not repository measurements.
-- **OpenAI.** The [pinned Codex model-selection excerpt](../docs/openai-codex-model-selection.md) recommends Sol for everyday work and complex coding, Astra for the hardest end-to-end work, and a starting effort of Medium for Sol, High for Luna and Light (`low`) for Astra. The `sol` and `luna` selectors now resolve to `gpt-6-sol` and `gpt-6-luna`; `terra` has no GPT-6 successor and stays `gpt-5.6-terra`.
+- **OpenAI.** On 2026-09-23 OpenAI's Codex model page recommended Sol for everyday work and complex coding, Astra for the hardest end-to-end work, and a starting effort of Medium for Sol, High for Luna and Light (`low`) for Astra. The `sol` and `luna` selectors were moved to `gpt-6-sol` and `gpt-6-luna`; `terra` has no GPT-6 successor and stays `gpt-5.6-terra`. That page has since changed; see the GPT-6.1 Sol update below, which is what the [pinned Codex model-selection excerpt](../docs/openai-codex-model-selection.md) now carries.
 
 Consequences: the shipped primaries are Opus for Claude and Sol for Codex, both at `medium`, and all four models are eligible primaries. Advisers are unchanged (Astra reviews Claude work and Fable reviews Codex work), so the strongest cross-provider model still reviews. Preset pins give Opus and Sol `medium` and keep Fable and Astra at `high`. For Astra, OpenAI's Light/`low` start is general Codex guidance, not coding-specific, so the high-effort review and quality pins are unchanged.
 
-Local observations on 2026-09-23: the Claude CLI 2.1.280 `opus` alias reported `claude-opus-5-5` in its `system`/`init` event, and `fable` reported `claude-fable-5-1`. Codex CLI 0.154.0 with a ChatGPT sign-in rejected `gpt-6-sol` and `gpt-6-luna` as unsupported. After the operator upgraded the installed Codex CLI to 0.156.1 that same day, it answered with `gpt-6-sol`. A Codex primary therefore needs CLI 0.156.1 or later. With an older CLI, preflight refuses rather than falling back to another model.
+Local observations on 2026-09-23: the Claude CLI 2.1.280 `opus` alias reported `claude-opus-5-5` in its `system`/`init` event, and `fable` reported `claude-fable-5-1`. Codex CLI 0.154.0 with a ChatGPT sign-in rejected `gpt-6-sol` and `gpt-6-luna` as unsupported. After the operator upgraded the installed Codex CLI to 0.156.1 that same day, it answered with `gpt-6-sol`. A Codex primary on GPT-6 Sol therefore needed CLI 0.156.1 or later. With an older CLI, preflight refuses rather than falling back to another model.
+
+### GPT-6.1 Sol update
+
+As of 2026-10-01 (OpenAI living page, which carries no date); retrieved 2026-10-01. The [pinned Codex model-selection excerpt](../docs/openai-codex-model-selection.md) now says to use GPT-6.1 Sol for complex coding and agentic workflows when it is available to the account and client, describes it as near-Astra performance at a lower cost, and keeps Astra for the most demanding work. On the operator's direction the `sol` selector now resolves to `gpt-6.1-sol`. GPT-6 Sol is not kept as a second selector.
+
+The effort guidance changed with it. The excerpt no longer names Medium for Sol: it says to start GPT-6.1 Sol at the reasoning effort the client offers by default, and still names High for Luna and Light for Astra. On 2026-10-01 the Codex CLI's own model list gave `low` as the default for `gpt-6.1-sol` and `medium` for `gpt-6-sol`. The repository's `medium` start for Sol is unchanged: it was adopted for GPT-6 Sol, and whether GPT-6.1 Sol should start lower is an open question for the operator that an effort sweep on real work would answer. Until then `medium` for Sol is this repository's choice, not the vendor's recommendation.
+
+Local observations on 2026-10-01, with a ChatGPT sign-in: Codex CLI 0.156.1 refused `gpt-6.1-sol` as not supported; Codex CLI 0.159.3, run without installing it, answered a one-line request with that model selected. The operator then upgraded the installed CLI to 0.159.3, and it answered the same request. Versions between the two were not tried, so the minimum is unknown. A Codex primary or role on `sol` therefore needs a CLI newer than 0.156.1, and 0.159.3 is the version observed to work. The model list the CLI caches is shared between Codex clients and is rewritten by whichever ran last, so an entry's presence or absence in that file is not evidence of entitlement; only a live request is.
 
 The Opus instruction-loading observations above describe Opus 5, not Opus 5.5, and the comparative-evaluation gap stands. Anthropic's prompting guide for Opus 5.5 notes that, on long unattended tasks, it may end a turn with a progress report rather than a tool call. A delegated Opus role whose run ends that way without its required output is incomplete, not finished. That behavior is unverified in this repository.
 

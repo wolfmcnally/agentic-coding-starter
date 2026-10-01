@@ -133,7 +133,7 @@ MODELS = (
 CODEX_MODELS = {
     "codex": None,
     "astra": "gpt-6-astra",
-    "sol": "gpt-6-sol",
+    "sol": "gpt-6.1-sol",
     "terra": "gpt-5.6-terra",
     "luna": "gpt-6-luna",
 }
@@ -145,7 +145,7 @@ MODEL_EFFORTS["codex"] = ("low", "medium", "high", "xhigh")
 MODEL_EFFORTS["default"] = ()
 EFFORTS = tuple(dict.fromkeys(effort for values in MODEL_EFFORTS.values() for effort in values))
 PRESETS = ("quality", "balanced", "economy")
-# Provider-recommended starting effort for the lead coding models; escalation models start high.
+# Adopted starting effort for the lead coding models; escalation models start high.
 PRESET_EFFORTS = {"opus": "medium", "sol": "medium", "fable": "high", "astra": "high"}
 REVIEW_MODES = ("same-harness", "cross-vendor")
 ROLE_OPERATIONS = {

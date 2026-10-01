@@ -73,7 +73,7 @@ Flag-by-flag rationale:
   role directive enforces the matrix. Do not disable all MCP servers or
   plugins as a substitute for role authority.
 - **Pass large context via files, not inline.** Write the plan text or `git diff` output to a temp file and reference its path in the prompt. Every published skill does this.
-- **Select model and effort only through the manager.** The manager validates a selector-specific effort subset before write or spawn: named Astra/Sol/Terra/Luna/Opus/Fable accept low through max; provider-default codex conservatively accepts low through xhigh, provider-default claude low through max, and native default no explicit effort. Ultra is not enabled. `astra` maps to `gpt-6-astra`; `sol`, `terra`, and `luna` retain their explicit GPT-5.6 mappings. A bare `codex` pin uses its configured default. The generated argv adds the selected model and separate `-c 'model_reasoning_effort="<effort>"'` override, preserving both on every resume. `render-command` and `watch` share command generation and validate requested routing before spawn. API settings alone do not prove CLI execution or entitlement; each checkout must qualify its configured target through live preflight. Supported model settings are a deliberately conservative subset, not a claim about every provider capability.
+- **Select model and effort only through the manager.** The manager validates a selector-specific effort subset before write or spawn: named Astra/Sol/Terra/Luna/Opus/Fable accept low through max; provider-default codex conservatively accepts low through xhigh, provider-default claude low through max, and native default no explicit effort. Ultra is not enabled. `astra` maps to `gpt-6-astra`, `sol` to `gpt-6.1-sol`, `luna` to `gpt-6-luna` and `terra` to `gpt-5.6-terra`. A bare `codex` pin uses its configured default. The generated argv adds the selected model and separate `-c 'model_reasoning_effort="<effort>"'` override, preserving both on every resume. `render-command` and `watch` share command generation and validate requested routing before spawn. API settings alone do not prove CLI execution or entitlement; each checkout must qualify its configured target through live preflight. Supported model settings are a deliberately conservative subset, not a claim about every provider capability.
 
 - **Exit codes are not the whole contract** for `codex exec`. Ordinary success
   requires a successful child, a fresh `-o` artifact with the expected role
@@ -88,7 +88,7 @@ Flag-by-flag rationale:
   ```
 
   For example, a resumed role with `model: sol` and `effort: medium` adds
-  `--model gpt-6-sol -c 'model_reasoning_effort="medium"'` to that command.
+  `--model gpt-6.1-sol -c 'model_reasoning_effort="medium"'` to that command.
 
   (`resume` reads stdin exactly as `exec` does, so it carries the same `</dev/null` redirect — the stdin-hang bullet above applies to both subcommands.)
 

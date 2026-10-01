@@ -16,7 +16,7 @@ from typing import Any
 ROLES = ("planner", "reviewer", "coder", "critic")
 BUILTIN_TARGETS = {
     "astra": ("codex", "gpt-6-astra"),
-    "sol": ("codex", "gpt-6-sol"),
+    "sol": ("codex", "gpt-6.1-sol"),
     "terra": ("codex", "gpt-5.6-terra"),
     "luna": ("codex", "gpt-6-luna"),
     "fable": ("claude", "fable"),
