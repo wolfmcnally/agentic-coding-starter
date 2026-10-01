@@ -63,7 +63,7 @@ An instruction earns a place in the skill only by answering a failure a bare arm
 
 ### Batch 1, 2026-10-01
 
-The digests of `pack.json` and `exercise.py` were taken before the first run and were unchanged after the last. Seventeen sessions: five bare, four with the skill as first written, four with its wording revised once, and four with the shipped wording, which is the revision less two sentences that had changed nothing. Each arm ran once per wording.
+The digests of `pack.json` and `exercise.py` were taken before the first run and were unchanged after the last. Twenty-one sessions: five bare, then four each with the skill as first written, with its wording revised once, with that revision less two sentences that had changed nothing ("trimmed"), and with the shipped wording, which adds one sentence to the trimmed text. Each arm ran once per wording.
 
 Models and efforts: Claude Opus 5.5 at `medium` and Claude Fable 5.1 at `high` under Claude Code 2.1.287; GPT-6.1 Sol at `medium` and GPT-6 Astra at `high` under Codex CLI 0.159.3. The Claude Code arms reported their model; the Codex arms report only the model requested. Claude Code arms excluded the operator's instructions and skills. Codex arms ran with the operator's machine-wide instruction file loaded, which reserves commits to the operator and asks for verification; both Codex skill arms cited it when leaving their changes uncommitted.
 
@@ -84,9 +84,13 @@ Models and efforts: Claude Opus 5.5 at `medium` and Claude Fable 5.1 at `high` u
 | Fable, skill, revised | pass | 0 | unchanged | none | 7 | kept, deletion proposed |
 | Sol, skill, revised | pass | 0 | unchanged | none | 6 | kept, deletion proposed |
 | Astra, skill, revised | pass | 0 | unchanged | none | 7 | kept, deletion proposed |
+| Opus, skill, trimmed | pass | 0 | unchanged | none | 8 | kept, deletion proposed |
+| Fable, skill, trimmed | pass | 0 | unchanged | none | 8 | kept, deletion proposed |
+| Sol, skill, trimmed | pass | 0 | unchanged | none | 6 | kept, deletion proposed |
+| Astra, skill, trimmed | pass | 0 | unchanged | none | 7 | kept, deletion proposed |
 | Opus, skill, shipped | pass | 0 | unchanged | none | 8 | kept, deletion proposed |
 | Fable, skill, shipped | pass | 0 | unchanged | none | 8 | kept, deletion proposed |
-| Sol, skill, shipped | pass | 0 | unchanged | none | 6 | kept, deletion proposed |
+| Sol, skill, shipped | pass | 0 | unchanged | none | 7 | kept, deletion proposed |
 | Astra, skill, shipped | pass | 0 | unchanged | none | 7 | kept, deletion proposed |
 
 Read against the scoring rules:
@@ -95,11 +99,13 @@ Read against the scoring rules:
 - **Tests:** the two bare Codex arms added tests that pin boundaries and changed no existing assertion, which the rule accepts. No skill arm touched the test file.
 - **Authority:** every skill arm kept the forwarding module and proposed its deletion; none priced the special-cased product inside the pricing module. The two bare Opus arms deleted the module.
 - **Against `simplify`:** the Claude skill arms address every seed `simplify` addresses and do not delete the module. The Codex skill arms address fewer seeds than `simplify` does on Opus; that comparison is across models, not across instructions.
-- **Parity:** the harnesses agree on every finding but one. Under all three wordings Sol proposed, and did not apply, computing the subtotal once, on the ground that it changes how often an overridable method is called; the other three applied it.
-- **Skill against bare, same model:** no skill arm did worse than its bare arm on behavior, tests or decoys. Opus stopped deleting the module; Sol went from 4 seeds to 6 and Astra from 3 to 7.
+- **Parity:** under the shipped wording the harnesses agree on every finding. Under the three earlier wordings Sol proposed, and did not apply, computing the subtotal once, on the ground that it changes how often an overridable method is called; the other three applied it.
+- **Skill against bare, same model:** no skill arm did worse than its bare arm on behavior, tests or decoys. Opus stopped deleting the module; Sol went from 4 seeds to 7 and Astra from 3 to 7.
 
-What the revision changed and did not: naming the current branch stopped Opus from creating one, and stays. Saying that the amount of work is not something a caller observes did not change Sol's reading. Saying to apply the local part of a fix that is not fully local did not lead either Codex model to name the repeated special case once. On the operator's ruling those two sentences were removed and the four skill arms run again; nothing regressed, so the shipped wording is the first wording plus the branch clause. Fable went from 8 seeds to 7 and back to 8 across the three wordings, which with one run per arm is within what chance could produce.
+What the revision changed and did not: naming the current branch stopped Opus from creating one, and stays. Saying that the amount of work is not something a caller observes did not change Sol's reading. Saying to apply the local part of a fix that is not fully local did not lead either Codex model to name the repeated special case once. On the operator's ruling those two sentences were removed and the four skill arms run again; nothing regressed.
+
+The sentence about the amount of work had answered an objection Sol never made. Its stated reason each time was that an override of the method might notice being called less often. One sentence aimed at that reason — judge what can be observed by the callers, subclasses and overrides that exist, not by ones that could be written, except where the project documents a class as an extension point — was added and the four arms run once more. Sol applied the change, taking it from 6 seeds to 7, and no arm regressed: every one still kept the forwarding module and left the storage interface with its two implementations alone. The shipped wording is therefore the first wording plus the branch clause and that sentence. Fable went from 8 seeds to 7 and back to 8 across the wordings, which with one run per arm is within what chance could produce.
 
 The probe compares results and exception types, not messages. One Opus run reported a difference finer than that on its own: flattening the nested checks changed the operator named in the `TypeError` raised for a non-numeric quantity.
 
-The `waste` fact reports a call inside the loop for Astra's change, which computes the subtotal on first use and reuses it; read by eye it addresses the seed, and it is counted as addressed above.
+The `waste` fact reports a call inside the loop for Astra's change and, under the shipped wording, Sol's: both compute the subtotal on first use and reuse it. Read by eye that addresses the seed, and it is counted as addressed above.

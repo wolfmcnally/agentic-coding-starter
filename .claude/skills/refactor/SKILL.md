@@ -39,7 +39,7 @@ Go through all of these; stopping at the first few leaves most of the value behi
 
 ## Who decides
 
-- **Apply** a change that stays inside one module and alters nothing that another module, a caller outside the project, or a stored format can observe.
+- **Apply** a change that stays inside one module and alters nothing that another module, a caller outside the project, or a stored format can observe. Judge that by the callers, subclasses and overrides that exist, not by ones that could be written; a class the project documents as an extension point is the exception.
 - **Propose** anything else, and leave the code as it is: a renamed, moved or removed public name, a changed signature, a deleted module or test, anything touching concurrency, security, or a decision the project has recorded. Say what would change and what it buys; the operator decides.
 - **Hand off** work that is cross-cutting or high-risk by the follow-up test in [`policies/review-lanes.md`](../../../policies/review-lanes.md): give a phase sketch — goal, write set, the behavior that must not change, the checks that would show it — and do not start it.
 

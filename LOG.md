@@ -2198,3 +2198,27 @@ Rulings 1 and 2 of the scope recorded earlier this hour.
 **Remaining for the operator.** Unchanged: whether the skill's reports read well and its apply boundary feels right on real code. Sol still proposes, where the other three models apply, computing a repeated value once; that is recorded, not corrected.
 
 Lessons: none new. Independent review is not applicable because this is primary one-shot methodology work. The one full gate follows this record.
+
+## 2026-10-01 14:43 — METHODOLOGY SCOPE
+
+One operator ruling, given in session on 2026-10-01 before any implementation.
+
+**Ruling — try one sentence against the remaining harness disagreement in the `refactor` skill.** GPT-6.1 Sol has three times proposed, where the other three models applied, computing a repeated value once, each time because it changes how often an overridable method is called. The sentence tried earlier answered a different objection. Authorized outcome: add to the skill's apply rule that what can be observed is judged by the callers, subclasses and overrides that exist, not by ones that could be written, with a class the project documents as an extension point as the exception; run the four skill sessions again; keep the sentence if Sol now applies the change and no model regresses, and remove it otherwise. Surfaces: `.claude/skills/refactor/SKILL.md`, `briefs/refactoring-methodology.md`, `tests/fixtures/refactor_evaluation/README.md`.
+
+**Exclusions.** The pack and its scoring rules do not change. No other wording is tried. No second attempt follows a failure.
+
+## 2026-10-01 14:46 — METHODOLOGY — refactor skill: observers that exist
+
+The ruling recorded in the scope just above: one sentence tried against the remaining harness disagreement in the `refactor` skill.
+
+**What changed.** The skill's apply rule now says that what can be observed is judged by the callers, subclasses and overrides that exist, not by ones that could be written, with a class the project documents as an extension point as the exception. `.claude/skills/refactor/SKILL.md` is otherwise unchanged and is still 61 lines. `briefs/refactoring-methodology.md` and `tests/fixtures/refactor_evaluation/README.md` record the run.
+
+**Result.** The four skill sessions were run on the new text. GPT-6.1 Sol applied the change it had proposed three times before, taking it from 6 of 8 seeded problems to 7. No model regressed: all four preserved behavior on every held-out probe, left the tests and decoys alone, kept the public module while proposing its deletion, and left the interface with two implementations alone. Under this wording the two harnesses place every finding in the same class. The sentence is kept. Twenty-one model sessions have now run in all; the pack and its scoring rules did not change.
+
+**Why the earlier sentence failed.** It said the amount of work is not observable. Sol's logged reason was that an override might notice being called less often. The earlier sentence answered an objection the model had not made.
+
+**Scope departures.** None.
+
+**Remaining for the operator.** Unchanged: whether the skill's reports read well and its apply boundary feels right on real code. The new sentence loosens caution for an undocumented extension point in a published library; nothing in the evaluation exercises that case.
+
+Lessons: `keen-crocodile` filed, methodology scope — when an instruction does not take, read the model's stated reason before writing the next one. Independent review is not applicable because this is primary one-shot methodology work. The one full gate follows this record.
