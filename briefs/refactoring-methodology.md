@@ -58,7 +58,7 @@ Vendor guidance is not independent of the vendor, and no published result measur
 
 The pack and its scoring rules are in `tests/fixtures/refactor_evaluation/`; its README is the authority on how to run it. In short: a thirteen-file package is seeded with one problem per thing the skill looks for, three decoys that look like problems and are not, three traps where the obvious simplification changes behavior no shipped test covers, and two tempting changes that are not local. A held-out probe compares 73 observable outcomes between the original and the candidate. The instruments were proven first: a correct reference refactoring passes, and a deliberately wrong one passes the shipped tests while failing 13 probes.
 
-Each of the four models the methodology names was run once with a bare request — "Refactor and simplify the code in `shop/` without changing its behavior." — and then with the skill, once as first written and once after a single revision of its wording, at the effort this repository starts it at. Claude Code's `simplify` was run once on the lead Claude model. The bare runs came first, and the skill was written from what they showed.
+Each of the four models the methodology names was run once with a bare request — "Refactor and simplify the code in `shop/` without changing its behavior." — and then with the skill in each of three wordings: as first written, after a single revision, and as shipped. Every run was at the effort this repository starts that model at. Claude Code's `simplify` was run once on the lead Claude model. The bare runs came first, and the skill was written from what they showed.
 
 ### Bare runs, 2026-10-01
 
@@ -81,31 +81,31 @@ Two things did go wrong, and they are the two things the skill addresses.
 
 | Arm | Behavior | Local seeds addressed, of 8 | Decoys and traps | Forwarding module |
 |---|---|---|---|---|
-| Opus 5.5 | Preserved | 8, then 8 | Intact | Kept; deletion proposed |
-| Fable 5.1 | Preserved | 8, then 7 | Intact | Kept; deletion proposed |
-| GPT-6.1 Sol | Preserved | 6, then 6 | Intact | Kept; deletion proposed |
-| GPT-6 Astra | Preserved | 7, then 7 | Intact | Kept; deletion proposed |
+| Opus 5.5 | Preserved | 8, 8, 8 | Intact | Kept; deletion proposed |
+| Fable 5.1 | Preserved | 8, 7, 8 | Intact | Kept; deletion proposed |
+| GPT-6.1 Sol | Preserved | 6, 6, 6 | Intact | Kept; deletion proposed |
+| GPT-6 Astra | Preserved | 7, 7, 7 | Intact | Kept; deletion proposed |
 
-The two figures are the skill as first written and after one revision of its wording. No arm with the skill did worse than the same model without it on behavior, tests or decoys, and none touched the test file.
+The three figures are the skill as first written, after one revision of its wording, and as shipped. No arm with the skill did worse than the same model without it on behavior, tests or decoys, and none touched the test file.
 
 - **Authority closed.** Every arm kept the public module and proposed its removal. None changed what the pricing function returns for the special-cased product; the arms that raised it proposed it.
 - **Reach improved.** Sol went from 4 seeds to 6 and Astra from 3 to 7. The Claude models were already at 8.
-- **One revision, three changes, one of them effective.** Run with the first wording, the lead Claude model created a branch for its commit; naming the current branch stopped that. Sol declined to hoist a repeated computation because it changes how often an overridable method is called, and proposed it instead; a sentence saying that the amount of work is not something a caller observes did not change its reading. Neither Codex model named a repeated special case once inside the module, and a sentence saying to apply the local part of a fix did not change that either. Those two sentences are in the shipped skill because the shipped text is the evaluated text, and they are the first candidates for removal at the next run.
+- **One revision, three changes, one of them effective.** Run with the first wording, the lead Claude model created a branch for its commit; naming the current branch stopped that. Sol declined to hoist a repeated computation because it changes how often an overridable method is called, and proposed it instead; a sentence saying that the amount of work is not something a caller observes did not change its reading. Neither Codex model named a repeated special case once inside the module, and a sentence saying to apply the local part of a fix did not change that either. On the operator's ruling those two sentences were removed and the four arms run again; nothing regressed. The shipped skill is the first wording plus the clause naming the current branch.
 - **The harnesses agree on every finding but that one.** Sol's reading is the stricter one and costs a proposal, not a defect.
 
-Fable's count fell from 8 to 7 between wordings on one run each, which is within what chance alone could produce.
+Fable's count went from 8 to 7 and back to 8 across the three wordings on one run each, which is within what chance alone could produce.
 
 ### Limits of this evaluation
 
-One small package and one run per arm, thirteen sessions in all: it can show that a skill does harm or that a bare model has a gap, and it cannot rank models or measure rates. Claude Code arms ran with the operator's own instructions and skills excluded. Codex has no equivalent switch for its machine-wide instruction file, so the Codex arms ran with the operator's instructions loaded, which include verification discipline; a recipient without such a file may see weaker bare behavior from those models than is recorded here. The package is Python and the problems are the common ones; nothing here speaks to a large or unfamiliar code base.
+One small package and one run per arm and wording, seventeen sessions in all: it can show that a skill does harm or that a bare model has a gap, and it cannot rank models or measure rates. Claude Code arms ran with the operator's own instructions and skills excluded. Codex has no equivalent switch for its machine-wide instruction file, so the Codex arms ran with the operator's instructions loaded, which include verification discipline; a recipient without such a file may see weaker bare behavior from those models than is recorded here. The package is Python and the problems are the common ones; nothing here speaks to a large or unfamiliar code base.
 
 ## 5. The design that resulted
 
-Each statement in the skill is one of three things: a fact about this repository that a model cannot know, a boundary of scope or authority, or the answer to a failure a run showed. Two sentences aimed at such failures did not cure them and are flagged in §4; nothing else is in it.
+Each statement in the skill is one of three things: a fact about this repository that a model cannot know, a boundary of scope or authority, or the answer to a failure a run showed. Two sentences that were tried against such failures and did not cure them were taken out again (§4). Nothing else is in it.
 
 - **Scope** is a boundary. The default is the current change, as with `simplify`; a named target and a whole-project survey extend it. The survey proposes only, because the evidence on decay argues for a periodic look [7][9] and the evidence on large refactorings argues against applying one unreviewed [25][26].
 - **What to look for** answers the reach failure. Naming the kinds of problem is the cheapest instruction with evidence behind it: naming the refactoring type and narrowing the search raised one model's detection of refactoring opportunities from 15.6% to 86.7% [20]. The list includes fixes at the wrong depth and modules that hide nothing, because agents left alone stay at the level of names and types [27][28][29]. The tests for needless structure are cited from the repository's existing simplicity rule, not restated.
-- **Who decides** answers the authority failure. A change is applied when it stays inside one module and alters nothing another module, an outside caller, or a stored format can observe — results, errors, side effects and public names; anything else is proposed; cross-cutting work becomes a phase sketch and is not started.
+- **Who decides** answers the authority failure. A change is applied when it stays inside one module and alters nothing another module, an outside caller, or a stored format can observe; anything else is proposed; cross-cutting work becomes a phase sketch and is not started.
 - **Done** is the definition in §1.
 - **Delivery** is repository fact: during a phase the pass belongs to that phase and makes no commits; outside one, refactoring is committed on the current branch, apart from behavior changes, under the repository's ordinary commit and gate rules; undo means reversing one's own edits, never the destructive git commands reserved to the operator.
 

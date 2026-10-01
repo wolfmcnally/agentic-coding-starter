@@ -1,12 +1,13 @@
 ---
 slug: pistachio-dove
 title: Decide the starting effort for GPT-6.1 Sol
-status: pending
+status: done
 category: decision
 urgency: low
 blocks:
   - none
 filed: 2026-10-01
+closed: 2026-10-01
 needed_at: now
 source: methodology
 refs:
@@ -34,3 +35,7 @@ Keeping `medium` spends more time and tokens per turn than the vendor's default 
 ## Dependencies
 
 None. `medium` stays in force until this is decided.
+
+## Disposition
+
+The operator ruled on 2026-10-01 to keep `medium`. In that day's refactoring evaluation Sol at `medium` was already the model that addressed the fewest seeded problems, so lowering its effort on the vendor's general wording alone was not justified. The ruling is recorded in the Astra-era brief. No recurring learning.

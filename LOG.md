@@ -2184,3 +2184,17 @@ Ruling 3 of the scope recorded earlier this hour: the anonymization check reads 
 **Scope departures.** None.
 
 Lessons: none new; `fortunate-fulmar` graduated by this change. The proof estate validates. Independent review is not applicable because this is primary one-shot methodology work. The changed-path check follows this record and the one full gate precedes the push.
+
+## 2026-10-01 14:28 — METHODOLOGY — Sol effort ruling; refactor skill trimmed
+
+Rulings 1 and 2 of the scope recorded earlier this hour.
+
+**Sol keeps `medium`.** `user-actions/pistachio-dove.md` is archived as done with the operator's ruling as its disposition, and `briefs/astra-era-development.md` records it: the vendor's guidance for GPT-6.1 Sol is the client's default, which the CLI reports as `low`, and the repository keeps `medium` by the operator's decision. No configuration changed.
+
+**The refactor skill loses two sentences.** `.claude/skills/refactor/SKILL.md` no longer carries the clause defining what a caller observes or the sentence about applying the local part of a fix; it is the first wording plus the clause naming the current branch. The four skill arms were run again on that text: all four preserved behavior, left the tests and decoys alone, and proposed the public module's deletion without making it; the seeded problems addressed were 8, 8, 6 and 7 of 8 for Opus, Fable, Sol and Astra, the same as or better than under the revised wording. `briefs/refactoring-methodology.md` and `tests/fixtures/refactor_evaluation/README.md` carry the result. Seventeen model sessions have now run in all. The pack and its scoring rules did not change.
+
+**Scope departure, for the leak-scan change delivered just before this record.** Admitting its proof moved the suite's inventory, so the pinned counts in `tests/test_test_governance.py` were updated from the tool's own output; the scope had named only the proof. That record's changed-path check failed on those counts before the update and passed after it, 110 tests.
+
+**Remaining for the operator.** Unchanged: whether the skill's reports read well and its apply boundary feels right on real code. Sol still proposes, where the other three models apply, computing a repeated value once; that is recorded, not corrected.
+
+Lessons: none new. Independent review is not applicable because this is primary one-shot methodology work. The one full gate follows this record.
