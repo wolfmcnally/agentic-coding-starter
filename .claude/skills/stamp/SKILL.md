@@ -504,6 +504,14 @@ Run the repository-owned gate to confirm:
 
 If any step fails, surface the failure and let the user fix it before declaring the bootstrap complete.
 
+Last, ask whether a first `kickoff` could start:
+
+```
+<dest>/bin/kickoff-config preflight --receipt "$(mktemp -d)/role-preflight.json"
+```
+
+This is a reported check, not a gate, and it runs after the gate because it is the only step that makes real model calls. It can refuse for reasons a new repository cannot fix: a CLI that is not signed in, usage near a limit, a provider outage. Give its outcome in the final report in its own words, pass or refusal, and do not treat a refusal as a failed stamp. A refusal whose message names the seeded configuration is the case this step exists to catch, because without it the stamp reports success on a repository whose first phase cannot begin; put that refusal first among the things the operator needs to settle before `kickoff`. The receipt is written outside the destination and is not kept.
+
 ## Report
 
 When the bootstrap finishes cleanly, report to the user:
@@ -511,6 +519,7 @@ When the bootstrap finishes cleanly, report to the user:
 - The destination path.
 - The project name, slug, primary language, and inferred surfaces.
 - That human-editable `kickoff.yaml` was seeded with quality/same-harness model routing and portable role budgets; model and effort are separate fields; `roles` edits model fields or applies the role policy’s presets without invoking a model; local telemetry stays under `.kickoff/`; and `bin/kickoff-config recommend-timeouts` proposes target-local recalibration.
+- Whether the kickoff preflight passed, or the message it refused with.
 - The path to the new project's `BRIEF.md` (which the user should flesh out next) and `plan/phase-1.md` (which the user should review before `kickoff`'ing).
 - The recommended next steps:
   1. `cd <dest>`

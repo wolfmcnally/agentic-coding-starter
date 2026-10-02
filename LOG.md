@@ -2297,3 +2297,31 @@ The instruction recorded in the scope just above: settle the open question, then
 - `stamp` was corrected but not run. The next real stamp is the test of whether its acceptance list comes back clean.
 
 Lessons: `placid-bandicoot` filed, methodology scope — the format gate's claim to skip ignored files rests on formatter behavior that varied from run to run. Independent review is not applicable because this is primary one-shot methodology work. The one full gate follows this record.
+
+## 2026-10-01 22:04 — METHODOLOGY SCOPE
+
+Four operator rulings, given in session on 2026-10-01 through the decision inventory, before any implementation.
+
+**Ruling 1 — graduate `rugged-gharial`.** It was held on 2026-09-29 until it recurred in a different project, and it has. Authorized outcome: the roles policy's revision-loop section gains the rule that a finding reopening a second time at a new site is restated as an invariant and audited across every site before another cycle, and the lesson is archived as codified. Surfaces: `policies/four-canonical-agents.md`, the lesson.
+
+**Ruling 2 — a stamp runs the kickoff preflight and reports the result.** A refusal is shown to the operator and does not fail the stamp. Surfaces: `.claude/skills/stamp/SKILL.md`, `briefs/agentic-bootstrap.md`.
+
+**Ruling 3 — teach the usage-group correction to every derived repository that carries a hand-added usage mapping**, active or not, and remove the mappings it makes unnecessary. This repository is read-only during each of those passes; each recipient's own log records its pass.
+
+**Ruling 4 — the formatter observation stays a filed lesson.** No change.
+
+**Exclusions.** No role definition or kickoff resource changes for ruling 1. The preflight is not made a gate. No derived repository is named in any committed file here.
+
+## 2026-10-01 22:05 — METHODOLOGY — recurrence rule graduated; stamp reports preflight
+
+The rulings recorded in the scope just above.
+
+**What changed.** `policies/four-canonical-agents.md` § Revision loops now says that a finding reopening a second time at a new site is restated as an invariant, applied at every site and returned with an audit, before another cycle and before escalating as stalled; and that a repair to a contract found unsatisfiable for one kind of case is finished only when such a case has been taken through the whole contract. `rugged-gharial` is archived as codified. `.claude/skills/stamp/SKILL.md` runs the kickoff preflight last and reports its outcome without letting a refusal fail the stamp; `briefs/agentic-bootstrap.md` says the same.
+
+**Scope departures.** None.
+
+**Primary self-check.** The graduated rule cites two instances that differ in subject, a review loop and a codified fix, as the lessons policy requires. The preflight step writes its receipt outside the destination, so it adds no tracked file after the stamp's commit. The lessons, catalog and contract checks passed before this record.
+
+**Remaining for the operator.** The rule is in the policy only; no role definition or kickoff resource was changed to prompt it, so it binds through the policy being read. The teaching passes of ruling 3 follow this record and are recorded in each recipient's own log.
+
+Lessons: none. Independent review is not applicable because this is primary one-shot methodology work. The one full gate follows this record.

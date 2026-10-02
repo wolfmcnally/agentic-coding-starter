@@ -1,10 +1,12 @@
 ---
 slug: rugged-gharial
 title: A guard patched at the site the reviewer named will regrow at the next site; convert the class or it recurs
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: policy
 filed: 2026-08-24
+closed: 2026-10-01
+graduated_to: policies/four-canonical-agents.md
 source: learn
 occurrences:
   - date: 2026-08-12
@@ -59,3 +61,7 @@ class is discovered only when the instruction stops naming sites.
 ## Ledger note — 2026-09-29 (graduation considered and held)
 
 The operator held this lesson in the lessons sweep after a recount brought it to three or more occurrences: all three incidents come from one donor's review loop. Reopen on a site-by-site regrowth in a different project or review venue.
+
+## Ledger note — 2026-10-01 (graduated)
+
+The condition of the hold was met the same week: the shape recurred in a second project, through a codified fix instead of a review loop. The operator graduated it on 2026-10-01. The rule in `policies/four-canonical-agents.md` § Revision loops states the re-scoping trigger and extends it to repairs of a contract found unsatisfiable for one kind of case.

@@ -646,6 +646,7 @@ Before declaring the bootstrap complete, verify:
 - `plan/phase-1.md`'s `Brief refs` section lists at least one brief, and each listed brief exists.
 - `bin/check all` runs from outside the repository root and passes on the trivial seeded code, including the universal methodology tests.
 - A successful full gate leaves a verifiable candidate/environment receipt and complete log; dirty, changed, corrupt, non-`HEAD`, and query-error pre-push cases all run the full gate.
+- `bin/kickoff-config preflight`, run last with its receipt written outside the repository, is reported and does not decide completion. It makes real model calls, so it can refuse for reasons the new repository cannot fix; a refusal that names the seeded configuration is the one to settle before the first `kickoff`.
 
 The first `kickoff` invocation should pick up Phase 1's `⬅️` row, flip it to `🚧`, and append a START block to `LOG.md`. If any of those three actions fails, the bootstrap is incomplete — a path mismatch or a missing skill is the typical culprit.
 
