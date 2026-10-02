@@ -1,10 +1,12 @@
 ---
 slug: overjoyed-angelfish
 title: A freshly seeded role configuration cannot pass kickoff preflight on an account that reports an additional usage group
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: bin
 filed: 2026-10-01
+closed: 2026-10-01
+graduated_to: lib/agentic_starter/workflow.py
 source: user
 occurrences:
   - date: 2026-10-01
@@ -18,3 +20,5 @@ The fix is a dozen lines of YAML: a custom target that restates the built-in one
 The stamp's acceptance check runs `kickoff-config show`, which validates the file and does not consult usage. Nothing in the bootstrap runs `preflight`, so the stamp reports success on a repository whose first `kickoff` is certain to stop.
 
 What should be done differently: the answer to "does this additional group count against this target" is an operator decision about an account, not about a repository, so it should be made once and reach every repository on that account rather than being re-derived per stamp. Short of that, the refusal should print the exact block to add, and the bootstrap's acceptance should run the preflight so the gap surfaces at the stamp and not at the first phase.
+
+Ratified 2026-10-01. The question the refusal asked turned out to have an answer in the data: the usage tool reports, on the group itself, the one model the group meters, and the provider documents the group as a fallback allowance for that model only (retrieved 2026-10-01). A group that names its model now applies to a target of that model and to no other, so a seeded configuration passes; a group that names no model still refuses. The bootstrap still does not run the preflight, and hand-added mappings in derived repositories are left for a later `teach`.

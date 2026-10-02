@@ -50,6 +50,20 @@ def candidate(root: Path, staged: bool) -> bytes:
 
 
 def committed(root: Path) -> bytes:
+    # Where no log has ever been committed the prefix is empty: before the first
+    # commit, or on history that never carried one. Both are states git reports
+    # successfully; a read that fails for any other reason still refuses.
+    if git(root, "rev-parse", "--verify", "--quiet", "HEAD").returncode:
+        unborn = git(root, "symbolic-ref", "--quiet", "HEAD")
+        listing = git(root, "for-each-ref", "--count=1")
+        if unborn.returncode or listing.returncode or listing.stdout.strip():
+            raise PrefixError("cannot resolve HEAD")
+        return b""
+    tracked = git(root, "ls-tree", "--name-only", "HEAD", "--", "LOG.md")
+    if tracked.returncode:
+        raise PrefixError("cannot read committed LOG.md")
+    if not tracked.stdout.strip():
+        return b""
     result = git(root, "show", "HEAD:LOG.md")
     if result.returncode:
         raise PrefixError("cannot read committed LOG.md")

@@ -22,17 +22,225 @@ def test_parameterized_leaves_collapse_to_one_family() -> None:
     )
 
 
-def test_inventory_counts_executable_families_and_expanded_leaves() -> None:
-    observed = governance.inventory(REPO_ROOT)
-    assert observed["counts"] == {"families": 116, "leaves": 134}
-    assert observed["by_kind"]["pytest"] == {"families": 92, "leaves": 110}
+EVIDENCE = {
+    "contract": "The fixture contract holds.",
+    "oracle": "A direct call observes the fixture outcome.",
+    "red_witness": "Removing the behavior makes the proof fail.",
+    "nearest_overlap": "None in this fixture.",
+    "replacement_evidence": "The named replacement covers the same contract.",
+    "rationale": "Fixture estate.",
+}
+SAMPLE = "pytest:tests/test_sample.py::"
 
 
-def test_live_reset_validates() -> None:
-    summary = governance.validate(REPO_ROOT)
-    assert summary["state"] == "valid"
-    assert summary["dispositions"]["delete"] > 0
-    assert summary["dispositions"]["consolidate"] > 0
+def _proof(node: str) -> dict[str, str]:
+    kind = node.split(":", 1)[0]
+    selector = node.removeprefix("pytest:") if kind == "pytest" else node
+    if kind == "gate":
+        selector = node.removeprefix("gate:")
+    family = governance._pytest_family(node) if kind == "pytest" else node
+    source = {
+        "pytest": selector.split("::", 1)[0],
+        "gate": "bin/check:1",
+        "hook": ".githooks/pre-commit:1",
+    }[kind]
+    return {"id": node, "family": family, "kind": kind, "selector": selector, "source_path": source}
+
+
+def _write_estate(root: Path, *, pruned: bool) -> Path:
+    """A whole small repository the manager can inventory, with its own reset history.
+
+    Pruned, it is an estate with a past: a baseline proof deleted, one consolidated,
+    one admitted later, one retired later, and a measured corpus. Unpruned, it is what
+    a new repository has: every baseline proof retained and nothing yet measured.
+    """
+    files = {
+        "tests/test_sample.py": (
+            "import pytest\n\n\ndef test_kept():\n    pass\n\n\n"
+            '@pytest.mark.parametrize("case", [1, 2])\ndef test_cases(case):\n    pass\n\n\n'
+            "def test_admitted():\n    pass\n"
+        ),
+        "project/tests/test_product.py": "def test_product():\n    pass\n",
+        "bin/check": "run_gate policy-sample ./bin/sample\n",
+        ".githooks/pre-commit": "./bin/check-sample\n",
+        "bin/python": f'#!/bin/sh\nexec {shlex.quote(sys.executable)} "$@"\n',
+    }
+    for name, text in files.items():
+        (root / name).parent.mkdir(parents=True, exist_ok=True)
+        (root / name).write_text(text)
+    (root / "bin/python").chmod(0o755)
+
+    live = [
+        SAMPLE + "test_kept",
+        SAMPLE + "test_cases[1]",
+        SAMPLE + "test_cases[2]",
+        "pytest:project/tests/test_product.py::test_product",
+        "gate:policy-sample",
+        "hook:.githooks/pre-commit:./bin/check-sample",
+    ]
+    admitted = SAMPLE + "test_admitted"
+    gone = [SAMPLE + name for name in ("test_deleted", "test_folded", "test_retired")]
+    proofs = [_proof(node) for node in ([*live, *gone] if pruned else [*live, admitted])]
+    baseline: dict[str, object] = {
+        "schema": governance.BASELINE_SCHEMA,
+        "counts": {
+            "families": len({proof["family"] for proof in proofs}),
+            "leaves": len(proofs),
+        },
+        "proofs": proofs,
+    }
+    digest = hashlib.sha256(
+        json.dumps(baseline, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    baseline["inventory_sha256"] = digest
+
+    def row(record_type: str, node: str, disposition: str, replacement: str | None) -> dict:
+        return {
+            "record_type": record_type,
+            "proof_id": node,
+            "disposition": disposition,
+            "replacement": replacement,
+            "baseline_inventory_sha256": digest,
+            **EVIDENCE,
+        }
+
+    ledger = [row("proof_disposition", node, "retain", node) for node in live]
+    cases: list[dict[str, str]] = []
+    effectiveness: list[dict[str, object]] = []
+    if pruned:
+        deleted, folded, retired = gone
+        ledger += [
+            row("proof_disposition", deleted, "delete", None),
+            row("proof_disposition", folded, "consolidate", live[0]),
+            row("proof_disposition", retired, "retain", retired),
+            row("proof_admission", admitted, "retain", admitted),
+            row("proof_retirement", retired, "delete", None),
+        ]
+        for evidence_class in ("historical_defect", "holdout_mutant"):
+            for number in range(1, 5):
+                name = f"{evidence_class}-{number}"
+                patch = root / "tests/fixtures" / f"{name}.patch"
+                patch.parent.mkdir(parents=True, exist_ok=True)
+                patch.write_text(f"--- a/{name}\n+++ b/{name}\n@@ -1 +1 @@\n-good\n+bad\n")
+                patch_digest = hashlib.sha256(patch.read_bytes()).hexdigest()
+                cases.append(
+                    {
+                        "id": name,
+                        "class": evidence_class,
+                        "patch": f"tests/fixtures/{name}.patch",
+                        "patch_sha256": patch_digest,
+                        "command": "./bin/test tests/test_sample.py -q",
+                        "cwd": ".",
+                        "expected": "The retained estate rejects the seeded defect.",
+                        "owner": "sample",
+                    }
+                )
+                effectiveness.append(
+                    {
+                        "record_type": "effectiveness",
+                        "evidence_id": name,
+                        "evidence_class": evidence_class,
+                        "observed": True,
+                        "detected_by": ["sample"],
+                        "command": "./bin/test tests/test_sample.py -q",
+                        "patch_sha256": patch_digest,
+                        "output_sha256": "0" * 64,
+                        "assayed_on": f"2026-01-0{number}",
+                    }
+                )
+    else:
+        ledger.append(row("proof_disposition", admitted, "retain", admitted))
+
+    def family(name: str, kind: str, selector: str, source: str) -> dict[str, object]:
+        declared: dict[str, object] = {
+            "id": name,
+            "kind": kind,
+            "selectors": [selector],
+            "source_paths": [source],
+            "covers": [source],
+            "contract": "The fixture contract holds.",
+            "risk_class": "fixture",
+            "oracle": "A direct call observes the fixture outcome.",
+            "admission": "Fixture estate.",
+            "nearest_overlap": "None in this fixture.",
+            "historical_evidence": [],
+            "mutation_evidence": [],
+            "tier": "changed",
+            "flake_rate": 0.0,
+            "replacement_lineage": [],
+        }
+        if kind == "pytest":
+            declared["size"] = "small"
+        return declared
+
+    floor = 4 if pruned else 0
+    manifest = {
+        "schema": governance.SCHEMA,
+        "baseline_report": "reports/baseline.json",
+        "audit_ledger": "reports/reset.jsonl",
+        "effectiveness_corpus": "tests/fixtures/corpus.yaml",
+        "effectiveness_report": "reports/effectiveness.jsonl",
+        "effectiveness_floors": {
+            "min_historical_recall": 0.8,
+            "min_mutant_recall": 0.8,
+            "min_historical_cases": floor,
+            "min_mutant_cases": floor,
+        },
+        "size_ceilings_seconds": {"small": 2, "medium": 20, "large": 200},
+        "time_budget": {"test_lane_seconds": 10, "tolerance": 0.25, "reference_machine": None},
+        "critical_risks": {
+            "custody": {"state": "applicable", "direct_proof": live[0]},
+            "deploy": {
+                "state": "not-applicable",
+                "rationale": "The fixture deploys nothing.",
+                "activation_trigger": "A deploy surface is added.",
+            },
+        },
+        "families": [
+            family("sample", "pytest", "tests/test_sample.py", "tests/test_sample.py"),
+            family(
+                "product",
+                "pytest",
+                "project/tests/test_product.py",
+                "project/tests/test_product.py",
+            ),
+            family("gates", "gate", "policy-sample", "bin/check"),
+            family("hooks", "hook", "hook:.githooks/pre-commit:*", ".githooks/pre-commit"),
+        ],
+    }
+    (root / "reports").mkdir()
+    (root / "tests/fixtures").mkdir(parents=True, exist_ok=True)
+    (root / "tests/proof-estate.yaml").write_text(json.dumps(manifest))
+    (root / "tests/fixtures/corpus.yaml").write_text(
+        json.dumps({"selection_frozen": True, "cases": cases})
+    )
+    (root / "reports/baseline.json").write_text(json.dumps(baseline))
+    for name, rows in (("reset.jsonl", ledger), ("effectiveness.jsonl", effectiveness)):
+        (root / "reports" / name).write_text("".join(json.dumps(item) + "\n" for item in rows))
+    return root
+
+
+@pytest.fixture(scope="module")
+def estate(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return _write_estate(tmp_path_factory.mktemp("estate"), pruned=True)
+
+
+def test_inventory_counts_executable_families_and_expanded_leaves(estate: Path) -> None:
+    observed = governance.inventory(estate)
+    assert observed["counts"] == {"families": 6, "leaves": 7}
+    assert observed["by_kind"]["pytest"] == {"families": 4, "leaves": 5}
+
+
+def test_live_reset_validates(estate: Path, tmp_path: Path) -> None:
+    assert governance.validate(REPO_ROOT)["state"] == "valid"
+    summary = governance.validate(estate)
+    assert summary["dispositions"] == {"retain": 7, "repair": 0, "consolidate": 1, "delete": 1}
+    assert (summary["admissions"], summary["post_reset_retirements"]) == (1, 1)
+    # A new repository keeps every proof it was given and has measured nothing yet.
+    fresh = governance.validate(_write_estate(tmp_path / "fresh", pruned=False))
+    assert fresh["state"] == "valid"
+    assert fresh["dispositions"] == {"retain": 7, "repair": 0, "consolidate": 0, "delete": 0}
+    assert fresh["recall_unmeasured"] == ["historical_defect", "holdout_mutant"]
 
 
 def test_size_ceilings_and_lane_budget_survive_timing_noise(
@@ -127,6 +335,7 @@ def test_size_ceilings_and_lane_budget_survive_timing_noise(
 
 
 def test_incomplete_disposition_evidence_fails_closed(
+    estate: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     original = governance.load_ledger
@@ -134,7 +343,7 @@ def test_incomplete_disposition_evidence_fails_closed(
 
     def malformed(path: Path):
         rows = original(path)
-        if path.name == "starter-reset.jsonl":
+        if path.name == "reset.jsonl":
             if mode[0] == "missing":
                 rows.pop(0)
             else:
@@ -143,19 +352,19 @@ def test_incomplete_disposition_evidence_fails_closed(
 
     monkeypatch.setattr(governance, "load_ledger", malformed)
     with pytest.raises(governance.GovernanceError, match="misses 1 baseline proofs"):
-        governance.validate(REPO_ROOT)
+        governance.validate(estate)
     mode[0] = "evidence"
     with pytest.raises(governance.GovernanceError, match="wrong disposition fields"):
-        governance.validate(REPO_ROOT)
+        governance.validate(estate)
 
 
-def test_shadow_deleted_proof_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_shadow_deleted_proof_fails_closed(estate: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     original = governance.load_ledger
     mode = ["delete"]
 
     def shadowed(path: Path):
         rows = original(path)
-        if path.name == "starter-reset.jsonl":
+        if path.name == "reset.jsonl":
             if mode[0] == "delete":
                 retained = next(row for row in rows if row["disposition"] == "retain")
                 retained["disposition"] = "delete"
@@ -167,22 +376,20 @@ def test_shadow_deleted_proof_fails_closed(monkeypatch: pytest.MonkeyPatch) -> N
 
     monkeypatch.setattr(governance, "load_ledger", shadowed)
     with pytest.raises(governance.GovernanceError, match="deleted proof still exists"):
-        governance.validate(REPO_ROOT)
+        governance.validate(estate)
     mode[0] = "replacement"
     with pytest.raises(governance.GovernanceError, match="invalid replacement"):
-        governance.validate(REPO_ROOT)
+        governance.validate(estate)
 
 
 def test_recall_is_a_dated_sweep_measurement(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    estate: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     rows = [
         json.loads(line)
-        for line in (REPO_ROOT / "reports/test-governance/starter-effectiveness.jsonl")
-        .read_text()
-        .splitlines()
+        for line in (estate / "reports/effectiveness.jsonl").read_text().splitlines()
     ]
-    assert governance.validate(REPO_ROOT)["recall_as_of"] == min(row["assayed_on"] for row in rows)
+    assert governance.validate(estate)["recall_as_of"] == min(row["assayed_on"] for row in rows)
 
     original_ledger = governance.load_ledger
     original_yaml = governance.load_yaml
@@ -192,7 +399,7 @@ def test_recall_is_a_dated_sweep_measurement(
 
     def undated(path: Path):
         loaded = original_ledger(path)
-        if path.name == "starter-effectiveness.jsonl":
+        if path.name == "effectiveness.jsonl":
             loaded[0]["assayed_on"] = "last week"
             loaded[1]["patch_sha256"] = stale_digest
         return loaded
@@ -207,13 +414,14 @@ def test_recall_is_a_dated_sweep_measurement(
     monkeypatch.setattr(governance, "load_ledger", undated)
     monkeypatch.setattr(governance, "load_yaml", stranded)
     with pytest.raises(governance.GovernanceError) as refused:
-        governance.validate(REPO_ROOT)
+        governance.validate(estate)
     # Only the undated row refuses; a patch the code has moved past waits for the next sweep.
     errors = [line for line in str(refused.value).splitlines() if line.startswith("- ")]
     assert len(errors) == 1 and errors[0].endswith("has no assay date"), errors
 
 
 def test_critical_risk_requires_a_retained_direct_proof(
+    estate: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     original = governance.load_yaml
@@ -226,10 +434,11 @@ def test_critical_risk_requires_a_retained_direct_proof(
 
     monkeypatch.setattr(governance, "load_yaml", missing)
     with pytest.raises(governance.GovernanceError, match="direct proof is not retained"):
-        governance.validate(REPO_ROOT)
+        governance.validate(estate)
 
 
 def test_recall_below_eighty_percent_fails_closed(
+    estate: Path,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -237,18 +446,18 @@ def test_recall_below_eighty_percent_fails_closed(
 
     def weakened(path: Path):
         rows = original(path)
-        if path.name == "starter-effectiveness.jsonl":
+        if path.name == "effectiveness.jsonl":
             for row in rows[:3]:
                 row["observed"] = False
         return rows
 
     monkeypatch.setattr(governance, "load_ledger", weakened)
     with pytest.raises(governance.GovernanceError, match="recall below floor"):
-        governance.validate(REPO_ROOT)
+        governance.validate(estate)
 
     monkeypatch.setattr(governance, "load_ledger", original)
-    _assert_corpus_floor_is_declared_not_constant(monkeypatch)
-    _assert_an_empty_declared_corpus_reports_unmeasured(monkeypatch)
+    _assert_corpus_floor_is_declared_not_constant(estate, monkeypatch)
+    _assert_an_empty_declared_corpus_reports_unmeasured(estate, monkeypatch)
     original_yaml = governance.load_yaml
 
     def drifted(path: Path):
@@ -259,7 +468,7 @@ def test_recall_below_eighty_percent_fails_closed(
 
     monkeypatch.setattr(governance, "load_yaml", drifted)
     with pytest.raises(governance.GovernanceError, match="patch digest drifted"):
-        governance.validate(REPO_ROOT)
+        governance.validate(estate)
 
     # A failure in an unmodified copy cannot count as mutation detection.
     fixture = tmp_path / "assay"
@@ -308,6 +517,7 @@ def test_recall_below_eighty_percent_fails_closed(
 
 
 def test_lifecycle_replay_repairs_and_frozen_selection(
+    estate: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     original = governance.load_yaml
@@ -320,7 +530,7 @@ def test_lifecycle_replay_repairs_and_frozen_selection(
 
     monkeypatch.setattr(governance, "load_yaml", unfrozen)
     with pytest.raises(governance.GovernanceError, match="selection must be frozen"):
-        governance.validate(REPO_ROOT)
+        governance.validate(estate)
 
     monkeypatch.setattr(governance, "load_yaml", original)
     original_ledger = governance.load_ledger
@@ -328,7 +538,7 @@ def test_lifecycle_replay_repairs_and_frozen_selection(
 
     def broken_lifecycle(path: Path):
         rows = original_ledger(path)
-        if path.name != "starter-reset.jsonl":
+        if path.name != "reset.jsonl":
             return rows
         retirements = [row for row in rows if row.get("record_type") == "proof_retirement"]
         if lifecycle_mode[0] == "twice":
@@ -337,16 +547,16 @@ def test_lifecycle_replay_repairs_and_frozen_selection(
 
     monkeypatch.setattr(governance, "load_ledger", broken_lifecycle)
     with pytest.raises(governance.GovernanceError, match="retired more than once"):
-        governance.validate(REPO_ROOT)
+        governance.validate(estate)
     lifecycle_mode[0] = "missing"
     with pytest.raises(governance.GovernanceError, match="does not match inventory"):
-        governance.validate(REPO_ROOT)
+        governance.validate(estate)
 
     repair_mode = ["active"]
 
     def repaired_lifecycle(path: Path):
         rows = original_ledger(path)
-        if path.name != "starter-reset.jsonl":
+        if path.name != "reset.jsonl":
             return rows
         retained = next(row for row in rows if row.get("disposition") == "retain")
         if repair_mode[0] == "reset":
@@ -359,14 +569,14 @@ def test_lifecycle_replay_repairs_and_frozen_selection(
         return [*rows, repair]
 
     monkeypatch.setattr(governance, "load_ledger", repaired_lifecycle)
-    summary = governance.validate(REPO_ROOT)
+    summary = governance.validate(estate)
     assert summary["post_reset_repairs"] == 1
     repair_mode[0] = "reset"
-    summary = governance.validate(REPO_ROOT)
+    summary = governance.validate(estate)
     assert summary["dispositions"]["repair"] == 1
     repair_mode[0] = "retired"
     with pytest.raises(governance.GovernanceError, match="repair target is not active"):
-        governance.validate(REPO_ROOT)
+        governance.validate(estate)
 
 
 def test_changed_selection_maps_documents_to_readers_and_widens_on_unmapped_code(
@@ -475,14 +685,14 @@ def test_changed_code_selects_the_families_of_files_that_use_it(tmp_path: Path) 
     assert ({item["id"] for item in chosen}, widened) == ({"vital", "helper", "user"}, None)
 
 
-def test_report_counts_the_frozen_baseline_and_current_estate() -> None:
-    payload = governance.report(REPO_ROOT)
-    assert payload["baseline"] == {"families": 541, "leaves": 690}
-    assert payload["current"] == governance.inventory(REPO_ROOT)["counts"]
+def test_report_counts_the_frozen_baseline_and_current_estate(estate: Path) -> None:
+    payload = governance.report(estate)
+    assert payload["baseline"] == {"families": 8, "leaves": 9}
+    assert payload["current"] == {"families": 6, "leaves": 7}
 
 
-def _manifest_with(limits: dict[str, object]) -> dict[str, object]:
-    manifest = copy.deepcopy(governance.load_yaml(REPO_ROOT / "tests/proof-estate.yaml"))
+def _manifest_with(estate: Path, limits: dict[str, object]) -> dict[str, object]:
+    manifest = copy.deepcopy(governance.load_yaml(estate / "tests/proof-estate.yaml"))
     manifest["effectiveness_floors"].update(limits)
     return manifest
 
@@ -500,25 +710,29 @@ def _patched_yaml(monkeypatch: pytest.MonkeyPatch, manifest, corpus=None) -> Non
     monkeypatch.setattr(governance, "load_yaml", patched)
 
 
-def _assert_corpus_floor_is_declared_not_constant(monkeypatch: pytest.MonkeyPatch) -> None:
+def _assert_corpus_floor_is_declared_not_constant(
+    estate: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A recipient declares its corpus floor; the estate must meet the number it declared."""
     with monkeypatch.context() as patch:
-        _patched_yaml(patch, _manifest_with({"min_mutant_cases": 13}))
+        _patched_yaml(patch, _manifest_with(estate, {"min_mutant_cases": 13}))
         with pytest.raises(governance.GovernanceError, match="below the declared floor of 13"):
-            governance.validate(REPO_ROOT)
+            governance.validate(estate)
     with monkeypatch.context() as patch:
-        _patched_yaml(patch, _manifest_with({"min_historical_cases": "twelve"}))
+        _patched_yaml(patch, _manifest_with(estate, {"min_historical_cases": "twelve"}))
         with pytest.raises(governance.GovernanceError, match="min_historical_cases must be"):
-            governance.validate(REPO_ROOT)
+            governance.validate(estate)
 
 
-def _assert_an_empty_declared_corpus_reports_unmeasured(monkeypatch: pytest.MonkeyPatch) -> None:
+def _assert_an_empty_declared_corpus_reports_unmeasured(
+    estate: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A freshly stamped recipient has no defect history; that reads as unmeasured, not as zero."""
     original_ledger = governance.load_ledger
     with monkeypatch.context() as patch:
         _patched_yaml(
             patch,
-            _manifest_with({"min_historical_cases": 0, "min_mutant_cases": 0}),
+            _manifest_with(estate, {"min_historical_cases": 0, "min_mutant_cases": 0}),
             corpus={"selection_frozen": True, "cases": []},
         )
 
@@ -528,7 +742,7 @@ def _assert_an_empty_declared_corpus_reports_unmeasured(monkeypatch: pytest.Monk
             return original_ledger(path)
 
         patch.setattr(governance, "load_ledger", empty_effectiveness)
-        summary = governance.validate(REPO_ROOT)
+        summary = governance.validate(estate)
     assert summary["state"] == "valid"
     assert summary["recall"] == {}
     assert summary["recall_unmeasured"] == ["historical_defect", "holdout_mutant"]

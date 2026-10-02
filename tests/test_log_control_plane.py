@@ -84,7 +84,21 @@ def test_append_prefix_chronology_and_bounded_repairs_preserve_bytes(
     subprocess.run(["git", "init", "-q", "-b", "master"], cwd=root, check=True)
     subprocess.run(["git", "config", "user.email", "fixture@example.invalid"], cwd=root, check=True)
     subprocess.run(["git", "config", "user.name", "Fixture"], cwd=root, check=True)
+    # No log has been committed yet, so the whole file is the appended part: before
+    # the first commit, and on history that never carried a log.
+    unborn = run(root, "check-log")
+    assert unborn.returncode == 0, unborn.stderr
+    assert f"appended_bytes={len((root / 'LOG.md').read_bytes())}" in unborn.stdout
+    subprocess.run(["git", "add", "plan"], cwd=root, check=True)
+    assert run(root, "check-log", "--staged").returncode == 1
+    subprocess.run(["git", "commit", "-qm", "seed"], cwd=root, check=True)
+    assert run(root, "check-log").returncode == 0
+    (root / ".git" / "HEAD").write_text("ref: refs/heads/absent\n")
+    dangling = run(root, "check-log")
+    assert dangling.returncode == 1 and "cannot resolve HEAD" in dangling.stderr
+    (root / ".git" / "HEAD").write_text("ref: refs/heads/master\n")
     subprocess.run(["git", "add", "."], cwd=root, check=True)
+    assert run(root, "check-log", "--staged").returncode == 0
     subprocess.run(["git", "commit", "-qm", "base"], cwd=root, check=True)
     committed = (root / "LOG.md").read_bytes()
 

@@ -658,7 +658,6 @@ def validate(root: Path) -> dict[str, Any]:
         errors.append("audit ledger contains duplicate proof admissions")
     if not current_ids - baseline_ids <= set(admission_ids):
         errors.append("audit ledger does not admit every active post-baseline proof")
-    dispositions_seen: set[str] = set()
     for row in disposition_rows:
         if set(row) != DISPOSITION_FIELDS:
             errors.append(f"wrong disposition fields for {row.get('proof_id')}")
@@ -666,7 +665,6 @@ def validate(root: Path) -> dict[str, Any]:
         if row.get("disposition") not in SELF_BOUND_DISPOSITIONS | {"delete", "consolidate"}:
             errors.append(f"invalid disposition for {row.get('proof_id')}")
             continue
-        dispositions_seen.add(str(row["disposition"]))
         for field in (
             "contract",
             "oracle",
@@ -689,8 +687,6 @@ def validate(root: Path) -> dict[str, Any]:
                 errors.append(f"consolidated proof has invalid replacement: {proof_id}")
         elif proof_id in current_ids or replacement is not None:
             errors.append(f"deleted proof still exists or names a replacement: {proof_id}")
-    if not {"delete", "consolidate"} <= dispositions_seen:
-        errors.append("reset must contain both delete and consolidate dispositions")
     initial_active = {
         str(row.get("proof_id"))
         for row in disposition_rows

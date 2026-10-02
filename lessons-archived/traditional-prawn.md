@@ -1,10 +1,12 @@
 ---
 slug: traditional-prawn
 title: The stamp denylist is kept by hand, so template-local content added later travels or dangles
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: test
 filed: 2026-10-01
+closed: 2026-10-01
+graduated_to: tests/test_methodology_toolchain_contract.py
 source: user
 occurrences:
   - date: 2026-10-01
@@ -24,3 +26,5 @@ Two of them broke something. `policies/role-models.md` is universal and links to
 Each was added to the template after the denylist was written, by a change that had no reason to open the stamp skill. The list is the only thing that knows which content is template-local, and nothing fails when it falls behind.
 
 What should be done differently: the classification of template-local content needs an executable witness. The cheapest candidate is a test that performs the skill's mechanical copy into a temporary directory and runs the destination's catalog check there, so a universal file that links to an excluded one fails in the template's own gate on the day the link is written. A declared inventory of template-local paths that the gate checks for completeness, the way `candidate-partition.yaml` is checked, would cover the silent cases the link check cannot see.
+
+Ratified 2026-10-01. The denylist names the four omissions, the universal role policy no longer links the brief that stays behind, and the governance report README holds only the contract, with the template's dated results moved beside it. The witness is `test_the_mechanical_copy_is_closed_over_links_and_fixtures`, which applies the skill's own surface list and denylist to the live tree and fails on a copied document linking a file that stays behind, a copied fixture no copied file uses, or dated history that would travel. It does not see template-local prose inside a universal file; that case still depends on the author.

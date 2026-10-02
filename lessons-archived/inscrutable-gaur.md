@@ -1,10 +1,11 @@
 ---
 slug: inscrutable-gaur
 title: The fresh-recipient fix to the proof-estate reset stopped at the clauses the first report named
-status: candidate
+status: superseded
 scope: methodology
 proposed_surface: policy
 filed: 2026-10-01
+closed: 2026-10-01
 source: user
 occurrences:
   - date: 2026-10-01
@@ -20,3 +21,5 @@ A stamp on 2026-10-01 got past those clauses and was refused at the next two. `l
 The earlier fix was correct and was scoped to the constants the first report quoted. Nobody asked what else in the validator and its tests assumes a repository that has already pruned an overgrown estate. This is the shape `rugged-gharial` describes for review findings, arriving through a codified lesson instead: the instance was repaired and the class was not enumerated.
 
 What should be done differently: when a contract is found unsatisfiable for one kind of recipient, the repair is not done until a recipient of that kind has been taken through the whole contract mechanically, here a stamp into a disposable directory followed by `test-governance validate` and the recipient's own test suite. For this contract specifically, a fresh recipient needs a legitimate empty reset, and the manager's test needs to prove the manager against fixtures it carries rather than against whichever estate happens to be at the root.
+
+Closed 2026-10-01 as superseded by `rugged-gharial`, with both occurrences carried onto it: the lesson is that one, arriving through a codified fix in a second project. The two defects themselves were corrected the same day. A reset that retains every baseline proof is now valid, and `tests/test_test_governance.py` proves the manager against an estate it builds for itself, so it copies verbatim.

@@ -868,6 +868,26 @@ def _assert_primary_routing_and_usage(tmp_path: Path) -> None:
         workflow.validate(bad_alias)
     with pytest.raises(workflow.WorkflowError, match="primary"):
         workflow.apply_usage(routed, config, scoped)
+    # A group that names the model it meters binds that model only; an unnamed one refuses.
+    reserve = copy.deepcopy(snapshot)
+    reserve["openai"]["additional_rate_limits"] = [
+        {
+            "metered_feature": "reserve",
+            "normal_model_slug": "another-model",
+            "windows": {"primary_window": {"utilization": 99, "window_seconds": 604800}},
+        }
+    ]
+    unmapped = workflow.target("sol", config)
+    shared = len(workflow.usage_windows(snapshot, unmapped))
+    assert len(workflow.usage_windows(reserve, unmapped)) == shared
+    reserve["openai"]["additional_rate_limits"][0]["normal_model_slug"] = unmapped["model"]
+    assert len(workflow.usage_windows(reserve, unmapped)) == shared + 1
+    del reserve["openai"]["additional_rate_limits"][0]["normal_model_slug"]
+    with pytest.raises(workflow.WorkflowError, match="ambiguous additional usage group reserve"):
+        workflow.usage_windows(reserve, unmapped)
+    reserve["openai"]["additional_rate_limits"][0]["normal_model_slug"] = ""
+    with pytest.raises(workflow.WorkflowError, match="malformed additional usage group"):
+        workflow.usage_windows(reserve, unmapped)
     # Production preflight refuses quota before any model-backed probe or receipt write.
     quota_config = tmp_path / "quota.yaml"
     quota_config.write_text(yaml.safe_dump(document))

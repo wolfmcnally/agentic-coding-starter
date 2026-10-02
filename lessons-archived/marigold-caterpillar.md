@@ -1,10 +1,12 @@
 ---
 slug: marigold-caterpillar
 title: Stamp's acceptance list contains items its own procedure makes unsatisfiable
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: skill
 filed: 2026-10-01
+closed: 2026-10-01
+graduated_to: .claude/skills/stamp/SKILL.md
 source: user
 occurrences:
   - date: 2026-10-01
@@ -26,3 +28,5 @@ Step 7 asks that staged, unstaged and nonignored untracked format failures each 
 In each case the agent reported the item as not met or as proved outside the suite, which is the honest outcome and also means the acceptance check cannot come back clean. A list that cannot be satisfied teaches its reader that unmet items are normal, and the next genuinely unmet item will look the same.
 
 What should be done differently: an acceptance list is checked against the procedure it accepts before it ships. For each item, either the procedure produces it, or a test in the copied suite proves it, or the item is reworded to what is actually true, here "no link to" rather than "no mention of". Kin to `magenta-ferret`, where a policy's own verification block escaped the rules the corpus states.
+
+Ratified 2026-10-01. The three items are now satisfiable: `stamp` no longer resets a copied configuration, since the reset changed no value and removed the comments; the anonymization item asks for no links and no mention in the files the skill adapts, which is what is true; and `tests/test_check.py` carries a format-failure proof that runs the real formatter, for every destination to inherit. The general rule, that an acceptance list is checked against the procedure it accepts before it ships, is not written into a policy; it was applied here by hand.

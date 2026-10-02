@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import os
 import re
 import runpy
 import shutil
@@ -335,6 +336,143 @@ def _assert_transfer_exclusions(destination: Path) -> None:
         if line.startswith("|")
     ]
     assert len(rows) == 2, "template catalog rows"
+
+
+def _stamp_copy_rule() -> tuple[list[str], list[str]]:
+    """The surfaces `stamp` copies and the entries it leaves behind, read from the skill."""
+    stamp = (REPO_ROOT / ".claude/skills/stamp/SKILL.md").read_text()
+    surface_text = stamp.split("**Universal surfaces — copy the whole directory:**", 1)[1]
+    surface_text = surface_text.split("**Starter-only", 1)[0]
+    surfaces = [
+        token
+        for line in surface_text.splitlines()
+        if line.startswith("- ")
+        for token in re.findall(r"`([^`]+)`", line.split(" — ", 1)[0])
+    ]
+    table = stamp.split("**Starter-only — leave behind:**", 1)[1].split("Everything else", 1)[0]
+    exclusions: list[str] = []
+    for line in table.splitlines():
+        cells = line.split("|")
+        if len(cells) < 3 or set(cells[1].strip()) <= {"-"} or cells[1].strip() == "Entry":
+            continue
+        for token in re.findall(r"`([^`]+)`", re.sub(r"\([^)]*\)", "", cells[1])):
+            braces = re.fullmatch(r"(.*)\{([^}]+)\}(.*)", token)
+            exclusions += (
+                [braces[1] + option + braces[3] for option in braces[2].split(",")]
+                if braces
+                else [token]
+            )
+    return surfaces, exclusions
+
+
+def _specificity(path: str, entries: list[str]) -> int:
+    """Length of the longest entry naming this path: a file exactly, or a directory above it."""
+    lengths = [
+        len(entry)
+        for entry in entries
+        if path == entry or path.startswith(entry if entry.endswith("/") else entry + "/")
+    ]
+    return max(lengths, default=0)
+
+
+def test_the_mechanical_copy_is_closed_over_links_and_fixtures() -> None:
+    """Whatever `stamp` copies must not depend on what it leaves behind.
+
+    The denylist is kept by hand, and content is added to the template by changes
+    that never open the skill. This performs the skill's own copy rule over the
+    live tree and refuses the three ways such an addition has reached a stamped
+    project: a copied document linking a file that stayed behind, a copied fixture
+    no copied file uses, and the template's own dated history.
+    """
+    surfaces, exclusions = _stamp_copy_rule()
+    assert {"policies/", "tests/", "reports/test-governance/README.md"} <= set(surfaces)
+    assert {".claude/skills/stamp/", "briefs/astra-era-development.md"} <= set(exclusions)
+    listed = subprocess.run(
+        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        check=True,
+    ).stdout.decode()
+    tracked = [path for path in listed.split("\0") if path and (REPO_ROOT / path).exists()]
+    travelling = {
+        path for path in tracked if _specificity(path, surfaces) > _specificity(path, exclusions)
+    }
+    assert "policies/role-models.md" in travelling
+    assert ".claude/skills/stamp/SKILL.md" not in travelling
+    assert "reports/test-governance/README.md" in travelling
+    assert "reports/test-governance/starter-reset.jsonl" not in travelling
+
+    # Authored or generated in the destination, so a link to them resolves there.
+    fresh = [
+        "CLAUDE.md",
+        "AGENTS.md",
+        "README.md",
+        "LOG.md",
+        "plan/",
+        "project/",
+        "briefs/BRIEF.md",
+        "lessons/",
+        "lessons-archived/",
+        "user-actions/",
+        "user-actions-archived/",
+        ".agents/skills/",
+        "tests/proof-estate.yaml",
+        "reports/test-governance/",
+    ]
+    # The skill deletes the starter-only passages of these files after copying them.
+    adapted = {"bin/README.md", ".claude/agents/code-critic.md", "docs/README.md"}
+    stamp = (REPO_ROOT / ".claude/skills/stamp/SKILL.md").read_text()
+    assert all(f"`{name}`" in stamp for name in adapted)
+    directories = {str(parent) for path in travelling for parent in Path(path).parents}
+
+    def dangling(source: str, text: str) -> list[str]:
+        prose = re.sub(r"(?ms)^ {0,3}(`{3,}|~{3,}).*?^ {0,3}\1[^\n]*$", "", text)
+        prose = re.sub(r"`[^`\n]*`", "", prose)
+        found = []
+        for destination in re.findall(r"\]\(([^)\s]+)\)", prose):
+            target = destination.split("#", 1)[0]
+            if not target or re.match(r"[A-Za-z][A-Za-z0-9+.-]*:", target) or "<" in target:
+                continue
+            resolved = os.path.normpath(os.path.join(os.path.dirname(source), target))
+            if resolved.startswith(".."):
+                continue
+            arrives = (
+                resolved in travelling
+                or resolved in directories
+                or _specificity(resolved, fresh) > 0
+                or resolved + "/" in fresh
+            )
+            if not arrives:
+                found.append(f"{source} -> {resolved}")
+        return found
+
+    broken = [
+        item
+        for path in sorted(travelling - adapted)
+        if path.endswith(".md")
+        for item in dangling(path, (REPO_ROOT / path).read_text())
+    ]
+    assert not broken, "copied documents link files the stamp leaves behind: " + "; ".join(broken)
+    control = dangling("policies/x.md", "See [the brief](../briefs/astra-era-development.md#a).")
+    assert control == ["policies/x.md -> briefs/astra-era-development.md"]
+
+    users = [
+        (REPO_ROOT / path).read_text(errors="replace")
+        for path in travelling
+        if not path.startswith(("tests/fixtures/", "reports/"))
+    ]
+    fixtures = sorted(
+        {path.split("/")[2] for path in travelling if path.startswith("tests/fixtures/")}
+    )
+    assert "astra_evaluation" not in fixtures and "execution_telemetry" in fixtures
+    unused = [name for name in fixtures if not any(name in text for text in users)]
+    assert not unused, f"copied fixtures no copied file uses: {unused}"
+
+    dated = sorted(path for path in travelling if re.search(r"/\d{4}-\d{2}-\d{2}/", path))
+    assert not dated, f"the template's dated history would travel: {dated[:3]}"
+    assert "EXECUTION_LOG.jsonl" not in travelling
+    contract = (REPO_ROOT / "reports/test-governance/README.md").read_text()
+    assert not re.search(r"\b20\d\d-\d\d-\d\d\b", contract), "the report contract carries results"
 
 
 def test_every_gate_required_executable_propagates() -> None:

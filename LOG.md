@@ -2246,3 +2246,54 @@ The ruling recorded in the scope just above: a survey covers the code under acti
 **Remaining for the operator.** The skill has still never applied a change to real code, run with its default scope, or run inside a phase. A survey has no bound on its size or on delegation; the operator was offered one and did not take it up.
 
 Lessons: `brilliant-polecat` filed, methodology scope — a scope no evaluation run exercised is unverified, however well the others scored. Independent review is not applicable because this is primary one-shot methodology work. The one full gate follows this record.
+
+## 2026-10-01 19:30 — METHODOLOGY SCOPE
+
+One operator instruction, given in session on 2026-10-01 before any implementation: settle the open question in the evaluation of the six lessons a stamp filed that day, then apply the evaluation's recommendations.
+
+**Question settled.** Whether an additional named usage group counts against a review target. The group reported on this account is a fallback allowance that can only be spent on one named model after regular usage is exhausted; the usage tool reports that model's slug on the group, and the provider's help article says the same. It therefore applies to a target only when the target is that model. Retrieved 2026-10-01.
+
+**Authorized outcome.**
+
+1. `axiomatic-goshawk`: the log check treats a repository with no commit as having an empty committed log, and still refuses a failed read where a commit exists.
+2. `infrared-anaconda`: `stamp` says how to read the last policy gate and the required executables from `bin/check` instead of quoting them.
+3. `marigold-caterpillar`: `stamp` no longer resets a copied configuration, its acceptance item about the template-only anonymization members says links, and the template gains the format-failure test it asks every destination to have.
+4. `traditional-prawn`: the denylist names the template-local content the stamp found, the universal role policy stops linking a brief that does not transfer, and the template's own gate performs the mechanical copy and checks that it is closed over links and fixtures.
+5. `inscrutable-gaur`: a reset in which every baseline proof is retained is valid, and the governance manager's test proves the manager against an estate it carries, so it copies verbatim. The process observation is recorded on `rugged-gharial`.
+6. `overjoyed-angelfish`: a usage group that names the model it meters is applied to that model and to no other; a group that names none still refuses.
+
+Surfaces: `bin/check-log-prefix`, `lib/agentic_starter/workflow.py`, `lib/agentic_starter/test_governance.py`, their tests, `tests/test_check.py`, `tests/test_methodology_toolchain_contract.py`, `.claude/skills/stamp/SKILL.md`, `briefs/agentic-bootstrap.md`, `policies/role-models.md`, `policies/test-suite-governance.md`, the proof estate where a test moves, and the six lessons.
+
+**Exclusions.** No derived repository is modified or named; their hand-added usage mappings are left for a later `teach`. No account-level configuration home is created. The stamp is not turned into a script.
+
+## 2026-10-01 19:46 — METHODOLOGY — six stamp lessons applied
+
+The instruction recorded in the scope just above: settle the open question, then apply the evaluation of the six lessons a stamp filed on 2026-10-01.
+
+**Question settled.** The additional usage group that made a freshly seeded configuration refuse preflight is a fallback allowance that can be spent only on one named model, after regular usage is exhausted. The usage tool reports that model's slug on the group and the provider's help article describes it the same way (retrieved 2026-10-01). It does not meter the shipped review targets, so it never applied to them.
+
+**What changed.**
+
+- `bin/check-log-prefix` reads a repository with no commit, or with history that never carried a log, as an empty committed prefix, and still refuses when a commit exists and the read fails. Before this the full gate could not pass ahead of a new repository's first commit.
+- `lib/agentic_starter/workflow.py` applies a usage group that names the model it meters to a target of that model and to no other. A group that names no model still refuses. `policies/role-models.md` states the rule.
+- `lib/agentic_starter/test_governance.py` no longer demands that a reset contain both a deleted and a consolidated proof, so a recipient that keeps every inherited proof has a valid reset. `policies/test-suite-governance.md` says so.
+- `tests/test_test_governance.py` builds a small estate of its own and proves the manager against it, so the file copies into any repository unchanged. It keeps one check that the live estate validates.
+- `tests/test_check.py` gains a proof that the format gate rejects an unformatted file whether staged, unstaged or untracked, and does not rewrite it. It runs the real formatter.
+- `tests/test_methodology_toolchain_contract.py` gains a proof that applies the stamp's own surface list and denylist to the live tree and fails on a copied document linking a file that stays behind, a copied fixture no copied file uses, or dated history that would travel.
+- `.claude/skills/stamp/SKILL.md` and `briefs/agentic-bootstrap.md`: the last policy gate and the required executables are read from `bin/check` instead of quoted; a copied `kickoff.yaml` is no longer reset, because the reset changed no value and removed thirteen comment lines; the anonymization acceptance item asks for no links, and no mention only in the files the skill adapts; the denylist names the evaluation fixture, the dated execution reports, the root execution ledger and every governance report but the README; an empty reset is stated as valid.
+- `policies/role-models.md` no longer links the template-only brief. `reports/test-governance/README.md` holds only the contract; the template's dated results moved to `reports/test-governance/starter-history.md`.
+
+**Ledger.** `axiomatic-goshawk`, `infrared-anaconda`, `marigold-caterpillar`, `traditional-prawn` and `overjoyed-angelfish` are archived as codified, each with the surface it landed on. `infrared-anaconda` gained a second occurrence found during the evaluation: the skill listed fourteen required executables against the gate's twenty-three. `inscrutable-gaur` is archived as superseded by `rugged-gharial`, which now carries its two occurrences. Two proof admissions were appended to the reset ledger.
+
+**Scope departures.** One, small: the bootstrap brief's quoted list of required executables was replaced with the same read-it-from-the-file instruction as the skill's, because it had the same defect and was one entry short. Nothing else left the recorded surfaces.
+
+**Primary self-check.** Each fix was witnessed failing against the old code before it was accepted: the log check on a fresh repository, the fresh-estate reset against the old validator, the format proof with a target removed from the gate, and the copy proof with the policy link restored and again with the fixture's denylist row removed. The new usage rule was run against the live usage reading and returned only the shared window for both shipped review targets. Lint, format, the catalog, anonymization, partition and parity checks, estate validation and the changed-path selection, which widened to the full suite, all passed before this record.
+
+**Remaining for the operator.**
+
+- Derived repositories carry hand-added usage mappings that this change makes unnecessary. Some of them count the fallback group against a target it does not meter; the others exclude it by an explicit mapping, which also silences the refusal for any group added later. Neither was touched. A `teach` pass can remove both kinds.
+- The bootstrap still does not run the preflight, so a stamp cannot show that a first `kickoff` will start.
+- `rugged-gharial` now stands at five occurrences across two projects. It was held on 2026-09-29 until it recurred in a different project, which it has.
+- `stamp` was corrected but not run. The next real stamp is the test of whether its acceptance list comes back clean.
+
+Lessons: `placid-bandicoot` filed, methodology scope — the format gate's claim to skip ignored files rests on formatter behavior that varied from run to run. Independent review is not applicable because this is primary one-shot methodology work. The one full gate follows this record.

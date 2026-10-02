@@ -13,6 +13,10 @@ occurrences:
     ref: "Donor A — a separate run: one finding regrew four times as the reviewer named one site after another"
   - date: 2026-08-12
     ref: "Donor A — the same separate run: a second, independent finding regrew the same way, site by site"
+  - date: 2026-10-01
+    ref: "carried from inscrutable-gaur — a stamp of a Python command-line target: a codified fix made two constants recipient-declared, and the same validator still refused any reset without one deleted and one consolidated proof, which a recipient that keeps every inherited proof cannot supply"
+  - date: 2026-10-01
+    ref: "carried from inscrutable-gaur — the same stamp: the same fix left the manager's own test on the copy-verbatim list while that test asserted the template's inventory totals, so it failed in any other repository"
 ---
 
 The finding said one thing throughout: a fail-closed probe must distinguish "I

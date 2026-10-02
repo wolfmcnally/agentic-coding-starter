@@ -1,10 +1,12 @@
 ---
 slug: axiomatic-goshawk
 title: A policy gate that reads the committed log cannot pass before the first commit
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: bin
 filed: 2026-10-01
+closed: 2026-10-01
+graduated_to: bin/check-log-prefix
 source: user
 occurrences:
   - date: 2026-10-01
@@ -18,3 +20,5 @@ The stamp skill orders the initial commit in Step 6 and the full gate in Step 7,
 The refusal is the right behavior for a repository with history: an unreadable committed log must not read as an empty one. It is the wrong behavior for the one state where no committed log can exist. The check cannot currently tell "there is no HEAD" from "HEAD exists and the log could not be read".
 
 What should be done differently: the check should distinguish an unborn branch from a failed read, and treat the first as an empty committed prefix. More generally, a gate that compares against committed state needs a defined answer for the state before any commit, and the bootstrap's acceptance should exercise the gate in that state at least once.
+
+Ratified 2026-10-01, on one occurrence at the operator's discretion: this is a defect, and waiting for it to recur buys nothing. The log check now reads a repository with no commit, or with history that never carried a log, as an empty committed prefix, and still refuses when a commit exists and the read fails. `tests/test_log_control_plane.py` exercises the gate in each of those states.

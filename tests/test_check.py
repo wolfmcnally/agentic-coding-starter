@@ -57,6 +57,15 @@ printf 'uv cwd=%s args=%s\\n' "$PWD" "$*" >> "$CHECK_TEST_LOG"
 if [[ -n "${CHECK_TEST_FAIL_MATCH:-}" && "$*" == *"$CHECK_TEST_FAIL_MATCH"* ]]; then
   exit "${CHECK_TEST_FAIL_CODE:-23}"
 fi
+if [[ -n "${CHECK_TEST_REAL_RUFF:-}" && "$*" == *"ruff format --check"* ]]; then
+  # Run the real formatter over the directories the gate names; the fixture's
+  # single-file targets are shell stubs.
+  targets=()
+  for argument in "$@"; do
+    [[ -d "$argument" ]] && targets+=("$argument")
+  done
+  exec "$CHECK_TEST_REAL_RUFF" format --check "${targets[@]}"
+fi
 if [[ "$*" == python\\ find\\ --no-project\\ * ]]; then
   printf '%s\\n' "${@: -1}"
 elif [[ "$*" == "python dir" ]]; then
@@ -255,6 +264,50 @@ def test_all_policy_failure_cannot_be_masked_by_later_policy_output(
     assert "CHECK policy-anonymization FAIL (exit 41)" in result.stdout
     assert "CHECK policy PASS" not in result.stdout
     assert "CHECK ALL PASS" not in result.stdout
+
+
+def test_format_rejects_staged_unstaged_and_untracked_candidates_without_rewriting(
+    check_repo: tuple[Path, dict[str, str]],
+) -> None:
+    root, environment = check_repo
+    ruff = shutil.which("ruff")
+    assert ruff is not None
+    environment["CHECK_TEST_REAL_RUFF"] = ruff
+    clean, unformatted = "value = 1\n", "value=1\n"
+
+    def git(*arguments: str) -> None:
+        subprocess.run(["git", *arguments], cwd=root, check=True, capture_output=True)
+
+    (root / "lib").mkdir()
+    (root / ".gitignore").write_text(".kickoff/\n")
+    (root / "lib" / "tracked.py").write_text(clean)
+    git("init", "-q")
+    git("config", "user.email", "fixture@example.invalid")
+    git("config", "user.name", "Fixture")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    # The formatter really runs, and a clean tree passes.
+    passed = _run(root, environment, "format")
+    assert passed.returncode == 0, passed.stderr
+    assert "CHECK format PASS" in passed.stdout
+
+    def rejected(path: Path) -> None:
+        result = _run(root, environment, "format")
+        assert result.returncode == 1, result.stdout + result.stderr
+        assert "CHECK format FAIL (exit 1)" in result.stderr
+        assert path.name in result.stdout + result.stderr
+        assert path.read_text() == unformatted
+
+    untracked = root / "lib" / "untracked.py"
+    untracked.write_text(unformatted)
+    rejected(untracked)
+    git("add", "lib/untracked.py")
+    rejected(untracked)
+    git("commit", "-qm", "staged")
+    untracked.write_text(clean)
+    git("commit", "-qam", "clean")
+    (root / "lib" / "tracked.py").write_text(unformatted)
+    rejected(root / "lib" / "tracked.py")
 
 
 @pytest.mark.parametrize(

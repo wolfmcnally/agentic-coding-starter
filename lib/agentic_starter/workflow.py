@@ -277,8 +277,14 @@ def usage_windows(
         name = group.get("metered_feature") or group.get("name")
         if not isinstance(name, str) or not name:
             raise WorkflowError("additional usage group has no identity")
-        matches = name in {deployment["selector"], deployment["model"]}
-        if not selectors and not matches:
+        # A group that names the model it meters applies to that model and to no other.
+        metered = group.get("normal_model_slug")
+        if metered is not None and (not isinstance(metered, str) or not metered):
+            raise WorkflowError("malformed additional usage group")
+        matches = name in {deployment["selector"], deployment["model"]} or (
+            metered == deployment["model"]
+        )
+        if not selectors and not matches and metered is None:
             raise WorkflowError(f"ambiguous additional usage group {name}; configure usage_windows")
         for key, window in group["windows"].items():
             combined = name + "/" + key
