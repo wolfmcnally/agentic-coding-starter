@@ -42,6 +42,15 @@ ROLE_LABELS = {
     "coder": "Implementation",
     "critic": "Code Review",
 }
+# A stage whose work the orchestrating primary did itself. A trace with no
+# planner (or coder) role span has no separate span for that work: the stage
+# span is the work, and the report attributes it to the role's activity.
+# A delegated trace always carries the role span, even for a dispatch that
+# was rejected, so its stage time stays coordination.
+INLINE_STAGE_ROLES = {
+    "orchestration.planning": "planner",
+    "orchestration.implementation": "coder",
+}
 SAFE_SPAN_FIELDS = (
     "trace_id",
     "span_id",
@@ -360,8 +369,18 @@ def _dashboard_view(
         root_interval = (origin, origin + root["duration_ns"])
         roots.append(root_interval)
         root_ids.add(root["span_id"])
+        delegated_roles = {
+            raw.get("role") for raw in bundle["spans"] if raw["category"] == "intelligence"
+        }
         for raw in bundle["spans"]:
             safe = {key: raw[key] for key in SAFE_SPAN_FIELDS if key in raw}
+            inline_role = (
+                INLINE_STAGE_ROLES.get(raw["operation"])
+                if raw["category"] == "reconciliation"
+                else None
+            )
+            if inline_role is not None and inline_role not in delegated_roles:
+                safe["inline_role"] = inline_role
             start = origin + raw["start_offset_ns"]
             end = origin + raw["end_offset_ns"]
             interval_by_id[raw["span_id"]] = (start, end)

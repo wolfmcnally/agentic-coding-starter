@@ -237,7 +237,8 @@ families:
   admission: Reporting changes retain their full fixture matrix.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
   historical_evidence: []
-  mutation_evidence: []
+  mutation_evidence:
+  - every stage marked inline regardless of delegated role spans
   tier: changed
   size: small
   flake_rate: 0.0

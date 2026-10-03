@@ -2325,3 +2325,17 @@ The rulings recorded in the scope just above.
 **Remaining for the operator.** The rule is in the policy only; no role definition or kickoff resource was changed to prompt it, so it binds through the policy being read. The teaching passes of ruling 3 follow this record and are recorded in each recipient's own log.
 
 Lessons: none. Independent review is not applicable because this is primary one-shot methodology work. The one full gate follows this record.
+
+## 2026-10-03 11:22 — LEARN
+
+Donor: Donor A @ <sha withheld>. Narrowed by the operator's request: the fix for phase time accounting and reporting. Items absorbed: 1, by tier T1=1/T2=0/T3=0/T4=0. Donor lessons harvested: 2 (1 absorbed as a rule change; 1 filed to lessons/). Application-found return candidates: 0. Stale-in-light-of-learning migrations: 0 (AUTO); 0 DECIDE; 0 DEFER. Files touched: 9.
+
+**What was absorbed.** In primary mode the primary plans and codes inside the planning and implementation stages and registers no planner or coder role, so the phase report showed most of a primary-mode phase as orchestration or unmeasured time. `lib/agentic_starter/execution_dashboard.py` now marks a planning or implementation stage as that role's inline work when its trace has no matching role span; `reports/execution/assets/dashboard-v4.js` labels that time Planning or Implementation and keeps every stage row, so the breakdown sums to the recorded execution; `policies/execution-telemetry.md` states the rule. The defect reproduced here by construction: all four files were byte-identical to the donor's before its fix, and the donor has not changed them since. One proof was admitted, `tests/test_execution_dashboard.py::test_inline_planning_and_coding_are_attributed_to_their_activities`, with its red witness run here. The archived phase report did not need regenerating: its trace carries delegated role spans, and the dashboard check passed unchanged.
+
+**Donor lesson filed.** `talkative-magpie`, methodology scope: a per-test time ceiling fails the full gate when other work loads the machine. It carries the donor's sighting and one from this template's own teaching pass two days earlier, where two full gates scheduled at once produced the same failure. The donor's lesson on the report defect landed as the rule change above and is not filed.
+
+**Skipped.** The donor's other open methodology lessons, outside the requested scope.
+
+**Remaining for the operator.** Judging whether the relabelled breakdown reads correctly on a real primary-mode phase; the template has none in its archive.
+
+Lessons: `talkative-magpie` filed. Independent review is not applicable because this is primary one-shot methodology work. The one full gate follows this record.

@@ -158,7 +158,13 @@ answers:
 - what phase is next and what the operator should do.
 
 Default labels are Planning, Plan Review, Implementation, Code Review,
-Automated Checks, Awaiting User Input, and Orchestration / Unmeasured. Operator
+Automated Checks, Awaiting User Input, and Orchestration / Unmeasured. Work the
+primary does inline carries the same labels as delegated work: when a trace has
+no planner or coder role span, the exclusive time of its planning or
+implementation stage is Planning or Implementation, because the stage is the
+work. Stage time around a delegated role is coordination and is shown as such.
+The activity breakdown accounts for the whole recorded execution; no measured
+stage is dropped from it. Operator
 parks remain separate from both work and unmeasured orchestration. Charts use readable minutes;
 machine payloads and exact tables retain nanoseconds. Root wrappers, internal
 ids, model names, harness names, and wait mirrors stay out of the default

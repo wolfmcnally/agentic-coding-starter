@@ -171,3 +171,65 @@ def test_handoff_schema_rejects_private_or_malformed_content(mutation: Any, matc
     mutation(value)
     with pytest.raises(telemetry.ValidationError, match=match):
         dashboard.validate_handoff(value, phase_id="31.2")
+
+
+def with_stages(bundle: dict[str, Any], *, drop_roles: tuple[str, ...]) -> dict[str, Any]:
+    """Add planning and implementation stage spans; optionally remove delegated roles."""
+    staged = copy.deepcopy(bundle)
+    root = next(span for span in staged["spans"] if span["parent_span_id"] is None)
+    staged["spans"] = [span for span in staged["spans"] if span.get("role") not in drop_roles]
+    for index, (operation, start, end) in enumerate(
+        (("orchestration.planning", 0, 400), ("orchestration.implementation", 400, 900)),
+        start=0xA0,
+    ):
+        stage = copy.deepcopy(root)
+        stage.update(
+            span_id=f"100000000000400080000000000000{index:02x}",
+            parent_span_id=root["span_id"],
+            category="reconciliation",
+            operation=operation,
+            start_offset_ns=start,
+            end_offset_ns=end,
+            duration_ns=end - start,
+        )
+        staged["spans"].append(stage)
+    staged["spans"].sort(key=lambda span: (span["start_offset_ns"], span["span_id"]))
+    return telemetry.validate_bundle(staged)
+
+
+def inline_roles(bundle: dict[str, Any]) -> dict[str, str | None]:
+    payload = dashboard.build_phase_payload(
+        [bundle],
+        phase_id="31.2",
+        accepted_trace_id=bundle["trace_id"],
+        handoff=sample_handoff(),
+    )
+    views = [payload["phase_view"], *payload["traces"]]
+    found = [
+        {
+            span["operation"]: span.get("inline_role")
+            for span in view["spans"]
+            if span["category"] == "reconciliation"
+        }
+        for view in views
+    ]
+    assert len(found) == 2 and found[0] == found[1]
+    return found[0]
+
+
+def test_inline_planning_and_coding_are_attributed_to_their_activities() -> None:
+    delegated = with_stages(kickoff_bundle(), drop_roles=())
+    assert inline_roles(delegated) == {
+        "orchestration.planning": None,
+        "orchestration.implementation": None,
+    }
+    primary = with_stages(kickoff_bundle(), drop_roles=("planner", "coder"))
+    assert inline_roles(primary) == {
+        "orchestration.planning": "planner",
+        "orchestration.implementation": "coder",
+    }
+    coder_only = with_stages(kickoff_bundle(), drop_roles=("planner",))
+    assert inline_roles(coder_only) == {
+        "orchestration.planning": "planner",
+        "orchestration.implementation": None,
+    }

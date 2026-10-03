@@ -171,6 +171,8 @@
     if (span.category === "intelligence") return roleActivityKeys[span.role] || "agent_work";
     if (span.category === "gate") return "automated_checks";
     if (span.category === "reconciliation") {
+      // A stage the primary worked inline is that role's activity, not coordination.
+      if (span.inline_role) return roleActivityKeys[span.inline_role];
       const stage = {
         "orchestration.setup": "orchestration_setup",
         "orchestration.planning": "orchestration_planning",
@@ -192,8 +194,13 @@
     return titleCase(span.operation);
   }
 
-  function isOrchestrationStage(span) {
+  function isStageSpan(span) {
     return span.category === "reconciliation" && span.operation.startsWith("orchestration.");
+  }
+
+  // Coordination only: an inline-worked stage is a material activity in its own right.
+  function isOrchestrationStage(span) {
+    return isStageSpan(span) && !span.inline_role;
   }
 
   function attributionSpans(view) {
@@ -248,14 +255,15 @@
       if (end <= start || !roots.some((root) => root.start_offset_ns <= start && root.end_offset_ns >= end)) continue;
       const active = meaningful
         .filter((span) => span.start_offset_ns <= start && span.end_offset_ns >= end);
+      // A stage, inline-worked or not, yields to any narrower activity inside it.
       const specificKeys = new Set(
         active
-          .filter((span) => !isOrchestrationStage(span))
+          .filter((span) => !isStageSpan(span))
           .map(activityKey)
       );
       const stageKeys = new Set(
         active
-          .filter(isOrchestrationStage)
+          .filter(isStageSpan)
           .map(activityKey)
       );
       const keys = specificKeys.size ? specificKeys : stageKeys;
@@ -269,6 +277,8 @@
     const order = [
       "planning", "plan_review", "implementation", "code_review",
       "automated_checks", "integration", "parallel_work", "agent_work",
+      "orchestration_setup", "orchestration_planning", "orchestration_implementation",
+      "orchestration_acceptance", "orchestration_close",
       "orchestration_unmeasured"
     ];
     return order
@@ -735,7 +745,7 @@
       }
       content.append(el("section", {class: "cards", "aria-label": "Outcome summary"}, summaryCards), renderHandoff());
       const grid = el("div", {class: "grid"});
-      const activity = panel("Where the Build Time Went", "Mutually exclusive elapsed time for the four agent activities, automated checks, integration, and genuine measurement gaps. Wait mirrors are deliberately excluded.", true);
+      const activity = panel("Where the Build Time Went", "Mutually exclusive elapsed time for the four agent activities, automated checks, stage coordination, and genuine measurement gaps; the rows sum to the recorded execution. Work the primary did inline counts as Planning or Implementation. Wait mirrors are deliberately excluded.", true);
       renderActivityBreakdown(active, activity);
       const slow = panel("Longest Activities", "The individual agent passes and automated checks most likely to contain an actionable bottleneck.");
       renderSlowest(active, slow);
