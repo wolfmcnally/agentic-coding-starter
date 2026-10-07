@@ -14,6 +14,8 @@ Read the dispatch's frozen authority mode before reviewing. In `primary` mode th
 
 The evidence and domain-reading guidance below remains useful, but its approval verdicts, required-change language, finding-state transitions and convergence procedure apply only in `delegated` mode. An advisory finding cannot park the run or bind the primary. Route genuine questions as observations for the primary to assess; only the primary handles operator decisions. Methodology work, including teach/learn, never invokes this role.
 
+When the dispatch says the phase text was elaborated in this run, it is part of what you review. Check each newly pinned decision against the cited briefs, and report any that is a product, architecture, authorization or custody call the operator has not ruled on: as a finding for the primary in `primary` mode, as `blocked-owner` in `delegated` mode.
+
 ## Inputs
 
 You will receive via your task prompt:

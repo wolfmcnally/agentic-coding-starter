@@ -96,10 +96,8 @@ def main() -> int:
         if args.require_terminal_lessons:
             old = log_blocks.parse(before.decode("utf-8"))
             new = log_blocks.parse(after.decode("utf-8"))
-            for block in new.blocks[len(old.blocks) :]:
-                terminal = "— END" in block.header or "— PARK" in block.header
-                if terminal and not any(line.strip() == "Lessons:" for line in block.body):
-                    raise PrefixError(f"terminal block lacks Lessons: witness: {block.header}")
+            for header in log_blocks.terminal_blocks_missing_lessons(new.blocks[len(old.blocks) :]):
+                raise PrefixError(f"terminal block lacks Lessons: witness: {header}")
         if not args.quiet:
             source = "staged" if args.staged else "working"
             print(f"LOG-PREFIX OK ({source}; appended_bytes={len(after) - len(before)})")

@@ -162,7 +162,9 @@ def open_role_dispatch(
     return run(*arguments)
 
 
-def write_fixture_receipt(receipt: Path, *, mode: str = "delegated") -> None:
+def write_fixture_receipt(
+    receipt: Path, *, mode: str = "delegated", executable: Path | None = None
+) -> None:
     document = yaml.safe_load((ROOT / "tests/fixtures/kickoff_config_seed.yaml").read_text())
     document["role_models"] = {"default": {role: {"model": "default"} for role in workflow.ROLES}}
     document["workflow"]["mode"] = mode
@@ -180,6 +182,8 @@ def write_fixture_receipt(receipt: Path, *, mode: str = "delegated") -> None:
                 "write_enabled": False,
                 "roles": [role],
                 "probe_sha256": "a" * 64,
+                "executable": str(executable or "/nonexistent/claude"),
+                "version": "stub 1.0" if executable else None,
             }
             for role in ("critic", "reviewer")
         ]
@@ -825,9 +829,9 @@ def _assert_failed_close_is_truthful_terminal_and_idempotent(
     }
     failure_path = tmp_path / "failed-close.json"
     failure_path.write_text(json.dumps(failure) + "\n")
-    log_text = "## 2026-01-01 10:00 — PARK\n\nPhase 1.1 — failed\n"
+    log_text = "## 2026-01-01 10:00 — PARK\n\nPhase 1.1 — failed\n\nLessons:\n- none\n"
     log_block = tmp_path / "failed-close.md"
-    log_block.write_text(log_text)
+    log_block.write_text(log_text.replace("Lessons:", "Lessons (per the policy):"))
     arguments = (
         "close",
         "--run-dir",
@@ -841,6 +845,13 @@ def _assert_failed_close_is_truthful_terminal_and_idempotent(
         "--failure-record",
         str(failure_path),
     )
+    unwitnessed = run(*arguments)
+    assert unwitnessed.returncode == 2
+    assert "lacks its `Lessons:` witness line" in unwitnessed.stderr
+    assert not (run_dir / "closure.json").exists()
+    log = repository / "LOG.md"
+    assert not log.exists() or "Phase 1.1 — failed" not in log.read_text()
+    log_block.write_text(log_text)
     first = run(*arguments)
     second = run(*arguments)
     assert first.returncode == second.returncode == 0, first.stderr + second.stderr
@@ -1015,7 +1026,9 @@ def _assert_complete_synthetic_kickoff(
     )
     run_dir = tmp_path / "run"
     receipt = tmp_path / "preflight.json"
-    write_fixture_receipt(receipt, mode="primary" if primary else "delegated")
+    write_fixture_receipt(
+        receipt, mode="primary" if primary else "delegated", executable=tmp_path / "claude"
+    )
     initialized = run(
         "init",
         "--run-dir",
@@ -1150,8 +1163,9 @@ def _assert_complete_synthetic_kickoff(
                 event = json.dumps({"type": "result", "result": json.dumps(primary_report)})
             artifact = tmp_path / f"{operation}-{attempt}-artifact.txt"
             populate = "" if harness == "claude" else f"printf '%s' 'CODEX' > {artifact}\n"
+            answer_version = "[ \"$1\" = --version ] && echo 'stub 1.0' && exit 0\n"
             executable.write_text(
-                f"#!/bin/sh\nprintf '%s\\n' '{event}'\n{populate}exit {exit_code}\n"
+                f"#!/bin/sh\n{answer_version}printf '%s\\n' '{event}'\n{populate}exit {exit_code}\n"
             )
             executable.chmod(0o755)
             prompt = tmp_path / f"{operation}-{attempt}-prompt.md"
@@ -1186,6 +1200,39 @@ def _assert_complete_synthetic_kickoff(
                 "--telemetry-role-registration",
                 str(handoff),
             ]
+            if primary and attempt == 1:
+                # A different install of the venue than preflight proved is
+                # refused before anything is claimed, so it costs no pass.
+                stale = tmp_path / "stale" / harness
+                stale.parent.mkdir(exist_ok=True)
+                stale.write_text("#!/bin/sh\necho 'stub 0.9'\n")
+                stale.chmod(0o755)
+                refused = subprocess.run(
+                    watcher_arguments,
+                    cwd=repository,
+                    env={**os.environ, f"KICKOFF_CLI_{harness.upper()}": str(stale)},
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                assert refused.returncode != 0, refused.stdout
+                assert "differs from the one preflight proved" in refused.stderr
+                assert not (run_dir / f"advice-launch-{role}-{attempt}.json").exists()
+                # The same path reporting another version is refused too.
+                proved = executable.read_text()
+                executable.write_text(proved.replace("stub 1.0", "stub 1.1"))
+                replaced = subprocess.run(
+                    watcher_arguments,
+                    cwd=repository,
+                    env={**os.environ, f"KICKOFF_CLI_{harness.upper()}": str(executable)},
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                executable.write_text(proved)
+                assert replaced.returncode != 0, replaced.stdout
+                assert "(stub 1.1)" in replaced.stderr
+                assert not (run_dir / f"advice-launch-{role}-{attempt}.json").exists()
             watched = subprocess.run(
                 watcher_arguments,
                 cwd=repository,
@@ -1561,7 +1608,7 @@ def _assert_complete_synthetic_kickoff(
 
     close_text = (
         f"## 2026-01-01 10:00 — END\n\nPhase {phase} — accepted implementation\n"
-        "\nStatus bookkeeping and handoff remain pending.\n"
+        "\nStatus bookkeeping and handoff remain pending.\n\nLessons:\n- none\n"
     )
     close_block = tmp_path / "accepted-close.md"
     close_block.write_text(close_text)

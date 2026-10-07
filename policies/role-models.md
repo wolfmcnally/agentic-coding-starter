@@ -113,6 +113,7 @@ The manager probes every non-native role target with its resolved `(CLI, model,
 effort, access mode, research capability)`. It writes unpredictable ASCII text to an isolated local file and requires the venue to read and return that exact text beside `KICKOFF_PREFLIGHT_OK`. The text is absent from the prompt; echoing a prompt sentinel is insufficient. The manager validates the response and computes the SHA-256 of the file bytes for the receipt, so read-only roles need no hashing tool or shell permission.
 The receipt binds the configuration digest, harness, resolved targets, and
 shared probe digest. All-native routing writes the same schema with no targets.
+For each target it also records the absolute executable the venue name resolved to and the version that executable reported. The watcher resolves the venue again in the environment it will launch in and refuses, before any span, launch claim or dispatch row, when the executable or its version differs from the receipt's. A machine can hold two installs of one CLI, and which is first on `PATH` can differ between the shell that ran preflight and the one that launches a role; a green preflight proves only the install it ran. The refusal is a prelaunch rejection: launch from the environment that ran preflight, or run preflight again.
 Production credential scrubs, model/effort and research flags, stdin closure,
 approval posture, and read-only/write-enabled access still apply.
 

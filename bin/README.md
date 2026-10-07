@@ -566,7 +566,8 @@ Mechanistic post-implementation check `kickoff` runs after `capture-change`
 and before the code critic is dispatched (Step 5). About one code finding in
 seven over a month was the critic discovering an item the approved plan named
 and the coder never wrote; a script reads the plan's own inventory against the
-tree instead. Every `### New Files` path must exist; every identifier the
+tree instead. Every `### New Files` path must exist; every `### Deleted
+Files` path must be gone (`deleted-file-present` otherwise); every identifier the
 plan's `## Definitions Read` table declares `introduced` must occur in the
 tree; every backticked `test_*` node and `path::member` cited under Testing
 Strategy, Build Gate Sequence, or Acceptance must exist. An item that is

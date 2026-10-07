@@ -158,6 +158,11 @@ For each:
 - **Changes**: [What to add, remove, or modify]
 - **Reason**: [Why]
 
+### Deleted Files
+For each file the phase removes; omit the heading when there are none. A deletion listed here, not under Modified Files, is what `bin/check-plan-delivery` checks is gone:
+- **Path**: [exact repo path]
+- **Reason**: [Why]
+
 ## Implementation Order
 [Numbered list in dependency order. Typical pattern: schemas / types first, then core logic, then integration / wiring, then tests, then docs.]
 

@@ -99,6 +99,26 @@ def check_new_files(
             plan.new_paths.discard(relative)
 
 
+def check_deleted_files(
+    plan: Plan, tree: Tree, deviations: str, rows: list[tuple[str, str, int, str]]
+) -> None:
+    for number, line in plan.prose:
+        for span in CODE_SPAN_PATTERN.findall(line):
+            relative = span.strip()
+            if relative not in plan.deleted_paths or not tree.has_path(relative):
+                continue
+            kind = "DEVIATION" if contains_word(deviations, relative) else "ERROR"
+            rows.append(
+                (
+                    kind,
+                    "deleted-file-present",
+                    number,
+                    f"`{relative}` is planned for deletion and still exists",
+                )
+            )
+            plan.deleted_paths.discard(relative)
+
+
 def check_introduced(
     plan: Plan, tree: Tree, deviations: str, rows: list[tuple[str, str, int, str]]
 ) -> None:
@@ -195,6 +215,7 @@ def main() -> int:
     plan = parse_plan(text)
     rows: list[tuple[str, str, int, str]] = []
     check_new_files(plan, tree, deviations, rows)
+    check_deleted_files(plan, tree, deviations, rows)
     check_introduced(plan, tree, deviations, rows)
     check_tests(plan, tree, deviations, rows)
     for kind, check, number, message in sorted(rows, key=lambda item: (item[2], item[1])):

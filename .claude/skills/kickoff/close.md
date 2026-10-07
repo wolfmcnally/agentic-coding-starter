@@ -135,7 +135,7 @@ Ripple (per `policies/phase-ripple.md`):
 - DECIDE: <downstream phase file> — <one-line: candidate ripple, why it needs human judgment> | None
 <If no downstream drafted phase files exist, state "none — no downstream sketches".>
 
-Lessons (per `policies/lessons.md`):
+Lessons:
 - filed or pending: <slug> — <one-line lesson, scope, actual state> | none
 - occurrences added or pending: <slug> (<measured current n> total) — <ref, actual state> | none
 - graduation DECIDE: <slug> → <proposed_surface> — <one-line why it is ready> | none

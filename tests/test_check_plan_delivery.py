@@ -82,3 +82,24 @@ def test_undeclared_narrowing_still_fails_with_a_report(tmp_path: Path) -> None:
     result = run(root, write(tmp_path, "plan.md", PLAN), "--deviations", str(report))
     assert result.returncode == 1
     assert "ERROR\tintroduced-missing" in result.stdout
+
+
+def test_a_planned_deletion_is_delivered_when_the_file_is_gone(tmp_path: Path) -> None:
+    plan = write(
+        tmp_path,
+        "plan.md",
+        PLAN.replace(
+            "## Testing Strategy",
+            "### Deleted Files\n- **Path**: `lib/widgets_old.py`\n\n## Testing Strategy",
+        ),
+    )
+    root = repository(tmp_path, delivered=True)
+    gone = run(root, plan)
+    assert gone.returncode == 0, gone.stdout
+    assert "lib/widgets_old.py" not in gone.stdout
+
+    (root / "lib" / "widgets_old.py").write_text("LEFT_BEHIND = True\n")
+    subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+    kept = run(root, plan)
+    assert kept.returncode == 1
+    assert "ERROR\tdeleted-file-present" in kept.stdout

@@ -739,6 +739,10 @@ else:
                 target["probe_sha256"] == hashlib.sha256(token.encode("ascii")).hexdigest()
                 for target in document["targets"]
             )
+            # The receipt names the executable it proved, so a later dispatch
+            # can be held to the same one.
+            assert all(target["executable"] == str(executable) for target in document["targets"])
+            assert all(target["version"] for target in document["targets"])
             verified = run_manager(config, "verify-preflight-receipt", "--receipt", str(receipt))
             assert verified.returncode == 0, verified.stderr
             assert "PREFLIGHT RECEIPT VALID" in verified.stdout

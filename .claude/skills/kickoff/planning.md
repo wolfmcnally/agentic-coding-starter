@@ -6,6 +6,8 @@ When the frozen workflow mode is primary, the invoking instance reads the phase/
 
 For required plan advice, register reviewer on the receipt's target and dispatch in an independent context through the pinned watcher. The watcher selects the advisory schema and atomically records the phase-bound launch allowance. Ingest its report with the actual dispatch candidate and review span. The primary implements, declines or defers recommendations based on evidence. Record consequential dispositions and keep scope decisions with the operator. One comprehensive pass is normal; a second requires `register-role-attempt --cause <concrete reason>` before launch and is the maximum, including failed launches and continuations. Do not re-run a reviewer just to obtain agreement.
 
+When the phase file was elaborated at entry ([preflight.md](preflight.md) Step 1a), the review prompt says so and lists the newly pinned decisions, so the reviewer inspects the phase text and not only the plan against it. This applies in both authority modes.
+
 Keep plan advice and decisions for final primary acceptance. Then proceed to inline implementation. The remaining planner/reviewer approval loop in this resource is exclusively for delegated mode.
 
 

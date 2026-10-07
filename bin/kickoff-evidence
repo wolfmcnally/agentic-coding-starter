@@ -4978,6 +4978,10 @@ def command_close(arguments: argparse.Namespace) -> int:
     if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", reason_code):
         raise EvidenceError("reason-code must be lowercase kebab-case")
     log_block = arguments.log_block.read_text(encoding="utf-8")
+    # The handoff gate's log check refuses a terminal block without this line;
+    # refuse it here, while the block is still a file and nothing is appended.
+    for header in log_blocks.terminal_blocks_missing_lessons(log_blocks.parse(log_block).blocks):
+        raise EvidenceError(f"terminal log block lacks its `Lessons:` witness line: {header}")
     failure_record: dict[str, Any] | None = None
     if outcome == "accepted":
         if arguments.failure_record is not None:

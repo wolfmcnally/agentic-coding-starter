@@ -2545,3 +2545,32 @@ The sweep recorded just above was committed in two commits, not one, by an error
 Correction: the remaining paths were staged by explicit path in a block of their own, the staged file list was checked, and they are committed as a second commit. The first commit is left as it is, since amending it is the operator's to authorize. One full gate on the resulting clean tree follows this record and is the one that qualifies the push.
 
 Lessons: none new. This is a violation of a rule already written, that a refusing command gets its own block and its diagnostic is read before the next command, at exactly the point that rule names, delivery.
+
+## 2026-10-07 08:38 — METHODOLOGY SCOPE
+
+One operator instruction, given in session on 2026-10-07 through the `ask` skill, after two product phases in a derived project filed methodology lessons and before any implementation of this change. Asked which of the lessons' fixes to make now, in the template and then in that project, the operator selected four.
+
+**Authorized outcome.** Four defects those phases met are corrected. First: the kickoff END template's lessons heading is the literal line the log checker requires, and the accepted close refuses a terminal block without it, so the defect surfaces when the block is written and not at the last gate. Second: live preflight records the executable and version it proved for each venue, and the watcher refuses to launch a different one. Third: kickoff names the step in which a sketched phase is elaborated before authority capture, lists the newly pinned decisions, sends product calls to the operator, and tells the plan reviewer the phase text is itself under review. Fourth: the plan-delivery checker accepts a planned deletion when the path is absent.
+
+**Surfaces.** `.claude/skills/kickoff/close.md`, `preflight.md` and `planning.md`; `bin/kickoff-evidence`, `bin/kickoff-config`, `bin/check-plan-delivery` and the library modules they call; `policies/role-models.md` and `policies/log-discipline.md` where they state the changed contracts; the `phase-planner` definition if the plan format gains a deletion form; the tests of each changed tool and the proof-estate records the test-governance policy requires for any new proof.
+
+**Exclusions.** The advisory pass allowance and its accounting are unchanged, including how an operator reset is represented; that lesson stays a candidate. No guidance is added about retrying a failed advisory launch. No role pin, timeout or lane rule changes. Teaching the derived project is a separate delivery in its own repository.
+
+## 2026-10-07 08:48 — METHODOLOGY — four kickoff defects a derived project's first phases met
+
+The instruction recorded in the scope just above.
+
+**What changed.**
+
+- *Lessons heading.* The kickoff close template headed its lessons section with a parenthetical, and the log checker accepts a terminal block only when one line is exactly `Lessons:`. The template now uses that line. The rule has one home, `log_blocks.terminal_blocks_missing_lessons`, used by `bin/check-log-prefix` and now also by `kickoff-evidence close`, which refuses a terminal block without the witness before it appends anything. The defect used to surface at the handoff gate, after the block was already in the log.
+- *Venue executable.* The preflight receipt records, for each target, the absolute executable the venue name resolved to and the version it reported. The watcher resolves the venue again in its launch environment and refuses a different executable or version before any span, launch claim or dispatch row, so the refusal costs no advisory pass. `policies/role-models.md` and the kickoff preflight resource state the contract and tell the orchestrator to launch from the shell that ran preflight.
+- *Sketched phases.* The kickoff preflight resource names the step: a bootstrap sketch is elaborated in full before authority capture, every newly pinned decision is listed, departures and product calls go to the operator before capture, and the plan-review prompt says the phase text is itself under review. The planning resource and the `plan-reviewer` definition carry the reviewer's half.
+- *Planned deletions.* A plan lists removed files under `### Deleted Files`. The plan-delivery checker requires those paths to be absent and no longer reports them as missing new files. The `phase-planner` template and `bin/README.md` describe the section.
+
+**Scope departures.** One. `briefs/deterministic-orchestration-control-plane.md` was not in the surface list; its one sentence on what the receipt binds was updated to match.
+
+**Primary self-check.** Each new guard was disabled in turn and the proof meant to catch it failed: the close refusal, the watcher's refusal on a different path, and its refusal on the same path reporting another version. The one new proof, for planned deletions, was admitted with a witness receipt; the other changes extend existing proofs and their fixtures. The receipt fixture and the lifecycle stub were updated in the same change, with no reader for the old receipt shape. Format and lint pass; the handoff gate follows this block.
+
+**Independent review.** Not applicable — primary one-shot methodology work.
+
+**Remaining for the operator.** None. Derived projects receive this through their own delivery.

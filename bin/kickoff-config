@@ -47,7 +47,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -452,14 +452,21 @@ def validate_document(document: Any) -> MutableMapping[str, Any]:
     return document
 
 
-BUILTIN_MODEL_PINS = (MODELS, CLAUDE_MODELS.copy(), CODEX_MODELS.copy(), MODEL_EFFORTS.copy())
+BUILTIN_MODEL_PINS = (
+    MODELS,
+    CLAUDE_MODELS.copy(),
+    CODEX_MODELS.copy(),
+    MODEL_EFFORTS.copy(),
+)
 
 
 def install_targets(document: dict[str, Any]) -> None:
     global MODELS
     MODELS = BUILTIN_MODEL_PINS[0]
     for table, original in zip(
-        (CLAUDE_MODELS, CODEX_MODELS, MODEL_EFFORTS), BUILTIN_MODEL_PINS[1:], strict=True
+        (CLAUDE_MODELS, CODEX_MODELS, MODEL_EFFORTS),
+        BUILTIN_MODEL_PINS[1:],
+        strict=True,
     ):
         table.clear()
         table.update(original)
@@ -837,6 +844,33 @@ def cli_program(cli: str) -> str:
     substituted binary receives the production recipe rather than a stand-in.
     """
     return os.environ.get(f"KICKOFF_CLI_{cli.upper()}") or cli
+
+
+def venue_identity(cli: str, environment: Mapping[str, str]) -> tuple[str | None, str | None]:
+    """The executable a venue resolves to in an environment, and the version it reports.
+
+    Preflight records this pair and the watcher compares it before launching, so
+    a role cannot run a different install than the one preflight proved. A
+    version that cannot be read is None, never a guess.
+    """
+    resolved = shutil.which(cli_program(cli), path=environment.get("PATH"))
+    if resolved is None:
+        return None, None
+    resolved = os.path.abspath(resolved)
+    try:
+        result = subprocess.run(
+            [resolved, "--version"],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            env=dict(environment),
+            timeout=5,
+            check=False,
+        )
+    except (OSError, UnicodeError, subprocess.TimeoutExpired):
+        return resolved, None
+    version = result.stdout.strip() if result.returncode == 0 else ""
+    return resolved, version or None
 
 
 def claude_routing_flags(model_slug: str | None, effort: str | None) -> list[str]:
@@ -1310,6 +1344,7 @@ def preflight(
             except (OSError, RuntimeError) as exc:
                 die(f"preflight failed for {label}: {exc}")
             print(f"Role venue preflight: OK — {label}")
+            executable, version = venue_identity(target.cli, scrubbed_env(target.cli, target.model))
             results.append(
                 {
                     "cli": target.cli,
@@ -1318,6 +1353,8 @@ def preflight(
                     "write_enabled": target.write_enabled,
                     "roles": sorted(roles),
                     "probe_sha256": expected_digest,
+                    "executable": executable,
+                    "version": version,
                 }
             )
             if not target.write_enabled:
@@ -1397,14 +1434,24 @@ def verify_preflight_receipt(path: Path) -> dict[str, Any]:
         "write_enabled",
         "roles",
         "probe_sha256",
+        "executable",
+        "version",
     }
+    observed_fields = {"probe_sha256", "executable", "version"}
     descriptors: list[dict[str, Any]] = []
     for target in document["targets"]:
         if not isinstance(target, dict) or set(target) != target_fields:
             die("preflight receipt target has unknown or missing fields")
         if CANDIDATE_ID.fullmatch(str(target["probe_sha256"])) is None:
             die("preflight receipt target lacks a valid probe digest")
-        descriptors.append({key: target[key] for key in target_fields if key != "probe_sha256"})
+        executable = target["executable"]
+        if not isinstance(executable, str) or not os.path.isabs(executable):
+            die("preflight receipt target lacks the absolute executable it proved")
+        if target["version"] is not None and not (
+            isinstance(target["version"], str) and target["version"].strip()
+        ):
+            die("preflight receipt target has an invalid version observation")
+        descriptors.append({key: target[key] for key in target_fields - observed_fields})
     config = load_document()
     resolution = document["workflow"]
     if not isinstance(resolution, dict) or resolution.get("mode") not in {
@@ -1426,12 +1473,19 @@ def verify_preflight_receipt(path: Path) -> dict[str, Any]:
         expected_role = baseline["roles"][role]
         allowed = (
             workflow.adviser_choices(
-                workflow.settings(config), document["harness"], resolution["primary_model"], role
+                workflow.settings(config),
+                document["harness"],
+                resolution["primary_model"],
+                role,
             )
             if role in {"reviewer", "critic"}
             else []
         )
-        fallback_role = {**expected_role, "model": selected.get("model"), "effort": None}
+        fallback_role = {
+            **expected_role,
+            "model": selected.get("model"),
+            "effort": None,
+        }
         causes = [
             cause
             for cause in resolution["fallbacks"]
@@ -2012,6 +2066,43 @@ def record_dispatch_topology(
     return None
 
 
+def refuse_unproved_executable(
+    arguments: argparse.Namespace, environment: Mapping[str, str]
+) -> None:
+    """Refuse to launch a venue executable other than the one this run's preflight proved.
+
+    The receipt lives beside the role registration in the run directory. This
+    runs before any span, launch claim or dispatch row, so a refusal consumes
+    nothing: it is a prelaunch rejection the caller corrects and relaunches.
+    """
+    if arguments.telemetry_role_registration is None:
+        return
+    receipt = Path(arguments.telemetry_role_registration).parent / "role-preflight.json"
+    try:
+        targets = json.loads(receipt.read_text(encoding="utf-8"))["targets"]
+    except (
+        OSError,
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+        KeyError,
+        TypeError,
+    ) as exc:
+        die(f"registered run's preflight receipt is unreadable: {exc}")
+    proved = [target for target in targets if target.get("cli") == arguments.venue]
+    if not proved:
+        return
+    now = venue_identity(arguments.venue, environment)
+    for target in proved:
+        then = (target.get("executable"), target.get("version"))
+        if then != now:
+            die(
+                f"{arguments.venue} executable differs from the one preflight proved: "
+                f"preflight {then[0]} ({then[1] or 'version unreported'}), "
+                f"now {now[0] or 'not found'} ({now[1] or 'version unreported'}). "
+                "Launch from the environment that ran preflight, or run preflight again."
+            )
+
+
 def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> int:
     if os.environ.get("KICKOFF_DELEGATION_DEPTH"):
         die(
@@ -2024,6 +2115,7 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
     registration = validate_telemetry_registration(arguments)
     if registration is None and arguments.authority_mode == "primary":
         die("primary advice requires a registered evidence run")
+    refuse_unproved_executable(arguments, child_environment)
     intelligence = None
     wait_span = None
     telemetry_complete = registration is not None

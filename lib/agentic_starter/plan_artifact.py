@@ -46,6 +46,7 @@ PATH_SUFFIXES = (
 )
 DEFINITIONS_HEADING = re.compile(r"^#{2,3}\s+Definitions Read\s*$")
 FILE_CHANGES_HEADING = re.compile(r"^## File Changes\s*$")
+DELETED_FILES_HEADING = re.compile(r"^###\s+Deleted Files\s*$", re.IGNORECASE)
 LINE_SUFFIX_PATTERN = re.compile(r":\d+(?:[-–,]\d+)*$")
 NODE_ID_PATTERN = re.compile(r"^(?P<path>[^:]+)::(?P<member>[\w.]+)$")
 NEW_FILE_PATH_PATTERN = re.compile(r"^\s*-\s*\*\*Path\*\*:\s*`([^`]+)`")
@@ -62,6 +63,8 @@ class Plan:
     commands: list[tuple[int, str]] = field(default_factory=list)
     definitions: list[tuple[int, str, str]] = field(default_factory=list)
     new_paths: set[str] = field(default_factory=set)
+    # Paths listed under `### Deleted Files`: present when planned, absent when delivered.
+    deleted_paths: set[str] = field(default_factory=set)
     introduced: set[str] = field(default_factory=set)
     has_definitions_table: bool = False
 
@@ -72,6 +75,7 @@ def parse_plan(text: str) -> Plan:
     fence_language = ""
     in_definitions = False
     in_file_changes = False
+    in_deleted_files = False
     current_section = ""
     for number, line in enumerate(plan.lines, start=1):
         if line.startswith("#") and not line.startswith("####"):
@@ -90,6 +94,7 @@ def parse_plan(text: str) -> Plan:
                 plan.commands.append((number, line))
             continue
         if line.startswith("#"):
+            in_deleted_files = bool(DELETED_FILES_HEADING.match(line))
             in_definitions = bool(DEFINITIONS_HEADING.match(line))
             if in_definitions:
                 plan.has_definitions_table = True
@@ -110,7 +115,8 @@ def parse_plan(text: str) -> Plan:
                     plan.definitions.append((number, identifier, cells[1]))
         new_file = NEW_FILE_PATH_PATTERN.match(line)
         if new_file:
-            plan.new_paths.add(new_file.group(1).strip())
+            listed = plan.deleted_paths if in_deleted_files else plan.new_paths
+            listed.add(new_file.group(1).strip())
         plan.prose.append((number, line))
     return plan
 

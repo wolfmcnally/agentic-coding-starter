@@ -62,8 +62,8 @@ run composition should cost seconds rather than an entire full gate.
 
 A predictable echoed sentinel proves only that a venue can repeat prompt text.
 Preflight instead creates unpredictable ASCII text in an isolated directory, names the file without disclosing its contents, and requires the venue to read and return the exact text. The manager validates the response and computes the file SHA-256 for the receipt. This proves read access using the declared read tools, without requiring binary decoding, model-side hashing, or additional shell permission.
-The receipt binds the resolved venue targets and the routing-configuration
-digest. An all-native run receives the same receipt shape with an empty target
+The receipt binds the resolved venue targets, the executable and version each
+resolved to, and the routing-configuration digest. An all-native run receives the same receipt shape with an empty target
 set. Starter's separate write-enabled coder toolchain probe remains in force.
 
 ## Two candidate identities

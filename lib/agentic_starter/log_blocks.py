@@ -118,3 +118,13 @@ def chronology_errors(parsed: ParsedLog) -> list[str]:
                 f"behind {anchors[index - 1]:%Y-%m-%d %H:%M}"
             )
     return errors
+
+
+def terminal_blocks_missing_lessons(blocks: tuple[Block, ...] | list[Block]) -> list[str]:
+    """Headers of END and PARK blocks that carry no line reading exactly `Lessons:`."""
+    return [
+        block.header
+        for block in blocks
+        if ("— END" in block.header or "— PARK" in block.header)
+        and not any(line.strip() == "Lessons:" for line in block.body)
+    ]
