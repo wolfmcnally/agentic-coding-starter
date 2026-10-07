@@ -307,7 +307,9 @@ def usage_windows(
         active = window.get("is_active")
         if active is not None and not isinstance(active, bool):
             raise WorkflowError("invalid usage window activity")
-        if active is False:
+        # A provider's activity flag never removes a shared account limit: it can
+        # mark the general windows inactive while a model-scoped one is active.
+        if active is False and not shared:
             continue
         percent, duration = window.get("utilization"), window.get("window_seconds")
         if (

@@ -869,6 +869,20 @@ def _assert_primary_routing_and_usage(tmp_path: Path) -> None:
         workflow.validate(bad_alias)
     with pytest.raises(workflow.WorkflowError, match="primary"):
         workflow.apply_usage(routed, config, scoped)
+    # A shared window flagged inactive still binds a model with no scoped window of its own;
+    # only a scoped window is dropped by the flag.
+    flagged = copy.deepcopy(snapshot)
+    flagged["anthropic"]["windows"] = {
+        "seven_day": {"utilization": 38, "window_seconds": 604800, "is_active": False},
+        "five_hour": {"utilization": 7, "window_seconds": 18000, "is_active": False},
+        "seven_day_fable": {"utilization": 61, "window_seconds": 604800, "is_active": True},
+        "seven_day_opus": {"utilization": 99, "window_seconds": 604800, "is_active": False},
+    }
+    measured = workflow.usage_windows(flagged, workflow.target("opus", config))
+    assert sorted(window["window"] for window in measured) == ["five_hour", "seven_day"]
+    flagged["anthropic"]["windows"]["seven_day"]["utilization"] = 95
+    with pytest.raises(workflow.WorkflowError, match="primary"):
+        workflow.apply_usage(workflow.resolve(document, "claude"), config, flagged)
     # A group that names the model it meters binds that model only; an unnamed one refuses.
     reserve = copy.deepcopy(snapshot)
     reserve["openai"]["additional_rate_limits"] = [
