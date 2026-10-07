@@ -51,7 +51,7 @@ This design first did the opposite, and the record is worth keeping. It held two
 
 What a stored mutant did offer was a standing guarantee that its test still catches its fault. That guarantee now comes from the tests: the direct proof for each critical risk drives the guard with input it must refuse, or switches the guard off in-process, and asserts the refusal on every run. A semantic check of that kind does not rot when lines move.
 
-The command needs only files and a command to run, so it is the same in a Python, TypeScript or Rust repository, and working in the live tree keeps each language's build cache warm. Finding weak tests in bulk is a separate job for a mutation tool, which differs by language and may not exist for one; a repository without such a tool reports that measurement as not taken and still witnesses every proof it admits.
+The command needs only files and a command to run, so it is the same in a Python, TypeScript or Rust repository, and working in the live tree keeps each language's build cache warm. Finding weak tests in bulk is a separate job for a mutation tool, which differs by language and may not exist for one; a repository without such a tool reports that measurement as not taken and still witnesses every proof it admits. That survey is opt-in. Its cost grows with the code it covers, minutes for one change and hours for a whole estate, and a check that slow would tax every phase and every small commit to answer a question that matters at particular moments. So nothing runs it by default; the person who owns the project asks for one when the work is consequential enough to wait for, over the changed code unless they widen it.
 
 ## Judging value without inverting it
 

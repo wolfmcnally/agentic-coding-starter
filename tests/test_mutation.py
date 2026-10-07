@@ -92,6 +92,11 @@ def test_a_survey_reports_the_faults_tests_miss_on_the_changed_lines(
     assert observed["generated"] == observed["killed"] + observed["survived"]
     # The fault was planted in a copy: the candidate file is untouched.
     assert source.read_bytes() == changed
+    # A path filter narrows the scope; a pattern that matches nothing surveys nothing.
+    assert mutation.survey(root, changed_from="HEAD", only=["lib/other*"])["files"] == []
+    assert mutation.survey(root, changed_from="HEAD", only=["lib/calc.py"])["files"] == [
+        "lib/calc.py"
+    ]
     whole = mutation.survey(root, changed_from=None)
     assert whole["generated"] > observed["generated"] and whole["killed"] > 0
 

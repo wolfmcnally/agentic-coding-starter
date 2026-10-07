@@ -258,7 +258,11 @@ def _survey_file(
 
 
 def survey(
-    root: Path, *, changed_from: str | None, budget_seconds: float | None = None
+    root: Path,
+    *,
+    changed_from: str | None,
+    budget_seconds: float | None = None,
+    only: Sequence[str] = (),
 ) -> dict[str, Any]:
     manifest = test_governance.load_yaml(root / "tests/proof-estate.yaml")
     errors = test_governance.mutation_errors(manifest)
@@ -279,6 +283,8 @@ def survey(
     if not isinstance(families, list) or not families:
         raise MutationError("manifest families must be a nonempty list")
     targets = _targets(root, declared["paths"], changed_from)
+    if only:
+        targets = {path: lines for path, lines in targets.items() if _in_scope(path, only)}
     before = _digests(root, list(targets))
     totals = {"killed": 0, "survived": 0, "timed_out": 0, "not_run": 0}
     survivors: list[dict[str, Any]] = []
@@ -333,6 +339,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--budget-seconds", type=float, help="override the declared budget for this run"
     )
+    parser.add_argument(
+        "--path",
+        action="append",
+        default=[],
+        metavar="PATTERN",
+        help="survey only declared paths matching this pattern (repeatable)",
+    )
     arguments = parser.parse_args(argv)
     if arguments.budget_seconds is not None and arguments.budget_seconds <= 0:
         parser.error("--budget-seconds must be positive")
@@ -341,6 +354,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             arguments.root.resolve(),
             changed_from=arguments.changed_from,
             budget_seconds=arguments.budget_seconds,
+            only=arguments.path,
         )
     except (MutationError, test_governance.GovernanceError) as exc:
         print(f"MUTATE ERROR {exc}", file=sys.stderr)

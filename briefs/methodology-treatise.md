@@ -405,6 +405,7 @@ a leading slash; in Codex, a dollar sign. The set is small on purpose.
 | `plain` | Rewrites a message meant for you into plain terms: what happened and what it costs, not how the machinery works. |
 | `ask` | Puts a decision in front of you with real options. Only you can start it; no agent may. |
 | `refactor` | Cleans up code without changing what it does. Small local improvements are applied; larger ones are proposed to you. |
+| `mutate` | Plants small faults in a copy of your changed code and reports which ones the tests miss. Only you can start it, because it is slow. |
 | `sweep-planning`, `sweep-coding` | Read months of past reviews to find why plans and code kept getting sent back, then propose fixes to the roles themselves. |
 
 `learn`, `teach`, and `sweep` are the machinery behind the evolving half of the

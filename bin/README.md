@@ -158,7 +158,9 @@ retirements cannot fund proofs appended after the post-reset lifecycle begins.
 Plants generated faults in a disposable copy of the candidate tree, runs the
 proofs that guard each file, and prints one JSON document: `state`, the tool,
 the scope, the counts, and each surviving fault's path, line and change. The
-live tree is never mutated. It is not a gate and has no score to reach.
+live tree is never mutated. It is not a gate and has no score to reach. It is
+opt-in: nothing runs it by default, and the `mutate` skill is how an operator
+asks for one.
 
 `state` is `measured`, `partial` when the declared budget ran out, or
 `unmeasured` when the manifest's `mutation` block declares no tool. Failing
@@ -167,7 +169,7 @@ a locked development dependency.
 
 ```bash
 ./bin/mutate --changed-from '@{upstream}'
-./bin/mutate --all --budget-seconds 3600
+./bin/mutate --all --path 'lib/agentic_starter/*.py' --budget-seconds 3600
 ```
 
 Universal contract:

@@ -2493,3 +2493,33 @@ The two instructions recorded in the scope just above.
 **Remaining for the operator.** `high` costs more tokens and time than either vendor's default, and that cost is not measured here. Review by the other provider's lead model replaces review by its strongest model; the quality preset restores the old arrangement in one command. Derived repositories keep their pins until they are taught or reset.
 
 Lessons: none. Independent review is not applicable because this is primary one-shot methodology work.
+
+## 2026-10-07 00:56 — METHODOLOGY SCOPE
+
+Two operator instructions, given in session on 2026-10-07 after the mutation survey was delivered and before any implementation of this change.
+
+**Instructions.** First: the operator asked how often mutation proofs run, observed that a full survey can take an inordinate time, and said that users should not have to endure one at every kickoff or small change and commit; the survey should be opt-in, run at particularly consequential times. Second: introduce a `mutate` skill that lets the user run it at will, selecting changed code by default, with parameters to rescope it to more.
+
+**Authorized outcome.** Nothing runs the mutation survey by default. The instructions delivered earlier the same day, that the author of a product change runs it before handing off and that every sweep runs it over the estate, are withdrawn. A universal, operator-invoked `mutate` skill runs it: changed code by default, with arguments to widen or narrow the scope and to set the time budget. An approved phase may still name a survey as one of its checks. When a survey has been run, its survivors on changed lines are still acted on.
+
+**Surfaces.** A new `.claude/skills/mutate/` with its Codex mirror, `lib/agentic_starter/mutation.py` and its test for a path filter, `policies/test-suite-governance.md` § Mutation survey and § Initial adoption, the `phase-coder` and `code-critic` definitions, the `sweep` skill, and every catalog and transfer list that enumerates the universal skills: `CLAUDE.md`, `README.md`, the `stamp` and `teach` skills, `briefs/agentic-bootstrap.md`, `briefs/methodology-treatise.md`, `bin/README.md`.
+
+**Exclusions.** The red-witness receipt is unchanged: it takes seconds, runs once when a proof is admitted or repaired, and is what makes a proof's claim an observation. `bin/mutate`'s states, its copy isolation and its exclusion from every gate are unchanged. No derived repository is taught in this pass.
+
+## 2026-10-07 01:03 — METHODOLOGY — the mutation survey is opt-in, run through a mutate skill
+
+The two instructions recorded in the scope just above.
+
+**What changed.** Nothing runs the mutation survey by default. `policies/test-suite-governance.md` § Mutation survey now opens by saying it is opt-in and why: its cost grows with the code it covers. The rule that the author of a product change runs one before handing off is withdrawn; `phase-coder` is told not to run one on its own initiative, and `code-critic` is told that the absence of a survey the plan did not name is not a finding. The `sweep` skill no longer runs a whole-estate survey; it puts one in the decision queue with its expected cost. The reset rule no longer requires surveys around each retirement batch. A survey that an approved plan names, or that the operator has run, is still acted on.
+
+A universal, operator-invoked `mutate` skill is how a survey is asked for. With no argument it covers changed code against the upstream branch; `since <rev>`, `all`, one or more paths, and `budget <seconds>` rescope it. It states the scope and budget before running, reports the state first, never presents a partial result as complete, and changes no test unless asked. `./bin/mutate` gained `--path` to narrow either scope to matching declared paths. The skill has its Codex mirror and is in every catalog and transfer list that enumerates the universal skills, which are now fifteen.
+
+**Scope departures.** One. `briefs/test-suite-value-governance.md` was not in the scope's surface list; it gained the reason the survey is opt-in, since a brief is where that reasoning belongs.
+
+**Primary self-check.** A search of the roles, skills and policy for an instruction to run `./bin/mutate` finds only conditional ones: when the approved plan names it, or when the operator chooses it. The survey remains absent from `bin/check`, the commit hook and the `kickoff` skill. The command was exercised as the skill would run it: changed code limited to one path with a 45-second budget reported `partial` with its unfinished file, and a pattern matching nothing reported zero files. The transfer-document guard failed on the first run because three lists that name each skill file had been missed; they were completed and the guard passes.
+
+**Gates before this record.** `./bin/test --changed-from '@{upstream}'` widened to the full suite and passed, 119 tests in 107 seconds, with no warning or error line. Format, lint, catalogs, harness parity, treatise, lessons and anonymization checks and `./bin/test-governance validate` passed. The one full gate follows this record and also qualifies the repin recorded above.
+
+**Remaining for the operator.** The skill has not been invoked through a harness, only its command. The added path-filter assertions sit in a proof whose receipt predates them. Derived repositories have none of this until they are taught.
+
+Lessons: `wild-orangutan` filed, methodology scope — a plan that adds a step to every phase must price that step's recurring time; the survey's first delivery ran it at every hand-off and sweep while the plan's cost section named nothing recurring. Independent review is not applicable because this is primary one-shot methodology work.

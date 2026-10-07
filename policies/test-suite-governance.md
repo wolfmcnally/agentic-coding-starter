@@ -16,9 +16,9 @@ Initial adoption MUST:
 3. Disposition every baseline proof exactly once as `retain`, `repair`, `consolidate`, or `delete` in an append-only ledger. `repair` keeps the contract active and records that its assertion was corrected, for a proof whose contract is real but whose assertion could not fail. Each row MUST carry its contract, oracle, red witness, nearest overlap, replacement evidence, and standalone rationale.
 4. Declare a size for every pytest family and a test-lane time budget, and bring the retained estate within both on the reference machine (see [Time budget](#time-budget)).
 5. Pass the [preservation review](#removal-and-growth) on every retirement batch, so no
-   contract loses its only proof to the reset. Where the [mutation survey](#mutation-survey)
-   is measured, run `./bin/mutate --all` before and after each batch; a fault that newly
-   survives blocks the batch.
+   contract loses its only proof to the reset. When the operator has a
+   [mutation survey](#mutation-survey) run before and after a batch, a fault that newly
+   survives is a gap the review must close.
 6. Retain direct executable proof for every applicable custody, security,
    authority, concurrency, atomicity, corruption, recovery, public-contract,
    schema, deploy, and core-success risk. An inapplicable class requires a
@@ -91,13 +91,14 @@ refuses.
 
 ## Mutation survey
 
-A witness challenges one proof with one chosen defect. A mutation survey asks the opposite question in bulk: which small faults in this code would no proof notice? `./bin/mutate --changed-from <rev>` plants generated faults on the lines changed since `<rev>`, in a disposable copy of the candidate tree, runs the proofs that guard each file, and prints one document: its `state`, the tool, the scope, how many faults were generated, killed, survived, timed out and not run, and each survivor's path, line and change. `./bin/mutate --all` surveys every declared path, and `--budget-seconds` overrides the declared budget for that run.
+A witness challenges one proof with one chosen defect. A mutation survey asks the opposite question in bulk: which small faults in this code would no proof notice? `./bin/mutate --changed-from <rev>` plants generated faults on the lines changed since `<rev>`, in a disposable copy of the candidate tree, runs the proofs that guard each file, and prints one document: its `state`, the tool, the scope, how many faults were generated, killed, survived, timed out and not run, and each survivor's path, line and change. `./bin/mutate --all` surveys every declared path, `--path` narrows either form to matching paths, and `--budget-seconds` overrides the declared budget for that run.
 
+- **It is opt-in.** A survey costs time in proportion to the code it covers, minutes for a change and hours for an estate, so nothing runs one by default: no gate, no hook, no `kickoff` stage and no sweep step. The operator runs it when the work is consequential enough to justify the wait, through the `mutate` skill, which surveys changed code unless told to cover more. An approved phase may also name a survey among its checks. (Operator ruling, 2026-10-07.)
 - **It never gates.** The survey is not a member of `./bin/check all`, and there is no score to reach. A survivor is a work item, and some survivors are faults no observable behavior distinguishes. (Operator ruling, 2026-10-06.)
 - **Three states, and failure is none of them.** `measured`; `partial` when the budget ran out, naming the files it did not finish; `unmeasured` only when the manifest declares no tool. Tests that fail before any fault is planted, or a tool that fails, exit non-zero and are never reported as unmeasured.
 - **Declared per repository.** The manifest's `mutation` block names the tool, the path patterns in scope and `budget_seconds`, or `tool: null` with a `reason`. A derived project's paths name its product; the inherited methodology machinery is surveyed in the template. The interface and the per-language tool are specified in [`build-gates.md`](build-gates.md) § Language profiles.
-- **The author acts on the changed lines.** Before handing off a product change, run `./bin/mutate --changed-from` against the phase base. Each survivor on a changed line is either killed by a stronger proof, which then gets its own witness receipt, or dispositioned in the implementation report as equivalent or outside any contract. A reviewer treats an undispositioned survivor on a changed line as a finding.
-- **The sweep surveys the estate.** Each governed sweep runs `./bin/mutate --all`, records the dated counts in the repository's history report, and carries survivors in code that guards a critical risk into the decision queue.
+- **A survey that was run is acted on.** When a phase's approved plan names a survey, each survivor on a changed line is either killed by a stronger proof, which then gets its own witness receipt, or dispositioned in the implementation report as equivalent or outside any contract, and a reviewer treats an undispositioned one as a finding. A change that was never surveyed is not deficient for that reason.
+- **The sweep offers, and records what was run.** A governed sweep puts a whole-estate survey in its decision queue with its expected cost and runs it only if the operator chooses. Every survey's dated counts and state go in the repository's history report, and survivors in code that guards a critical risk enter the decision queue.
 
 ## Time budget
 
