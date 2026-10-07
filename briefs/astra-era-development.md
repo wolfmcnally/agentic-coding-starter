@@ -1,6 +1,6 @@
 ---
 title: Astra-era development workflow
-date: 2026-10-01
+date: 2026-10-07
 status: implemented
 scope: local
 ---
@@ -60,7 +60,7 @@ As of 2026-10-07 (living pages); retrieved 2026-10-07. On the operator's directi
 The operator also asked for each model to be pinned at its vendor's current recommendation for high-quality coding. Neither vendor names a single such level, so the pin is a reading, and this is the evidence for it.
 
 - **Anthropic.** The [pinned excerpt](../docs/anthropic-opus-5-5-model-effort.md) still gives `medium` as Opus 5.5's default and its starting point, and says to reserve `xhigh` and `max` for work where a quality gain has been measured. Claude Code's own table places `medium` at day-to-day engineering work with a clear scope and `high` at work where verification matters or edge cases are likely, and reports that at a higher level the model tested more edge cases and verified more of its work.
-- **OpenAI.** The [pinned excerpt](../docs/openai-codex-model-selection.md) still says to start GPT-6.1 Sol at the client's default and to increase effort for tasks that need more planning, analysis or checking; it places Medium at tasks that need more planning and High and Extra High at difficult work with multiple steps, sources or tradeoffs. On 2026-10-07 Codex CLI 0.160.1's model list gave `low` as the default for `gpt-6.1-sol`.
+- **OpenAI.** The [pinned excerpt](../docs/openai-codex-model-selection.md) still says to start GPT-6.1 Sol at the client's default and to increase effort for tasks that need more planning, analysis or checking; it places Medium at tasks that need more planning and High and Extra High at difficult work with multiple steps, sources or tradeoffs. On 2026-10-07 Codex CLI 0.160.1's model list gave `low` as the default for `gpt-6.1-sol`, while the [pinned model settings](../docs/openai-sol-model-settings.md) give `medium` as the API default and `low` through `max` as the supported efforts.
 
 Both models are therefore pinned at `high`: it is the level each vendor ties to checking and verification, which is what a plan review, a code review and a gated implementation are, and it is the highest level either supports without a measured gain. No effort comparison on this repository's own work exists, so `xhigh` is not adopted. This supersedes the 2026-10-01 ruling that kept Sol at `medium`; that ruling's reason, that no comparison justified going lower, still holds and does not argue against going higher. The cost is real and unmeasured here: `high` spends more tokens and time than each vendor's default.
 

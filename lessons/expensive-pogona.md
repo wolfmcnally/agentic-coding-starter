@@ -8,9 +8,7 @@ filed: 2026-08-24
 source: learn
 occurrences:
   - date: 2026-08-20
-    ref: "Donor A — a supervising session reconstructed a causal account of a tool-call rejection by reading a `last-prompt` row in FILE ORDER after the rejection, calling it 'the very next entry', and telling the owner 'the timestamps are conclusive' about a line that carries no timestamp. The referenced prompt was six minutes EARLIER; the account was inverted"
-  - date: 2026-08-20
-    ref: "Donor A — the same incident's other session printed those same rows with '-' in the timestamp column during its own forensics and did not remark on it. Its conclusion was correct only because its method happened to filter on timestamp strings. Immunity from method, not from noticing"
+    ref: "Donor A — a supervising session reconstructed a causal account of a tool-call rejection by reading a `last-prompt` row in FILE ORDER after the rejection, calling it 'the very next entry', and telling the owner 'the timestamps are conclusive' about a line that carries no timestamp. The referenced prompt was six minutes EARLIER; the account was inverted. The same incident's other session printed those same rows with '-' in the timestamp column during its own forensics and did not remark on it. Its conclusion was correct only because its method happened to filter on timestamp strings. Immunity from method, not from noticing"
 ---
 
 A session transcript's metadata rows — `last-prompt`, `custom-title`, `ai-title`,
@@ -35,3 +33,7 @@ next reader who greps differently.
 The general form beyond transcripts: any file that interleaves *events* with
 *mutable state rows* will be read as a sequence by someone, and file order is not
 a clock.
+
+## Ledger note — 2026-10-07 (recount)
+
+Two rows described one incident from two sessions. The operator had them folded into one occurrence in the 2026-10-07 sweep.

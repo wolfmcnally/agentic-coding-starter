@@ -133,6 +133,12 @@ includes the exact command or deterministic procedure that produced it. A
 relay either re-runs that procedure or attributes the number plainly as
 unverified. Do not launder an earlier summary into fresh evidence.
 
+## A snapshot nothing regenerates is a dated observation
+
+A committed report may be cited as evidence of the current state only when a gate regenerates it or compares it with what it describes. Otherwise it is a dated observation: it states its date and the command that regenerates it, and a reader who needs the current figure runs that command. A snapshot that nothing regenerates and nothing reads is deleted, not kept.
+
+The failure is quiet because a stale snapshot and a fresh one look identical until the day they disagree, and the reader most likely to rely on one is the reader who cannot run the toolchain. *(Graduated from `indefinable-numbat`, 3 occurrences across two reports — `lessons-archived/indefinable-numbat.md`. A committed inventory used to check published counts that no gate regenerated; a recall report cited as current between measurements; and the same inventory found a week stale, recording 85 test families against a live 95.)*
+
 ## Sweep every embodiment of a changed contract
 
 Changing a shared contract is not complete when the contract's own file and its
@@ -166,7 +172,7 @@ lane broke fourteen `test_check.py` cases across four independent inventories
 **inside one file** — in a session where the same lesson had been re-filed hours
 earlier.
 
-Apply the changed-contract sweep before a plan's file list is finalized. Search for the old literal as well as the new name: a fixture can encode the old value without mentioning the owning policy, and a mutation patch can pin a value in context without mutating it. Follow actual dependent contracts, inspect every relevant match, and repeat the affected search after a requirement changes in review. Use the plan's existing File Changes and Intentionally unchanged neighbors sections; the obligation is complete work, not a separate inventory report.
+Apply the changed-contract sweep before a plan's file list is finalized. Search for the old literal as well as the new name: a fixture can encode the old value without mentioning the owning policy. Follow actual dependent contracts, inspect every relevant match, and repeat the affected search after a requirement changes in review. Use the plan's existing File Changes and Intentionally unchanged neighbors sections; the obligation is complete work, not a separate inventory report.
 
 ## Govern the proof estate, not a test-count proxy
 

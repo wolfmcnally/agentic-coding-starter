@@ -48,7 +48,7 @@ Use targeted search and file reads to identify:
 
 If a surface is greenfield (the directory doesn't exist before its introduction phase), confirm what `plan/phase-<id>.md` says to create and avoid inventing extra structure.
 
-Before finalizing File Changes, apply `policies/verification-discipline.md`'s changed-contract sweep during planning. Search for the old names and values in callers, fixtures, tests, validation rules, and mutation-patch context; follow any actual dependency that must change for the proposed behavior. Inspect matches before deciding they need edits. Put necessary edits in File Changes and consequential non-changes under Intentionally unchanged neighbors. Repeat the affected search when review changes a target or requirement; no separate trace report is required.
+Before finalizing File Changes, apply `policies/verification-discipline.md`'s changed-contract sweep during planning. Search for the old names and values in callers, fixtures, tests, and validation rules; follow any actual dependency that must change for the proposed behavior. Inspect matches before deciding they need edits. Put necessary edits in File Changes and consequential non-changes under Intentionally unchanged neighbors. Repeat the affected search when review changes a target or requirement; no separate trace report is required.
 
 Give every change that no derivation or check will re-surface its own line in File Changes or Testing Strategy: a file named only in prose, a decision recorded under Architecture Decisions, an agreement reached in conversation. A plan that is otherwise derived is trusted to be complete, so the item written as a sentence is the one nothing finds again.
 

@@ -1,6 +1,6 @@
 # Phased Execution Plan — Agentic Coding Starter Template
 
-Methodology work is primary one-shot with commit/push authority after required checks, including teach/learn, without delegated planning/coding or independent review. Product work defaults to eligible-primary planning/coding with bounded advisory review, preferring a permitted cross-provider SOTA adviser. Single-provider users get independent same-model instances; constrained primaries retain the delegated approval workflow. See `policies/review-lanes.md` and `policies/role-models.md`.
+Methodology work is primary one-shot with commit/push authority after required checks, including teach/learn, without delegated planning/coding or independent review. Product work defaults to eligible-primary planning/coding with bounded advisory review, preferring a permitted cross-provider adviser. Single-provider users get independent same-model instances; constrained primaries retain the delegated approval workflow. See `policies/review-lanes.md` and `policies/role-models.md`.
 
 
 This directory is the phased execution plan for *this* repository. It is the authoritative source for what to build, in what order, and under what invariants.
@@ -128,7 +128,7 @@ Shipped files are linked. A file a future phase will create may also appear, as 
 | Pinned third-party documentation     | [`../docs/README.md`](../docs/README.md), [`../policies/docs.md`](../policies/docs.md), [`../bin/check-catalogs`](../bin/check-catalogs) |
 | Activity log                         | [`../LOG.md`](../LOG.md)                                  |
 | Lessons and maintenance flywheel     | [`../briefs/harness-self-improvement.md`](../briefs/harness-self-improvement.md), [`../policies/lessons.md`](../policies/lessons.md), [`../bin/lessons`](../bin/lessons), [`../bin/check-catalogs`](../bin/check-catalogs), [`../.claude/skills/sweep/SKILL.md`](../.claude/skills/sweep/SKILL.md) |
-| Toolchain contract                  | [`../bin/setup`](../bin/setup), [`../bin/test`](../bin/test), [`../bin/check`](../bin/check), [`../bin/check-receipt`](../bin/check-receipt), [`../bin/python`](../bin/python), [`../policies/build-gates.md`](../policies/build-gates.md) |
+| Toolchain contract                  | [`../bin/setup`](../bin/setup), [`../bin/test`](../bin/test), [`../bin/check`](../bin/check), [`../bin/check-receipt`](../bin/check-receipt), [`../bin/mutate`](../bin/mutate), [`../bin/python`](../bin/python), [`../policies/build-gates.md`](../policies/build-gates.md) |
 | Proof-estate reset and governance   | [`../briefs/test-suite-value-governance.md`](../briefs/test-suite-value-governance.md), [`../policies/test-suite-governance.md`](../policies/test-suite-governance.md), [`../tests/proof-estate.yaml`](../tests/proof-estate.yaml), [`../bin/test-governance`](../bin/test-governance), [`../reports/test-governance/starter-reset-summary.json`](../reports/test-governance/starter-reset-summary.json) |
 | Optional tracked hooks              | [`../.githooks/pre-push`](../.githooks/pre-push), [`../bin/install-hooks`](../bin/install-hooks) |
 | Phase orchestrator                   | [`../.claude/skills/kickoff/SKILL.md`](../.claude/skills/kickoff/SKILL.md) |

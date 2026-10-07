@@ -2523,3 +2523,25 @@ A universal, operator-invoked `mutate` skill is how a survey is asked for. With 
 **Remaining for the operator.** The skill has not been invoked through a harness, only its command. The added path-filter assertions sit in a proof whose receipt predates them. Derived repositories have none of this until they are taught.
 
 Lessons: `wild-orangutan` filed, methodology scope — a plan that adds a step to every phase must price that step's recurring time; the survey's first delivery ran it at every hand-off and sweep while the plan's cost section named nothing recurring. Independent review is not applicable because this is primary one-shot methodology work.
+
+## 2026-10-07 01:31 — SWEEP (full)
+
+Mechanical: catalogs and lessons pass; the proof estate validates at 125 families and 143 leaves with 44 witness receipts and 109 unwitnessed baseline proofs. Timing, three samples: 105.8 seconds against the 100-second budget, within tolerance, no size violations. No mutation survey was run; the operator declined both the whole-estate run and a bounded one.
+
+The pass ran one day after five methodology changes and found about forty statements they had not reached: the shipped defaults still described as the quality preset in nine places, a "SOTA adviser" in three, the retired count budget and mutation patches in five, "mutation gate" in four files, the universal skills still counted as fourteen or listed without `mutate` in five, and `bin/mutate` absent from five toolchain lists. These were aligned as AUTO wording, with two brief dates, two step references that named a step that does not exist, and an incomplete description of the commit hook. A GPT-6.1 Sol settings excerpt was pinned under `docs/`, read from the vendor page directly.
+
+Settled with the operator, one at a time: (1) Sol and Opus remain the default reviewers; (2) `indefinable-numbat` graduated into `policies/verification-discipline.md` as the rule that a snapshot nothing regenerates is a dated observation, and the orphan inventory snapshot it twice records was deleted; (3) a recovered role result that fails its checks follows governed recovery, replacing a July sentence in `policies/orchestration-evidence.md` that still allowed a stage fallback; (4) the deferred deterministic-kickoff brief keeps its draft status and gains a dated note of its four drifts. As one group: four ledger corrections. `unique-orangutan` was split, its second failure becoming `camouflaged-kakapo`; the shared incident of `blue-crocodile` and `conscious-inchworm` is counted once; `expensive-pogona` is one occurrence; `fair-cockle` stays at two with its rows corrected.
+
+Left open: `comical-manticore` and `deft-puffin` stay held under the operator's earlier rulings; the test lane is 19 seconds from failing its budget; `chivalrous-turtle`, `glaring-bull`, `delightful-whale` and `greedy-jackdaw` reach age-out between 2026-10-09 and 2026-10-16; the five lessons filed on 2026-10-06 and 2026-10-07 had their incidents corrected but their general rules are stated nowhere; four lessons carry an undecided either/or and four read as general practice, none raised; policies that have never fired were not audited; the pattern map is still scoped to a 2026-07-23 snapshot; the survey module's own survivors are undispositioned. Skills edited by the sweep were restamped; the others were scanned for the named drift classes only and keep their dates.
+
+One departure from the approved plan: the `stamp` skill's source precondition lists `bin/mutate` before `bin/test-governance`, not after, because a contract test pins the existing phrase.
+
+Lessons: `effective-asp` gains its third occurrence, the forty statements the five changes left behind, and is now a graduation candidate for the next sweep; its own body named a third instance as the test of whether its remedy needs a trigger. The one full gate follows this record.
+
+## 2026-10-07 01:33 — SWEEP (full) CORRECTION
+
+The sweep recorded just above was committed in two commits, not one, by an error in delivery. The staging command named the graduated lesson at its old path, which had already been moved, and refused. It had been chained with the commit and the full gate, so the refusal went unread: the commit that followed carried only the lesson's rename under the sweep's message, and the gate then ran on a tree with the other 38 paths unstaged. That gate result qualified nothing and is not relied on. Nothing was pushed in that state.
+
+Correction: the remaining paths were staged by explicit path in a block of their own, the staged file list was checked, and they are committed as a second commit. The first commit is left as it is, since amending it is the operator's to authorize. One full gate on the resulting clean tree follows this record and is the one that qualifies the push.
+
+Lessons: none new. This is a violation of a rule already written, that a refusing command gets its own block and its diagnostic is read before the next command, at exactly the point that rule names, delivery.

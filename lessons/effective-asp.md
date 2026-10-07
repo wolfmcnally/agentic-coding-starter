@@ -11,6 +11,8 @@ occurrences:
     ref: "Methodology-routing correction — the direct-implementation rule landed in policy on 2026-09-05, but the three phase rows drafted under the old route survived it, one still marked 🚧, until the operator noticed the mismatch a day later"
   - date: 2026-09-05
     ref: "Lessons graduation pass — a graduation assessed before a new test became binding was never re-assessed after it did, an hour later in the same pass. The entry was recommended to the operator as passing the test in a sentence that described the failure condition; independent review caught it and the ruling had to be corrected after the fact. Different surface from the first occurrence: a lessons ruling rather than a phase row"
+  - date: 2026-10-07
+    ref: "this template — five ratified methodology changes landed in one day with their rule text, and about forty statements written under the old rules survived them: the shipped defaults still described as the quality preset in nine places, the retired count budget and mutation patches in five, the universal skills counted as fourteen in five lists. All read as current. A sweep the next day found them; each change's own stale-term search had covered only the terms that change's author thought to search for"
 ---
 
 Ratifying a rule mid-flight fixes what happens next. It does nothing to what the previous rule already produced, and the leftovers are dangerous in a specific way: they still look authoritative. A retired route's artifacts keep whatever markers made them live — a status arrow, an open ledger row, a pending queue entry — so the very machinery the new rule was meant to redirect keeps picking them up.

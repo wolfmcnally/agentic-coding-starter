@@ -68,6 +68,8 @@ A project derived from this template contains the following **portable structure
     test                   # Full/focused repository test runner
     check                  # Authoritative lint/format/test/policy gates
     check-receipt          # Durable candidate-bound full-gate receipts
+    test-governance        # Proof-estate inventory, validation, red witnesses, selection
+    mutate                 # Opt-in mutation survey; never a gate
     <runtime>              # Optional selected runtime (for example, python)
     install-hooks          # Explicit opt-in to tracked Git hooks
     check-hooks-installed  # Opt-in-aware hook-liveness witness
@@ -177,6 +179,7 @@ A project derived from this template contains the following **portable structure
       plain/SKILL.md       # Universal: the register for addressing the operator
       ask/SKILL.md         # Universal: operator-invoked inventory of open decisions
       refactor/SKILL.md    # Universal: behavior-preserving refactoring and simplification pass
+      mutate/SKILL.md      # Universal: operator-invoked mutation survey of the tests
       # stamp is NOT carried over — the new project doesn't need to stamp
       # out more projects from itself by default
     agents/
@@ -209,6 +212,7 @@ A project derived from this template contains the following **portable structure
       plain
       ask
       refactor
+      mutate
       # stamp is NOT mirrored here either — starter-only
 
   tooling/                 # ONLY when the deliverable is not Python: the
@@ -779,7 +783,7 @@ Bootstrap is complete when **all** of the following hold:
     critic. A prose mention in a universal skill, brief or policy travels as
     written
 [ ] bin/setup, bin/test, bin/check, bin/check-receipt, bin/test-governance,
-    bin/install-hooks, and bin/check-hooks-installed are executable;
+    bin/mutate, bin/install-hooks, and bin/check-hooks-installed are executable;
     the language runtime wrapper exists when applicable; .githooks/pre-push
     reuses only an exact verified receipt and otherwise calls bin/check; hook
     installation remains explicit and opt-in, with the opt-in-aware liveness
@@ -804,7 +808,8 @@ Bootstrap is complete when **all** of the following hold:
     tests/test_toolchain_callers.py, tests/test_mirror_parity.py,
     tests/test_research_authority.py, tests/test_execution_telemetry.py, and
     tests/test_execution_dashboard.py, tests/test_test_governance.py, and
-    tests/test_pre_commit.py pass through bin/test
+    tests/test_pre_commit.py pass through bin/test, with tests/test_mutation.py
+    when the project keeps the Python mutation profile
 [ ] tests/proof-estate.yaml and reports/test-governance/ contain only this
     project's inventory and evidence; bin/test-governance validate passes;
     every seeded proof is retained, and the witness ledger holds only this

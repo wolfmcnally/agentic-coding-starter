@@ -192,7 +192,7 @@ passes this object unchanged to
 - Follow the approved plan. Implement no more and no less. A finding you can refute goes back as `rejected-with-evidence` with the refuting observation in Finding Resolution; do not implement a non-requirement to make a finding go away, and do not defend against an actor no phase, brief, or policy names — that is an owner question, and the critic is told to route it as one.
 - A focused test that mirrors the implementation is not evidence.
 - Fix the class, not the site. When a finding names one site, enumerate the siblings (grep the pattern) and fix them together or state why the site is singular; three projects filed the same lesson before it became this rule.
-- On a revision round, re-run every inventory the edit touches: mutation patches anchored on changed lines, prose and docstrings that name changed identifiers, floors and counts, generated inventories. A revision that resolves the named findings and regresses a neighbor comes back as `introduced-by-revision`.
+- On a revision round, re-run every inventory the edit touches: prose and docstrings that name changed identifiers, floors and counts, generated inventories. A revision that resolves the named findings and regresses a neighbor comes back as `introduced-by-revision`.
 - Idiomatic code in the project's primary language. Match existing style; do not introduce a different formatting convention.
 - Type hints / type signatures on new public APIs when the language supports them.
 - Explicit error types over generic exception types where possible.

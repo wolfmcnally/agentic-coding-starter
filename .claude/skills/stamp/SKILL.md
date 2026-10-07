@@ -9,7 +9,7 @@ description: >-
   the new project's name and primary language. Invoke as /stamp <directory>
   [<description>] in Claude Code or $stamp <directory> [<description>] in Codex.
 argument-hint: "<directory> [<description>]"
-last-reviewed: 2026-10-01
+last-reviewed: 2026-10-07
 ---
 
 # Stamp — Bootstrap a new agentic-coding project
@@ -45,10 +45,10 @@ Before changing anything, verify:
    - `.claude/settings.json` exists and sets `worktree.bgIsolation` to `none`.
    - `bin/kickoff-config` exists and is executable.
    - `bin/kickoff-tree-id` and `bin/kickoff-evidence` exist and are executable.
-   - `bin/setup`, `bin/test`, `bin/check`, `bin/check-receipt`, and
+   - `bin/setup`, `bin/test`, `bin/check`, `bin/check-receipt`, `bin/mutate`, and
      `bin/test-governance` exist and are executable;
-     `tests/test_check_receipt.py`, `tests/test_test_governance.py`, and
-     `tests/proof-estate.yaml` exist; the Python profile also has executable
+     `tests/test_check_receipt.py`, `tests/test_test_governance.py`,
+     `tests/test_mutation.py`, and `tests/proof-estate.yaml` exist; the Python profile also has executable
      `bin/python`.
    - `kickoff.yaml` exists and `./bin/kickoff-config show` validates role models, role timeouts, and research budgets.
    - `.codex/agents/*.toml` has one TOML file per canonical agent.
@@ -306,7 +306,7 @@ Author these afresh, using the gathered configuration:
     - `## Project briefs` — list of `briefs/*.md` files specific to this project (initially just `BRIEF.md`).
     - `## Project surfaces` — describe the deliverable (path, what language, what the example or seed code is). When `project_isolation` is on, the surface is `project/`; when off, name the sibling deliverable directories.
     - `## Project conventions` — language, tooling, build-gate command shape for this project.
-    - `## Model & review venue` — describe `kickoff.yaml` as the human-editable source for separate model/effort fields and execution budgets; `roles` is an optional validated editor; the shipped default is quality/same-harness, with balanced/economy presets and explicit cross-vendor review defined in the role policy. Governed by the two role policies.
+    - `## Model & review venue` — describe `kickoff.yaml` as the human-editable source for separate model/effort fields and execution budgets; `roles` is an optional validated editor; the shipped default is same-harness roles on each provider's lead coding model, with quality/balanced/economy presets and explicit cross-vendor review defined in the role policy. Governed by the two role policies.
     - `## Project-specific skills` — if the new project carries any skills beyond the universal fifteen (`kickoff`, `methodology`, `rule-one`, `learn`, `teach`, `roles`, `sweep`, `sweep-planning`, `sweep-coding`, `demo`, `treatise`, `plain`, `ask`, `refactor`, `mutate`), list them here. For most fresh projects, this section is empty (or omitted).
   - Preserve the introductory paragraph that explains the two-zone contract; it is informational and lives outside both markers. Adjust only its `stamp`-specific wording: the destination is not a template, so the zones are described as written-for-this-project and carried-from-the-template rather than as things `stamp` does.
 
@@ -404,7 +404,7 @@ Adapt the complete atomic bundle defined by `policies/build-gates.md`:
 - the runtime pin, manifest, lockfile, behavioral tests, hook, docs, `kickoff`, and four canonical agents all agree with those entry points.
 - every dependency-bearing operational caller, generated command, tracked hook, and active instruction uses the destination's repository runtime;
 - format checking covers staged, unstaged, and nonignored untracked candidate files without rewriting them;
-- hot loops, mutation gates, generated multi-command workflows, and detached processes resolve the underlying repository interpreter once and reuse it.
+- hot loops, mutation surveys, generated multi-command workflows, and detached processes resolve the underlying repository interpreter once and reuse it.
 
 Generate the destination's proof estate after its real tests and gates exist. Do not copy Starter's `tests/proof-estate.yaml`, witness receipts, reports, family tiers, selectors, risk labels, timings, survivors, or judgments. Use `bin/test-governance inventory` to freeze the local whole-estate baseline, then judge the destination's own estate. Physically remove dominated proofs and disposition every baseline proof before the stamp is complete. A fresh destination usually has none to remove: a reset that retains every inherited proof, with no `delete` or `consolidate` row, is valid, and no proof is retired merely to make the ledger look pruned. A fresh destination declares a `witness_ledger` path and creates that file empty: its inherited proofs report as unwitnessed, never as passing, and every proof it later admits or repairs gets a receipt from `./bin/test-governance witness`, whose command is whatever runs the destination's tests in its own language. It declares a size for every pytest family from its own first full run and a `time_budget` whose `reference_machine` is null until someone runs `./bin/test-governance timing --samples 3` on the destination's own hardware and records that machine; until then the budget reports unmeasured and the size ceilings still bind. Direct proof for every applicable critical risk stays mandatory. A conflict among the requirements still parks for the owner. Wire `reassess` and `timing` into sweeps, and widen indeterminate changed selection to full. The changed-path selection is the implementation gate; the handoff gate and pre-push remain full over the retained estate.
 
@@ -479,6 +479,7 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - `<dest>/bin/kickoff-tree-id` and `<dest>/bin/kickoff-evidence` are executable; their behavioral tests pass.
 - `<dest>/bin/check-receipt` is executable and `<dest>/tests/test_check_receipt.py` passes; successful full gates retain a complete durable log and exact candidate/environment receipt; Python receipts identify the runtime selected by `<dest>/bin/python`, including its executable and base-executable identities, while dirty, changed-runtime, corrupt, non-`HEAD`, descriptor-error, and query-error pushes fail closed to the full gate.
 - `<dest>/bin/test-governance validate` passes against a destination-local `tests/proof-estate.yaml`; its frozen pre-reset baseline, disposition ledger, current inventory, witness ledger, and reset summary all agree; local reports contain no Starter values; the retained estate stays within its size ceilings and time budget; the witness ledger holds no Starter receipt; and every applicable critical risk retains direct proof.
+- `<dest>/bin/mutate --changed-from HEAD` exits 0 and reports `measured` when the destination declares a mutation tool, or `unmeasured` with the declared reason when it declares none.
 - `<dest>/bin/lessons validate` and `<dest>/bin/check-catalogs` are executable and pass against the fresh destination (empty ledger, synced catalogs, one `⬅️`); a `.gitkeep` exists in each of `lessons/`, `lessons-archived/`, `user-actions/`, and `user-actions-archived/`, and no Starter ledger entries were copied into any of the four.
 - Every executable `<dest>/bin/check` requires before it runs a gate is present and executable. Read the names from the `for evidence_executable in …` list in `<dest>/bin/check` itself and test each one; the list grows with the template, so a copy of it here would fall behind. This is the fastest way to catch an incomplete copy: `bin/check` fails closed on the first one missing, before any gate runs.
 - `<dest>/lib/agentic_starter/` exists and `<dest>/bin/execution-telemetry --help` runs; `<dest>/reports/execution/` carries `index.html`, `index-data.js`, and `assets/` and no dated directory, no `<dest>/EXECUTION_LOG.jsonl` was copied, and `<dest>/bin/check-execution-dashboards` reports `EXECUTION DASHBOARDS PASS (0 phases)` against the fresh archive.
@@ -491,14 +492,14 @@ Run the bootstrap acceptance check from [`briefs/agentic-bootstrap.md` §6](../.
 - When `surfaces` includes `web`: `<dest>/project/index.html` exists and names the mount point `src/main.ts` acquires, the dev/build scripts run, and the seed test suite passes **without a browser or a display** — a gate that needs a screen is a broken gate. Prove the page actually serves rather than merely builds: run the preview server and fetch `/`, confirming the mount point and the bundled entry script both appear in the response.
 - Every language-version pin the lint or type tooling constrains is inside that tooling's supported range, and the constraint is written down in the destination's conventions rather than left to be rediscovered.
 - Every dependency named in the brief or the description appears in the destination's manifest and in its lockfile, and no dependency appears that nobody named.
-- `<dest>/kickoff.yaml` exists; `show` prints the seeded quality/same-harness model routing, portable timeout values, and per-role research budgets; a scoped model edit preserves timeout/research comments and values; `<dest>/.gitignore` includes `.kickoff/`; the role, timeout, and research-authority policies plus invocation brief exist.
+- `<dest>/kickoff.yaml` exists; `show` prints the seeded same-harness lead-model routing, portable timeout values, and per-role research budgets; a scoped model edit preserves timeout/research comments and values; `<dest>/.gitignore` includes `.kickoff/`; the role, timeout, and research-authority policies plus invocation brief exist.
 - `<dest>/bin/setup` succeeds from outside `<dest>` and provisions only the committed runtime/dependencies, then passes the target-adapted dependency probe.
 - `<dest>/bin/test` runs `tests/test_toolchain_entrypoints.py`, `tests/test_check.py`, `tests/test_check_receipt.py`, `tests/test_install_hooks.py`, `tests/test_kickoff_config.py`, `tests/test_kickoff_tree_id.py`, `tests/test_kickoff_evidence.py`, `tests/test_lessons.py`, `tests/test_check_catalogs.py`, `tests/test_treatise.py`, `tests/test_new_name.py`, `tests/test_shell_syntax.py`, `tests/test_toolchain_callers.py`, `tests/test_mirror_parity.py`, `tests/test_research_authority.py`, `tests/test_execution_telemetry.py`, `tests/test_execution_dashboard.py`, and the deliverable tests through committed locked environments; a focused repo-relative test argument runs only that selection.
 - `<dest>/bin/check test` delegates to `<dest>/bin/test`.
 - `<dest>/bin/check all` runs from outside `<dest>` and passes on the seeded code.
 - A valid explicit runtime override drives every Python entry point; an invalid or probe-failing override exits nonzero without fallback.
 - Staged, unstaged, and nonignored untracked format failures are each rejected without rewriting the candidate. The proof is `test_format_rejects_staged_unstaged_and_untracked_candidates_without_rewriting` in the adapted `<dest>/tests/test_check.py`, which runs the destination's real formatter over the directories its format gate names.
-- A hot loop, mutation gate, generated multi-command workflow, or detached process resolves its underlying repository interpreter once and reuses it.
+- A hot loop, mutation survey, generated multi-command workflow, or detached process resolves its underlying repository interpreter once and reuses it.
 
 Run the repository-owned gate to confirm:
 
@@ -522,7 +523,7 @@ When the bootstrap finishes cleanly, report to the user:
 
 - The destination path.
 - The project name, slug, primary language, and inferred surfaces.
-- That human-editable `kickoff.yaml` was seeded with quality/same-harness model routing and portable role budgets; model and effort are separate fields; `roles` edits model fields or applies the role policy’s presets without invoking a model; local telemetry stays under `.kickoff/`; and `bin/kickoff-config recommend-timeouts` proposes target-local recalibration.
+- That human-editable `kickoff.yaml` was seeded with same-harness lead-model routing and portable role budgets; model and effort are separate fields; `roles` edits model fields or applies the role policy’s presets without invoking a model; local telemetry stays under `.kickoff/`; and `bin/kickoff-config recommend-timeouts` proposes target-local recalibration.
 - Whether the kickoff preflight passed, or the message it refused with.
 - The path to the new project's `BRIEF.md` (which the user should flesh out next) and `plan/phase-1.md` (which the user should review before `kickoff`'ing).
 - The recommended next steps:

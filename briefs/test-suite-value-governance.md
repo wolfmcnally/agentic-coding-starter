@@ -1,6 +1,6 @@
 ---
 title: Test-Suite Value Governance
-date: 2026-08-27
+date: 2026-10-07
 status: methodology
 scope: Universal design for resetting and governing an attributable proof estate without allowing test accumulation to become permanent.
 ---

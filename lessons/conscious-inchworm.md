@@ -9,8 +9,6 @@ source: learn
 occurrences:
   - date: 2026-08-21
     ref: "Donor A — a review brief implied external evidence state existed, prompting an unrestricted search outside the repository and a lost verdict"
-  - date: 2026-08-21
-    ref: "Donor A — a later review stayed inside its boundary but still exceeded its context because the boundary constrained location, not volume"
 ---
 
 A review brief explained evidence-ledger mechanics that the reviewer did not
@@ -30,3 +28,7 @@ Two rules emerge:
 
 A usable boundary names the repository surface, forbids unrelated state and
 unrestricted recursive search, and assigns a review slice small enough to hold.
+
+## Ledger note — 2026-10-07 (recount)
+
+A second row recorded a later review that stayed inside its boundary but still exceeded its context. That is the same incident `blue-crocodile` records, and its remedy, bounding volume by splitting the review, is that lesson's. The operator had it counted once, there, in the 2026-10-07 sweep.

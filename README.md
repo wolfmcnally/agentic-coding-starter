@@ -1,6 +1,6 @@
 # Wolf's Agentic Coding Starter Kit
 
-Methodology work is primary one-shot with commit/push authority after required checks, including teach/learn, without delegated planning/coding or independent review. Product work defaults to eligible-primary planning/coding with bounded advisory review, preferring a permitted cross-provider SOTA adviser. Single-provider users get independent same-model instances; constrained primaries retain the delegated approval workflow. See `policies/review-lanes.md` and `policies/role-models.md`.
+Methodology work is primary one-shot with commit/push authority after required checks, including teach/learn, without delegated planning/coding or independent review. Product work defaults to eligible-primary planning/coding with bounded advisory review, preferring a permitted cross-provider adviser. Single-provider users get independent same-model instances; constrained primaries retain the delegated approval workflow. See `policies/review-lanes.md` and `policies/role-models.md`.
 
 
 *An opinionated starting point for building software with AI coding agents.*

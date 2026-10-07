@@ -155,7 +155,7 @@ environment that uv may replace during synchronization is self-referential and
 fails before uv runs.
 
 Runtime wrappers may probe on ordinary one-shot entry. A hot loop, mutation
-gate, generated multi-command workflow, or detached process resolves and
+survey, generated multi-command workflow, or detached process resolves and
 validates the underlying repository interpreter once, then reuses that exact
 executable for every repeated call. It does not re-enter the wrapper for each
 iteration, start a background process through an ambient executable, or depend

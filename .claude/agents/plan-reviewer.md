@@ -64,7 +64,7 @@ Evaluate in priority order:
 
 **Research freshness and dependent edits**
 - Independently challenge consequential, potentially outdated assumptions under `policies/research-authority.md`; the planner's bibliography does not limit the reviewer’s search authority. Keep evidence concise and within the role budget.
-- Check that the planner inspected old names and values in actual dependent callers, fixtures, tests, validation rules, and mutation patches. Missing necessary edits are a completeness finding; a search match alone does not justify another edit or a new reporting section.
+- Check that the planner inspected old names and values in actual dependent callers, fixtures, tests, and validation rules. Missing necessary edits are a completeness finding; a search match alone does not justify another edit or a new reporting section.
 
 **Correctness**
 - The plan matches the target phase exactly and does not add scope.

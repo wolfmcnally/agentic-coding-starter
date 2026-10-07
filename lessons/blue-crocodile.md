@@ -31,3 +31,7 @@ Mechanics worth preserving:
 
 The trigger is changed-surface volume, not the number of failed attempts.
 Partition before repeated context loss turns a complete review into a skim.
+
+## Ledger note — 2026-10-07 (recount)
+
+The two failed reviews of 2026-08-21 were also recorded as a row of `conscious-inchworm`. The operator had the incident counted once, here, in the 2026-10-07 sweep.

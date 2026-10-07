@@ -149,9 +149,9 @@ Behavioral coverage lives in `tests/test_test_governance.py` and
 `tests/test_pre_commit.py`; the manifest and reports are recipient-local state.
 
 Post-reset evolution is replayed from the append-only audit ledger. A
-`proof_retirement` removes one currently active proof and creates one budget;
-one later `proof_admission` may consume that budget exactly once. Reset-era
-retirements cannot fund proofs appended after the post-reset lifecycle begins.
+`proof_admission` adds one proof with its evidence and needs a witness receipt, a
+`proof_repair` records a corrected assertion, and a `proof_retirement` removes one
+currently active proof. There is no count budget.
 
 ### `mutate` — mutation survey of the proofs
 
@@ -222,7 +222,8 @@ Behavioral coverage lives in `tests/test_check_receipt.py`.
 ### `install-hooks` — opt in to tracked Git hooks
 
 Configures only the current checkout's `core.hooksPath` to `.githooks`. The
-pre-commit hook runs the fast harness-parity and toolchain-caller checks; the
+pre-commit hook runs the fast structural checks (harness parity, toolchain callers,
+the staged log, the staged candidate partition and proof-estate validation); the
 pre-push hook reuses a verified exact full-gate receipt or runs
 `./bin/check all` on any miss. Installation is explicit and idempotent.
 A different existing hooks path is preserved and reported; only `--force`

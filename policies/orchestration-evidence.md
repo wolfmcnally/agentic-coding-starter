@@ -431,7 +431,11 @@ Exit 66 (`completed-unverified-protocol`) means only that a successful child
 left a fresh artifact while its terminal stream was incomplete. Before using
 that artifact, the orchestrator must validate its verdict/report shape, ingest
 and validate its evidence block when the role produces findings, and confirm
-the expected candidate id. If any check fails, use the normal stage fallback.
+the expected candidate id. If any check fails, follow governed recovery in
+[`role-models.md`](role-models.md#governed-recovery): preserve the artifact and
+the dispatch evidence, classify the failure, and park unless an already
+authorized recovery keeps the same model, effort and authority. There is no
+implicit fallback to another route.
 Exit 65, a timeout, a nonzero child, a stale artifact, or an invalid artifact
 is never recoverable success.
 
