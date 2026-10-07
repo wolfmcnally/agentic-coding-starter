@@ -182,7 +182,7 @@ def test_scoped_edit_preserves_extensions_comments_and_timeouts(tmp_path: Path) 
     original = config.read_text().replace(
         "extensions: {}", 'extensions:\n  quoted: "keep me" # preserve this comment'
     )
-    original = original.replace("model: fable", 'model: "fable" # role comment', 1)
+    original = original.replace("model: opus", 'model: "opus" # role comment', 1)
     config.write_text(original)
     timeout_block = original.split("role_timeouts:", 1)[1]
 
@@ -223,8 +223,8 @@ def test_scoped_edit_preserves_extensions_comments_and_timeouts(tmp_path: Path) 
             ("opus", "sol", "opus", "sol"),
         ),
     }
-    # Independent oracle: provider-recommended starting effort per model (As of 2026-09-23).
-    starting_effort = {"opus": "medium", "sol": "medium", "fable": "high", "astra": "high"}
+    # Independent oracle: the effort adopted per model for high-quality coding (As of 2026-10-07).
+    starting_effort = {"opus": "high", "sol": "high", "fable": "high", "astra": "high"}
     for (preset, review), expected in matrices.items():
         options = () if review == "same-harness" else ("--review", review)
         result = run_manager(config, "apply-preset", preset, *options)
@@ -248,9 +248,10 @@ def test_scoped_edit_preserves_extensions_comments_and_timeouts(tmp_path: Path) 
     seed_models = yaml.safe_load(SEED_CONFIG.read_text())["role_models"]
     assert yaml.safe_load(config.read_text())["role_models"] == seed_models
     assert list(yaml.safe_load(config.read_text())["role_models"]) == list(seed_models)
+    # The shipped pins are each provider's lead coding model; the quality preset is not them.
     explicit = run_manager(config, "apply-preset", "quality", "--review", "same-harness")
     assert explicit.returncode == 0, explicit.stderr
-    assert yaml.safe_load(config.read_text())["role_models"] == seed_models
+    assert yaml.safe_load(config.read_text())["role_models"] != seed_models
     config.unlink()
     assert run_manager(config, "reset", "all").returncode == 0
     assert yaml.safe_load(config.read_text())["role_models"] == seed_models
@@ -768,8 +769,8 @@ def _assert_primary_routing_and_usage(tmp_path: Path) -> None:
     ]
     assert routed["primary_model"] == "sol"
     assert [routed["roles"][r]["model"] for r in ("reviewer", "critic")] == [
-        "fable",
-        "fable",
+        "opus",
+        "opus",
     ]
     assert workflow.resolve(document, "claude")["primary_model"] == "opus"
     for escalation, harness in (("astra", "codex"), ("fable", "claude")):
@@ -808,12 +809,12 @@ def _assert_primary_routing_and_usage(tmp_path: Path) -> None:
             else:
                 assert (
                     workflow.apply_usage(routed, config, data)["roles"]["reviewer"]["model"]
-                    == "fable"
+                    == "opus"
                 )
     for window, percent, wanted in [
-        ("week", 95, "fable"),
+        ("week", 95, "opus"),
         ("week", 95.001, "sol"),
-        ("short", 100, "fable"),
+        ("short", 100, "opus"),
     ]:
         data = copy.deepcopy(snapshot)
         data["anthropic"]["windows"][window]["utilization"] = percent
@@ -840,10 +841,10 @@ def _assert_primary_routing_and_usage(tmp_path: Path) -> None:
     separate = workflow.resolve(document, "codex")
     saturated = copy.deepcopy(snapshot)
     saturated["anthropic"]["windows"]["week"]["utilization"] = 99
-    assert separate["roles"]["reviewer"]["model"] == "fable"
+    assert separate["roles"]["reviewer"]["model"] == "opus"
     assert separate["roles"]["critic"]["model"] == "astra"
     assert workflow.apply_usage(separate, config, saturated)["roles"]["reviewer"]["model"] == "sol"
-    config["adviser_models"]["codex"]["critic"] = ["fable"]
+    config["adviser_models"]["codex"]["critic"] = ["opus"]
     # Shared limits cannot be excluded by model-specific mappings.
     scoped = copy.deepcopy(snapshot)
     scoped["openai"]["windows"] = {"primary_window": {"utilization": 96, "window_seconds": 18000}}

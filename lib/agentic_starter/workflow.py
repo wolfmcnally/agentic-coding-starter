@@ -29,8 +29,8 @@ DEFAULT_WORKFLOW = {
     "eligible_primary_models": ["opus", "sol", "fable", "astra"],
     "review_preference": "cross-vendor",
     "adviser_models": {
-        "claude": {"reviewer": ["astra"], "critic": ["astra"]},
-        "codex": {"reviewer": ["fable"], "critic": ["fable"]},
+        "claude": {"reviewer": ["sol"], "critic": ["sol"]},
+        "codex": {"reviewer": ["opus"], "critic": ["opus"]},
     },
     "allowed_harnesses": ["claude", "codex"],
     "targets": {},

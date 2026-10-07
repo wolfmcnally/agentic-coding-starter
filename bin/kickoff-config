@@ -145,8 +145,9 @@ MODEL_EFFORTS["codex"] = ("low", "medium", "high", "xhigh")
 MODEL_EFFORTS["default"] = ()
 EFFORTS = tuple(dict.fromkeys(effort for values in MODEL_EFFORTS.values() for effort in values))
 PRESETS = ("quality", "balanced", "economy")
-# Adopted starting effort for the lead coding models; escalation models start high.
-PRESET_EFFORTS = {"opus": "medium", "sol": "medium", "fable": "high", "astra": "high"}
+# Adopted effort per model for high-quality coding: the level each vendor ties to work
+# where verification and checking matter, not its default start.
+PRESET_EFFORTS = {"opus": "high", "sol": "high", "fable": "high", "astra": "high"}
 REVIEW_MODES = ("same-harness", "cross-vendor")
 ROLE_OPERATIONS = {
     "planner": "role.plan",
@@ -184,9 +185,13 @@ def preset_models(
     return models
 
 
+# Shipped delegated pins are each provider's lead coding model, not its escalation model.
 SHIPPED_MODELS: dict[str, dict[str, dict[str, str]]] = {
     "default": {role: {"model": "default"} for role in ROLES},
-    **preset_models("quality"),
+    **{
+        harness: {role: {"model": model, "effort": PRESET_EFFORTS[model]} for role in ROLES}
+        for harness, model in (("claude", "opus"), ("codex", "sol"))
+    },
 }
 
 SHIPPED_TIMEOUTS: dict[str, Any] = {

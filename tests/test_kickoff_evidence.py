@@ -175,7 +175,7 @@ def write_fixture_receipt(receipt: Path, *, mode: str = "delegated") -> None:
         else [
             {
                 "cli": "claude",
-                "model": "fable",
+                "model": "opus",
                 "effort": None,
                 "write_enabled": False,
                 "roles": [role],
@@ -1265,12 +1265,12 @@ def _assert_complete_synthetic_kickoff(
         plan.write_text("# Plan\n\nImplement VALUE = 2 and run the complete gate.\n")
         captured_plan = run("capture-plan", "--run-dir", str(run_dir), "--plan", str(plan))
         assert captured_plan.returncode == 0, captured_plan.stderr
-        role_attempt("role.plan-review", "reviewer", "claude", 1, "initial", model="fable")
+        role_attempt("role.plan-review", "reviewer", "claude", 1, "initial", model="opus")
         (repository / "code.py").write_text("VALUE = 2\n")
         implemented = capture(repository, run_dir)
-        role_attempt("role.code-review", "critic", "claude", 1, "initial", model="fable")
-        role_attempt("role.code-review", "critic", "claude", 2, "revision", model="fable")
-        role_attempt("role.code-review", "critic", "claude", 3, "revision", model="fable")
+        role_attempt("role.code-review", "critic", "claude", 1, "initial", model="opus")
+        role_attempt("role.code-review", "critic", "claude", 2, "revision", model="opus")
+        role_attempt("role.code-review", "critic", "claude", 3, "revision", model="opus")
     elif not thorough:
         role_attempt("role.plan", "planner", "native", 1, "initial")
         role_attempt("role.plan-review", "reviewer", "native", 1, "initial")

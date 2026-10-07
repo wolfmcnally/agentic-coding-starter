@@ -11,3 +11,9 @@ Pick a reasoning effort
 For GPT-6.1 Sol, start with the reasoning effort available by default in your client and adjust based on the task. Start with High for Luna or Light for Astra.
 
 In configuration, Astra’s Light setting is low. Increase the effort for tasks that need more planning, analysis, or checking.
+
+Light in the ChatGPT desktop app, ChatGPT Work on the web, and IDE extension, or Low in the CLI, suits quick, well-scoped tasks. Medium balances speed and depth for tasks that need more planning. High and Extra High suit difficult work with multiple steps, sources, or tradeoffs.
+
+Reasoning efforts don’t map exactly between model generations. Try a familiar task at a lower setting and adjust based on the result.
+
+Max gives the selected model more time to reason about a single task. Use it for the hardest problems, when depth matters more than speed or usage.

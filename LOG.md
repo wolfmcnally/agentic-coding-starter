@@ -2463,3 +2463,33 @@ The manifest gained a `mutation` block, validated by the governance manager: a t
 **Remaining.** The new survey module was only partly surveyed, and 11 survivors in it are neither killed nor dispositioned. No whole-estate survey has been run; at the measured rate it would take on the order of hours. The lane budget's nominal figure is now exceeded by a single run, which is advisory until three runs confirm it. Derived repositories have none of this until they are taught. None of these blocks.
 
 Lessons: none new. The rejected tool is a recurrence of an already codified rule, that an instrument able to return only one answer carries no information, and the rule was applied as written. Independent review is not applicable because this is primary one-shot methodology work.
+
+## 2026-10-07 00:48 — METHODOLOGY SCOPE
+
+Two operator instructions, given in session on 2026-10-07 while the mutation-testing plan was being delivered, before any implementation of this change.
+
+**Instructions.** First: repin the default roles from Fable to Opus 5.5 and from Astra to Sol 6.1, each the latest. Second: research the effort recommendations for Opus 5.5 and Sol 6.1 and pin to the current recommendations for high-quality coding.
+
+**Authorized outcome.** The shipped delegated role pins become Opus for a Claude orchestrator and Sol for a Codex one, in place of Fable and Astra. The shipped advisers follow: Sol advises Claude work and Opus advises Codex work. Each of the two models is pinned at the effort its vendor's current guidance supports for high-quality coding, with the guidance pinned under `docs/` and dated, and the reading of it recorded in the template's development brief. This supersedes the operator's ruling of 2026-10-01 that kept Sol at `medium`.
+
+**Surfaces.** `bin/kickoff-config` (shipped role pins and the per-model starting efforts), `lib/agentic_starter/workflow.py` (default advisers), `kickoff.yaml`, `tests/fixtures/kickoff_config_seed.yaml`, `tests/test_kickoff_config.py` and any other proof that states the shipped defaults, `policies/role-models.md`, `briefs/astra-era-development.md`, the two vendor excerpts under `docs/` and their catalog rows.
+
+**Exclusions.** The primary pins are already Opus and Sol and do not change. Fable and Astra remain selectable, remain eligible primaries, and remain what the quality preset selects. The selectors' model identifiers do not change. No derived repository is taught in this pass.
+
+## 2026-10-07 00:56 — METHODOLOGY — default roles repinned to Opus and Sol at high effort
+
+The two instructions recorded in the scope just above.
+
+**What changed.** The shipped delegated role pins are Opus under a Claude orchestrator and Sol under a Codex one, in place of Fable and Astra. The shipped advisers follow: Sol advises Claude work and Opus advises Codex work. Opus and Sol are pinned at `high`, in the role pins and as the effort every preset gives them. `bin/kickoff-config` no longer derives the shipped pins from the quality preset; that preset still selects Fable and Astra. `kickoff.yaml` carries the new values in its existing layout and is equivalent to what `reset models` and `reset workflow` now produce. `policies/role-models.md` states the pins and why; `briefs/astra-era-development.md` has a dated section with the evidence and marks the earlier paragraph it supersedes.
+
+**The effort research.** Retrieved 2026-10-07 from the vendors' own pages, with the sentences added to the two excerpts under `docs/` after reading them from the pages directly. Both vendors still give a lower default start: `medium` for Opus 5.5, the client's default for GPT-6.1 Sol, which Codex CLI 0.160.1 listed as `low`. Neither names one level for high-quality coding. Anthropic's Claude Code guidance places `high` at work where verification matters or edge cases are likely and says to reserve `xhigh` and `max` for a measured gain. OpenAI says to raise effort for tasks that need more planning, analysis or checking and places High at difficult multi-step work. `high` is therefore a reading of the guidance, not a quoted recommendation, and the policy and brief say so. It supersedes the operator's 2026-10-01 ruling that kept Sol at `medium`.
+
+**Scope departures.** One. `tests/test_kickoff_config.py` asserted that applying the quality preset reproduces the shipped pins. That is no longer true by design, so the assertion now states that they differ.
+
+**Primary self-check.** `./bin/kickoff-config show` resolves this checkout in primary mode to Opus planning and coding inline with Sol as reviewer and critic at `high`, and the delegated view to Opus or Sol at `high` for all four roles. A search for the old efforts and adviser statements outside dated history finds only the evaluation fixture's record of what it ran and an archived owner action. No live preflight was run, so whether the Sol adviser answers from this account at `high` is unverified until the next kickoff's preflight; that preflight refuses before any phase mutation if it does not.
+
+**Gates before this record.** `./bin/test --changed-from '@{upstream}'` widened to the full suite and passed, 119 tests in 104 seconds, with no warning or error line. Format, lint, catalogs, harness parity, lessons, treatise and anonymization checks passed. The full gate follows the next record, which shares this push.
+
+**Remaining for the operator.** `high` costs more tokens and time than either vendor's default, and that cost is not measured here. Review by the other provider's lead model replaces review by its strongest model; the quality preset restores the old arrangement in one command. Derived repositories keep their pins until they are taught or reset.
+
+Lessons: none. Independent review is not applicable because this is primary one-shot methodology work.
