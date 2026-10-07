@@ -1,13 +1,7 @@
-schema: agentic.proof_estate.v3
+schema: agentic.proof_estate.v4
 baseline_report: reports/test-governance/starter-pre-reset-baseline.json
 audit_ledger: reports/test-governance/starter-reset.jsonl
-effectiveness_corpus: tests/fixtures/test_governance/corpus.yaml
-effectiveness_report: reports/test-governance/starter-effectiveness.jsonl
-effectiveness_floors:
-  min_historical_recall: 0.8
-  min_mutant_recall: 0.8
-  min_historical_cases: 12
-  min_mutant_cases: 12
+witness_ledger: reports/test-governance/starter-witnesses.jsonl
 size_ceilings_seconds:
   small: 2
   medium: 20
@@ -66,8 +60,6 @@ families:
   oracle: Public CLI calls return the documented output and exit status.
   admission: Product behavior remains in the authoritative suite.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence: []
-  mutation_evidence: []
   tier: changed
   size: small
   flake_rate: 0.0
@@ -85,8 +77,6 @@ families:
   oracle: A real socket connection attempt fails through the armed pytest guard.
   admission: Hermeticity is checked with the complete example suite.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence: []
-  mutation_evidence: []
   tier: changed
   size: small
   flake_rate: 0.0
@@ -106,10 +96,6 @@ families:
   oracle: Stubbed child calls expose exact order, arguments, and preserved exit status.
   admission: This is the direct proof for the authoritative gate and iteration lanes.
   nearest_overlap: Toolchain entrypoint tests cover runtime choice but not gate composition.
-  historical_evidence:
-  - check-mode-arity
-  - invalid-runtime-fallback
-  mutation_evidence: []
   tier: vital
   size: small
   flake_rate: 0.0
@@ -132,9 +118,6 @@ families:
   oracle: Synthetic repositories report each missing, dangling, or misdirected declaration.
   admission: Broad catalog changes use the authoritative suite.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence:
-  - deleted-catalog-source
-  mutation_evidence: []
   tier: changed
   size: medium
   flake_rate: 0.0
@@ -153,8 +136,6 @@ families:
   oracle: Fixture repositories distinguish absent, unconfigured, correct, and conflicting states.
   admission: Hook custody is verified in the complete policy gate.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence: []
-  mutation_evidence: []
   tier: changed
   size: small
   flake_rate: 0.0
@@ -173,8 +154,6 @@ families:
   oracle: Concrete fixture plans pass and every unresolved proxy fails with a named reason.
   admission: Planning mechanics remain full-suite evidence.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence: []
-  mutation_evidence: []
   tier: changed
   size: small
   flake_rate: 0.0
@@ -193,8 +172,6 @@ families:
   oracle: The checker names every omitted member and distinguishes declared deviations.
   admission: Delivery completeness is checked at its explicit gate.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence: []
-  mutation_evidence: []
   tier: changed
   size: small
   flake_rate: 0.0
@@ -214,9 +191,6 @@ families:
   oracle: Candidate, log, runtime, or receipt drift forces the full gate or refuses reuse.
   admission: Receipt identity is the sole proof consumed by pre-push.
   nearest_overlap: Atomic-check proves gate execution but not durable reuse custody.
-  historical_evidence:
-  - receipt-candidate-drift
-  mutation_evidence: []
   tier: vital
   size: small
   flake_rate: 0.0
@@ -236,9 +210,6 @@ families:
   oracle: Frozen fixtures render byte-identically and malformed or private payloads are rejected.
   admission: Reporting changes retain their full fixture matrix.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence: []
-  mutation_evidence:
-  - every stage marked inline regardless of delegated role spans
   tier: changed
   size: small
   flake_rate: 0.0
@@ -257,9 +228,6 @@ families:
   oracle: Behavioral fixtures exercise success, failure, interruption, drift, and recovery paths.
   admission: Concurrency and recovery proofs remain a complete family.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence:
-  - operator-park-union
-  mutation_evidence: []
   tier: changed
   size: medium
   flake_rate: 0.0
@@ -278,8 +246,6 @@ families:
   oracle: Temporary Git repositories expose the resulting core.hooksPath and exit status.
   admission: Installation behavior runs with the complete hook proofs.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence: []
-  mutation_evidence: []
   tier: changed
   size: small
   flake_rate: 0.0
@@ -300,9 +266,6 @@ families:
   oracle: Config fixtures validate schemas and exact generated child invocations.
   admission: Configuration interactions retain the full matrix.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence:
-  - yielded-session-exit
-  mutation_evidence: []
   tier: changed
   size: medium
   flake_rate: 0.0
@@ -329,13 +292,6 @@ families:
   oracle: Synthetic runs accept only complete internally consistent evidence graphs.
   admission: The evidence graph is validated as a complete family. It is large because its proofs drive whole synthetic phases through the real evidence tool; one thorough lifecycle carries the general checks and three scenario proofs (primary mode, child marker transitions, a nested parent chain) carry only what distinguishes them.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence:
-  - blocking-finding-finalization
-  mutation_evidence:
-  - unpaired-unqueue-accepted
-  - unaccepted-parent-accepted
-  - stale-primary-acceptance-accepted
-  - unchanged-files-reported-as-changed
   tier: changed
   size: large
   flake_rate: 0.0
@@ -355,8 +311,6 @@ families:
   oracle: Synthetic manifests and commands prove exact admission, ordered preflight, and first-failure stopping.
   admission: A post-reset retirement funds this direct executable oracle for the new control plane.
   nearest_overlap: Orchestration-evidence tests bind review artifacts, but did not own executable command authority.
-  historical_evidence: []
-  mutation_evidence: []
   tier: changed
   size: small
   flake_rate: 0.0
@@ -381,8 +335,6 @@ families:
   oracle: A temporary repository exercises append, prefix refusal, chronology repair, identity preservation, and closed newline normalization.
   admission: A post-reset retirement funds this direct executable oracle for append-only construction evidence.
   nearest_overlap: Log policy prose described ownership but did not prove exact bytes or repair boundaries.
-  historical_evidence: []
-  mutation_evidence: []
   tier: changed
   size: small
   flake_rate: 0.0
@@ -404,8 +356,6 @@ families:
   oracle: Fixture worktrees produce stable identities and intentional mutations change them.
   admission: Identity mode coverage remains intact in full.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence: []
-  mutation_evidence: []
   tier: changed
   size: medium
   flake_rate: 0.0
@@ -426,10 +376,6 @@ families:
   oracle: Valid ledgers round-trip and every malformed state fails with a specific error.
   admission: Ledger governance remains in the complete suite.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence: []
-  mutation_evidence:
-  - aging-uses-first-occurrence
-  - aging-off-by-one
   tier: changed
   size: small
   flake_rate: 0.0
@@ -454,10 +400,6 @@ families:
   oracle: Cross-document assertions require each authority, tool, test, skill, and mirror together.
   admission: Transfer completeness is assessed across all authorities.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence:
-  - required-gate-inventory
-  mutation_evidence:
-  - leak-scan-ignores-untracked
   tier: changed
   size: small
   flake_rate: 0.0
@@ -480,8 +422,6 @@ families:
   oracle: Repository and fixture parity scans report missing, stray, or divergent peers.
   admission: Parity is enforced by its dedicated policy gate.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence: []
-  mutation_evidence: []
   tier: changed
   size: small
   flake_rate: 0.0
@@ -503,8 +443,6 @@ families:
   oracle: Generated names satisfy shape and collision fixtures across all ledger roots.
   admission: Slug generation is already a small focused family.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence: []
-  mutation_evidence: []
   tier: changed
   size: small
   flake_rate: 0.0
@@ -523,8 +461,6 @@ families:
   oracle: Stub executables record exact order and a governance refusal reaches Git unchanged.
   admission: The hook proof runs with the complete hook family.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence: []
-  mutation_evidence: []
   tier: changed
   size: small
   flake_rate: 0.0
@@ -546,9 +482,6 @@ families:
   oracle: Generated commands and config mutations enforce the declared role authority matrix.
   admission: Research authority uses its complete cross-surface matrix.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence:
-  - research-resource-default
-  mutation_evidence: []
   tier: changed
   size: small
   flake_rate: 0.0
@@ -568,9 +501,6 @@ families:
   oracle: Synthetic trace roots expose inclusion, exclusion, deduplication, and filtering behavior.
   admission: Harvest logic retains its cross-harness fixture set.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence:
-  - active-review-session
-  mutation_evidence: []
   tier: changed
   size: small
   flake_rate: 0.0
@@ -592,8 +522,6 @@ families:
   oracle: Shell candidates are parsed by their declared interpreter and syntax errors name the file.
   admission: Shell syntax also runs as a direct policy check.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence: []
-  mutation_evidence: []
   tier: changed
   size: small
   flake_rate: 0.0
@@ -607,43 +535,15 @@ families:
   - bin/test-governance
   - tests/proof-estate.yaml
   - tests/test_test_governance.py
-  - tests/fixtures/test_governance/**
   - reports/test-governance/**
   - policies/test-suite-governance.md
   - briefs/test-suite-value-governance.md
   covers: *id023
-  contract: Fast feedback exists only when the live local estate and effectiveness evidence validate.
+  contract: Fast feedback exists only when the live local estate and its witness receipts validate.
   risk_class: proof-governance
   oracle: Valid fixture estates pass and malformed ownership, runner, baseline, or evidence fails closed.
   admission: This family is the direct fail-closed witness for every governed selection.
   nearest_overlap: Atomic-check dispatches lanes but does not validate their proof ownership.
-  historical_evidence:
-  - manager-caller-root
-  mutation_evidence:
-  - expanded-leaf-inventory
-  - frozen-baseline-denominator
-  - aggregate-disposition
-  - optional-disposition-evidence
-  - critical-risk-averaging
-  - shadow-proof-removal
-  - indeterminate-changed-selection
-  - vital-substitutes-for-full
-  - post-holdout-selection-change
-  - absent-consolidation-replacement
-  - declared-corpus-floor
-  - unmeasured-empty-corpus
-  - unknown-repair-record-type
-  - reset-repair-not-self-bound
-  - inactive-repair-target-accepted
-  - documents-widen-when-multiply-covered
-  - document-readers-ignored
-  - joined-name-mention-missed
-  - size-ceiling-ignored
-  - stale-record-read-as-measured
-  - undated-recall-accepted
-  - stranded-patch-blocks-validation
-  - code-readers-ignored
-  - module-name-mention-missed
   tier: vital
   size: medium
   flake_rate: 0.0
@@ -666,8 +566,6 @@ families:
   oracle: Synthetic caller text distinguishes executable bypasses from allowed descriptions.
   admission: Caller policy also runs as a direct policy gate.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence: []
-  mutation_evidence: []
   tier: changed
   size: small
   flake_rate: 0.0
@@ -691,9 +589,6 @@ families:
   oracle: Stubbed uv calls expose exact cwd, project, runtime, and child arguments.
   admission: This family proves the runtime contract behaviorally from every supported invocation.
   nearest_overlap: Toolchain-caller policy scans text but does not execute the entrypoints.
-  historical_evidence:
-  - symlink-repository-ownership
-  mutation_evidence: []
   tier: vital
   size: small
   flake_rate: 0.0
@@ -713,8 +608,6 @@ families:
   oracle: Fixture briefs distinguish valid, missing, malformed, stale, and orphaned editorial state.
   admission: Publication governance remains in its complete family.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  historical_evidence: []
-  mutation_evidence: []
   tier: changed
   size: small
   flake_rate: 0.0
@@ -732,8 +625,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -750,8 +641,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -768,8 +657,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -786,8 +673,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -804,8 +689,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -822,8 +705,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -840,8 +721,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -858,8 +737,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -876,8 +753,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -894,8 +769,6 @@ families:
   oracle: The named gate remains wired into bin/check and propagates the log validator's exit status.
   admission: A post-reset retirement funds the new lifecycle wiring.
   nearest_overlap: The log-control-plane family proves behavior but not authoritative gate composition.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage:
@@ -913,8 +786,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -931,8 +802,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -949,8 +818,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -967,8 +834,6 @@ families:
   oracle: The named gate command remains present and fails the lifecycle step on a size breach or a confirmed overrun.
   admission: Retained as direct lifecycle wiring for the time budget rather than a substitute for its behavioral proof.
   nearest_overlap: The timing behavioral proof exercises the judgment; this proof uniquely proves the gate runs it.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -985,8 +850,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -1003,8 +866,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -1021,8 +882,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -1039,8 +898,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -1057,8 +914,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -1075,8 +930,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -1093,8 +946,6 @@ families:
   oracle: The tracked pre-commit hook calls the staged-byte and chronology wrapper directly.
   admission: A post-reset retirement funds the new lifecycle wiring.
   nearest_overlap: The policy gate checks working bytes; this proof uniquely covers staged custody.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage:
@@ -1112,8 +963,6 @@ families:
   oracle: The named gate or hook command remains present and fails the lifecycle step on error.
   admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
   nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -1131,8 +980,6 @@ families:
   oracle: The live gate or staged hook refuses an absent, invalid, or incomplete declaration.
   admission: A post-reset retirement funds the new lifecycle wiring.
   nearest_overlap: Behavioral identity tests prove matching; this proof establishes lifecycle enforcement.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage:
@@ -1151,8 +998,6 @@ families:
   oracle: The live gate or staged hook refuses an absent, invalid, or incomplete declaration.
   admission: A post-reset retirement funds the new lifecycle wiring.
   nearest_overlap: Behavioral identity tests prove matching; this proof establishes lifecycle enforcement.
-  historical_evidence: []
-  mutation_evidence: []
   tier: full
   flake_rate: 0.0
   replacement_lineage:

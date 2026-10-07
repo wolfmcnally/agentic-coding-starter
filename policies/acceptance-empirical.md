@@ -196,8 +196,10 @@ believing any instrument, establish that its output space has more than one
 reachable member.
 
 For every new gate, state what makes it fail and demonstrate the failure.
-Where practical, use mutation testing: temporarily remove or invert the guard,
-prove the test fails for the intended reason, then restore it. Exception tests
+Use mutation testing: remove or invert the guard, prove the test fails for the
+intended reason, then restore it. Where the repository carries a proof estate,
+`./bin/test-governance witness` makes that observation and records its receipt
+([`test-suite-governance.md`](test-suite-governance.md) § Removal and growth). Exception tests
 name the message or state transition they expect; a bare
 `pytest.raises(SomeType)` may pass because an unrelated guard raised the same
 type.

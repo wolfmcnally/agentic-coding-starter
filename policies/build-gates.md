@@ -92,8 +92,8 @@ full gate and preserves the test runner's exit status.
 When the repository carries the universal proof-estate bundle,
 `--vital` selects every locally admitted vital family and
 `--changed-from <ref>` selects the union of every family mapped to the live
-candidate's changed paths. A Markdown document no family covers selects the families of the test, library and executable files that name it, or only the vital families when nothing names it; a document several families cover selects all of them. Changed code that maps to one family also selects the families of the test, library and executable files that name it, including a Python module imported by its dotted name, so a shared helper's users are tested at commit rather than only at push. Both selections are produced by the deterministic manager. Invalid governance, an unsupported runner, an unresolved ref, or any unmapped or ambiguously covered code path widens to the full retained suite. Every full run records per-test times for the manager. The manager also enforces the frozen reset, recall floors, direct-risk proofs, per-test size ceilings, the test-lane time budget, and periodic reassessment. The manifest's family
-choices, mappings, risk labels, timings, and effectiveness cases are local
+candidate's changed paths. A Markdown document no family covers selects the families of the test, library and executable files that name it, or only the vital families when nothing names it; a document several families cover selects all of them. Changed code that maps to one family also selects the families of the test, library and executable files that name it, including a Python module imported by its dotted name, so a shared helper's users are tested at commit rather than only at push. Both selections are produced by the deterministic manager. Invalid governance, an unsupported runner, an unresolved ref, or any unmapped or ambiguously covered code path widens to the full retained suite. Every full run records per-test times for the manager. The manager also enforces the frozen reset, witness receipts, direct-risk proofs, per-test size ceilings, the test-lane time budget, and periodic reassessment. The manifest's family
+choices, mappings, risk labels, timings, and witness receipts are local
 state; they are never inherited from another repository.
 
 ### `bin/check`
@@ -320,7 +320,7 @@ Behavioral tests prove:
 - invocation from outside the repository root;
 - exact setup, full-test, focused-test, runtime, and gate mappings;
 - proof-estate inventory, ownership, surface drift, selection-union, widening,
-  unsupported-runner, and undated-effectiveness behavior when governed lanes are
+  unsupported-runner, and witness-receipt behavior when governed lanes are
   present;
 - pinned runtime and locked/frozen toolchain invocation;
 - a real dependency-chain load/run probe before success;

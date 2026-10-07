@@ -4,6 +4,7 @@ import copy
 import hashlib
 import json
 import shlex
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -51,8 +52,8 @@ def _write_estate(root: Path, *, pruned: bool) -> Path:
     """A whole small repository the manager can inventory, with its own reset history.
 
     Pruned, it is an estate with a past: a baseline proof deleted, one consolidated,
-    one admitted later, one retired later, and a measured corpus. Unpruned, it is what
-    a new repository has: every baseline proof retained and nothing yet measured.
+    one admitted later with its witness receipt, and one retired later. Unpruned, it is
+    what a new repository has: every baseline proof retained and nothing yet witnessed.
     """
     files = {
         "tests/test_sample.py": (
@@ -105,8 +106,7 @@ def _write_estate(root: Path, *, pruned: bool) -> Path:
         }
 
     ledger = [row("proof_disposition", node, "retain", node) for node in live]
-    cases: list[dict[str, str]] = []
-    effectiveness: list[dict[str, object]] = []
+    receipts: list[dict[str, object]] = []
     if pruned:
         deleted, folded, retired = gone
         ledger += [
@@ -116,38 +116,19 @@ def _write_estate(root: Path, *, pruned: bool) -> Path:
             row("proof_admission", admitted, "retain", admitted),
             row("proof_retirement", retired, "delete", None),
         ]
-        for evidence_class in ("historical_defect", "holdout_mutant"):
-            for number in range(1, 5):
-                name = f"{evidence_class}-{number}"
-                patch = root / "tests/fixtures" / f"{name}.patch"
-                patch.parent.mkdir(parents=True, exist_ok=True)
-                patch.write_text(f"--- a/{name}\n+++ b/{name}\n@@ -1 +1 @@\n-good\n+bad\n")
-                patch_digest = hashlib.sha256(patch.read_bytes()).hexdigest()
-                cases.append(
-                    {
-                        "id": name,
-                        "class": evidence_class,
-                        "patch": f"tests/fixtures/{name}.patch",
-                        "patch_sha256": patch_digest,
-                        "command": "./bin/test tests/test_sample.py -q",
-                        "cwd": ".",
-                        "expected": "The retained estate rejects the seeded defect.",
-                        "owner": "sample",
-                    }
-                )
-                effectiveness.append(
-                    {
-                        "record_type": "effectiveness",
-                        "evidence_id": name,
-                        "evidence_class": evidence_class,
-                        "observed": True,
-                        "detected_by": ["sample"],
-                        "command": "./bin/test tests/test_sample.py -q",
-                        "patch_sha256": patch_digest,
-                        "output_sha256": "0" * 64,
-                        "assayed_on": f"2026-01-0{number}",
-                    }
-                )
+        receipts.append(
+            {
+                "record_type": "red_witness",
+                "proof_ids": [admitted],
+                "defect": "The admitted behavior is removed.",
+                "command": "./bin/test tests/test_sample.py -q",
+                "expect": "test_admitted",
+                "paths": ["tests/test_sample.py"],
+                "mutation_sha256": "0" * 64,
+                "red_output_sha256": "1" * 64,
+                "witnessed_on": "2026-01-01",
+            }
+        )
     else:
         ledger.append(row("proof_disposition", admitted, "retain", admitted))
 
@@ -163,8 +144,6 @@ def _write_estate(root: Path, *, pruned: bool) -> Path:
             "oracle": "A direct call observes the fixture outcome.",
             "admission": "Fixture estate.",
             "nearest_overlap": "None in this fixture.",
-            "historical_evidence": [],
-            "mutation_evidence": [],
             "tier": "changed",
             "flake_rate": 0.0,
             "replacement_lineage": [],
@@ -173,19 +152,11 @@ def _write_estate(root: Path, *, pruned: bool) -> Path:
             declared["size"] = "small"
         return declared
 
-    floor = 4 if pruned else 0
     manifest = {
         "schema": governance.SCHEMA,
         "baseline_report": "reports/baseline.json",
         "audit_ledger": "reports/reset.jsonl",
-        "effectiveness_corpus": "tests/fixtures/corpus.yaml",
-        "effectiveness_report": "reports/effectiveness.jsonl",
-        "effectiveness_floors": {
-            "min_historical_recall": 0.8,
-            "min_mutant_recall": 0.8,
-            "min_historical_cases": floor,
-            "min_mutant_cases": floor,
-        },
+        "witness_ledger": "reports/witnesses.jsonl",
         "size_ceilings_seconds": {"small": 2, "medium": 20, "large": 200},
         "time_budget": {"test_lane_seconds": 10, "tolerance": 0.25, "reference_machine": None},
         "critical_risks": {
@@ -209,13 +180,9 @@ def _write_estate(root: Path, *, pruned: bool) -> Path:
         ],
     }
     (root / "reports").mkdir()
-    (root / "tests/fixtures").mkdir(parents=True, exist_ok=True)
     (root / "tests/proof-estate.yaml").write_text(json.dumps(manifest))
-    (root / "tests/fixtures/corpus.yaml").write_text(
-        json.dumps({"selection_frozen": True, "cases": cases})
-    )
     (root / "reports/baseline.json").write_text(json.dumps(baseline))
-    for name, rows in (("reset.jsonl", ledger), ("effectiveness.jsonl", effectiveness)):
+    for name, rows in (("reset.jsonl", ledger), ("witnesses.jsonl", receipts)):
         (root / "reports" / name).write_text("".join(json.dumps(item) + "\n" for item in rows))
     return root
 
@@ -236,11 +203,12 @@ def test_live_reset_validates(estate: Path, tmp_path: Path) -> None:
     summary = governance.validate(estate)
     assert summary["dispositions"] == {"retain": 7, "repair": 0, "consolidate": 1, "delete": 1}
     assert (summary["admissions"], summary["post_reset_retirements"]) == (1, 1)
-    # A new repository keeps every proof it was given and has measured nothing yet.
+    assert (summary["unwitnessed_admitted"], summary["unwitnessed_baseline"]) == (0, 6)
+    # A new repository keeps every proof it was given and has witnessed nothing yet.
     fresh = governance.validate(_write_estate(tmp_path / "fresh", pruned=False))
     assert fresh["state"] == "valid"
     assert fresh["dispositions"] == {"retain": 7, "repair": 0, "consolidate": 0, "delete": 0}
-    assert fresh["recall_unmeasured"] == ["historical_defect", "holdout_mutant"]
+    assert (fresh["witness_receipts"], fresh["unwitnessed_baseline"]) == (0, 7)
 
 
 def test_size_ceilings_and_lane_budget_survive_timing_noise(
@@ -382,44 +350,6 @@ def test_shadow_deleted_proof_fails_closed(estate: Path, monkeypatch: pytest.Mon
         governance.validate(estate)
 
 
-def test_recall_is_a_dated_sweep_measurement(
-    estate: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    rows = [
-        json.loads(line)
-        for line in (estate / "reports/effectiveness.jsonl").read_text().splitlines()
-    ]
-    assert governance.validate(estate)["recall_as_of"] == min(row["assayed_on"] for row in rows)
-
-    original_ledger = governance.load_ledger
-    original_yaml = governance.load_yaml
-    stale = tmp_path / "stale.patch"
-    stale.write_text("--- a/nowhere.py\n+++ b/nowhere.py\n@@ -1,3 +1,3 @@\n a\n-b\n+c\n d\n")
-    stale_digest = hashlib.sha256(stale.read_bytes()).hexdigest()
-
-    def undated(path: Path):
-        loaded = original_ledger(path)
-        if path.name == "effectiveness.jsonl":
-            loaded[0]["assayed_on"] = "last week"
-            loaded[1]["patch_sha256"] = stale_digest
-        return loaded
-
-    def stranded(path: Path):
-        payload = original_yaml(path)
-        if path.name == "corpus.yaml":
-            payload["cases"][1]["patch"] = str(stale)
-            payload["cases"][1]["patch_sha256"] = stale_digest
-        return payload
-
-    monkeypatch.setattr(governance, "load_ledger", undated)
-    monkeypatch.setattr(governance, "load_yaml", stranded)
-    with pytest.raises(governance.GovernanceError) as refused:
-        governance.validate(estate)
-    # Only the undated row refuses; a patch the code has moved past waits for the next sweep.
-    errors = [line for line in str(refused.value).splitlines() if line.startswith("- ")]
-    assert len(errors) == 1 and errors[0].endswith("has no assay date"), errors
-
-
 def test_critical_risk_requires_a_retained_direct_proof(
     estate: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -437,102 +367,10 @@ def test_critical_risk_requires_a_retained_direct_proof(
         governance.validate(estate)
 
 
-def test_recall_below_eighty_percent_fails_closed(
-    estate: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    original = governance.load_ledger
-
-    def weakened(path: Path):
-        rows = original(path)
-        if path.name == "effectiveness.jsonl":
-            for row in rows[:3]:
-                row["observed"] = False
-        return rows
-
-    monkeypatch.setattr(governance, "load_ledger", weakened)
-    with pytest.raises(governance.GovernanceError, match="recall below floor"):
-        governance.validate(estate)
-
-    monkeypatch.setattr(governance, "load_ledger", original)
-    _assert_corpus_floor_is_declared_not_constant(estate, monkeypatch)
-    _assert_an_empty_declared_corpus_reports_unmeasured(estate, monkeypatch)
-    original_yaml = governance.load_yaml
-
-    def drifted(path: Path):
-        payload = original_yaml(path)
-        if path.name == "corpus.yaml":
-            payload["cases"][0]["patch_sha256"] = "0" * 64
-        return payload
-
-    monkeypatch.setattr(governance, "load_yaml", drifted)
-    with pytest.raises(governance.GovernanceError, match="patch digest drifted"):
-        governance.validate(estate)
-
-    # A failure in an unmodified copy cannot count as mutation detection.
-    fixture = tmp_path / "assay"
-    fixture.mkdir()
-    (fixture / "flag").write_text("good\n")
-    (fixture / "alias").symlink_to("flag")
-    patch = fixture / "defect.patch"
-    patch.write_text("--- a/flag\n+++ b/flag\n@@ -1 +1 @@\n-good\n+bad\n")
-    command = shlex.join(
-        [
-            sys.executable,
-            "-c",
-            "from pathlib import Path; assert Path('alias').is_symlink(); "
-            "assert Path('alias').read_text() == 'good\\n'",
-        ]
-    )
-    corpus = {
-        "selection_frozen": True,
-        "cases": [
-            {
-                "id": "copied-link",
-                "class": "historical_defect",
-                "patch": "defect.patch",
-                "patch_sha256": hashlib.sha256(patch.read_bytes()).hexdigest(),
-                "command": command,
-                "owner": "fixture",
-            }
-        ],
-    }
-    monkeypatch.setattr(
-        governance,
-        "load_yaml",
-        lambda path: (
-            {"effectiveness_corpus": "corpus.yaml"}
-            if path.name == "proof-estate.yaml"
-            else copy.deepcopy(corpus)
-        ),
-    )
-    rows = governance.assay(fixture)
-    assert len(rows) == 1 and rows[0]["observed"] is True
-    assert (fixture / "flag").read_text() == "good\n"
-    (fixture / "alias").unlink()
-    (fixture / "alias").write_text("good\n")
-    with pytest.raises(governance.GovernanceError, match="assay baseline failed for copied-link"):
-        governance.assay(fixture)
-
-
-def test_lifecycle_replay_repairs_and_frozen_selection(
+def test_lifecycle_replay_and_repairs(
     estate: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    original = governance.load_yaml
-
-    def unfrozen(path: Path):
-        payload = original(path)
-        if path.name == "corpus.yaml":
-            payload["selection_frozen"] = False
-        return payload
-
-    monkeypatch.setattr(governance, "load_yaml", unfrozen)
-    with pytest.raises(governance.GovernanceError, match="selection must be frozen"):
-        governance.validate(estate)
-
-    monkeypatch.setattr(governance, "load_yaml", original)
     original_ledger = governance.load_ledger
     lifecycle_mode = ["twice"]
 
@@ -691,58 +529,125 @@ def test_report_counts_the_frozen_baseline_and_current_estate(estate: Path) -> N
     assert payload["current"] == {"families": 6, "leaves": 7}
 
 
-def _manifest_with(estate: Path, limits: dict[str, object]) -> dict[str, object]:
-    manifest = copy.deepcopy(governance.load_yaml(estate / "tests/proof-estate.yaml"))
-    manifest["effectiveness_floors"].update(limits)
-    return manifest
+WITNESS = {
+    "proof_ids": ["pytest:tests/test_sample.py::test_admitted"],
+    "defect": "The guard allows instead of denying.",
+    "expect": "GUARD OPEN",
+    "command": "./check.sh",
+    "paths": ["guard.txt"],
+}
 
 
-def _patched_yaml(monkeypatch: pytest.MonkeyPatch, manifest, corpus=None) -> None:
-    original_yaml = governance.load_yaml
+def _witness_repo(root: Path, guard: str = "deny\n") -> Path:
+    """A repository whose only proof is a shell script, so nothing here depends on pytest."""
+    (root / "tests").mkdir(parents=True)
+    (root / "tests/proof-estate.yaml").write_text(
+        json.dumps({"witness_ledger": "reports/witnesses.jsonl"})
+    )
+    (root / "guard.txt").write_text(guard)
+    (root / "guard.txt").chmod(0o640)
+    (root / "check.sh").write_text(
+        '#!/bin/sh\ngrep -qx deny guard.txt || { echo "GUARD OPEN"; exit 1; }\necho checked\n'
+    )
+    (root / "check.sh").chmod(0o755)
+    return root
 
-    def patched(path: Path):
-        if path.name == "proof-estate.yaml":
-            return copy.deepcopy(manifest)
-        if corpus is not None and path.name == "corpus.yaml":
-            return copy.deepcopy(corpus)
-        return original_yaml(path)
 
-    monkeypatch.setattr(governance, "load_yaml", patched)
+def test_witness_observes_red_restores_exactly_and_records_a_receipt(tmp_path: Path) -> None:
+    root = _witness_repo(tmp_path)
+    governance.witness_begin(root, **WITNESS)
+    (root / "guard.txt").write_text("allow\n")
+    receipt = governance.witness_finish(root)
+    assert (root / "guard.txt").read_bytes() == b"deny\n"
+    assert not (root / governance.WITNESS_PENDING).exists()
+    assert governance.load_ledger(root / "reports/witnesses.jsonl") == [receipt]
+    assert receipt["paths"] == ["guard.txt"] and receipt["defect"] == WITNESS["defect"]
+    assert governance._receipt_errors(receipt, 1, set(WITNESS["proof_ids"])) == []
 
 
-def _assert_corpus_floor_is_declared_not_constant(
+def test_witness_refuses_anything_short_of_the_named_failure(tmp_path: Path) -> None:
+    def attempt(name: str, *, guard: str = "deny\n", planted: str | None, **changed: str) -> Path:
+        root = _witness_repo(tmp_path / name, guard)
+        governance.witness_begin(root, **{**WITNESS, **changed})
+        if planted is not None:
+            (root / "guard.txt").write_text(planted)
+        governance.witness_finish(root)
+        return root
+
+    refusals = {
+        "the baseline is already red": (
+            "baseline is not green",
+            {"guard": "allow\n", "planted": None},
+        ),
+        "the expected text shows while green": (
+            "already appears while the command passes",
+            {"planted": None, "expect": "checked"},
+        ),
+        "nothing was planted": ("no journaled path has changed", {"planted": None}),
+        "the mutant survives": (
+            "NOT WITNESSED: the command still passed",
+            {"planted": "deny\nextra\n"},
+        ),
+        "it fails for another reason": (
+            "NOT WITNESSED: the command failed, but not with the expected text",
+            {"planted": "allow\n", "expect": "A DIFFERENT GUARD"},
+        ),
+    }
+    for number, (reason, (message, arguments)) in enumerate(refusals.items()):
+        root = tmp_path / str(number)
+        with pytest.raises(governance.GovernanceError, match=message):
+            attempt(str(number), **arguments)
+        assert (root / "guard.txt").read_text() == arguments.get("guard", "deny\n"), reason
+        assert not (root / "reports/witnesses.jsonl").exists(), reason
+
+
+def test_a_pending_witness_blocks_validation_until_it_is_aborted(tmp_path: Path) -> None:
+    root = _witness_repo(tmp_path)
+    governance.witness_begin(root, **WITNESS)
+    # The planted defect here is the file's removal, as an interrupted run would leave it.
+    (root / "guard.txt").unlink()
+    with pytest.raises(governance.GovernanceError, match="a red witness is pending"):
+        governance.validate(root)
+    with pytest.raises(governance.GovernanceError, match="a red witness is pending"):
+        governance.witness_begin(root, **WITNESS)
+    assert governance.witness_abort(root) == {"state": "aborted", "restored": ["guard.txt"]}
+    assert (root / "guard.txt").read_bytes() == b"deny\n"
+    assert stat.S_IMODE((root / "guard.txt").stat().st_mode) == 0o640
+    assert not (root / governance.WITNESS_PENDING).exists()
+    with pytest.raises(governance.GovernanceError, match="no red witness is pending"):
+        governance.witness_abort(root)
+
+
+def test_receipts_are_validated_and_missing_ones_are_counted(
     estate: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A recipient declares its corpus floor; the estate must meet the number it declared."""
-    with monkeypatch.context() as patch:
-        _patched_yaml(patch, _manifest_with(estate, {"min_mutant_cases": 13}))
-        with pytest.raises(governance.GovernanceError, match="below the declared floor of 13"):
+    original = governance.load_ledger
+    change: list[object] = [None]
+
+    def altered(path: Path):
+        rows = original(path)
+        if path.name == "witnesses.jsonl":
+            return change[0](rows)
+        return rows
+
+    monkeypatch.setattr(governance, "load_ledger", altered)
+    change[0] = lambda rows: []
+    summary = governance.validate(estate)
+    assert (summary["witness_receipts"], summary["unwitnessed_admitted"]) == (0, 1)
+    malformed = {
+        "has wrong fields": lambda row: row.pop("expect"),
+        "names a proof the audit ledger does not know": lambda row: row.update(
+            proof_ids=["pytest:absent"]
+        ),
+        "has no witness date": lambda row: row.update(witnessed_on="last week"),
+        "mutation_sha256 must be a SHA-256 digest": lambda row: row.update(mutation_sha256="0"),
+    }
+    for message, damage in malformed.items():
+
+        def damaged(rows, damage=damage):
+            damage(rows[0])
+            return rows
+
+        change[0] = damaged
+        with pytest.raises(governance.GovernanceError, match=message):
             governance.validate(estate)
-    with monkeypatch.context() as patch:
-        _patched_yaml(patch, _manifest_with(estate, {"min_historical_cases": "twelve"}))
-        with pytest.raises(governance.GovernanceError, match="min_historical_cases must be"):
-            governance.validate(estate)
-
-
-def _assert_an_empty_declared_corpus_reports_unmeasured(
-    estate: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """A freshly stamped recipient has no defect history; that reads as unmeasured, not as zero."""
-    original_ledger = governance.load_ledger
-    with monkeypatch.context() as patch:
-        _patched_yaml(
-            patch,
-            _manifest_with(estate, {"min_historical_cases": 0, "min_mutant_cases": 0}),
-            corpus={"selection_frozen": True, "cases": []},
-        )
-
-        def empty_effectiveness(path: Path):
-            if path.name.endswith("effectiveness.jsonl"):
-                return []
-            return original_ledger(path)
-
-        patch.setattr(governance, "load_ledger", empty_effectiveness)
-        summary = governance.validate(estate)
-    assert summary["state"] == "valid"
-    assert summary["recall"] == {}
-    assert summary["recall_unmeasured"] == ["historical_defect", "holdout_mutant"]

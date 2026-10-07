@@ -181,8 +181,8 @@ inventory to account for every collapsed family, expanded executable leaf, and
 gate/hook proof. Initial adoption freezes that denominator and performs the
 reviewed local deletion/consolidation rather than deferring it. Trace
 test-to-test dependencies and producer-to-consumer proof flow. A replacement
-must retain the contract, oracle, red witness, downstream artifacts, local
-effectiveness floors, and direct critical-risk proof. Hidden or deselected code
+must retain the contract, oracle, red witness, downstream artifacts, and
+direct critical-risk proof. Hidden or deselected code
 is still present, and a changed denominator is not evidence of shrinkage. See
 [`test-suite-governance.md`](test-suite-governance.md).
 

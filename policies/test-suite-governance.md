@@ -3,7 +3,7 @@
 Every executable proof belongs to the repository's declared proof estate. The
 manager, schema, reset procedure, lane integration, gates, hooks, transfer rules,
 and reassessment obligation travel together. Family identities, selectors,
-timings, corpora, risk judgments, dispositions, and survivors do not.
+timings, witness receipts, risk judgments, dispositions, and survivors do not.
 
 ## Initial adoption
 
@@ -11,28 +11,20 @@ Initial adoption MUST:
 
 1. Freeze a reproducible whole-estate baseline of parameter-collapsed families
    and expanded executable leaves, including authoritative gate and hook proofs.
-2. Run a local Pareto assay and physically consolidate or delete dominated
+2. Judge the whole estate locally and physically consolidate or delete dominated
    proofs. Retaining the estate for a later audit is forbidden.
 3. Disposition every baseline proof exactly once as `retain`, `repair`, `consolidate`, or `delete` in an append-only ledger. `repair` keeps the contract active and records that its assertion was corrected, for a proof whose contract is real but whose assertion could not fail. Each row MUST carry its contract, oracle, red witness, nearest overlap, replacement evidence, and standalone rationale.
 4. Declare a size for every pytest family and a test-lane time budget, and bring the retained estate within both on the reference machine (see [Time budget](#time-budget)).
-5. Demonstrate at least the declared recall over a frozen local historical-defect
-   corpus and at least the declared kill recall over a held-out local mutant
-   corpus, each holding at least its declared case floor.
+5. Pass the [preservation review](#removal-and-growth) on every retirement batch, so no
+   contract loses its only proof to the reset.
 6. Retain direct executable proof for every applicable custody, security,
    authority, concurrency, atomicity, corruption, recovery, public-contract,
    schema, deploy, and core-success risk. An inapplicable class requires a
    rationale and an activation trigger.
 
-**The case floors and the time budget are recipient-declared; the floors on effectiveness are not.** `effectiveness_floors` carries `min_historical_cases` and `min_mutant_cases` alongside the recall minimums, and a repository declares the values its own history can support. This template declares twelve cases per class because it reset an overgrown estate and has the defect history to prove the result. A freshly stamped recipient declares an empty-but-frozen corpus, because it has no defect history to recall, and a null reference machine until someone on its own hardware records one. Its reset may retain every inherited proof: a ledger with no `delete` or `consolidate` disposition is valid, because the estate it inherits has already been pruned and retiring a proof to make the ledger look pruned would discard coverage for nothing. `reassess` widens the declaration as phase history accrues — each ratified lesson and closed defect is a case the recipient can freeze, and the floors rise with them.
+**The time budget is recipient-declared; the direct-risk obligation is not.** A freshly stamped recipient declares a null reference machine until someone on its own hardware records one, and starts with an empty witness ledger. Its reset may retain every inherited proof: a ledger with no `delete` or `consolidate` disposition is valid, because the estate it inherits has already been pruned and retiring a proof to make the ledger look pruned would discard coverage for nothing.
 
-What never moves: the recall minimums over whatever corpus exists, direct proof for every applicable critical risk, the size ceilings on whatever machine runs the suite, frozen selection before holdout execution, and digest binding. A class with no declared floor and no cases is reported as **unmeasured** — never as zero, never as passing — and the report names it, so an empty corpus cannot be read as a clean one.
-
-The historical corpus may guide selection. Selection MUST be frozen before the
-holdout runs. Every case's command and mutation-patch digest MUST bind the
-observed report to the exact frozen corpus, and holdout misses MUST remain
-recorded. When the size ceilings, time budget, recall floors, and direct-risk obligations cannot
-coexist, work parks for the owner. The denominator never changes to make a
-result pass.
+What never moves: direct proof for every applicable critical risk, the size ceilings on whatever machine runs the suite, and the preservation review. When the size ceilings, time budget, and direct-risk obligations cannot coexist, work parks for the owner. A proof with no witness receipt is reported as **unwitnessed**, never as passing, so an estate nobody has challenged cannot be read as a proved one.
 
 ## Judging a proof
 
@@ -74,15 +66,15 @@ Skipping, deselecting, renaming, quarantining, or hiding a proof is not removal.
 A consolidated proof names a retained executable replacement; a deleted proof
 explains why it has no independent contract.
 
-**Every retirement batch passes a preservation review before it lands**, at reset and afterward, whether a phase, a sweep, or a reassessment proposes it. A reviewer who did not choose the retirements compares the removed coverage against the proofs that remain and names each contract that lost its only proof, and each new or carried assertion that cannot fail. Every restored contract gets one deliberate mutation of its production owner, observed red in the keeper and restored byte-exactly, recorded like any other red witness. The review completes when every reported gap is restored or rejected with source evidence. The recall floors are statistical and measure nothing until a corpus exists; this review is the per-contract guard that holds from the first batch.
+**Every retirement batch passes a preservation review before it lands**, at reset and afterward, whether a phase, a sweep, or a reassessment proposes it. A reviewer who did not choose the retirements compares the removed coverage against the proofs that remain and names each contract that lost its only proof, and each new or carried assertion that cannot fail. Every restored contract gets one deliberate mutation of its production owner, observed red in the keeper through the witness command and recorded as a receipt like any other red witness. The review completes when every reported gap is restored or rejected with source evidence. It is the per-contract guard that holds from the first batch.
 
 A new proof requires a named active contract or risk, independent oracle, red witness, and non-subsumption account, recorded as a `proof_admission`, and a declared size for its family. There is no count budget: what an agent may add is limited by the [admission questions](#judging-a-proof) and by the [time budget](#time-budget), not by how many proofs already exist. Validation fails closed when any admission evidence is absent.
 
-A **red witness is recorded at construction, not re-run at close.** A mutant exists to vet a proof while that proof is being written: apply the intended defect, watch the named case fail at the assertion that encodes the guarantee, restore the code byte-exactly, and watch it pass. The mutant is then discarded. What the estate retains is the named defect in the family's `mutation_evidence`; the close record that admitted the proof carries the command, the failing node and the clean result after restoration. A name in that list is a claim that the mutation was applied, observed red at the named assertion, and restored — never a plan to try it. No red-witness patch is committed, and no close gate runs one.
+A **red witness is observed, not asserted.** A mutant exists to vet a proof while that proof is being written. `./bin/test-governance witness begin` runs the named command and requires it to pass; the author plants the intended defect in the journaled files; `witness finish` requires the same command to fail with the named text, restores the original bytes, verifies them, requires the command to pass again, and appends a receipt to the witness ledger. The mutant is then discarded. A defect that leaves the command passing, or fails it for a different reason, is refused and nothing is recorded. The receipt carries the proofs, the named defect, the command, the expected text, the mutated paths, digests of the planted bytes and of the failing output, and the date. No red-witness patch is committed, and no close gate re-runs one. The ledger row's `red_witness` sentence states the claim; the receipt is the observation behind it.
 
-What this gives up is worth stating: a committed mutant re-proves on every run that its bound case still catches its fault, which guards against a proof being weakened later. That standing guarantee is traded for a gate that fails only for reasons of correctness, since a patch anchored on source lines breaks whenever the guarded function is edited. A reviewer who suspects a proof has been weakened re-applies the recorded defect.
+The command works on the live tree with whatever command the repository's tests run under, so it is the same in every language and keeps the build cache warm. While a witness is pending, `validate` refuses, and with it the full gate and, in a checkout that has opted into the hooks, the commit hook: a planted defect cannot qualify a push, and cannot be committed where the hook is installed. `witness abort` restores the tree when a run is interrupted. A receipt is written by the tool, so it replaces a hopeful sentence with an observation; it is not tamper-proof, and a reviewer who doubts one plants the recorded defect again.
 
-**The effectiveness corpus is the one committed set of patches, and it is a dated measurement, not a standing battery.** Its historical-defect and held-out patches are anchored on source lines for the same reason red witnesses are, so edits strand them between measurements, and nothing gates on that. `assay` runs at adoption and at every governed sweep and stamps each observation with its date; validation reports recall with the date of the oldest observation (`recall_as_of`), never as a live property. The sweep's assay refuses a patch that no longer applies; the sweep re-anchors it to the same defect, or retires the case with its rationale, and measures again. (Operator ruling, 2026-09-29.) A check added to code the corpus mutates must be shown not to fire merely because a planted defect is present in the assay copy; otherwise the check itself becomes the detector and recall rises with no proof behind it.
+**No mutant is stored, so the standing guarantee comes from the proofs themselves.** A committed mutant would re-prove on every run that its bound case still catches its fault, but a patch anchored on source lines breaks whenever the guarded function is edited, and when this template kept a corpus of them, three of its twelve held-out patches stopped applying within a week of being measured. Each critical risk's direct proof therefore exercises the refusal path on every run: it drives the guard with violating input, or disables the guard in-process, and asserts that the gate goes red. A reviewer who suspects any other proof has been weakened plants its recorded defect again. (Operator ruling, 2026-10-06, replacing the 2026-09-29 corpus ruling.)
 
 After the reset, retirement and repair are append-only events. A `proof_repair` targets one currently active proof, self-binds, carries the same evidence as a disposition, and leaves the active set unchanged; a proof may be repaired more than once.
 
@@ -110,16 +102,16 @@ Instruction counting is a steadier measure of CPU-bound work, but it does not se
 
 The repository manager MUST inventory expanded pytest leaves, collapsed families,
 gate members, and hook commands; validate the frozen baseline, complete ledger,
-sizes, time-budget declaration, direct risks, corpus, and dated effectiveness
-report; judge recorded timings; select vital and
-changed lanes; execute assays; and report or reassess the current estate.
+sizes, time-budget declaration, direct risks, and witness receipts; judge
+recorded timings; select vital and changed lanes; observe and record red
+witnesses; and report or reassess the current estate.
 
 The changed-path selection is the local commit gate and the implementation-candidate gate (`policies/build-gates.md`). Invalid or indeterminate selection widens to full. `./bin/test` without lane arguments, the handoff gate, pre-push custody, and durable receipts always use the full retained estate. Pre-commit runs structural validation only and never claims full acceptance.
 
 ## Reassessment and transfer
 
-Every governed sweep MUST run `./bin/test-governance reassess` and rerun the local
-assay, re-anchoring or retiring any case whose patch no longer applies, and
+Every governed sweep MUST run `./bin/test-governance reassess`, report the
+unwitnessed counts it prints, and
 propose further consolidation when a proof is dominated. It runs
 `./bin/test-governance timing --samples 3` on the reference machine when one is
 available and reports the slowest proofs and any family whose measured time no
@@ -128,6 +120,6 @@ longer fits its size. This is an executable shrinkage obligation.
 The same sweep reads the proofs whose code changed since the previous sweep against the [junk patterns](#judging-a-proof), and makes a layer pass over each contract with more than one proof: it names the keeper at the strongest boundary, preferring a real boundary with a fake dependency over a mocked collaborator, and proposes the other layers for consolidation unless each names a distinct risk. Findings are proposals in the sweep's decision queue; each batch the operator ratifies passes the preservation review before it lands.
 
 `learn`, `teach`, `stamp`, and bootstrap transfer this policy and procedure as an
-atomic bundle. Every recipient freezes and assays its own estate. No transfer may
-seed another repository's survivors, selectors, timings, corpora, risk judgments,
-dispositions, or effectiveness results.
+atomic bundle. Every recipient freezes and witnesses its own estate. No transfer may
+seed another repository's survivors, selectors, timings, witness receipts, risk
+judgments, or dispositions.

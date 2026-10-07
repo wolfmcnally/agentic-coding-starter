@@ -1,4 +1,4 @@
-"""Deterministic inventory, validation, assay, and selection for proof estates."""
+"""Deterministic inventory, validation, red-witness receipts, and selection for proof estates."""
 
 from __future__ import annotations
 
@@ -11,10 +11,10 @@ import platform
 import re
 import shlex
 import shutil
+import stat
 import statistics
 import subprocess
 import sys
-import tempfile
 import xml.etree.ElementTree as ElementTree
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -24,7 +24,7 @@ from typing import Any
 
 import yaml
 
-SCHEMA = "agentic.proof_estate.v3"
+SCHEMA = "agentic.proof_estate.v4"
 BASELINE_SCHEMA = "agentic.proof_baseline.v2"
 REQUIRED_FAMILY_FIELDS = {
     "id",
@@ -37,8 +37,6 @@ REQUIRED_FAMILY_FIELDS = {
     "oracle",
     "admission",
     "nearest_overlap",
-    "historical_evidence",
-    "mutation_evidence",
     "tier",
     "flake_rate",
     "replacement_lineage",
@@ -65,17 +63,18 @@ ADMISSION_FIELDS = DISPOSITION_FIELDS
 RETIREMENT_FIELDS = DISPOSITION_FIELDS
 REPAIR_FIELDS = DISPOSITION_FIELDS
 SELF_BOUND_DISPOSITIONS = {"retain", "repair"}
-EFFECTIVENESS_FIELDS = {
+WITNESS_FIELDS = {
     "record_type",
-    "evidence_id",
-    "evidence_class",
-    "observed",
-    "detected_by",
+    "proof_ids",
+    "defect",
     "command",
-    "patch_sha256",
-    "output_sha256",
-    "assayed_on",
+    "expect",
+    "paths",
+    "mutation_sha256",
+    "red_output_sha256",
+    "witnessed_on",
 }
+WITNESS_PENDING = ".kickoff/witness/pending"
 
 
 class GovernanceError(RuntimeError):
@@ -318,8 +317,6 @@ def _validate_family_shape(family: Any, index: int) -> list[str]:
     for field in (
         "source_paths",
         "covers",
-        "historical_evidence",
-        "mutation_evidence",
         "replacement_lineage",
     ):
         value = family.get(field)
@@ -517,13 +514,8 @@ def _is_iso_date(value: Any) -> bool:
         return False
 
 
-def _ratio(numerator: int, denominator: int) -> float:
-    if denominator <= 0:
-        raise GovernanceError("recall denominator must be positive")
-    return numerator / denominator
-
-
 def validate(root: Path) -> dict[str, Any]:
+    _refuse_pending_witness(root)
     manifest_path = root / "tests/proof-estate.yaml"
     manifest = load_yaml(manifest_path)
     errors: list[str] = []
@@ -585,10 +577,6 @@ def validate(root: Path) -> dict[str, Any]:
         ).hexdigest()
         if declared_baseline_digest != observed_baseline_digest:
             errors.append("baseline inventory digest is stale")
-    limits = manifest.get("effectiveness_floors")
-    if not isinstance(limits, dict):
-        errors.append("effectiveness_floors must be a mapping")
-        limits = {}
     errors.extend(_time_budget_errors(manifest))
 
     current_ids = {proof.proof_id for proof in proofs}
@@ -788,114 +776,22 @@ def validate(root: Path) -> dict[str, Any]:
             f" (unadmitted={missing[:3]}, shadow={shadow[:3]})"
         )
 
-    corpus_rel = manifest.get("effectiveness_corpus")
-    report_rel = manifest.get("effectiveness_report")
-    corpus = load_yaml(root / corpus_rel) if isinstance(corpus_rel, str) else {}
-    effectiveness = load_ledger(root / report_rel) if isinstance(report_rel, str) else []
-    cases = corpus.get("cases") if isinstance(corpus, dict) else None
-    if corpus.get("selection_frozen") is not True:
-        errors.append("effectiveness selection must be frozen before holdout execution")
-    if not isinstance(cases, list):
-        errors.append("effectiveness corpus cases must be a list")
-        cases = []
-    case_ids = [case.get("id") for case in cases if isinstance(case, dict)]
-    if len(case_ids) != len(set(case_ids)):
-        errors.append("effectiveness corpus contains duplicate case ids")
-    evidence_ids = [row.get("evidence_id") for row in effectiveness]
-    if len(evidence_ids) != len(set(evidence_ids)):
-        errors.append("effectiveness report contains duplicate case ids")
-    if set(evidence_ids) != set(case_ids):
-        errors.append("effectiveness report does not cover the frozen corpus exactly")
-    for case in cases:
-        if not isinstance(case, dict) or set(case) != {
-            "id",
-            "class",
-            "patch",
-            "patch_sha256",
-            "command",
-            "cwd",
-            "expected",
-            "owner",
-        }:
-            errors.append(f"effectiveness case has wrong fields: {case!r}")
-            continue
-        patch = root / str(case["patch"])
-        if not patch.is_file() or not patch.read_text().strip():
-            errors.append(f"effectiveness patch is absent or empty: {case['patch']}")
-            continue
-        patch_sha256 = hashlib.sha256(patch.read_bytes()).hexdigest()
-        if case["patch_sha256"] != patch_sha256:
-            errors.append(f"effectiveness patch digest drifted: {case['id']}")
-    cases_by_id = {
-        case["id"]: case
-        for case in cases
-        if isinstance(case, dict) and isinstance(case.get("id"), str)
-    }
-    recall: dict[str, float] = {}
-    unmeasured: list[str] = []
-    assay_dates: list[str] = []
-    for evidence_class, limit_key, floor_key in (
-        ("historical_defect", "min_historical_recall", "min_historical_cases"),
-        ("holdout_mutant", "min_mutant_recall", "min_mutant_cases"),
-    ):
-        expected = [
-            case for case in cases if isinstance(case, dict) and case.get("class") == evidence_class
-        ]
-        declared_floor = limits.get(floor_key, 0)
-        if not isinstance(declared_floor, int) or isinstance(declared_floor, bool):
-            errors.append(f"{floor_key} must be an integer")
-            declared_floor = 0
-        elif declared_floor < 0:
-            errors.append(f"{floor_key} must not be negative")
-            declared_floor = 0
-        if len(expected) < declared_floor:
-            errors.append(
-                f"{evidence_class} corpus holds {len(expected)} cases, "
-                f"below the declared floor of {declared_floor}"
-            )
-        evidence = [row for row in effectiveness if row.get("evidence_class") == evidence_class]
-        observed = [row for row in evidence if row.get("observed") is True]
-        for row in evidence:
-            if set(row) != EFFECTIVENESS_FIELDS:
-                errors.append(f"{evidence_class} {row.get('evidence_id')} has wrong fields")
-                continue
-            case = cases_by_id.get(row["evidence_id"])
-            if case is None:
-                continue
-            if row["observed"] not in (True, False):
-                errors.append(f"{evidence_class} {row['evidence_id']} has invalid observation")
-            if row["command"] != case["command"]:
-                errors.append(f"{evidence_class} {row['evidence_id']} command drifted")
-            if row["patch_sha256"] != case["patch_sha256"]:
-                errors.append(f"{evidence_class} {row['evidence_id']} patch digest drifted")
-            if not _is_iso_date(row["assayed_on"]):
-                errors.append(f"{evidence_class} {row['evidence_id']} has no assay date")
-            else:
-                assay_dates.append(str(row["assayed_on"]))
-        detected = [
-            row
-            for row in observed
-            if isinstance(row.get("detected_by"), list)
-            and any(item in family_ids for item in row["detected_by"])
-        ]
-        minimum = limits.get(limit_key)
-        if not evidence:
-            if declared_floor == 0 and not expected:
-                # An empty declared corpus is unmeasured, never zero and never passing.
-                unmeasured.append(evidence_class)
-                continue
-            errors.append(f"audit ledger has no {evidence_class} evidence")
-            continue
-        if not isinstance(minimum, (int, float)) or not 0 <= minimum <= 1:
-            errors.append(f"{limit_key} must be between 0 and 1")
-            continue
-        score = _ratio(len(detected), len(evidence))
-        recall[evidence_class] = score
-        if score < minimum:
-            errors.append(
-                f"{evidence_class} recall below floor: "
-                f"{len(detected)}/{len(evidence)}={score:.3f} < {minimum:.3f}"
-            )
+    witness_rel = manifest.get("witness_ledger")
+    if not isinstance(witness_rel, str) or not witness_rel:
+        errors.append("witness_ledger must be a repo-relative path")
+        receipts: list[dict[str, Any]] = []
+    else:
+        receipts = load_ledger(root / witness_rel)
+    ledger_ids = {row.get("proof_id") for row in ledger}
+    witnessed: set[str] = set()
+    for number, row in enumerate(receipts, 1):
+        receipt_errors = _receipt_errors(row, number, ledger_ids)
+        errors.extend(receipt_errors)
+        if not receipt_errors:
+            witnessed.update(row["proof_ids"])
+    admitted_or_repaired = {
+        str(row.get("proof_id")) for row in admission_rows + repair_rows
+    } & active
 
     if errors:
         raise GovernanceError("validation failed:\n- " + "\n- ".join(errors))
@@ -904,10 +800,10 @@ def validate(root: Path) -> dict[str, Any]:
         "state": "valid",
         "families": current["counts"]["families"],
         "leaves": current["counts"]["leaves"],
-        "recall": recall,
-        "recall_unmeasured": sorted(unmeasured),
-        # Recall is a measurement from the last assay, taken at a sweep, not a live property.
-        "recall_as_of": min(assay_dates) if assay_dates else None,
+        "witness_receipts": len(receipts),
+        # A proof with no receipt has only a written claim that it can fail; never passing.
+        "unwitnessed_admitted": len(admitted_or_repaired - witnessed),
+        "unwitnessed_baseline": len(active - admitted_or_repaired - witnessed),
         "dispositions": {
             state: sum(row.get("disposition") == state for row in disposition_rows)
             for state in ("retain", "repair", "consolidate", "delete")
@@ -1074,57 +970,227 @@ def report(root: Path) -> dict[str, Any]:
     }
 
 
-def assay(root: Path, *, evidence_class: str | None = None) -> list[dict[str, Any]]:
-    manifest = load_yaml(root / "tests/proof-estate.yaml")
-    corpus = load_yaml(root / str(manifest["effectiveness_corpus"]))
-    cases = corpus.get("cases")
-    if corpus.get("selection_frozen") is not True or not isinstance(cases, list):
-        raise GovernanceError("effectiveness corpus is not frozen and complete")
-    rows: list[dict[str, Any]] = []
-    for case in cases:
-        if evidence_class and case.get("class") != evidence_class:
-            continue
-        with tempfile.TemporaryDirectory(prefix="proof-assay-") as temporary:
-            work = Path(temporary) / "repo"
-            shutil.copytree(
-                root,
-                work,
-                symlinks=True,
-                ignore=shutil.ignore_patterns(".git", ".venv", "__pycache__", ".pytest_cache"),
+def _digest(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _is_sha256(value: Any) -> bool:
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+
+def _receipt_errors(row: dict[str, Any], number: int, ledger_ids: set[Any]) -> list[str]:
+    label = f"witness receipt {number}"
+    if set(row) != WITNESS_FIELDS:
+        return [f"{label} has wrong fields"]
+    errors: list[str] = []
+    if row["record_type"] != "red_witness":
+        errors.append(f"{label} has the wrong record type")
+    for field in ("proof_ids", "paths"):
+        value = row[field]
+        if (
+            not isinstance(value, list)
+            or not value
+            or not all(isinstance(item, str) and item for item in value)
+        ):
+            errors.append(f"{label} {field} must be a nonempty string list")
+    for field in ("defect", "command", "expect"):
+        if not isinstance(row[field], str) or not row[field].strip():
+            errors.append(f"{label} {field} must be nonempty text")
+    for field in ("mutation_sha256", "red_output_sha256"):
+        if not _is_sha256(row[field]):
+            errors.append(f"{label} {field} must be a SHA-256 digest")
+    if not _is_iso_date(row["witnessed_on"]):
+        errors.append(f"{label} has no witness date")
+    if not errors:
+        unknown = sorted(set(row["proof_ids"]) - ledger_ids)
+        if unknown:
+            errors.append(f"{label} names a proof the audit ledger does not know: {unknown[0]}")
+    return errors
+
+
+def _pending_request(root: Path) -> Path:
+    return root / WITNESS_PENDING / "request.json"
+
+
+def _refuse_pending_witness(root: Path) -> None:
+    if _pending_request(root).exists():
+        raise GovernanceError(
+            "a red witness is pending and its planted defect may be in the tree; "
+            "run `./bin/test-governance witness finish` or `./bin/test-governance witness abort`"
+        )
+
+
+def _load_pending(root: Path) -> dict[str, Any]:
+    if not _pending_request(root).exists():
+        raise GovernanceError("no red witness is pending")
+    return load_json(_pending_request(root))
+
+
+def _witness_run(command: str, root: Path) -> tuple[int, str]:
+    try:
+        result = _run(shlex.split(command), root, check=False)
+    except (OSError, ValueError) as exc:
+        raise GovernanceError(f"witness command cannot run: {command}: {exc}") from exc
+    return result.returncode, result.stdout + "\n" + result.stderr
+
+
+def _restore_witness(root: Path, request: dict[str, Any]) -> None:
+    pending = root / WITNESS_PENDING
+    for entry in request["paths"]:
+        saved = (pending / entry["saved"]).read_bytes()
+        if _digest(saved) != entry["sha256"]:
+            raise GovernanceError(
+                f"witness journal is corrupt for {entry['path']}; restore that file by hand"
             )
-            patch = root / str(case["patch"])
-            patch_sha256 = hashlib.sha256(patch.read_bytes()).hexdigest()
-            if case.get("patch_sha256") != patch_sha256:
-                raise GovernanceError(f"assay patch digest drifted for {case['id']}")
-            command = shlex.split(str(case["command"]))
-            case_root = work / str(case.get("cwd", "."))
-            baseline = _run(command, case_root, check=False)
-            if baseline.returncode != 0:
-                raise GovernanceError(
-                    f"assay baseline failed for {case['id']}: "
-                    + (baseline.stdout + "\n" + baseline.stderr).strip()
-                )
-            applied = _run(["git", "apply", str(patch)], work, check=False)
-            if applied.returncode != 0:
-                raise GovernanceError(
-                    f"assay patch does not apply for {case['id']}: {applied.stderr.strip()}"
-                )
-            result = _run(command, case_root, check=False)
-            output = (result.stdout + "\n" + result.stderr).encode()
-            rows.append(
-                {
-                    "record_type": "effectiveness",
-                    "evidence_id": case["id"],
-                    "evidence_class": case["class"],
-                    "observed": result.returncode != 0,
-                    "detected_by": [case["owner"]] if result.returncode != 0 else [],
-                    "command": case["command"],
-                    "patch_sha256": patch_sha256,
-                    "output_sha256": hashlib.sha256(output).hexdigest(),
-                    "assayed_on": date.today().isoformat(),
-                }
+        target = root / entry["path"]
+        # Rewrite only what changed, so a restored file carries a fresh modification
+        # time and an incremental build cannot keep the mutated artifact.
+        if target.is_symlink() or not target.is_file() or target.read_bytes() != saved:
+            if target.is_symlink():
+                target.unlink()
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(saved)
+        target.chmod(entry["mode"])
+        if _digest(target.read_bytes()) != entry["sha256"]:
+            raise GovernanceError(f"witness restore did not verify for {entry['path']}")
+
+
+def witness_begin(
+    root: Path,
+    *,
+    proof_ids: Sequence[str],
+    defect: str,
+    expect: str,
+    command: str,
+    paths: Sequence[str],
+) -> dict[str, Any]:
+    """Observe the command green and journal the files about to carry a planted defect."""
+    _refuse_pending_witness(root)
+    if not proof_ids or not all(item.strip() for item in proof_ids):
+        raise GovernanceError("witness needs at least one proof id")
+    for name, value in (("defect", defect), ("expect", expect), ("command", command)):
+        if not value.strip():
+            raise GovernanceError(f"witness {name} must be nonempty text")
+    relative = sorted(set(paths))
+    if not relative:
+        raise GovernanceError("witness needs at least one path to plant the defect in")
+    resolved_root = root.resolve()
+    for item in relative:
+        target = root / item
+        if (
+            Path(item).is_absolute()
+            or target.is_symlink()
+            or not target.is_file()
+            or resolved_root not in target.resolve().parents
+        ):
+            raise GovernanceError(
+                f"witness path must be a regular file inside the repository: {item}"
             )
-    return rows
+    status, output = _witness_run(command, root)
+    if status != 0:
+        raise GovernanceError(
+            f"witness baseline is not green ({status}): {command}\n{output.strip()}"
+        )
+    if expect in output:
+        raise GovernanceError(
+            "the expected text already appears while the command passes, "
+            "so it cannot identify the failure"
+        )
+    pending = root / WITNESS_PENDING
+    shutil.rmtree(pending, ignore_errors=True)
+    (pending / "files").mkdir(parents=True)
+    entries: list[dict[str, Any]] = []
+    for index, item in enumerate(relative):
+        data = (root / item).read_bytes()
+        (pending / "files" / str(index)).write_bytes(data)
+        entries.append(
+            {
+                "path": item,
+                "sha256": _digest(data),
+                "mode": stat.S_IMODE((root / item).stat().st_mode),
+                "saved": f"files/{index}",
+            }
+        )
+    request = {
+        "proof_ids": sorted(set(proof_ids)),
+        "defect": defect,
+        "expect": expect,
+        "command": command,
+        "paths": entries,
+    }
+    # The request file is written last and atomically: its presence means a complete journal.
+    temporary = pending / "request.json.tmp"
+    temporary.write_text(json.dumps(request, indent=2, sort_keys=True) + "\n")
+    temporary.replace(_pending_request(root))
+    return {
+        "state": "pending",
+        "paths": relative,
+        "next": "plant the defect in these paths, then run `./bin/test-governance witness finish`",
+    }
+
+
+def witness_finish(root: Path) -> dict[str, Any]:
+    """Require the planted defect to fail the command as named, restore, and record a receipt."""
+    request = _load_pending(root)
+    ledger_rel = load_yaml(root / "tests/proof-estate.yaml").get("witness_ledger")
+    if not isinstance(ledger_rel, str) or not ledger_rel:
+        raise GovernanceError("witness_ledger must be a repo-relative path")
+    planted = hashlib.sha256()
+    changed = False
+    for entry in request["paths"]:
+        target = root / entry["path"]
+        present = target.is_file() and not target.is_symlink()
+        data = target.read_bytes() if present else b""
+        changed = changed or not present or _digest(data) != entry["sha256"]
+        planted.update(entry["path"].encode() + b"\0" + data + b"\0")
+    if not changed:
+        raise GovernanceError(
+            "no journaled path has changed; plant the defect and finish, "
+            "or run `./bin/test-governance witness abort`"
+        )
+    try:
+        status, output = _witness_run(request["command"], root)
+    finally:
+        _restore_witness(root, request)
+    restored_status, restored_output = _witness_run(request["command"], root)
+    shutil.rmtree(root / WITNESS_PENDING)
+    if restored_status != 0:
+        raise GovernanceError(
+            "the restored tree no longer passes the witness command; nothing was recorded\n"
+            + restored_output.strip()
+        )
+    if status == 0:
+        raise GovernanceError(
+            "NOT WITNESSED: the command still passed with the defect planted; nothing was recorded"
+        )
+    if request["expect"] not in output:
+        raise GovernanceError(
+            "NOT WITNESSED: the command failed, but not with the expected text; "
+            "nothing was recorded\n" + output.strip()
+        )
+    row = {
+        "record_type": "red_witness",
+        "proof_ids": request["proof_ids"],
+        "defect": request["defect"],
+        "command": request["command"],
+        "expect": request["expect"],
+        "paths": [entry["path"] for entry in request["paths"]],
+        "mutation_sha256": planted.hexdigest(),
+        "red_output_sha256": _digest(output.encode()),
+        "witnessed_on": date.today().isoformat(),
+    }
+    ledger = root / ledger_rel
+    ledger.parent.mkdir(parents=True, exist_ok=True)
+    with ledger.open("a") as handle:
+        handle.write(json.dumps(row, sort_keys=True) + "\n")
+    return row
+
+
+def witness_abort(root: Path) -> dict[str, Any]:
+    request = _load_pending(root)
+    _restore_witness(root, request)
+    shutil.rmtree(root / WITNESS_PENDING)
+    return {"state": "aborted", "restored": [entry["path"] for entry in request["paths"]]}
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -1151,13 +1217,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     selection.add_argument("--changed-from")
     select_parser.add_argument("--format", choices=("json", "lines"), default="json")
     subparsers.add_parser("report")
-    assay_parser = subparsers.add_parser("assay")
-    assay_parser.add_argument(
-        "--class",
-        dest="evidence_class",
-        choices=("historical_defect", "holdout_mutant"),
-    )
-    assay_parser.add_argument("--output", type=Path)
+    witness_parser = subparsers.add_parser("witness")
+    witness_actions = witness_parser.add_subparsers(dest="witness_action", required=True)
+    begin_parser = witness_actions.add_parser("begin")
+    begin_parser.add_argument("--proof", dest="proof_ids", action="append", required=True)
+    begin_parser.add_argument("--defect", required=True)
+    begin_parser.add_argument("--expect", required=True)
+    begin_parser.add_argument("--command", dest="witness_command", required=True)
+    begin_parser.add_argument("paths", nargs="+")
+    witness_actions.add_parser("finish")
+    witness_actions.add_parser("abort")
     subparsers.add_parser("reassess")
     timing_parser = subparsers.add_parser("timing")
     timing_parser.add_argument(
@@ -1197,13 +1266,21 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
         elif args.command == "report":
             print(json.dumps(report(root), indent=2, sort_keys=True))
-        elif args.command == "assay":
-            rows = assay(root, evidence_class=args.evidence_class)
-            rendered = "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows)
-            if args.output:
-                output = args.output if args.output.is_absolute() else root / args.output
-                output.write_text(rendered)
-            print(rendered, end="")
+        elif args.command == "witness":
+            if args.witness_action == "begin":
+                outcome = witness_begin(
+                    root,
+                    proof_ids=args.proof_ids,
+                    defect=args.defect,
+                    expect=args.expect,
+                    command=args.witness_command,
+                    paths=args.paths,
+                )
+            elif args.witness_action == "finish":
+                outcome = witness_finish(root)
+            else:
+                outcome = witness_abort(root)
+            print(json.dumps(outcome, indent=2, sort_keys=True))
         elif args.command == "reassess":
             summary = validate(root)
             print(json.dumps({**summary, **report(root)}, indent=2, sort_keys=True))

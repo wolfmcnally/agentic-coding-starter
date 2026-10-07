@@ -113,16 +113,23 @@ lockfile. Behavioral coverage lives in
 `tests/test_toolchain_entrypoints.py`, `tests/test_check.py`, and
 `tests/test_check_receipt.py`.
 
-### `test-governance` — proof-estate reset, assay, and safe selection
+### `test-governance` — proof-estate reset, red witnesses, and safe selection
 
 Inventories collapsed families, expanded leaves, gate members, and hook
 commands. It validates the frozen reset, complete disposition/admission ledger,
-per-family sizes, the time-budget declaration, 80% effectiveness floors,
-digest-bound corpus patches that still apply, and direct critical risks; judges
+per-family sizes, the time-budget declaration, witness receipts, and direct
+critical risks; judges
 recorded test times (`timing`, with `--samples 3` to confirm a budget overrun);
-runs the local mutation assay; selects vital/changed lanes; and reports or
+observes a red witness and records its receipt (`witness`); selects
+vital/changed lanes; and reports or
 reassesses the estate. It runs through the
 repository-selected environment.
+
+`witness begin` runs the named command and requires it to pass, then journals the
+named files. Plant the defect in those files, and `witness finish` requires the
+same command to fail with the `--expect` text, restores and verifies the original
+bytes, and appends the receipt. `witness abort` restores an interrupted run.
+`validate` refuses while a witness is pending.
 
 ```bash
 ./bin/test-governance inventory
@@ -130,8 +137,9 @@ repository-selected environment.
 ./bin/test-governance select --tier vital --format lines
 ./bin/test-governance select --changed-from HEAD~1 --format lines
 ./bin/test-governance report
-./bin/test-governance assay --class historical_defect
-./bin/test-governance assay --class holdout_mutant
+./bin/test-governance witness begin --proof <proof-id> --defect "<what is planted>" --expect "<text of the failure>" --command "./bin/test <selector> -q" -- <path>
+./bin/test-governance witness finish
+./bin/test-governance witness abort
 ./bin/test-governance reassess
 ```
 

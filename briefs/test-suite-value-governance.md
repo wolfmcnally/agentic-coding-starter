@@ -22,10 +22,7 @@ audit is not adoption. The reset removes dominated test bodies together with dea
 fixtures, helpers, and caller wiring; skipped, deselected, renamed,
 or hidden proofs still count as present.
 
-The one-time reset brings the estate within a declared test-lane time budget and gives every family a size class; a repository stamped yesterday declares the time its inherited estate already takes. That pressure is subordinate to effectiveness: the retained estate must meet its declared recall over a frozen local historical-defect corpus and a held-out local mutant corpus, and keep direct proof for every applicable critical-risk class. The corpus sizes are declared too, and a new repository declares none, because it has no defect history yet and borrowing another project's is not evidence about its own code. A class with no cases reports as unmeasured rather than as zero or as passing, and the declaration grows as the repository accumulates real defects to freeze. If the budget and those floors cannot coexist, the repository parks for its owner instead of changing the denominator or silently retaining the estate.
-Corpus case metadata and mutation-patch bytes are digest-bound to the observed
-effectiveness report so a nominally frozen holdout cannot drift after execution.
-The corpus is measured, not maintained: its patches are anchored on source lines, so ordinary edits strand them, and keeping every one applicable between measurements would tax most changes to guard a number that is only read at maintenance time. Each sweep reruns the assay, repairs or retires stranded cases, and records the date, so recall is always reported as of a measurement.
+The one-time reset brings the estate within a declared test-lane time budget and gives every family a size class; a repository stamped yesterday declares the time its inherited estate already takes. That pressure is subordinate to effectiveness: no contract may lose its only proof, and every applicable critical-risk class keeps a direct proof. If the budget and those obligations cannot coexist, the repository parks for its owner instead of silently retaining the estate.
 
 ## Evidence makes removal reviewable
 
@@ -38,11 +35,23 @@ A post-reset retirement removes one currently active baseline or admitted proof
 and names its consolidation replacement or deletion rationale. Replaying the
 ledger must reproduce the live estate exactly.
 
-Historical cases may guide the retained selection. The holdout selection is
-frozen before its mutants run, then the result is recorded without tuning. The
-corpora, selectors, survivor identities, risk applicability, timings, and audit
+Selectors, survivor identities, risk applicability, timings, witness receipts, and audit
 judgments are always recipient-local; transfer carries the machinery and the
-obligation to perform a new assay, never another repository's answer.
+obligation to judge the recipient's own estate, never another repository's answer.
+
+## A witness is an observation, and a mutant is scaffolding
+
+A proof that has only ever been seen to pass has shown that it agrees with the code, not that it can catch anything. The check is old and simple: plant the defect the proof exists to catch and watch it fail. An agent that writes a check, runs it against correct code and sees green has not done this, and a sentence saying it was done is the same optimism written down. In this template, before the change this section describes, 47 of 52 proof families recorded no planted defect at all, and every admitted proof carried only such a sentence.
+
+So the observation is made by a command and kept as a receipt. The command sees the proof's own test command pass, lets the author plant the defect in the working tree, requires the same command to fail with a named piece of text, puts the original bytes back, checks them, and sees the command pass again. Requiring the named text matters as much as requiring the failure: a test that goes red because the planted change broke something unrelated has witnessed nothing. The receipt records what was planted and what was seen. It is written by the tool and can be repeated by anyone who doubts it; it is not proof against deliberate forgery.
+
+The mutant itself is thrown away. Industrial practice converged on this. Google generates mutants only for the lines a change touches, shows a few to the author and reviewer during code review, and treats them as goals for better tests, never as a stored battery or a score to reach (As of 2021-02; Retrieved 2026-10-06: [Practical Mutation Testing at Scale](https://arxiv.org/abs/2102.11378)); developers exposed to them this way went on to write tests that left fewer mutants alive (As of 2021-03; Retrieved 2026-10-06: [Does mutation testing improve testing practices?](https://arxiv.org/abs/2103.07189v1)). Meta's test-generation system uses each mutant as the prompt for a test that kills it, lands the test, and discards the mutant (As of 2025-01; Retrieved 2026-10-06: [Mutation-Guided LLM-based Test Generation at Meta](https://arxiv.org/abs/2501.12862)). The Thoughtworks Technology Radar places mutation testing in Trial and calls it the most honest signal of a suite's ability to detect faults, the more so where tests are machine-written and can stay green whatever the code does (As of 2026-04; Retrieved 2026-10-06: [Mutation testing](https://www.thoughtworks.com/radar/techniques/mutation-testing)).
+
+This design first did the opposite, and the record is worth keeping. It held two dozen hand-written defect patches, half reintroducing past bugs and half held out, and required the pruned estate to catch a declared share of them. That measurement did its one job, which was to show that the reset had not thrown away the estate's ability to find faults. As a standing instrument it failed in the way a patch anchored on source lines must: ordinary edits to the code moved the lines, and three of the twelve held-out patches stopped applying within a week of a measurement. The instrument also misled twice, once counting a broken copy as a detection and once letting a new guard detect the planted defects by itself. A recall figure over twelve cases moves eight points when one case flips. Keeping every patch applicable would have taxed most changes to guard a number read only at maintenance time, so the patches and the figure were retired together.
+
+What a stored mutant did offer was a standing guarantee that its test still catches its fault. That guarantee now comes from the tests: the direct proof for each critical risk drives the guard with input it must refuse, or switches the guard off in-process, and asserts the refusal on every run. A semantic check of that kind does not rot when lines move.
+
+The command needs only files and a command to run, so it is the same in a Python, TypeScript or Rust repository, and working in the live tree keeps each language's build cache warm. Finding weak tests in bulk is a separate job for a mutation tool, which differs by language and may not exist for one; a repository without such a tool reports that measurement as not taken and still witnesses every proof it admits.
 
 ## Judging value without inverting it
 
@@ -52,7 +61,7 @@ The same judgment can point the wrong way. "Looks like the implementation" is th
 
 Two structural habits keep an estate from regrowing its redundancy. Each contract has one primary proof at its strongest boundary, and a second layer earns a place only with a risk the primary cannot reach; a periodic layer pass looks for whole suites that replay a shared helper through a mock beside a stronger real-boundary suite. And a proof that needs an export, flag, or injection hook no production caller uses is a sign the proof is at the wrong boundary, because the seam it demands becomes production surface that exists only to be tested.
 
-A proof whose contract is real but whose assertion could not fail is neither kept as it is nor removed; it is repaired, and the ledger records the repair as its own disposition so a vacuous proof is never recorded as a sound one. Removal carries its own check: before a batch of retirements lands, someone who did not choose them compares the removed coverage against what remains, and each contract restored as a result is proved by one deliberate mutation of its owner that the remaining proof catches. Recall over a defect corpus measures the estate statistically once a corpus exists; this review guards each contract from the first batch, including in a repository too new to have any defect history.
+A proof whose contract is real but whose assertion could not fail is neither kept as it is nor removed; it is repaired, and the ledger records the repair as its own disposition so a vacuous proof is never recorded as a sound one. Removal carries its own check: before a batch of retirements lands, someone who did not choose them compares the removed coverage against what remains, and each contract restored as a result is proved by one deliberate mutation of its owner that the remaining proof catches. This review guards each contract from the first batch, including in a repository too new to have any defect history.
 
 ## Governing time rather than count
 
@@ -71,8 +80,7 @@ The feedback target those choices serve is the continuous-delivery commit stage,
 
 A local commit runs only the proofs its change could break. Invalid inventory, an unavailable comparison, an unmapped or ambiguously covered code path, or an unrunnable selector widens to the full retained estate. A phase's implementation candidate is judged by the same selection. The full retained estate runs once, on the exact tree about to be pushed, and its receipt is what lets the push through; a failure it finds is fixed before anything leaves the machine.
 
-Periodic reassessment repeats the inventory, size, time, ledger, risk, and corpus checks.
-Every governed maintenance sweep runs the deterministic reassessment and reruns
-the local assay when proof code, selection, corpus, or critical-risk applicability
-changes. Shrinkage is therefore an executable obligation rather than permission
-that can be deferred indefinitely.
+Periodic reassessment repeats the inventory, size, time, ledger, risk, and receipt checks.
+Every governed maintenance sweep runs the deterministic reassessment and reports
+how many proofs still have no witness receipt. Shrinkage is therefore an executable
+obligation rather than permission that can be deferred indefinitely.

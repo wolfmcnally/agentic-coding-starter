@@ -1,21 +1,21 @@
 {
   "by_kind": {
     "gate": {
-      "families": 18,
-      "leaves": 18
+      "families": 19,
+      "leaves": 19
     },
     "hook": {
       "families": 5,
       "leaves": 5
     },
     "pytest": {
-      "families": 85,
-      "leaves": 103
+      "families": 97,
+      "leaves": 115
     }
   },
   "counts": {
-    "families": 108,
-    "leaves": 126
+    "families": 121,
+    "leaves": 139
   },
   "families": [
     "gate:changed",
@@ -32,6 +32,7 @@
     "gate:policy-log",
     "gate:policy-shell-syntax",
     "gate:policy-test-governance",
+    "gate:policy-test-time",
     "gate:policy-toolchain-callers",
     "gate:policy-treatise",
     "gate:test",
@@ -46,6 +47,7 @@
     "pytest:tests/test_check.py::test_all_is_default_locked_ordered_and_cwd_independent",
     "pytest:tests/test_check.py::test_all_policy_failure_cannot_be_masked_by_later_policy_output",
     "pytest:tests/test_check.py::test_authoritative_runtime_probe_failure_stops_before_gate_without_fallback",
+    "pytest:tests/test_check.py::test_format_rejects_staged_unstaged_and_untracked_candidates_without_rewriting",
     "pytest:tests/test_check.py::test_governed_iteration_lanes_dispatch_selected_tests_without_receipt",
     "pytest:tests/test_check.py::test_invalid_invocation_is_usage_error",
     "pytest:tests/test_check_catalogs.py::test_missing_internal_inline_and_reference_links_are_reported",
@@ -61,6 +63,7 @@
     "pytest:tests/test_check_receipt.py::test_pre_push_hook_skips_only_a_verified_hit",
     "pytest:tests/test_check_receipt.py::test_tampered_log_never_reuses_receipt",
     "pytest:tests/test_execution_dashboard.py::test_handoff_schema_rejects_private_or_malformed_content",
+    "pytest:tests/test_execution_dashboard.py::test_inline_planning_and_coding_are_attributed_to_their_activities",
     "pytest:tests/test_execution_dashboard.py::test_payload_reports_each_operator_park_and_nonexact_total",
     "pytest:tests/test_execution_dashboard.py::test_render_is_byte_identical_and_recovers_interrupted_replacement",
     "pytest:tests/test_execution_telemetry.py::test_atomic_state_and_first_ledger_creation_fsync_directories",
@@ -82,22 +85,28 @@
     "pytest:tests/test_kickoff_config.py::test_watch_preserves_codex_artifact_when_terminal_stream_is_incomplete",
     "pytest:tests/test_kickoff_control_plane.py::test_manifest_preflight_and_runner_admission_fail_closed",
     "pytest:tests/test_kickoff_evidence.py::test_change_manifest_is_candidate_bound_and_detects_authority_drift",
+    "pytest:tests/test_kickoff_evidence.py::test_child_close_moves_a_stranded_next_marker_only_in_pairs",
     "pytest:tests/test_kickoff_evidence.py::test_complete_synthetic_kickoff_cross_validates_roles_revision_and_gates",
     "pytest:tests/test_kickoff_evidence.py::test_final_validation_rejects_blocking_findings",
     "pytest:tests/test_kickoff_evidence.py::test_finding_state_is_stable_validated_and_reopen_is_counted",
+    "pytest:tests/test_kickoff_evidence.py::test_nested_final_child_close_requires_an_accepted_parent_chain",
+    "pytest:tests/test_kickoff_evidence.py::test_primary_mode_kickoff_records_advice_dispositions_and_stale_acceptance",
     "pytest:tests/test_kickoff_evidence.py::test_revision_round_requires_and_carries_failure_analysis",
     "pytest:tests/test_kickoff_evidence.py::test_role_artifacts_feed_findings_and_change_metadata_without_reparsing",
     "pytest:tests/test_kickoff_evidence.py::test_validate_detects_corrupt_evidence",
     "pytest:tests/test_kickoff_tree_id.py::test_identity_is_cwd_independent_and_manifest_is_ordered",
+    "pytest:tests/test_lessons.py::test_aged_lists_open_lessons_with_no_new_occurrence_in_sixty_days",
     "pytest:tests/test_lessons.py::test_candidates_applies_graduation_threshold_to_open_lessons_only",
     "pytest:tests/test_lessons.py::test_codified_lesson_requires_graduated_to",
     "pytest:tests/test_lessons.py::test_valid_open_and_archived_lessons_pass",
     "pytest:tests/test_log_control_plane.py::test_append_prefix_chronology_and_bounded_repairs_preserve_bytes",
     "pytest:tests/test_methodology_toolchain_contract.py::test_every_gate_required_executable_propagates",
     "pytest:tests/test_methodology_toolchain_contract.py::test_every_universal_skill_propagates_with_its_codex_mirror",
+    "pytest:tests/test_methodology_toolchain_contract.py::test_leak_scan_reads_new_files_before_they_are_staged",
     "pytest:tests/test_methodology_toolchain_contract.py::test_material_review_counts_are_reproducible",
     "pytest:tests/test_methodology_toolchain_contract.py::test_proof_estate_governance_propagates_without_local_judgments",
     "pytest:tests/test_methodology_toolchain_contract.py::test_research_authority_contract_propagates_and_stays_allow_by_default",
+    "pytest:tests/test_methodology_toolchain_contract.py::test_the_mechanical_copy_is_closed_over_links_and_fixtures",
     "pytest:tests/test_mirror_parity.py::test_repository_is_in_parity",
     "pytest:tests/test_new_name.py::test_avoids_collisions_across_all_ledger_dirs",
     "pytest:tests/test_pre_commit.py::test_pre_commit_runs_structural_governance_after_existing_checks",
@@ -107,17 +116,21 @@
     "pytest:tests/test_review_verdicts.py::test_dedupes_across_harnesses_and_drops_template_echoes",
     "pytest:tests/test_review_verdicts.py::test_running_session_and_explicit_exclusions_are_skipped",
     "pytest:tests/test_shell_syntax.py::test_syntax_error_fails_with_named_file",
-    "pytest:tests/test_test_governance.py::test_changed_selection_widens_on_an_unmapped_path",
+    "pytest:tests/test_test_governance.py::test_a_pending_witness_blocks_validation_until_it_is_aborted",
+    "pytest:tests/test_test_governance.py::test_changed_code_selects_the_families_of_files_that_use_it",
+    "pytest:tests/test_test_governance.py::test_changed_selection_maps_documents_to_readers_and_widens_on_unmapped_code",
     "pytest:tests/test_test_governance.py::test_critical_risk_requires_a_retained_direct_proof",
-    "pytest:tests/test_test_governance.py::test_family_or_leaf_cap_overrun_fails_closed",
     "pytest:tests/test_test_governance.py::test_incomplete_disposition_evidence_fails_closed",
     "pytest:tests/test_test_governance.py::test_inventory_counts_executable_families_and_expanded_leaves",
+    "pytest:tests/test_test_governance.py::test_lifecycle_replay_and_repairs",
     "pytest:tests/test_test_governance.py::test_live_reset_validates",
     "pytest:tests/test_test_governance.py::test_parameterized_leaves_collapse_to_one_family",
-    "pytest:tests/test_test_governance.py::test_positive_growth_requires_named_approval",
-    "pytest:tests/test_test_governance.py::test_recall_below_eighty_percent_fails_closed",
-    "pytest:tests/test_test_governance.py::test_report_reproduces_reset_ratios",
+    "pytest:tests/test_test_governance.py::test_receipts_are_validated_and_missing_ones_are_counted",
+    "pytest:tests/test_test_governance.py::test_report_counts_the_frozen_baseline_and_current_estate",
     "pytest:tests/test_test_governance.py::test_shadow_deleted_proof_fails_closed",
+    "pytest:tests/test_test_governance.py::test_size_ceilings_and_lane_budget_survive_timing_noise",
+    "pytest:tests/test_test_governance.py::test_witness_observes_red_restores_exactly_and_records_a_receipt",
+    "pytest:tests/test_test_governance.py::test_witness_refuses_anything_short_of_the_named_failure",
     "pytest:tests/test_toolchain_callers.py::test_ambient_or_versioned_operational_callers_fail",
     "pytest:tests/test_toolchain_callers.py::test_repository_runtime_callers_pass",
     "pytest:tests/test_toolchain_entrypoints.py::test_authoritative_runtime_override_is_used_for_probe_and_command",
@@ -127,7 +140,7 @@
     "pytest:tests/test_treatise.py::test_an_external_fact_without_a_retrieval_date_fails",
     "pytest:tests/test_treatise.py::test_the_repository_own_treatises_validate"
   ],
-  "inventory_sha256": "be1a73933ad812fa3b332ebc2e7dff3c783e728965d1c571648eb3bee08d0d83",
+  "inventory_sha256": "1dab0adbe18f54df8f2392d7eeb329892a9a55316a9917cda3cda862483f2525",
   "proofs": [
     {
       "family": "pytest:project/tests/test_cli.py::test_main_hello_default",
@@ -155,6 +168,13 @@
       "id": "pytest:tests/test_check.py::test_all_policy_failure_cannot_be_masked_by_later_policy_output",
       "kind": "pytest",
       "selector": "tests/test_check.py::test_all_policy_failure_cannot_be_masked_by_later_policy_output",
+      "source_path": "tests/test_check.py"
+    },
+    {
+      "family": "pytest:tests/test_check.py::test_format_rejects_staged_unstaged_and_untracked_candidates_without_rewriting",
+      "id": "pytest:tests/test_check.py::test_format_rejects_staged_unstaged_and_untracked_candidates_without_rewriting",
+      "kind": "pytest",
+      "selector": "tests/test_check.py::test_format_rejects_staged_unstaged_and_untracked_candidates_without_rewriting",
       "source_path": "tests/test_check.py"
     },
     {
@@ -330,6 +350,13 @@
       "id": "pytest:tests/test_execution_dashboard.py::test_handoff_schema_rejects_private_or_malformed_content[<lambda>-unknown]",
       "kind": "pytest",
       "selector": "tests/test_execution_dashboard.py::test_handoff_schema_rejects_private_or_malformed_content[<lambda>-unknown]",
+      "source_path": "tests/test_execution_dashboard.py"
+    },
+    {
+      "family": "pytest:tests/test_execution_dashboard.py::test_inline_planning_and_coding_are_attributed_to_their_activities",
+      "id": "pytest:tests/test_execution_dashboard.py::test_inline_planning_and_coding_are_attributed_to_their_activities",
+      "kind": "pytest",
+      "selector": "tests/test_execution_dashboard.py::test_inline_planning_and_coding_are_attributed_to_their_activities",
       "source_path": "tests/test_execution_dashboard.py"
     },
     {
@@ -522,6 +549,27 @@
       "source_path": "tests/test_kickoff_evidence.py"
     },
     {
+      "family": "pytest:tests/test_kickoff_evidence.py::test_primary_mode_kickoff_records_advice_dispositions_and_stale_acceptance",
+      "id": "pytest:tests/test_kickoff_evidence.py::test_primary_mode_kickoff_records_advice_dispositions_and_stale_acceptance",
+      "kind": "pytest",
+      "selector": "tests/test_kickoff_evidence.py::test_primary_mode_kickoff_records_advice_dispositions_and_stale_acceptance",
+      "source_path": "tests/test_kickoff_evidence.py"
+    },
+    {
+      "family": "pytest:tests/test_kickoff_evidence.py::test_child_close_moves_a_stranded_next_marker_only_in_pairs",
+      "id": "pytest:tests/test_kickoff_evidence.py::test_child_close_moves_a_stranded_next_marker_only_in_pairs",
+      "kind": "pytest",
+      "selector": "tests/test_kickoff_evidence.py::test_child_close_moves_a_stranded_next_marker_only_in_pairs",
+      "source_path": "tests/test_kickoff_evidence.py"
+    },
+    {
+      "family": "pytest:tests/test_kickoff_evidence.py::test_nested_final_child_close_requires_an_accepted_parent_chain",
+      "id": "pytest:tests/test_kickoff_evidence.py::test_nested_final_child_close_requires_an_accepted_parent_chain",
+      "kind": "pytest",
+      "selector": "tests/test_kickoff_evidence.py::test_nested_final_child_close_requires_an_accepted_parent_chain",
+      "source_path": "tests/test_kickoff_evidence.py"
+    },
+    {
       "family": "pytest:tests/test_kickoff_tree_id.py::test_identity_is_cwd_independent_and_manifest_is_ordered",
       "id": "pytest:tests/test_kickoff_tree_id.py::test_identity_is_cwd_independent_and_manifest_is_ordered",
       "kind": "pytest",
@@ -550,6 +598,13 @@
       "source_path": "tests/test_lessons.py"
     },
     {
+      "family": "pytest:tests/test_lessons.py::test_aged_lists_open_lessons_with_no_new_occurrence_in_sixty_days",
+      "id": "pytest:tests/test_lessons.py::test_aged_lists_open_lessons_with_no_new_occurrence_in_sixty_days",
+      "kind": "pytest",
+      "selector": "tests/test_lessons.py::test_aged_lists_open_lessons_with_no_new_occurrence_in_sixty_days",
+      "source_path": "tests/test_lessons.py"
+    },
+    {
       "family": "pytest:tests/test_log_control_plane.py::test_append_prefix_chronology_and_bounded_repairs_preserve_bytes",
       "id": "pytest:tests/test_log_control_plane.py::test_append_prefix_chronology_and_bounded_repairs_preserve_bytes",
       "kind": "pytest",
@@ -571,6 +626,13 @@
       "source_path": "tests/test_methodology_toolchain_contract.py"
     },
     {
+      "family": "pytest:tests/test_methodology_toolchain_contract.py::test_the_mechanical_copy_is_closed_over_links_and_fixtures",
+      "id": "pytest:tests/test_methodology_toolchain_contract.py::test_the_mechanical_copy_is_closed_over_links_and_fixtures",
+      "kind": "pytest",
+      "selector": "tests/test_methodology_toolchain_contract.py::test_the_mechanical_copy_is_closed_over_links_and_fixtures",
+      "source_path": "tests/test_methodology_toolchain_contract.py"
+    },
+    {
       "family": "pytest:tests/test_methodology_toolchain_contract.py::test_every_gate_required_executable_propagates",
       "id": "pytest:tests/test_methodology_toolchain_contract.py::test_every_gate_required_executable_propagates",
       "kind": "pytest",
@@ -589,6 +651,13 @@
       "id": "pytest:tests/test_methodology_toolchain_contract.py::test_material_review_counts_are_reproducible",
       "kind": "pytest",
       "selector": "tests/test_methodology_toolchain_contract.py::test_material_review_counts_are_reproducible",
+      "source_path": "tests/test_methodology_toolchain_contract.py"
+    },
+    {
+      "family": "pytest:tests/test_methodology_toolchain_contract.py::test_leak_scan_reads_new_files_before_they_are_staged",
+      "id": "pytest:tests/test_methodology_toolchain_contract.py::test_leak_scan_reads_new_files_before_they_are_staged",
+      "kind": "pytest",
+      "selector": "tests/test_methodology_toolchain_contract.py::test_leak_scan_reads_new_files_before_they_are_staged",
       "source_path": "tests/test_methodology_toolchain_contract.py"
     },
     {
@@ -676,10 +745,10 @@
       "source_path": "tests/test_test_governance.py"
     },
     {
-      "family": "pytest:tests/test_test_governance.py::test_family_or_leaf_cap_overrun_fails_closed",
-      "id": "pytest:tests/test_test_governance.py::test_family_or_leaf_cap_overrun_fails_closed",
+      "family": "pytest:tests/test_test_governance.py::test_size_ceilings_and_lane_budget_survive_timing_noise",
+      "id": "pytest:tests/test_test_governance.py::test_size_ceilings_and_lane_budget_survive_timing_noise",
       "kind": "pytest",
-      "selector": "tests/test_test_governance.py::test_family_or_leaf_cap_overrun_fails_closed",
+      "selector": "tests/test_test_governance.py::test_size_ceilings_and_lane_budget_survive_timing_noise",
       "source_path": "tests/test_test_governance.py"
     },
     {
@@ -704,31 +773,59 @@
       "source_path": "tests/test_test_governance.py"
     },
     {
-      "family": "pytest:tests/test_test_governance.py::test_recall_below_eighty_percent_fails_closed",
-      "id": "pytest:tests/test_test_governance.py::test_recall_below_eighty_percent_fails_closed",
+      "family": "pytest:tests/test_test_governance.py::test_lifecycle_replay_and_repairs",
+      "id": "pytest:tests/test_test_governance.py::test_lifecycle_replay_and_repairs",
       "kind": "pytest",
-      "selector": "tests/test_test_governance.py::test_recall_below_eighty_percent_fails_closed",
+      "selector": "tests/test_test_governance.py::test_lifecycle_replay_and_repairs",
       "source_path": "tests/test_test_governance.py"
     },
     {
-      "family": "pytest:tests/test_test_governance.py::test_positive_growth_requires_named_approval",
-      "id": "pytest:tests/test_test_governance.py::test_positive_growth_requires_named_approval",
+      "family": "pytest:tests/test_test_governance.py::test_changed_selection_maps_documents_to_readers_and_widens_on_unmapped_code",
+      "id": "pytest:tests/test_test_governance.py::test_changed_selection_maps_documents_to_readers_and_widens_on_unmapped_code",
       "kind": "pytest",
-      "selector": "tests/test_test_governance.py::test_positive_growth_requires_named_approval",
+      "selector": "tests/test_test_governance.py::test_changed_selection_maps_documents_to_readers_and_widens_on_unmapped_code",
       "source_path": "tests/test_test_governance.py"
     },
     {
-      "family": "pytest:tests/test_test_governance.py::test_changed_selection_widens_on_an_unmapped_path",
-      "id": "pytest:tests/test_test_governance.py::test_changed_selection_widens_on_an_unmapped_path",
+      "family": "pytest:tests/test_test_governance.py::test_changed_code_selects_the_families_of_files_that_use_it",
+      "id": "pytest:tests/test_test_governance.py::test_changed_code_selects_the_families_of_files_that_use_it",
       "kind": "pytest",
-      "selector": "tests/test_test_governance.py::test_changed_selection_widens_on_an_unmapped_path",
+      "selector": "tests/test_test_governance.py::test_changed_code_selects_the_families_of_files_that_use_it",
       "source_path": "tests/test_test_governance.py"
     },
     {
-      "family": "pytest:tests/test_test_governance.py::test_report_reproduces_reset_ratios",
-      "id": "pytest:tests/test_test_governance.py::test_report_reproduces_reset_ratios",
+      "family": "pytest:tests/test_test_governance.py::test_report_counts_the_frozen_baseline_and_current_estate",
+      "id": "pytest:tests/test_test_governance.py::test_report_counts_the_frozen_baseline_and_current_estate",
       "kind": "pytest",
-      "selector": "tests/test_test_governance.py::test_report_reproduces_reset_ratios",
+      "selector": "tests/test_test_governance.py::test_report_counts_the_frozen_baseline_and_current_estate",
+      "source_path": "tests/test_test_governance.py"
+    },
+    {
+      "family": "pytest:tests/test_test_governance.py::test_witness_observes_red_restores_exactly_and_records_a_receipt",
+      "id": "pytest:tests/test_test_governance.py::test_witness_observes_red_restores_exactly_and_records_a_receipt",
+      "kind": "pytest",
+      "selector": "tests/test_test_governance.py::test_witness_observes_red_restores_exactly_and_records_a_receipt",
+      "source_path": "tests/test_test_governance.py"
+    },
+    {
+      "family": "pytest:tests/test_test_governance.py::test_witness_refuses_anything_short_of_the_named_failure",
+      "id": "pytest:tests/test_test_governance.py::test_witness_refuses_anything_short_of_the_named_failure",
+      "kind": "pytest",
+      "selector": "tests/test_test_governance.py::test_witness_refuses_anything_short_of_the_named_failure",
+      "source_path": "tests/test_test_governance.py"
+    },
+    {
+      "family": "pytest:tests/test_test_governance.py::test_a_pending_witness_blocks_validation_until_it_is_aborted",
+      "id": "pytest:tests/test_test_governance.py::test_a_pending_witness_blocks_validation_until_it_is_aborted",
+      "kind": "pytest",
+      "selector": "tests/test_test_governance.py::test_a_pending_witness_blocks_validation_until_it_is_aborted",
+      "source_path": "tests/test_test_governance.py"
+    },
+    {
+      "family": "pytest:tests/test_test_governance.py::test_receipts_are_validated_and_missing_ones_are_counted",
+      "id": "pytest:tests/test_test_governance.py::test_receipts_are_validated_and_missing_ones_are_counted",
+      "kind": "pytest",
+      "selector": "tests/test_test_governance.py::test_receipts_are_validated_and_missing_ones_are_counted",
       "source_path": "tests/test_test_governance.py"
     },
     {
@@ -876,7 +973,7 @@
       "id": "gate:policy-anonymization",
       "kind": "gate",
       "selector": "policy-anonymization",
-      "source_path": "bin/check:150"
+      "source_path": "bin/check:151"
     },
     {
       "family": "gate:policy-candidate-partition",
@@ -947,6 +1044,13 @@
       "kind": "gate",
       "selector": "policy-test-governance",
       "source_path": "bin/check:149"
+    },
+    {
+      "family": "gate:policy-test-time",
+      "id": "gate:policy-test-time",
+      "kind": "gate",
+      "selector": "policy-test-time",
+      "source_path": "bin/check:150"
     },
     {
       "family": "gate:policy-toolchain-callers",
