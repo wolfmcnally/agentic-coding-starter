@@ -2405,3 +2405,30 @@ The effectiveness corpus is gone: `tests/fixtures/test_governance/` with its 24 
 **Remaining for the operator.** Nothing blocks. Derived repositories keep the corpus machinery until they are taught. `reassess` reports 25 admitted proofs and 109 baseline proofs with no receipt; delivery 2 addresses the first number and nothing addresses the second.
 
 Lessons: `natural-crow` filed, methodology scope — an evidence field that any sentence satisfies records a claim, not an observation. `berserk-cassowary` filed, methodology scope — a plan promised a guard's consequence without checking the guard was armed in this checkout. `indefinable-numbat` gained its third occurrence, the stale inventory snapshot, and is now a graduation candidate. Independent review is not applicable because this is primary one-shot methodology work.
+
+## 2026-10-07 00:19 — METHODOLOGY — every admitted proof witnessed; a missing receipt refuses (delivery 2 of 3)
+
+Delivery 2 of the three recorded in the scope of 2026-10-06 23:50.
+
+**What changed.** Every proof admitted after the reset now has a witness receipt, and `./bin/test-governance validate` refuses an admitted or repaired proof that has none. The 25 admitted proofs that carried only a written claim were each challenged through the witness command: 19 with the defect their ledger sentence names, and six whose sentence named no defect with one designed from the proof. Five of the 25 are gate and hook proofs, challenged by planting a violation in the artifact the gate guards; the two staged-hook proofs ran against a scratch copy of the index. All 25 failed as claimed. None needed repair, so no `proof_repair` row was written.
+
+**Defects found in the witness command.** Two, both failing closed, both corrected and proved.
+
+1. `witness finish` ran its closing check before clearing its journal. A proof that validates the live estate met its own pending witness and could never be witnessed. The journal is now cleared once the restored bytes are verified. `test_live_reset_validates` was reordered so its live validation comes last, for the same reason: a planted defect has to fail a fixture assertion before the live check.
+2. A planted defect of the same size as the original, restored within one second, left Python's bytecode cache serving the planted code for the restored file. The command now starts each planting in a later second than the files it journaled and gives restored files a modification time in a later second than the planted version. On the operator's caution about delays that grow with input, given in session while this was being written, the wait is one per witness and capped at a second whatever the file count: a 40-file witness measured about a tenth of a second at each end.
+
+**Proof estate.** `test_receipts_are_validated_and_missing_ones_are_counted` was renamed to `test_receipts_are_validated_and_an_admitted_proof_must_have_one`, as one admission and one consolidating retirement. `test_lifecycle_replay_and_repairs` gained the refusal of an unwitnessed repair. The round-trip proof gained the journal-order and modification-time assertions. Each changed proof was witnessed again in its final form. The witness ledger holds 39 receipts.
+
+**Scope departures.** Three.
+
+1. The backfill was 25 proofs, as the delivery 1 record already corrected.
+2. A repaired proof is satisfied by any receipt naming it, including one older than the repair. The two ledgers are separate files and carry no shared order, so "a receipt after the repair" is not checked.
+3. `unwitnessed_admitted` left the report as planned, and the sweep and teach skills and the policy were adjusted to name only the baseline count.
+
+**Primary self-check.** Against ruling 3. Each receipt was written by the command from an untouched copy of the manager; the manager was compared byte-for-byte with that copy after every batch. Four witnesses were refused on the first attempt: three because the expected text I supplied did not match how the failure prints, though each proof had failed at its intended assertion, and one because of defect 1 above. No receipt was recorded for any refused attempt. Stale bytecode from defect 2 could only make a closing run fail, which refuses, so it could not have produced a false receipt.
+
+**Gates before this record.** `./bin/test --changed-from '@{upstream}'` ran the focused selection, 62 tests, and passed with no warning or error line. `./bin/check format`, `./bin/check lint`, `./bin/check-catalogs`, `./bin/check-harness-parity`, `./bin/lessons validate`, `./bin/check-anonymization.sh` and `./bin/test-governance validate` passed. The one full gate follows this record.
+
+**Remaining for the operator.** Nothing blocks. 109 baseline proofs have no receipt, by the plan's exclusion.
+
+Lessons: `amphibian-sheep` filed, methodology scope — a byte-exact restore is not a cache-exact restore. Independent review is not applicable because this is primary one-shot methodology work.

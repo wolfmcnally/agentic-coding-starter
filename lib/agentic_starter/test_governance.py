@@ -15,6 +15,7 @@ import stat
 import statistics
 import subprocess
 import sys
+import time
 import xml.etree.ElementTree as ElementTree
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -792,6 +793,8 @@ def validate(root: Path) -> dict[str, Any]:
     admitted_or_repaired = {
         str(row.get("proof_id")) for row in admission_rows + repair_rows
     } & active
+    for proof_id in sorted(admitted_or_repaired - witnessed):
+        errors.append(f"admitted or repaired proof has no witness receipt: {proof_id}")
 
     if errors:
         raise GovernanceError("validation failed:\n- " + "\n- ".join(errors))
@@ -801,8 +804,7 @@ def validate(root: Path) -> dict[str, Any]:
         "families": current["counts"]["families"],
         "leaves": current["counts"]["leaves"],
         "witness_receipts": len(receipts),
-        # A proof with no receipt has only a written claim that it can fail; never passing.
-        "unwitnessed_admitted": len(admitted_or_repaired - witnessed),
+        # A baseline proof with no receipt has only a written claim that it can fail.
         "unwitnessed_baseline": len(active - admitted_or_repaired - witnessed),
         "dispositions": {
             state: sum(row.get("disposition") == state for row in disposition_rows)
@@ -1034,8 +1036,28 @@ def _witness_run(command: str, root: Path) -> tuple[int, str]:
     return result.returncode, result.stdout + "\n" + result.stderr
 
 
+def _leave_second(paths: Sequence[Path], second: int) -> None:
+    """Give files a modification time in a later whole second than `second`.
+
+    Caches keyed on a source file's size and whole-second modification time (Python
+    bytecode, and build tools on coarse filesystems) cannot tell two same-sized versions
+    written in one second apart, and would keep serving the planted defect after a
+    byte-exact restore. One wait of at most a second covers every file.
+    """
+    if not paths:
+        return
+    deadline = time.time() + 1.0
+    while int(time.time()) <= second and time.time() < deadline:
+        time.sleep(0.02)
+    stamp = max(time.time(), second + 1)
+    for path in paths:
+        os.utime(path, (stamp, stamp))
+
+
 def _restore_witness(root: Path, request: dict[str, Any]) -> None:
     pending = root / WITNESS_PENDING
+    rewritten: list[Path] = []
+    planted_second = 0
     for entry in request["paths"]:
         saved = (pending / entry["saved"]).read_bytes()
         if _digest(saved) != entry["sha256"]:
@@ -1043,16 +1065,20 @@ def _restore_witness(root: Path, request: dict[str, Any]) -> None:
                 f"witness journal is corrupt for {entry['path']}; restore that file by hand"
             )
         target = root / entry["path"]
-        # Rewrite only what changed, so a restored file carries a fresh modification
-        # time and an incremental build cannot keep the mutated artifact.
+        # Rewrite only what changed, and into a later second than the planted version,
+        # so no cache can keep the mutated artifact for the restored file.
         if target.is_symlink() or not target.is_file() or target.read_bytes() != saved:
+            if target.exists():
+                planted_second = max(planted_second, int(target.lstat().st_mtime))
             if target.is_symlink():
                 target.unlink()
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(saved)
+            rewritten.append(target)
         target.chmod(entry["mode"])
         if _digest(target.read_bytes()) != entry["sha256"]:
             raise GovernanceError(f"witness restore did not verify for {entry['path']}")
+    _leave_second(rewritten, planted_second)
 
 
 def witness_begin(
@@ -1122,6 +1148,12 @@ def witness_begin(
     temporary = pending / "request.json.tmp"
     temporary.write_text(json.dumps(request, indent=2, sort_keys=True) + "\n")
     temporary.replace(_pending_request(root))
+    # A defect planted in the same second as the version the baseline just ran, and of
+    # the same size, would be invisible to such a cache; start the planting in a later one.
+    newest = max(int((root / item).stat().st_mtime) for item in relative)
+    deadline = time.time() + 1.0
+    while int(time.time()) == newest and time.time() < deadline:
+        time.sleep(0.02)
     return {
         "state": "pending",
         "paths": relative,
@@ -1152,8 +1184,10 @@ def witness_finish(root: Path) -> dict[str, Any]:
         status, output = _witness_run(request["command"], root)
     finally:
         _restore_witness(root, request)
-    restored_status, restored_output = _witness_run(request["command"], root)
+    # The journal goes before the closing run: the restored bytes are verified, and a
+    # command that validates this estate must not meet its own pending witness.
     shutil.rmtree(root / WITNESS_PENDING)
+    restored_status, restored_output = _witness_run(request["command"], root)
     if restored_status != 0:
         raise GovernanceError(
             "the restored tree no longer passes the witness command; nothing was recorded\n"

@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 import shlex
 import stat
 import subprocess
@@ -199,16 +200,18 @@ def test_inventory_counts_executable_families_and_expanded_leaves(estate: Path) 
 
 
 def test_live_reset_validates(estate: Path, tmp_path: Path) -> None:
-    assert governance.validate(REPO_ROOT)["state"] == "valid"
     summary = governance.validate(estate)
     assert summary["dispositions"] == {"retain": 7, "repair": 0, "consolidate": 1, "delete": 1}
     assert (summary["admissions"], summary["post_reset_retirements"]) == (1, 1)
-    assert (summary["unwitnessed_admitted"], summary["unwitnessed_baseline"]) == (0, 6)
+    assert (summary["witness_receipts"], summary["unwitnessed_baseline"]) == (1, 6)
     # A new repository keeps every proof it was given and has witnessed nothing yet.
     fresh = governance.validate(_write_estate(tmp_path / "fresh", pruned=False))
     assert fresh["state"] == "valid"
     assert fresh["dispositions"] == {"retain": 7, "repair": 0, "consolidate": 0, "delete": 0}
     assert (fresh["witness_receipts"], fresh["unwitnessed_baseline"]) == (0, 7)
+    # Last, because the live estate refuses while a red witness is pending in this checkout:
+    # a defect planted to challenge this proof has to fail a fixture assertion above.
+    assert governance.validate(REPO_ROOT)["state"] == "valid"
 
 
 def test_size_ceilings_and_lane_budget_survive_timing_noise(
@@ -394,6 +397,8 @@ def test_lifecycle_replay_and_repairs(
 
     def repaired_lifecycle(path: Path):
         rows = original_ledger(path)
+        if path.name == "witnesses.jsonl" and repair_mode[0] != "unwitnessed":
+            return [*rows, {**rows[0], "proof_ids": [SAMPLE + "test_kept"]}]
         if path.name != "reset.jsonl":
             return rows
         retained = next(row for row in rows if row.get("disposition") == "retain")
@@ -401,7 +406,7 @@ def test_lifecycle_replay_and_repairs(
             retained["disposition"] = "repair"
             return rows
         retired = next(row for row in rows if row.get("record_type") == "proof_retirement")
-        target = retained if repair_mode[0] == "active" else retired
+        target = retired if repair_mode[0] == "retired" else retained
         repair = {**target, "record_type": "proof_repair", "disposition": "repair"}
         repair["replacement"] = target["proof_id"]
         return [*rows, repair]
@@ -415,6 +420,11 @@ def test_lifecycle_replay_and_repairs(
     repair_mode[0] = "retired"
     with pytest.raises(governance.GovernanceError, match="repair target is not active"):
         governance.validate(estate)
+    # A repair is a new claim that the proof can fail, so it needs its own observation.
+    repair_mode[0] = "unwitnessed"
+    with pytest.raises(governance.GovernanceError, match="test_kept") as refused:
+        governance.validate(estate)
+    assert "admitted or repaired proof has no witness receipt" in str(refused.value)
 
 
 def test_changed_selection_maps_documents_to_readers_and_widens_on_unmapped_code(
@@ -538,7 +548,7 @@ WITNESS = {
 }
 
 
-def _witness_repo(root: Path, guard: str = "deny\n") -> Path:
+def _witness_repo(root: Path, guard: str = "deny\n", *, validates_itself: bool = False) -> Path:
     """A repository whose only proof is a shell script, so nothing here depends on pytest."""
     (root / "tests").mkdir(parents=True)
     (root / "tests/proof-estate.yaml").write_text(
@@ -546,19 +556,32 @@ def _witness_repo(root: Path, guard: str = "deny\n") -> Path:
     )
     (root / "guard.txt").write_text(guard)
     (root / "guard.txt").chmod(0o640)
+    # An old file, as real source usually is: begin has no fresh write to wait out.
+    os.utime(root / "guard.txt", (0, 0))
     (root / "check.sh").write_text(
-        '#!/bin/sh\ngrep -qx deny guard.txt || { echo "GUARD OPEN"; exit 1; }\necho checked\n'
+        '#!/bin/sh\ngrep -qx deny guard.txt || { echo "GUARD OPEN"; exit 1; }\n'
+        + (
+            # Like a proof that validates its own estate: green only with no witness pending.
+            f"test ! -e {governance.WITNESS_PENDING}/request.json"
+            ' || { echo "PENDING"; exit 1; }\n'
+            if validates_itself
+            else ""
+        )
+        + "echo checked\n"
     )
     (root / "check.sh").chmod(0o755)
     return root
 
 
 def test_witness_observes_red_restores_exactly_and_records_a_receipt(tmp_path: Path) -> None:
-    root = _witness_repo(tmp_path)
+    root = _witness_repo(tmp_path, validates_itself=True)
     governance.witness_begin(root, **WITNESS)
     (root / "guard.txt").write_text("allow\n")
+    planted_second = int((root / "guard.txt").stat().st_mtime)
     receipt = governance.witness_finish(root)
     assert (root / "guard.txt").read_bytes() == b"deny\n"
+    # A cache keyed on size and whole-second time must see the restored file as new.
+    assert int((root / "guard.txt").stat().st_mtime) > planted_second
     assert not (root / governance.WITNESS_PENDING).exists()
     assert governance.load_ledger(root / "reports/witnesses.jsonl") == [receipt]
     assert receipt["paths"] == ["guard.txt"] and receipt["defect"] == WITNESS["defect"]
@@ -618,7 +641,7 @@ def test_a_pending_witness_blocks_validation_until_it_is_aborted(tmp_path: Path)
         governance.witness_abort(root)
 
 
-def test_receipts_are_validated_and_missing_ones_are_counted(
+def test_receipts_are_validated_and_an_admitted_proof_must_have_one(
     estate: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     original = governance.load_ledger
@@ -632,8 +655,9 @@ def test_receipts_are_validated_and_missing_ones_are_counted(
 
     monkeypatch.setattr(governance, "load_ledger", altered)
     change[0] = lambda rows: []
-    summary = governance.validate(estate)
-    assert (summary["witness_receipts"], summary["unwitnessed_admitted"]) == (0, 1)
+    with pytest.raises(governance.GovernanceError, match="test_admitted") as refused:
+        governance.validate(estate)
+    assert "admitted or repaired proof has no witness receipt" in str(refused.value)
     malformed = {
         "has wrong fields": lambda row: row.pop("expect"),
         "names a proof the audit ledger does not know": lambda row: row.update(
