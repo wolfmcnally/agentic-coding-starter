@@ -173,6 +173,23 @@ def test_handoff_schema_rejects_private_or_malformed_content(mutation: Any, matc
         dashboard.validate_handoff(value, phase_id="31.2")
 
 
+def test_content_scan_blanks_operation_labels_and_nothing_else() -> None:
+    data = json.dumps(
+        {
+            "spans": [{"operation": "gate.no-lock-tokens", "outcome": "success"}],
+            "title": "the tokens leaked",
+            "note": {"operation": "not a label: tokens"},
+        },
+        separators=(",", ":"),
+    )
+    scanned = dashboard.content_scan_text(data)
+    assert "gate.no-lock-tokens" not in scanned
+    assert '"operation":""' in scanned
+    assert "the tokens leaked" in scanned
+    assert "not a label: tokens" in scanned
+    assert dashboard.content_scan_text('{"operation": "gate.secret"}') == '{"operation":""}'
+
+
 def with_stages(bundle: dict[str, Any], *, drop_roles: tuple[str, ...]) -> dict[str, Any]:
     """Add planning and implementation stage spans; optionally remove delegated roles."""
     staged = copy.deepcopy(bundle)

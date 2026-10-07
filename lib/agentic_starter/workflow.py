@@ -255,14 +255,17 @@ def usage_windows(
     block = snapshot.get(deployment["provider"])
     if not isinstance(block, dict) or block.get("ok") is not True:
         raise WorkflowError(f"llm-usage failed for {deployment['provider']}")
+    # The tool caches its readings to stay inside its provider's rate limits,
+    # so a cached reading is accepted at whatever age the tool serves it. Only
+    # an age that is not a real, non-negative number refuses.
     age = block.get("cache_age_seconds")
     if age is not None and (
         not isinstance(age, (int, float))
         or isinstance(age, bool)
         or not math.isfinite(age)
-        or age > 900
+        or age < 0
     ):
-        raise WorkflowError("llm-usage snapshot is stale or has invalid cache age")
+        raise WorkflowError("llm-usage reported an invalid cache age")
     windows = block.get("windows")
     if not isinstance(windows, dict) or not windows:
         raise WorkflowError("llm-usage has no applicable window data")

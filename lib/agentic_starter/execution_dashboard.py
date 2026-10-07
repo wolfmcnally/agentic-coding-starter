@@ -146,6 +146,22 @@ def _script(prefix: str, value: Any) -> str:
     return f"{prefix}Object.freeze({_safe_script_json(value)});\n"
 
 
+# A span's operation label as it is serialized in dashboard data. The value
+# pattern is the telemetry ledger's own label alphabet.
+OPERATION_LABEL = re.compile(r'"operation":\s*"[A-Za-z0-9][A-Za-z0-9._:/+-]{0,127}"')
+
+
+def content_scan_text(text: str) -> str:
+    """Return dashboard data with span operation labels blanked.
+
+    The dashboard check scans published data for words that suggest private
+    content. An operation label is a short identifier the orchestrator
+    writes, such as a gate's name, and is not content: a gate named for what
+    it checks must not fail the scan. Everything else is returned unchanged.
+    """
+    return OPERATION_LABEL.sub('"operation":""', text)
+
+
 def parse_data_script(text: str, *, index: bool = False) -> dict[str, Any]:
     prefix = INDEX_PREFIX if index else DATA_PREFIX
     suffix = ");\n"

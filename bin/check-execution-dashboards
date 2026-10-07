@@ -19,6 +19,7 @@ REPO_ROOT = SCRIPT_PATH.parents[1]
 sys.path.insert(0, str(REPO_ROOT / "lib"))
 
 from agentic_starter.execution_dashboard import (  # noqa: E402
+    content_scan_text,
     parse_data_script,
     render_phase_dashboard,
 )
@@ -147,8 +148,9 @@ def main() -> int:
     payloads = []
     for file_path in payload_files:
         text = file_path.read_text(encoding="utf-8")
+        scanned = content_scan_text(text)
         for pattern in FORBIDDEN_PAYLOAD:
-            if pattern.search(text):
+            if pattern.search(scanned):
                 fail(
                     f"private or out-of-scope dashboard data in "
                     f"{file_path.relative_to(REPO_ROOT)}: {pattern.pattern}"

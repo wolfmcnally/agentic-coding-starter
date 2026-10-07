@@ -840,6 +840,16 @@ def _assert_primary_routing_and_usage(tmp_path: Path) -> None:
     data["openai"]["ok"] = False
     with pytest.raises(workflow.WorkflowError):
         workflow.apply_usage(routed, config, data)
+    # A cached reading is accepted at any age: the tool caches to stay inside its
+    # provider's limits. Only an age that is not a real, non-negative number refuses.
+    aged = copy.deepcopy(snapshot)
+    aged["anthropic"]["cache_age_seconds"] = 86_400.0
+    aged["openai"]["cache_age_seconds"] = 1175
+    assert workflow.apply_usage(routed, config, aged)["usage"]["state"] == "measured"
+    for bad_age in [float("nan"), True, "900", -1]:
+        aged["openai"]["cache_age_seconds"] = bad_age
+        with pytest.raises(workflow.WorkflowError, match="invalid cache age"):
+            workflow.apply_usage(routed, config, aged)
     # Distinct configured advisers are resolved independently before usage routing.
     config["adviser_models"]["codex"]["critic"] = ["astra"]
     separate = workflow.resolve(document, "codex")

@@ -120,10 +120,12 @@ Most phases do not need hot-state checks. Phases without an operational surface 
 
 A phase can honestly declare `User Demo: N/A` in any of these cases:
 
-- **No user-facing surface touched.** The phase changes only internal library code, build glue, infra, CI, briefs, plans, policies, or docs.
+- **No user-facing surface touched.** The phase changes only internal library code, build glue, infra, CI, briefs, plans, policies, or docs. This does not cover internal code whose output a person judges by perceiving it; see the rule after this list.
 - **Behavior-preserving change to a user-facing surface.** A refactor, rename, dependency bump, or internal restructuring that leaves the observable behavior identical. (If a refactor *could* introduce a regression a human would notice — e.g. a rewrite of the rendering path — that's worth demoing, even though the behavior is "supposed to" be identical.)
 - **Trivially verifiable bug fix or copy change.** A typo correction, a one-line bug fix, or a small message tweak whose entire verification is "the new string appears" or "the bug no longer reproduces" — already covered by a deterministic acceptance check or by inspection of the diff. Forcing a demo here would be theater.
 - **Deferred surface.** The phase scaffolds infrastructure for a future user-facing feature but does not yet expose it (e.g. wiring up a backend route whose UI lands in a later phase). Demo lands with the phase that exposes the surface.
+
+**An output a person judges by perceiving it has a demo as soon as it can be rendered.** A phase can produce something heard, seen or read (a synthesized sound, a drawing, a layout, generated prose) before any user-facing surface exists to carry it. If an artifact of that output can be rendered now (an audio file, an image, a document), neither exemption above applies. The phase's `User Demo:` block names the command that renders the artifact and what to judge in it, and that judgment is a parked criterion of this phase. Deferring it to the phase that adds the delivery surface builds that surface on something no one has judged. (Observed 2026-10-07 in a derived project: a synthesis phase closed green on objective measurements with its demo declared not applicable; rendered to files afterwards, its sound was rejected at first hearing and the phase needed a full correction.)
 
 In each case, the Acceptance section carries a single line:
 

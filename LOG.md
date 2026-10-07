@@ -2574,3 +2574,31 @@ The instruction recorded in the scope just above.
 **Independent review.** Not applicable — primary one-shot methodology work.
 
 **Remaining for the operator.** None. Derived projects receive this through their own delivery.
+
+## 2026-10-07 14:25 — METHODOLOGY SCOPE
+
+One operator instruction, given in session on 2026-10-07 through the `ask` skill, after a derived project closed its third product phase and a correction to it, and before any implementation of this change. Asked which of that work's five new methodology lessons to act on now, in the template and then in that project, the operator selected four and gave one of them a ruling in their own words: "The `llm-usage` tool caches its responses to avoid rate limits/throttling responses. Any usage freshness checks should accept the cached responses."
+
+**Authorized outcome.** Four corrections. First: the phase report's content scan no longer treats a span's operation label as content, so a gate named for what it checks cannot make a finished report unpublishable after its trace is sealed. Second: kickoff accepts a cached usage reading at whatever age the usage tool serves it; only a malformed age refuses, and kickoff never asks the tool to bypass its cache. Third: the demo policy no longer exempts a phase whose output a person judges by perceiving it when an artifact of that output can be rendered now. Fourth: the step that elaborates a sketched phase says how to judge whether a newly pinned behaviour departs from the reference: by looking at the reference, and by treating a brief's silence as a reason to ask.
+
+**Surfaces.** `lib/agentic_starter/execution_dashboard.py`, `bin/check-execution-dashboards`, `lib/agentic_starter/workflow.py`, `policies/role-models.md`, `policies/user-demo-protocols.md`, the `plan-reviewer` definition, `.claude/skills/kickoff/preflight.md`, the tests of the changed tools, and the proof-estate ledgers for one new proof.
+
+**Exclusions.** The list of words the report scan forbids is unchanged, and the handoff and page scans are untouched. Usage thresholds and substitution rules are unchanged. No rule is added about mapping pinned decisions to tests before code review; that lesson stays a candidate in the derived project. Teaching the derived project is a separate delivery in its own repository.
+
+## 2026-10-07 14:26 — METHODOLOGY — report scan, cached usage readings, perceptual demos, reference check
+
+The instruction recorded in the scope just above.
+
+**What changed.**
+- Report scan: `lib/agentic_starter/execution_dashboard.py` gained `content_scan_text`, which blanks each serialized span operation label and returns everything else unchanged; `bin/check-execution-dashboards` scans that text when it checks report data. The word list and the handoff and page scans are unchanged.
+- Usage readings: `lib/agentic_starter/workflow.py` accepts a cached reading at whatever age the usage tool serves it and refuses only an age that is not a real, non-negative number. `policies/role-models.md` says so, and no longer describes a staleness limit or a fresh re-request; the code never made that re-request.
+- Demos: `policies/user-demo-protocols.md` says an output a person judges by perceiving it has a demo as soon as an artifact of it can be rendered, whether or not a user-facing surface exists; the `plan-reviewer` definition treats a not-applicable declaration on such a phase as blocking.
+- Elaboration: `.claude/skills/kickoff/preflight.md` says to judge whether a newly pinned behaviour departs from the reference by checking what the reference does, and to treat a brief's silence on a behaviour a user experiences as a reason to mark it for the operator.
+
+**Why.** A derived project met each of these in one product phase: a finished phase report refused for a gate's own name in a sealed trace; preflight refusing for part of every cache period of the usage tool; a synthesis phase that closed green with no demo and was then rejected by ear; and an elaborated phase whose departure from the reference was noticed only by the plan reviewer.
+
+**Primary self-check.** The new report-scan proof was witnessed red (returning the scan text unchanged) and is admitted in the proof-estate ledger. The usage change was checked by restoring the old limit, which made the extended routing-and-usage proof fail. `./bin/check-execution-dashboards` and `./bin/test-governance validate` pass. The two prose rules have no executable check.
+
+**Independent review.** Not applicable — primary one-shot methodology work.
+
+**Remaining for the operator.** None. Derived projects receive this through their own delivery.
