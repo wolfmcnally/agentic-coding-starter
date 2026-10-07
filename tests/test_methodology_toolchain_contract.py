@@ -287,7 +287,9 @@ def _exercise_transfer_recipes(tmp_path: Path) -> None:
             transfer = (destination / ".claude/skills" / skill_name / "SKILL.md").read_text()
             assert "No delegated planning/coding, independent review/critique" in transfer
             assert "commit and fast-forward push" in transfer
-            assert "already-authorized" in transfer
+            assert "## Stage 4 — Approve (gate)" in transfer
+            assert "**Approval is mandatory.**" in transfer
+            assert "already-authorized" not in transfer
         _assert_transferred_resources(destination)
         _assert_transfer_exclusions(destination)
         for resource in RESOURCES:

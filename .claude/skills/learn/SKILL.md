@@ -49,9 +49,21 @@ If `<donor-dir>` is missing or not a readable directory, refuse with `Usage: /le
 
 The invoking primary performs the complete methodology transfer: assessment, selection, adaptation, implementation, self-inspection, required checks, commit and fast-forward push. No delegated planning/coding, independent review/critique, or phase-role loop. This standing route applies across harnesses and model tiers, per `policies/review-lanes.md`.
 
-Do not enter a blocking plan-mode or repeated approval ceremony for already-authorized work. Stages 1–3 establish the concrete transfer scope. Stage 4 checks that scope against existing operator authorization; unresolved consequential choices go to the operator, while authorized work proceeds directly. If the operator requested only an assessment or plan, deliver that artifact and do not apply it. Specific delivery restrictions remain binding.
+One-shot ownership settles who does the work, not whether the operator approves it. Invoking this skill authorizes the assessment; only the operator's approval of the concrete Stage 3 plan authorizes writes. A scope named in `<desc>` narrows what is assessed and is not advance approval of the plan. Approval covers that plan for this run only; it does not carry to another repository or a later invocation. If the operator requested only an assessment or plan, deliver that artifact and do not apply it. Specific delivery restrictions remain binding.
 
-The primary has commit and push authority for authorized changes in every affected repository, after the checks its changes could break pass and one full gate qualifies the push. Preserve read-only source/donor boundaries, target-specific rules, safe staging, anonymization and custody. A dirty or ambiguous target is not permission to overwrite another session's work.
+Once the plan is approved, the primary has commit and push authority for the approved changes in every affected repository, after the checks its changes could break pass and one full gate qualifies the push. Preserve read-only source/donor boundaries, target-specific rules, safe staging, anonymization and custody. A dirty or ambiguous target is not permission to overwrite another session's work.
+
+## Plan-mode lifecycle (Stages 1–4)
+
+Stages 1, 2, and 3 are read-only against both repos; Stage 4 surfaces the plan to the user; Stage 5 is the only stage that writes. This maps onto the harness's plan-mode contract — enter at the start of Stage 1, exit at Stage 4.
+
+- **If the current harness exposes an `EnterPlanMode`-like tool** (Claude Code does today; Codex does not yet — see [openai/codex#11180](https://github.com/openai/codex/issues/11180)), **call it now** before starting Stage 1. The harness then enforces no-write through Stages 1–3; the bespoke "do not write to disk" rule below becomes belt-and-braces.
+- **If the harness does not expose programmatic plan-mode entry**, proceed without calling anything — the bespoke read-only discipline through Stages 1–3 carries the contract. The user may have entered plan mode interactively (Codex CLI's `/plan`; the Codex desktop app's plan mode); that's fine and orthogonal to this skill.
+- **At Stage 4**, if you entered plan mode in Stage 1 (or detected the user did so interactively and the harness exposes `ExitPlanMode`), place the Stage 3 plan body where the harness's plan-mode contract specifies — Claude Code names a plan file to write; other harnesses may differ — and then call `ExitPlanMode`. That plan body is the content the harness surfaces for approval. The user's accept / revise / reject from the plan-mode UI is the Stage 4 approval signal. If `ExitPlanMode` is not available, fall back to the free-text approval described in Stage 4.
+- **When the operator is away or the run is unattended**, raise no blocking dialog. Stay read-only, write the Stage 3 plan to a parked artifact outside both repositories, report where it is, and stop. The plan is approved when the operator returns, never by default.
+- **Stage 5 (Apply) always runs outside plan mode.** Either the harness has handed control back after `ExitPlanMode`, or no plan mode was entered. Either way, edits to this repo are permitted only after the user has approved.
+
+The skill's bespoke Stage 3 plan template stays the canonical plan body in both paths. Plan mode is a harness affordance layered on top, not a replacement for the structured plan.
 
 ## Stage 1 — Explore (read-only)
 
@@ -183,7 +195,7 @@ coverage floor. A Rule One proposal must name both
 `briefs/rule-one-diagnostic-learning.md`, including an explicit `UNCHANGED`
 compatibility finding when one member requires no write.
 
-## Proposed write set and existing authorization
+## Proposed write set (will only be applied after approval)
 
 - `<this-repo file>` — NEW | MODIFY (diff size)
 - ...
@@ -200,15 +212,24 @@ When this repo has an external-reference anonymization policy, render the propos
 
 End the plan with one line: **"Approve this plan to apply, ask for revisions, or reject."**
 
-## Stage 4 — Confirm authorized scope
+## Stage 4 — Approve (gate)
 
-Compare the concrete assessment with the operator's existing request and decisions. Apply already-authorized methodology transfers directly. Ask only for consequential scope or recipient-policy choices that remain unresolved; do not seek independent approval from another model or repeat operator ratification. If the request was assessment-only, return the plan and stop before writes.
+Do not write a single byte to disk in this repo until the user clearly approves.
+
+**Two paths, by harness capability** (per the Plan-mode lifecycle section above):
+
+- **Plan-mode path.** If you entered plan mode at Stage 1 (or the user did interactively), place the Stage 3 plan body where the harness's plan-mode contract specifies (Claude Code names a plan file to write), then call `ExitPlanMode`. The harness presents accept / revise / reject affordances; the user's choice is the approval signal. A plain accept maps to "approved (all items)"; revise routes back to Stage 3 with the user's constraints; reject means write nothing and no LOG entry.
+- **Free-text path** (when plan mode is unavailable in the current harness). Wait for a clear approval signal in chat: "approved", "go ahead", "apply it", "yes", or specific opt-in like "apply items 1, 3, and 5 only." Revisions return to Stage 3; rejections mean write nothing and no LOG entry.
+
+If the user partially approves (a subset of items, whether via plan-mode revise-with-constraints or free-text opt-in), the apply step honors the subset exactly. Track which items were dropped for the LOG entry.
+
+This gate is the operator's own approval. It is not independent review: no other model's assent is sought or substitutes for it. The Stage 2 dialogue settles *which* items are proposed; this gate is still the one that authorizes the write.
 
 ## Stage 5 — Apply
 
 All application and self-check work below belongs to the primary. Independent review: not applicable. Run the checks the changes could break before final bookkeeping and one bare full gate afterward, then commit and fast-forward-push the attributable changes under standing authority. Scope uncertainty is not delegated to a reviewer.
 
-Apply the items covered by existing operator authorization. Before importing any donor remedy for a defect — a hardening, a guard, an error-handling change — verify the defect actually **reproduces in this repo**: shared lineage makes the donor's diagnosis plausible, never established, and the destination may already have solved the same incident differently (sometimes more strictly, so the donor's "fix" would be a regression here). When the defect does not reproduce, record the divergence in the LOG entry instead of importing the remedy. This verification is per item, hunk by hunk — an atomic bundle can be half genuine gap, half regression-wearing-the-shape-of-a-fix. Order:
+Once approved, apply the approved items. Before importing any donor remedy for a defect — a hardening, a guard, an error-handling change — verify the defect actually **reproduces in this repo**: shared lineage makes the donor's diagnosis plausible, never established, and the destination may already have solved the same incident differently (sometimes more strictly, so the donor's "fix" would be a regression here). When the defect does not reproduce, record the divergence in the LOG entry instead of importing the remedy. This verification is per item, hunk by hunk — an atomic bundle can be half genuine gap, half regression-wearing-the-shape-of-a-fix. Order:
 
 1. Add NEW files (policies first, then briefs, then skills/agents, then plan files, then code).
 2. MODIFY existing files (smallest diffs first; one logical change per Edit call). If Rule One is approved, apply its skill and diagnostic brief as one transaction: the resulting candidate must contain both, and an update to either includes a compatibility check and any required update to the other.
@@ -232,7 +253,7 @@ Apply the items covered by existing operator authorization. Before importing any
 - **The donor is read-only.** Never write to `<donor-dir>` under any circumstances. If the user wants to push improvements back to the donor, that is a separate `/teach <donor-dir>` invocation in Claude Code or `$teach <donor-dir>` invocation in Codex.
 - **Generality first.** Default to Tier 1+2 transfers. Specialize only when those are exhausted or the user's `<desc>` requested it.
 - **Direction of advance is established per item, never per repo.** A donor being "ahead" overall proves nothing about any one file, hunk, or fix. Before replacing a shared file, classify every hunk by direction (destination-ahead hunks are re-applied on top); before importing a donor remedy, verify its defect reproduces in the destination and record the divergence when it does not. Both failure modes are silent: reverting a stronger assertion or relaxing a stricter guard cannot fail any gate.
-- **Authorization follows session scope.** Apply authorized transfers without repeated approval; new consequential scope remains an operator decision.
+- **Approval is mandatory.** No bytes change in this repo before explicit approval of the Stage 3 plan. Scope that first appears during apply returns to the operator.
 - **Cross-harness parity is non-negotiable.** Any change touching `.claude/` or `.codex/` updates both surfaces in the same apply step.
 - **Catalog drift is forbidden.** `CLAUDE.md`'s catalogs reflect every file in `briefs/` and `policies/` after the apply finishes, and `docs/README.md` links every entry under `docs/`. Verify before reporting done.
 - **A donor's `docs/` is donor state.** Pinned third-party documents are the donor's dependencies; never transfer them. What may transfer is the `docs/` *contract* itself when the donor's version of `policies/docs.md`, its catalog shape, or its `check-catalogs` enforcement improves on ours.

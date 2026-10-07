@@ -2339,3 +2339,25 @@ Donor: Donor A @ <sha withheld>. Narrowed by the operator's request: the fix for
 **Remaining for the operator.** Judging whether the relabelled breakdown reads correctly on a real primary-mode phase; the template has none in its archive.
 
 Lessons: `talkative-magpie` filed. Independent review is not applicable because this is primary one-shot methodology work. The one full gate follows this record.
+
+## 2026-10-06 21:06 — METHODOLOGY SCOPE
+
+One operator ruling, given in session on 2026-10-06, before any implementation.
+
+**Ruling — restore the plan-approval gate in `learn` and `teach`.** The operator stated that approval of the transfer plan was always intended, and that the gate also keeps a human decision in front of work in which an agent changes the instructions agents run under. Authorized outcome: both skills enter plan mode before Stage 1 where the harness offers it, present the Stage 3 plan for approval at Stage 4, and write nothing to the recipient before the operator approves that plan. The gate was removed on 2026-09-07 when methodology work became primary one-shot. Surfaces: `.claude/skills/learn/SKILL.md`, `.claude/skills/teach/SKILL.md`, and the sentence in `policies/review-lanes.md` that currently forbids the gate.
+
+**Exclusions.** The primary one-shot route, its commit and push authority, and the absence of independent review are unchanged. No brief, root instruction file, or other skill changes. No derived repository is taught in this pass.
+
+## 2026-10-06 21:08 — METHODOLOGY — plan-approval gate restored in learn and teach
+
+The ruling recorded in the scope just above.
+
+**What changed.** `.claude/skills/learn/SKILL.md` and `.claude/skills/teach/SKILL.md` again carry the plan-mode lifecycle section: enter plan mode before Stage 1 where the harness offers it, present the Stage 3 plan at Stage 4, and apply only outside plan mode after approval. Stage 4 is again the approval gate, with the plan-mode path, the free-text path and partial approval, and the closing rule is again that approval is mandatory. Each skill now also says that invoking it authorizes the assessment and not the transfer, that a named scope is not advance approval, that approval covers one plan for one run, and that an unattended run parks the plan and stops. `policies/review-lanes.md` no longer forbids the gate; it states that the two skills keep one operator gate, which is not independent review. `teach`'s description and opening paragraph again say the user approves the plan; `learn`'s already did.
+
+**Scope departures.** One. `tests/test_methodology_toolchain_contract.py` asserted the wording that replaced the gate, so the restoration failed it. It now asserts the gate heading and the mandatory-approval rule in both transferred skills, and that the removed wording is absent.
+
+**Primary self-check.** The lifecycle and gate text were taken from the version before the 2026-09-07 change and compared with `sweep`, which kept the same lifecycle throughout. The README, the methodology brief's skill summary and the pattern map already described both skills as waiting for approval and needed no change. The shared paragraph in the briefs that says no repeated approval ceremony is needed was left as written: one approval of one plan is not a repeated one. The changed-path tests and the lessons check passed before this record.
+
+**Remaining for the operator.** Derived repositories still carry the version without the gate until they are taught. Neither skill has been run since the restoration.
+
+Lessons: `reliable-mastiff` filed, methodology scope — a broad routing change removed an operator gate it was never asked to remove, and the corpus contradicted itself for a month without a check failing. Independent review is not applicable because this is primary one-shot methodology work. The one full gate follows this record.
