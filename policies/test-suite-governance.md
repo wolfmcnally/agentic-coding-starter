@@ -16,7 +16,9 @@ Initial adoption MUST:
 3. Disposition every baseline proof exactly once as `retain`, `repair`, `consolidate`, or `delete` in an append-only ledger. `repair` keeps the contract active and records that its assertion was corrected, for a proof whose contract is real but whose assertion could not fail. Each row MUST carry its contract, oracle, red witness, nearest overlap, replacement evidence, and standalone rationale.
 4. Declare a size for every pytest family and a test-lane time budget, and bring the retained estate within both on the reference machine (see [Time budget](#time-budget)).
 5. Pass the [preservation review](#removal-and-growth) on every retirement batch, so no
-   contract loses its only proof to the reset.
+   contract loses its only proof to the reset. Where the [mutation survey](#mutation-survey)
+   is measured, run `./bin/mutate --all` before and after each batch; a fault that newly
+   survives blocks the batch.
 6. Retain direct executable proof for every applicable custody, security,
    authority, concurrency, atomicity, corruption, recovery, public-contract,
    schema, deploy, and core-success risk. An inapplicable class requires a
@@ -87,6 +89,16 @@ a consolidating retirement of the old one. The replayed active set MUST equal
 the live inventory; a shadow proof, repeated retirement, or missing event
 refuses.
 
+## Mutation survey
+
+A witness challenges one proof with one chosen defect. A mutation survey asks the opposite question in bulk: which small faults in this code would no proof notice? `./bin/mutate --changed-from <rev>` plants generated faults on the lines changed since `<rev>`, in a disposable copy of the candidate tree, runs the proofs that guard each file, and prints one document: its `state`, the tool, the scope, how many faults were generated, killed, survived, timed out and not run, and each survivor's path, line and change. `./bin/mutate --all` surveys every declared path, and `--budget-seconds` overrides the declared budget for that run.
+
+- **It never gates.** The survey is not a member of `./bin/check all`, and there is no score to reach. A survivor is a work item, and some survivors are faults no observable behavior distinguishes. (Operator ruling, 2026-10-06.)
+- **Three states, and failure is none of them.** `measured`; `partial` when the budget ran out, naming the files it did not finish; `unmeasured` only when the manifest declares no tool. Tests that fail before any fault is planted, or a tool that fails, exit non-zero and are never reported as unmeasured.
+- **Declared per repository.** The manifest's `mutation` block names the tool, the path patterns in scope and `budget_seconds`, or `tool: null` with a `reason`. A derived project's paths name its product; the inherited methodology machinery is surveyed in the template. The interface and the per-language tool are specified in [`build-gates.md`](build-gates.md) § Language profiles.
+- **The author acts on the changed lines.** Before handing off a product change, run `./bin/mutate --changed-from` against the phase base. Each survivor on a changed line is either killed by a stronger proof, which then gets its own witness receipt, or dispositioned in the implementation report as equivalent or outside any contract. A reviewer treats an undispositioned survivor on a changed line as a finding.
+- **The sweep surveys the estate.** Each governed sweep runs `./bin/mutate --all`, records the dated counts in the repository's history report, and carries survivors in code that guards a critical risk into the decision queue.
+
 ## Time budget
 
 The cost an estate imposes is the time it takes to run, and a count of proofs is a poor stand-in for it: one subprocess-heavy proof can outweigh a hundred pure ones, and a count cap rewards folding new contracts into existing proofs whose names then stop describing them. Time is governed directly, with each check shaped to survive the noise in wall-clock measurement.
@@ -104,7 +116,7 @@ The repository manager MUST inventory expanded pytest leaves, collapsed families
 gate members, and hook commands; validate the frozen baseline, complete ledger,
 sizes, time-budget declaration, direct risks, and witness receipts; judge
 recorded timings; select vital and changed lanes; observe and record red
-witnesses; and report or reassess the current estate.
+witnesses; validate the mutation declaration; and report or reassess the current estate.
 
 The changed-path selection is the local commit gate and the implementation-candidate gate (`policies/build-gates.md`). Invalid or indeterminate selection widens to full. `./bin/test` without lane arguments, the handoff gate, pre-push custody, and durable receipts always use the full retained estate. Pre-commit runs structural validation only and never claims full acceptance.
 

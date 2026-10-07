@@ -10,6 +10,12 @@ time_budget:
   test_lane_seconds: 100
   tolerance: 0.25
   reference_machine: a8a904a62251c08b
+mutation:
+  tool: cosmic-ray
+  paths:
+  - lib/agentic_starter/*.py
+  - project/example/*.py
+  budget_seconds: 300
 critical_risks:
   custody:
     state: applicable
@@ -545,6 +551,24 @@ families:
   admission: This family is the direct fail-closed witness for every governed selection.
   nearest_overlap: Atomic-check dispatches lanes but does not validate their proof ownership.
   tier: vital
+  size: medium
+  flake_rate: 0.0
+  replacement_lineage: []
+- id: mutation-survey
+  kind: pytest
+  selectors:
+  - tests/test_mutation.py
+  source_paths: &id900
+  - lib/agentic_starter/mutation.py
+  - bin/mutate
+  - tests/test_mutation.py
+  covers: *id900
+  contract: The mutation survey reports the faults tests miss, in a copy, and never reports a failed or unfinished survey as a clean one.
+  risk_class: proof-governance
+  oracle: The real mutation tool run over a small fixture repository with one weak and one strong proof.
+  admission: The survey is the only measure of which planted faults the estate misses; its three states and its failure need direct proof.
+  nearest_overlap: The governance manager validates the declaration's shape but never runs a survey.
+  tier: changed
   size: medium
   flake_rate: 0.0
   replacement_lineage: []

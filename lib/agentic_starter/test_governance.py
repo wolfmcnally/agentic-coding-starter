@@ -373,6 +373,33 @@ def _time_budget_errors(manifest: dict[str, Any]) -> list[str]:
     return errors
 
 
+def mutation_errors(manifest: dict[str, Any]) -> list[str]:
+    """Shape of the `mutation` declaration: a named tool with its scope and budget, or
+    an explicit statement that this repository takes no such measurement and why."""
+    declared = manifest.get("mutation")
+    if not isinstance(declared, dict):
+        return ["mutation must be a mapping"]
+    tool = declared.get("tool")
+    if tool is None:
+        if set(declared) != {"tool", "reason"}:
+            return ["an unmeasured mutation declaration carries only tool and reason"]
+        if not isinstance(declared["reason"], str) or not declared["reason"].strip():
+            return ["mutation.reason must say why no mutation tool is declared"]
+        return []
+    errors: list[str] = []
+    if set(declared) != {"tool", "paths", "budget_seconds"}:
+        errors.append("a measured mutation declaration carries tool, paths and budget_seconds")
+    if not isinstance(tool, str) or not tool.strip():
+        errors.append("mutation.tool must be null or the name of the tool the wrapper drives")
+    paths = declared.get("paths")
+    if not isinstance(paths, list) or not paths or not all(isinstance(i, str) for i in paths):
+        errors.append("mutation.paths must be a nonempty list of path patterns")
+    budget = declared.get("budget_seconds")
+    if isinstance(budget, bool) or not isinstance(budget, (int, float)) or budget <= 0:
+        errors.append("mutation.budget_seconds must be a positive number")
+    return errors
+
+
 def _source_file(reported: str, known: set[str]) -> str | None:
     """Resolve a file pytest reported relative to its rootdir to one repository test file."""
     parts = [part for part in reported.split("/") if part not in ("", ".")]
@@ -579,6 +606,7 @@ def validate(root: Path) -> dict[str, Any]:
         if declared_baseline_digest != observed_baseline_digest:
             errors.append("baseline inventory digest is stale")
     errors.extend(_time_budget_errors(manifest))
+    errors.extend(mutation_errors(manifest))
 
     current_ids = {proof.proof_id for proof in proofs}
     critical = manifest.get("critical_risks")

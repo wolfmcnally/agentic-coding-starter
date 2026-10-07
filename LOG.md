@@ -2432,3 +2432,34 @@ Delivery 2 of the three recorded in the scope of 2026-10-06 23:50.
 **Remaining for the operator.** Nothing blocks. 109 baseline proofs have no receipt, by the plan's exclusion.
 
 Lessons: `amphibian-sheep` filed, methodology scope — a byte-exact restore is not a cache-exact restore. Independent review is not applicable because this is primary one-shot methodology work.
+
+## 2026-10-07 00:45 — METHODOLOGY — mutation survey behind bin/mutate (delivery 3 of 3)
+
+Delivery 3 of the three recorded in the scope of 2026-10-06 23:50. This closes the plan.
+
+**What changed.** `./bin/mutate` surveys which generated faults the proofs miss. `--changed-from <rev>` limits it to the lines changed since that revision and `--all` covers every declared path; `--budget-seconds` overrides the declared budget for one run. It copies the candidate tree, makes the copy a committed git repository, runs the proofs that guard each file there, and prints one document: `state`, tool, scope, the counts, and each survivor's path, line and change. The live tree is never mutated, and the run refuses if a surveyed file changes under it. `state` is `measured`, `partial` when the budget ran out, or `unmeasured` when the manifest declares no tool. Tests that fail before any fault is planted, or a failing tool, exit non-zero. It is not a member of `./bin/check all`.
+
+The manifest gained a `mutation` block, validated by the governance manager: a tool name with path patterns and a positive budget, or no tool with a reason. This repository declares cosmic-ray over `lib/agentic_starter/*.py` and `project/example/*.py` with a 300-second budget. `project/pyproject.toml` and `project/uv.lock` add cosmic-ray to the development group, which brings about 25 further packages into the locked environment.
+
+`policies/test-suite-governance.md` has a Mutation survey section stating that the survey never gates, its three states, the per-repository declaration, and its use by the author of a product change, the reviewer, the sweep and a reset. `policies/build-gates.md` § Language profiles states the universal interface. The `phase-coder` and `code-critic` definitions, the `sweep`, `stamp`, `teach` and `learn` skills, `briefs/agentic-bootstrap.md`, `bin/README.md`, `CLAUDE.md` and the reports README carry the matching text. `stamp` names candidate tools for other languages, dated and marked unverified, and tells a destination to declare a tool only after seeing it kill one fault and report another.
+
+**The trial.** Run in scratch space, nothing committed. cosmic-ray limited itself to the 26 changed lines of a simulated change, 50 of 2,243 faults, ran them in 141 seconds against the 300-second criterion, restored the file, and named each survivor's file and line: accepted. pytest-gremlins reported all 489 of its faults as surviving, so its faults never took effect in this layout: rejected as an instrument that could give only one answer. mutmut would not start without a source-layout declaration and has no line scope: not pursued.
+
+**Proof estate.** Four proofs admitted, each with a receipt: three in `tests/test_mutation.py`, which run the real tool over a small fixture repository, and one for the declaration check. The witness ledger holds 44 receipts.
+
+**The survey of this change.** Three runs, each `partial` at the 300-second budget. The governance manager's changed lines were fully surveyed each time. The first run found 15 surviving faults on the new declaration check, which had no direct proof; a proof was admitted and the next run found 4, each naming a case the proof did not try, which were then added. That last addition has not been surveyed again.
+
+**Scope departures.** Four.
+
+1. The tool name is not checked against a list. A destination in another language names its own tool, and the shared manager cannot know it; the wrapper refuses a tool it does not drive.
+2. The survey runs in a disposable copy, not the live tree. The plan left this open; cosmic-ray edits source files in place, and a copy removes every hazard delivery 2 found in doing that.
+3. `--budget-seconds` was added so a sweep can survey more than the per-change budget allows.
+4. `project/example/*.py` is declared in scope beside the methodology library. In this template both are the product.
+
+**Primary self-check.** Against ruling 4: the survey is absent from `bin/check`, and no path makes a survivor fail a commit or push. The plan's end-to-end checks were made: a weak proof's fault is listed with its line, in the fixture test and on this change; a repository declaring no tool reports `unmeasured`; failing tests exit non-zero. The first real run on this repository failed closed for a good reason, a proof that needs a git worktree, which is why the copy is now a repository.
+
+**Gates before this record.** `./bin/test --changed-from '@{upstream}'` widened to the full suite and passed, 119 tests in 111 seconds, with no warning or error line. That is inside the lane budget's tolerance and over its nominal 100 seconds; this plan added about 14 seconds of proofs. `./bin/check format`, `./bin/check lint`, `./bin/check-catalogs`, `./bin/check-harness-parity`, `./bin/check-toolchain-callers`, `./bin/check-shell-syntax`, `./bin/lessons validate`, `./bin/check-anonymization.sh` and `./bin/test-governance validate` passed. The one full gate follows this record.
+
+**Remaining.** The new survey module was only partly surveyed, and 11 survivors in it are neither killed nor dispositioned. No whole-estate survey has been run; at the measured rate it would take on the order of hours. The lane budget's nominal figure is now exceeded by a single run, which is advisory until three runs confirm it. Derived repositories have none of this until they are taught. None of these blocks.
+
+Lessons: none new. The rejected tool is a recurrence of an already codified rule, that an instrument able to return only one answer carries no information, and the rule was applied as written. Independent review is not applicable because this is primary one-shot methodology work.

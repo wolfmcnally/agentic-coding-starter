@@ -153,6 +153,28 @@ Post-reset evolution is replayed from the append-only audit ledger. A
 one later `proof_admission` may consume that budget exactly once. Reset-era
 retirements cannot fund proofs appended after the post-reset lifecycle begins.
 
+### `mutate` — mutation survey of the proofs
+
+Plants generated faults in a disposable copy of the candidate tree, runs the
+proofs that guard each file, and prints one JSON document: `state`, the tool,
+the scope, the counts, and each surviving fault's path, line and change. The
+live tree is never mutated. It is not a gate and has no score to reach.
+
+`state` is `measured`, `partial` when the declared budget ran out, or
+`unmeasured` when the manifest's `mutation` block declares no tool. Failing
+tests or a failing tool exit non-zero. This repository's tool is cosmic-ray,
+a locked development dependency.
+
+```bash
+./bin/mutate --changed-from '@{upstream}'
+./bin/mutate --all --budget-seconds 3600
+```
+
+Universal contract:
+[`policies/build-gates.md`](../policies/build-gates.md) § Language profiles;
+use: [`policies/test-suite-governance.md`](../policies/test-suite-governance.md)
+§ Mutation survey. Behavioral coverage lives in `tests/test_mutation.py`.
+
 ### `kickoff-command-zero` — cheap ordered acceptance preflight
 
 Validates the active immutable command manifest, real-read venue receipt, and

@@ -181,6 +181,8 @@ The interface is universal; implementations are language-specific:
 - other ecosystems: their equivalent version selection and lock-preserving
   modes.
 
+`bin/mutate` belongs to the same contract with the same split. The interface is universal: `--changed-from <rev>` or `--all`; one JSON document carrying `state` (`measured`, `partial` or `unmeasured`), `tool`, `scope`, the counts `generated`, `killed`, `survived`, `timed_out` and `not_run`, and `survivors` with a `path`, `line` and `change` each; exit 0 for those three states and non-zero for any failure. The tool behind it is the language's own, a committed development dependency like any other, run so that no fault is planted in the live tree. A profile with no maintained tool declares `mutation.tool: null` with its reason and the wrapper reports `unmeasured`. The survey is never a gate member; its use is governed by [`test-suite-governance.md`](test-suite-governance.md) § Mutation survey.
+
 Recurring tools belong in committed development dependencies. Do not use
 ephemeral dependency injection such as an unpinned `uv run --with ...` for a
 repository-owned gate.

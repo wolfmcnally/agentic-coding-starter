@@ -11,6 +11,8 @@ the failing output, and the date. Receipts are appended only by
 `./bin/test-governance witness finish`; no planted defect is stored. Per-test timings are machine-local and live in the
 ignored `.kickoff/test-timing/` record, never here.
 
+The history report also carries the dated counts of each mutation survey (`./bin/mutate`), with its state: a partial or unmeasured survey is recorded as that.
+
 These files are evidence, not portable judgments. A stamped, taught, or learning
 recipient regenerates them from its own estate and never copies survivors,
 selectors, witness receipts, timings, risk applicability, or dispositions.

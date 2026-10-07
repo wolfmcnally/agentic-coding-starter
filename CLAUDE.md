@@ -38,7 +38,7 @@ Master template for independently reviewed, evidence-bound development. `kickoff
 
 Python 3.11+; `project/.python-version` pins managed 3.11. `uv`, `project/pyproject.toml` and `project/uv.lock` own tooling/dependencies; `tool.uv.python-preference = "only-managed"`. Type public functions; prefer stdlib.
 
-Use `./bin/setup`, `./bin/test [args...]`, `./bin/check all`, `./bin/python`. Real-dependency probes fail closed. `TOOLCHAIN_PYTHON` is an authoritative absolute-path test override; no PATH inference or fallback.
+Use `./bin/setup`, `./bin/test [args...]`, `./bin/check all`, `./bin/python`. `./bin/mutate` surveys missed faults with cosmic-ray and never gates. Real-dependency probes fail closed. `TOOLCHAIN_PYTHON` is an authoritative absolute-path test override; no PATH inference or fallback.
 
 ## Model & review venue
 

@@ -158,6 +158,7 @@ def _write_estate(root: Path, *, pruned: bool) -> Path:
         "baseline_report": "reports/baseline.json",
         "audit_ledger": "reports/reset.jsonl",
         "witness_ledger": "reports/witnesses.jsonl",
+        "mutation": {"tool": None, "reason": "The fixture declares no mutation tool."},
         "size_ceilings_seconds": {"small": 2, "medium": 20, "large": 200},
         "time_budget": {"test_lane_seconds": 10, "tolerance": 0.25, "reference_machine": None},
         "critical_risks": {
@@ -537,6 +538,32 @@ def test_report_counts_the_frozen_baseline_and_current_estate(estate: Path) -> N
     payload = governance.report(estate)
     assert payload["baseline"] == {"families": 8, "leaves": 9}
     assert payload["current"] == {"families": 6, "leaves": 7}
+
+
+def test_a_mutation_declaration_names_its_tool_scope_and_budget_or_says_why_not() -> None:
+    measured = {"tool": "any-tool", "paths": ["lib/*.py"], "budget_seconds": 300}
+    unmeasured = {"tool": None, "reason": "No tool is maintained for this language."}
+    assert governance.mutation_errors({"mutation": measured}) == []
+    assert governance.mutation_errors({"mutation": unmeasured}) == []
+    refused = {
+        "mutation must be a mapping": None,
+        "carries only tool and reason": {**unmeasured, "paths": ["lib/*.py"]},
+        "must say why no mutation tool is declared": {"tool": None, "reason": " "},
+        "carries tool, paths and budget_seconds": {**measured, "reason": "extra"},
+        "must be null or the name of the tool": {**measured, "tool": " "},
+        "mutation.paths must be a nonempty list": {**measured, "paths": []},
+        "mutation.budget_seconds must be a positive number": {**measured, "budget_seconds": 0},
+    }
+    for message, declared in refused.items():
+        errors = governance.mutation_errors({"mutation": declared})
+        assert len(errors) == 1 and message in errors[0], (message, errors)
+    assert governance.mutation_errors({"mutation": {**measured, "budget_seconds": 1}}) == []
+    # A missing field is refused as surely as an extra one.
+    assert governance.mutation_errors({"mutation": {"tool": None}}) != []
+    assert governance.mutation_errors({"mutation": {"tool": "any-tool", "paths": ["a"]}}) != []
+    assert governance.mutation_errors({"mutation": {**measured, "budget_seconds": -1}}) != []
+    assert governance.mutation_errors({"mutation": {**measured, "paths": [7]}}) != []
+    assert governance.mutation_errors({"mutation": {**measured, "budget_seconds": True}}) != []
 
 
 WITNESS = {

@@ -22,6 +22,7 @@ dev = [
     "pyyaml>=6.0,<7",
     "pytest>=8.0",
     "ruff>=0.6",
+    "cosmic-ray>=8.7,<9",
 ]
 
 [tool.uv]

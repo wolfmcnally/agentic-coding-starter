@@ -9,13 +9,13 @@
       "leaves": 5
     },
     "pytest": {
-      "families": 97,
-      "leaves": 115
+      "families": 101,
+      "leaves": 119
     }
   },
   "counts": {
-    "families": 121,
-    "leaves": 139
+    "families": 125,
+    "leaves": 143
   },
   "families": [
     "gate:changed",
@@ -108,6 +108,9 @@
     "pytest:tests/test_methodology_toolchain_contract.py::test_research_authority_contract_propagates_and_stays_allow_by_default",
     "pytest:tests/test_methodology_toolchain_contract.py::test_the_mechanical_copy_is_closed_over_links_and_fixtures",
     "pytest:tests/test_mirror_parity.py::test_repository_is_in_parity",
+    "pytest:tests/test_mutation.py::test_a_repository_with_no_tool_reports_unmeasured_and_never_measured",
+    "pytest:tests/test_mutation.py::test_a_survey_reports_the_faults_tests_miss_on_the_changed_lines",
+    "pytest:tests/test_mutation.py::test_a_survey_that_cannot_be_taken_fails_and_an_unfinished_one_is_partial",
     "pytest:tests/test_new_name.py::test_avoids_collisions_across_all_ledger_dirs",
     "pytest:tests/test_pre_commit.py::test_pre_commit_runs_structural_governance_after_existing_checks",
     "pytest:tests/test_research_authority.py::test_generated_commands_enforce_the_role_authority_matrix",
@@ -116,6 +119,7 @@
     "pytest:tests/test_review_verdicts.py::test_dedupes_across_harnesses_and_drops_template_echoes",
     "pytest:tests/test_review_verdicts.py::test_running_session_and_explicit_exclusions_are_skipped",
     "pytest:tests/test_shell_syntax.py::test_syntax_error_fails_with_named_file",
+    "pytest:tests/test_test_governance.py::test_a_mutation_declaration_names_its_tool_scope_and_budget_or_says_why_not",
     "pytest:tests/test_test_governance.py::test_a_pending_witness_blocks_validation_until_it_is_aborted",
     "pytest:tests/test_test_governance.py::test_changed_code_selects_the_families_of_files_that_use_it",
     "pytest:tests/test_test_governance.py::test_changed_selection_maps_documents_to_readers_and_widens_on_unmapped_code",
@@ -140,7 +144,7 @@
     "pytest:tests/test_treatise.py::test_an_external_fact_without_a_retrieval_date_fails",
     "pytest:tests/test_treatise.py::test_the_repository_own_treatises_validate"
   ],
-  "inventory_sha256": "b5c791cf86e0992e82f5341f45ba87277fcde3b3988328cb771af419399c68eb",
+  "inventory_sha256": "d85205a54c38b4b4d20ab2abb22bc7a61da6eabb0bba80f78a273c0e24ba8e7c",
   "proofs": [
     {
       "family": "pytest:project/tests/test_cli.py::test_main_hello_default",
@@ -668,6 +672,27 @@
       "source_path": "tests/test_mirror_parity.py"
     },
     {
+      "family": "pytest:tests/test_mutation.py::test_a_survey_reports_the_faults_tests_miss_on_the_changed_lines",
+      "id": "pytest:tests/test_mutation.py::test_a_survey_reports_the_faults_tests_miss_on_the_changed_lines",
+      "kind": "pytest",
+      "selector": "tests/test_mutation.py::test_a_survey_reports_the_faults_tests_miss_on_the_changed_lines",
+      "source_path": "tests/test_mutation.py"
+    },
+    {
+      "family": "pytest:tests/test_mutation.py::test_a_repository_with_no_tool_reports_unmeasured_and_never_measured",
+      "id": "pytest:tests/test_mutation.py::test_a_repository_with_no_tool_reports_unmeasured_and_never_measured",
+      "kind": "pytest",
+      "selector": "tests/test_mutation.py::test_a_repository_with_no_tool_reports_unmeasured_and_never_measured",
+      "source_path": "tests/test_mutation.py"
+    },
+    {
+      "family": "pytest:tests/test_mutation.py::test_a_survey_that_cannot_be_taken_fails_and_an_unfinished_one_is_partial",
+      "id": "pytest:tests/test_mutation.py::test_a_survey_that_cannot_be_taken_fails_and_an_unfinished_one_is_partial",
+      "kind": "pytest",
+      "selector": "tests/test_mutation.py::test_a_survey_that_cannot_be_taken_fails_and_an_unfinished_one_is_partial",
+      "source_path": "tests/test_mutation.py"
+    },
+    {
       "family": "pytest:tests/test_new_name.py::test_avoids_collisions_across_all_ledger_dirs",
       "id": "pytest:tests/test_new_name.py::test_avoids_collisions_across_all_ledger_dirs",
       "kind": "pytest",
@@ -798,6 +823,13 @@
       "id": "pytest:tests/test_test_governance.py::test_report_counts_the_frozen_baseline_and_current_estate",
       "kind": "pytest",
       "selector": "tests/test_test_governance.py::test_report_counts_the_frozen_baseline_and_current_estate",
+      "source_path": "tests/test_test_governance.py"
+    },
+    {
+      "family": "pytest:tests/test_test_governance.py::test_a_mutation_declaration_names_its_tool_scope_and_budget_or_says_why_not",
+      "id": "pytest:tests/test_test_governance.py::test_a_mutation_declaration_names_its_tool_scope_and_budget_or_says_why_not",
+      "kind": "pytest",
+      "selector": "tests/test_test_governance.py::test_a_mutation_declaration_names_its_tool_scope_and_budget_or_says_why_not",
       "source_path": "tests/test_test_governance.py"
     },
     {

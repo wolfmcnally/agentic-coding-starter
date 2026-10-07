@@ -54,7 +54,9 @@ Run the mechanical checks first — they are deterministic and their output anch
    frozen baseline, complete dispositions and admissions, direct
    critical risks, witness receipts, sizes, and the time-budget declaration. Run
    `./bin/test-governance timing --samples 3` on the reference machine. Report the
-   `unwitnessed_baseline` count it prints, and carry
+   `unwitnessed_baseline` count it prints. Run `./bin/mutate --all`, append its dated
+   counts to the repository's test-governance history report, queue survivors in
+   code that guards a critical risk, and report an `unmeasured` or `partial` state as that. Carry
    every dominated-proof finding into the decision queue. Then make the junk-pattern read and layer pass that `policies/test-suite-governance.md` § Reassessment and transfer requires; each proposed retirement is decided individually, and each ratified batch passes that policy's preservation review before it is applied.
 
 Then the judgment audits, each producing candidate findings:
