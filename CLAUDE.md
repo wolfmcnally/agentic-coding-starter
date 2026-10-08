@@ -146,7 +146,7 @@ Invoke `/kickoff` (Claude Code) or `$kickoff` (Codex). Read the [kickoff](.claud
 
 ### Status markers
 
-Only [plan/INDEX.md](plan/INDEX.md) holds status: ⏳ not started, ⬅️ next, 🚧 in progress, ✅ completed. One marker per row; idle incomplete work has one arrow, active/complete work may have none; never multiple arrows. Explicitly select active work to resume. `kickoff` owns transitions; no per-phase `status`.
+Only [plan/INDEX.md](plan/INDEX.md) holds status: ⏳ not started, ⬅️ next, 🚧 in progress, ✅ completed. One marker per row; idle incomplete work has one arrow, active/complete work may have none; never multiple arrows. Explicitly select active work to resume. `kickoff` owns transitions; no per-phase `status`. Unstarted phase numbers follow execution order: insert with `./bin/renumber-phases`, never out of sequence.
 
 ### Reading protocol for phase work
 

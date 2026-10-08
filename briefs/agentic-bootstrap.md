@@ -89,6 +89,7 @@ A project derived from this template contains the following **portable structure
     treatise               # Validate treatise editorial records
     check-catalogs         # Catalog, link, anchor, citation, ledger checks
     new-name               # Collision-checked ledger slug generator
+    renumber-phases        # Open a phase number by renumbering the not-started phases after it
 
   lib/
     agentic_starter/       # Shared deterministic library the bin/ scripts import
@@ -119,6 +120,7 @@ A project derived from this template contains the following **portable structure
     test_treatise.py       # Editorial-record validation coverage
     test_check_catalogs.py # Document and phase-ledger coverage
     test_new_name.py       # Slug-generator coverage
+    test_renumber_phases.py # Phase insertion and renumbering coverage
     fixtures/              # Shared test fixtures (telemetry traces, config seed)
 
   briefs/
@@ -317,7 +319,7 @@ These files encode the methodology itself, not any particular product. Copy them
 - `tests/test_lessons.py` and `tests/test_check_catalogs.py` (universal behavioral coverage for those managers)
 - `bin/execution-telemetry`, `bin/check-execution-dashboards`, and `bin/serve-execution-dashboard`, together with `lib/agentic_starter/` (the shared deterministic library the first two import) and `reports/execution/` with its `index.html`, `index-data.js`, and vendored offline `assets/`. The new project's archive starts empty — no dated phase directory travels, and the copied index's `phases` and `dates` lists are emptied — which the checker reports as `EXECUTION DASHBOARDS PASS (0 phases)`
 - `tests/test_execution_telemetry.py`, `tests/test_execution_dashboard.py`, `tests/render_execution_dashboard_fixture.py`, and `tests/fixtures/` (universal behavioral coverage for telemetry and offline report rendering)
-- `bin/check-harness-parity`, `bin/check-toolchain-callers`, `bin/check-shell-syntax`, `bin/new-name`, `bin/check-plan-concreteness` (which `kickoff` runs over every plan artifact before plan review, covered by `tests/test_check_plan_concreteness.py`), `bin/check-plan-delivery` (which `kickoff` runs before every code review, covered by `tests/test_check_plan_delivery.py`; both share `lib/agentic_starter/plan_artifact.py`), `bin/review-verdicts` (the `sweep-planning` / `sweep-coding` trace harvester, covered by `tests/test_review_verdicts.py`), and `bin/treatise` (the universal deterministic checkers and the ledger-slug generator), with `tests/test_mirror_parity.py`, `tests/test_toolchain_callers.py`, `tests/test_shell_syntax.py`, `tests/test_new_name.py`, and `tests/test_treatise.py`
+- `bin/check-harness-parity`, `bin/check-toolchain-callers`, `bin/check-shell-syntax`, `bin/new-name`, `bin/renumber-phases` (which opens a phase number for an inserted phase by renumbering the not-started phases after it, covered by `tests/test_renumber_phases.py`), `bin/check-plan-concreteness` (which `kickoff` runs over every plan artifact before plan review, covered by `tests/test_check_plan_concreteness.py`), `bin/check-plan-delivery` (which `kickoff` runs before every code review, covered by `tests/test_check_plan_delivery.py`; both share `lib/agentic_starter/plan_artifact.py`), `bin/review-verdicts` (the `sweep-planning` / `sweep-coding` trace harvester, covered by `tests/test_review_verdicts.py`), and `bin/treatise` (the universal deterministic checkers and the ledger-slug generator), with `tests/test_mirror_parity.py`, `tests/test_toolchain_callers.py`, `tests/test_shell_syntax.py`, `tests/test_new_name.py`, and `tests/test_treatise.py`
 - `tests/test_research_authority.py` (universal coverage for the per-role search/retrieval boundary)
 - `.gitattributes` (line-ending normalization that keeps cross-harness mirrors byte-identical across platforms)
 - `briefs/methodology.md`
@@ -804,7 +806,8 @@ Bootstrap is complete when **all** of the following hold:
     tests/test_kickoff_config.py,
     tests/test_kickoff_tree_id.py, tests/test_kickoff_evidence.py,
     tests/test_lessons.py, tests/test_check_catalogs.py,
-    tests/test_treatise.py, tests/test_new_name.py, tests/test_shell_syntax.py,
+    tests/test_treatise.py, tests/test_new_name.py, tests/test_renumber_phases.py,
+    tests/test_shell_syntax.py,
     tests/test_toolchain_callers.py, tests/test_mirror_parity.py,
     tests/test_research_authority.py, tests/test_execution_telemetry.py, and
     tests/test_execution_dashboard.py, tests/test_test_governance.py, and

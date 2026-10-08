@@ -453,6 +453,23 @@ families:
   size: small
   flake_rate: 0.0
   replacement_lineage: []
+- id: phase-renumbering
+  kind: pytest
+  selectors:
+  - tests/test_renumber_phases.py
+  source_paths: &id901
+  - bin/renumber-phases
+  - tests/test_renumber_phases.py
+  covers: *id901
+  contract: Inserting a phase renumbers every later not-started phase and its references, and never moves a started one.
+  risk_class: ledger-identity
+  oracle: The script run over a fixture plan with a completed phase, waiting phases, sub-phases, a graph and a dated note.
+  admission: Renumbering rewrites identifiers across files; a missed reference silently repoints a dependency.
+  nearest_overlap: The catalog checker validates the ledger a renumbering produces but performs no renumbering.
+  tier: changed
+  size: small
+  flake_rate: 0.0
+  replacement_lineage: []
 - id: pre-commit-contract
   kind: pytest
   selectors:

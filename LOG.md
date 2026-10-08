@@ -2602,3 +2602,40 @@ The instruction recorded in the scope just above.
 **Independent review.** Not applicable — primary one-shot methodology work.
 
 **Remaining for the operator.** None. Derived projects receive this through their own delivery.
+
+## 2026-10-07 23:53 — METHODOLOGY SCOPE
+
+One operator instruction, given in session on 2026-10-07, before any implementation.
+
+**Instruction.** The operator asked whether the template has a standing rule that inserting a new phase before the next one renumbers all later phases higher to make room, and said that in general the methodology should favor renumbering over doing phases out of sequence, and that this applies to new and upcoming paths, not abandoned ones. Told that no such rule existed, only a convention for recording a renumbering and an ordering by dependency, and offered a rule with a script and a check, the operator said to go ahead.
+
+**Authorized outcome.** Among phases that have not started, phase numbers follow the intended order of execution. Inserting a phase before others renumbers the later not-started phases upward, with their sub-phases. Phases that are in progress, completed or abandoned keep their numbers, and dated history is never rewritten. A deterministic script performs the renumbering across the plan files and the ledger and writes the ledger's renumbering record; the ledger checker refuses a plan whose not-started phases are numbered out of their declared order.
+
+**Two defaults the operator was told and did not change.** The rule reaches sub-phases, and the unstarted children of an in-progress parent count as upcoming.
+
+**Surfaces.** `policies/phase-status.md`, the ledger convention in `plan/INDEX.md`, a new `bin/renumber-phases` with its tests, `bin/check-catalogs` and its tests, the `kickoff` resources and the `phase-planner` definition where they create or advance phases, `bin/README.md`, `bin/check`, `tests/proof-estate.yaml` and its ledger, and the lists in the `stamp` skill and `briefs/agentic-bootstrap.md` that enumerate the universal scripts and tests.
+
+**Exclusions.** No existing plan is renumbered; this template has one phase. `LOG.md`, lessons and other dated records are never rewritten by a renumbering. No derived repository is taught in this pass.
+
+## 2026-10-08 00:01 — METHODOLOGY — upcoming phases are numbered in execution order; insertion renumbers
+
+The instruction recorded in the scope above.
+
+**What changed.** `policies/phase-status.md` has a new rule, Numbers follow the order of upcoming work: among phases that have not started, the number says when the phase runs, and the next marker advances to the lowest-numbered waiting phase whose dependencies are complete. A phase inserted ahead of waiting work takes the number of the first phase it must precede; that phase, every later waiting sibling and all their sub-phases move up by one. Phases in progress or completed keep their numbers, abandoned paths keep theirs and their gaps are not reclaimed, dated history is never rewritten, and the unstarted children of an in-progress parent count as upcoming.
+
+`bin/renumber-phases insert-before <id>` performs the move: it renames the phase files, rewrites their `id`, `depends_on` and `informs` fields, the phase table, the dependency graph and every plan link, and adds a dated renumbering record with a decoder ring to the ledger. It refuses, writing nothing, when a started phase would move or the number is unoccupied, and it lists the prose mentions of old numbers it left alone. `bin/check-catalogs` now refuses a phase table whose rows are out of ascending order and a not-started phase that depends on a later-numbered not-started phase. The `kickoff` close and entry resources, the ledger convention in `plan/INDEX.md`, the root instructions, `bin/README.md`, the lint and format gates, and the `stamp`, `teach` and bootstrap lists carry the script and the rule.
+
+**Proof estate.** Four proofs admitted, each with a receipt: three for the script and one for the checker. The witness ledger holds 50 receipts.
+
+**Scope departures.** Two.
+
+1. The script is not added to the list of executables the gate requires present, since no gate runs it; it is in the lint and format lists and the transfer lists.
+2. The `phase-planner` definition was named in the scope and was not changed. It plans one phase and does not create or order phases; the instruction belongs to the `kickoff` resources that do.
+
+**Primary self-check.** A scratch run of the first version showed a link mapped twice, so a moved phase's table row pointed at the wrong file. The script now maps each link once and the proof asserts the row. The ledger's pointer to a policy that said nothing about insertion was replaced. A search for other statements that the next marker advances "per the dependency graph" found one more, in the ledger itself, now corrected. The checker enforces only what can be read mechanically: row order, and declared dependencies between waiting phases. Two waiting phases with an undeclared ordering are invisible to it, and the policy says so. No existing plan was renumbered; this template has one phase.
+
+**Gates before this record.** `./bin/test --changed-from '@{upstream}'` widened to the full suite and passed, 125 tests in 109 seconds, with no warning or error line. Format, lint, catalogs, harness parity, toolchain callers, shell syntax, lessons, treatise and anonymization checks and `./bin/test-governance validate` passed. The one full gate follows this record.
+
+**Remaining for the operator.** The script has run only on fixture plans. Derived repositories with real plans get the rule and the checker when they are taught, and a plan already numbered out of order will fail the checker until it is renumbered. The test lane is now 16 seconds from failing its budget.
+
+Lessons: none new. Independent review is not applicable because this is primary one-shot methodology work.

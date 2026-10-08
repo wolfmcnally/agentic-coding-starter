@@ -243,6 +243,62 @@ def check_phase_ledger(ledger: Path | None = None) -> None:
             f"idle incomplete phase table must carry exactly one {NEXT_MARKER} marker; found 0",
         )
 
+    check_phase_numbering(rows, row_markers)
+
+
+def phase_key(phase: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in phase.split("."))
+
+
+def phase_dependencies(phase_file: Path) -> list[str]:
+    """The phase ids a phase file's `depends_on` names, inline or as a block list."""
+    try:
+        block = frontmatter_lines(phase_file.read_text(encoding="utf-8"))
+    except OSError:
+        return []
+    found: list[str] = []
+    collecting = False
+    for _, line in block:
+        named = re.match(r"^([A-Za-z_][\w-]*)\s*:(.*)$", line)
+        if named:
+            collecting = named.group(1) == "depends_on"
+            line = named.group(2)
+        if collecting:
+            found.extend(re.findall(r"(?<![\w.])\d+(?:\.\d+)*(?![\w.])", line))
+    return found
+
+
+def check_phase_numbering(rows: list[str], row_markers: list[str | None]) -> None:
+    """Numbers of phases that have not started follow their order of execution
+    (policies/phase-status.md). Started and completed phases keep the numbers they have."""
+    upcoming = {NEXT_MARKER, NOT_STARTED_MARKER}
+    ordered: list[tuple[str, str | None]] = []
+    for row, marker in zip(rows, row_markers, strict=True):
+        match = re.search(r"\bPhase\s+([0-9]+(?:\.[0-9]+)*)\b", row)
+        if match:
+            ordered.append((match.group(1), marker))
+    for (earlier, _), (later, _) in zip(ordered, ordered[1:], strict=False):
+        if phase_key(later) <= phase_key(earlier):
+            report(
+                "plan",
+                "plan/INDEX.md",
+                f"phase table rows must run in ascending phase order; Phase {later} follows "
+                f"Phase {earlier}",
+            )
+    status = dict(ordered)
+    for phase, marker in ordered:
+        if marker not in upcoming:
+            continue
+        for dependency in phase_dependencies(ROOT / "plan" / f"phase-{phase}.md"):
+            if status.get(dependency) in upcoming and phase_key(dependency) > phase_key(phase):
+                report(
+                    "plan",
+                    f"plan/phase-{phase}.md",
+                    f"not-started Phase {phase} depends on not-started Phase {dependency}, which "
+                    "is numbered after it; renumber upcoming phases into execution order with "
+                    "./bin/renumber-phases",
+                )
+
 
 def check_closing_phase(
     phase: str, ledger: Path | None = None, next_marker_reason: str | None = None

@@ -1,0 +1,290 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""Open a phase number for insertion by renumbering the not-started phases after it.
+
+Phase numbers of work that has not started follow its intended order of
+execution (``policies/phase-status.md``). To insert a phase at ``<id>``, run
+``bin/renumber-phases insert-before <id>``: the not-started phase now holding
+that number, every later not-started sibling, and all their sub-phases move up
+by one. Phase files are renamed; their ``id``, ``depends_on`` and ``informs``
+fields, the phase table, the dependency graph and plan links follow; and a
+dated renumbering record is added to the ledger saying how to read old numbers.
+
+Phases that are in progress or completed never move, so the command refuses
+when one would. Dated prose is never rewritten: the command lists the mentions
+it left alone.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+from datetime import date
+from pathlib import Path
+
+NOT_STARTED = ("⏳", "⬅️")
+STATUSES = ("⏳", "⬅️", "🚧", "✅")
+ROW_PATTERN = re.compile(r"\[Phase (?P<id>\d+(?:\.\d+)*)\]\(phase-(?P=id)\.md\)")
+ID_TOKEN = re.compile(r"(?<![\w.])\d+(?:\.\d+)*(?![\w.])")
+ANY_LINK = re.compile(
+    r"(?:\[Phase (?P<label>\d+(?:\.\d+)*)\])?"
+    r"\(phase-(?P<target>\d+(?:\.\d+)*)\.md(?P<frag>#[^)\s]*)?\)"
+)
+LABELLED_LINK = re.compile(r"\[Phase (\d+(?:\.\d+)*)\]\(phase-(\d+(?:\.\d+)*)\.md(#[^)\s]*)?\)")
+GRAPH_NODE = re.compile(r"\bP(\d+(?:_\d+)*)\b")
+GRAPH_LABEL = re.compile(r"\bPhase (\d+(?:\.\d+)*)(?![\d.]*\d)")
+PROSE_MENTION = re.compile(r"\bPhase (\d+(?:\.\d+)*)(?![\d.]*\d)")
+LEDGER_HEADING = "## Decomposition ledger (convention)"
+RECORD_HEADING = "## Renumbering records"
+LINKED_KEYS = ("id", "depends_on", "informs")
+
+
+class RenumberError(RuntimeError):
+    """A refusal that leaves the plan untouched."""
+
+
+def key(phase: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in phase.split("."))
+
+
+def table_bounds(lines: list[str]) -> tuple[int, int]:
+    """The half-open line range of the phase table's section."""
+    start = next(
+        (i for i, line in enumerate(lines) if line.strip().casefold() == "## phase table"), None
+    )
+    if start is None:
+        raise RenumberError("plan/INDEX.md has no '## Phase Table' section")
+    end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
+    return start, end
+
+
+def read_rows(lines: list[str]) -> dict[str, str]:
+    start, end = table_bounds(lines)
+    rows: dict[str, str] = {}
+    for line in lines[start:end]:
+        match = ROW_PATTERN.search(line)
+        if not match or not line.lstrip().startswith("|"):
+            continue
+        markers = [marker for marker in STATUSES if marker in line]
+        if len(markers) != 1:
+            raise RenumberError(f"Phase {match['id']} must carry exactly one status marker")
+        if match["id"] in rows:
+            raise RenumberError(f"Phase {match['id']} appears twice in the phase table")
+        rows[match["id"]] = markers[0]
+    if not rows:
+        raise RenumberError("the phase table has no phase rows")
+    return rows
+
+
+def plan_mapping(rows: dict[str, str], target: str) -> dict[str, str]:
+    """Old number to new number for everything that moves; refuses a started phase."""
+    depth = len(key(target))
+    parent = key(target)[:-1]
+    position = key(target)[-1]
+    if target not in rows:
+        raise RenumberError(
+            f"no phase is numbered {target}, so there is nothing to move: "
+            f"create Phase {target} directly"
+        )
+    mapping: dict[str, str] = {}
+    for phase in rows:
+        parts = key(phase)
+        if len(parts) < depth or parts[: depth - 1] != parent or parts[depth - 1] < position:
+            continue
+        moved = (*parts[: depth - 1], parts[depth - 1] + 1, *parts[depth:])
+        mapping[phase] = ".".join(str(part) for part in moved)
+    started = sorted((phase for phase in mapping if rows[phase] not in NOT_STARTED), key=key)
+    if started:
+        raise RenumberError(
+            "only phases that have not started are renumbered; "
+            + ", ".join(f"Phase {phase} is {rows[phase]}" for phase in started)
+            + f". Insert after the last started phase instead of before Phase {target}"
+        )
+    return mapping
+
+
+def rewrite_frontmatter(text: str, mapping: dict[str, str]) -> str:
+    lines = text.split("\n")
+    if not lines or lines[0].strip() != "---":
+        return text
+    current = None
+    for index in range(1, len(lines)):
+        line = lines[index]
+        if line.strip() == "---":
+            break
+        named = re.match(r"^([A-Za-z_][\w-]*)\s*:", line)
+        if named:
+            current = named.group(1)
+        if current in LINKED_KEYS:
+            head, separator, value = line.partition(":") if named else ("", "", line)
+            value = ID_TOKEN.sub(lambda m: mapping.get(m.group(0), m.group(0)), value)
+            lines[index] = head + separator + value
+    return "\n".join(lines)
+
+
+def rewrite_links(text: str, mapping: dict[str, str], *, labels: bool) -> str:
+    """Map every plan link once. A label that names its own target follows it when
+    `labels` is set; elsewhere the label is history and only the target moves."""
+
+    def mapped(match: re.Match[str]) -> str:
+        label, target, fragment = match.group("label"), match.group("target"), match.group("frag")
+        destination = f"(phase-{mapping.get(target, target)}.md{fragment or ''})"
+        if label is None:
+            return destination
+        shown = mapping.get(label, label) if labels and label == target else label
+        return f"[Phase {shown}]{destination}"
+
+    return ANY_LINK.sub(mapped, text)
+
+
+def rewrite_graph(block: str, mapping: dict[str, str]) -> str:
+    def node(match: re.Match[str]) -> str:
+        phase = match.group(1).replace("_", ".")
+        return "P" + mapping[phase].replace(".", "_") if phase in mapping else match.group(0)
+
+    block = GRAPH_NODE.sub(node, block)
+    return GRAPH_LABEL.sub(lambda m: f"Phase {mapping.get(m.group(1), m.group(1))}", block)
+
+
+def rewrite_index(text: str, mapping: dict[str, str]) -> str:
+    lines = text.split("\n")
+    start, end = table_bounds(lines)
+    out: list[str] = []
+    in_graph = False
+    for index, line in enumerate(lines):
+        if line.lstrip().startswith("```"):
+            in_graph = line.strip().startswith("```mermaid") and not in_graph
+            out.append(line)
+        elif in_graph:
+            out.append(rewrite_graph(line, mapping))
+        else:
+            out.append(rewrite_links(line, mapping, labels=start <= index < end))
+    return "\n".join(out)
+
+
+def record(mapping: dict[str, str], target: str, today: str, reason: str) -> str:
+    moves = sorted(mapping, key=key)
+    listed = ", ".join(f"{old} → {mapping[old]}" for old in moves)
+    decoder = "; ".join(
+        f"'Phase {old}' means the phase now numbered {mapping[old]}" for old in moves
+    )
+    return (
+        f"- **Insertion / renumbering record, {today}.** Phase {target} was opened for an inserted "
+        f"phase. Not-started phases were renumbered upward: {listed}. No started or completed "
+        f"phase moved, and no dependency changed. In notes dated before {today}, {decoder}."
+        + (f" {reason.strip()}" if reason.strip() else "")
+    )
+
+
+def add_record(text: str, entry: str) -> str:
+    lines = text.rstrip("\n").split("\n")
+    heading = next((i for i, line in enumerate(lines) if line.strip() == LEDGER_HEADING), None)
+    if heading is None:
+        heading = next((i for i, line in enumerate(lines) if line.strip() == RECORD_HEADING), None)
+    if heading is None:
+        return "\n".join([*lines, "", RECORD_HEADING, "", entry]) + "\n"
+    end = next(
+        (i for i in range(heading + 1, len(lines)) if lines[i].startswith("## ")), len(lines)
+    )
+    while end > heading + 1 and not lines[end - 1].strip():
+        end -= 1
+    return "\n".join([*lines[:end], "", entry, "", *lines[end:]]).rstrip("\n") + "\n"
+
+
+def leftover_mentions(root: Path, mapping: dict[str, str]) -> list[str]:
+    """Prose that names a number about to change and that this command will not rewrite.
+
+    Read before anything is rewritten, so every hit is an old number. Links, the phase
+    files' own headings and the dependency graph are rewritten and are not listed.
+    """
+    found: list[str] = []
+    for directory in ("plan", "lessons", "user-actions"):
+        for path in sorted((root / directory).glob("*.md")):
+            in_fence = False
+            for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if line.lstrip().startswith("```"):
+                    in_fence = not in_fence
+                    continue
+                if in_fence or (directory == "plan" and re.match(r"#\s+Phase \d", line)):
+                    continue
+                prose = LABELLED_LINK.sub("", line)
+                hits = sorted(
+                    {m.group(1) for m in PROSE_MENTION.finditer(prose) if m.group(1) in mapping},
+                    key=key,
+                )
+                if hits:
+                    phase = path.name.removeprefix("phase-").removesuffix(".md")
+                    name = f"phase-{mapping[phase]}.md" if phase in mapping else path.name
+                    found.append(f"{directory}/{name}:{number}: Phase {', '.join(hits)}")
+    return found
+
+
+def insert_before(root: Path, target: str, today: str, reason: str) -> dict[str, str]:
+    plan = root / "plan"
+    index = plan / "INDEX.md"
+    try:
+        index_text = index.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise RenumberError(f"cannot read plan/INDEX.md: {exc}") from exc
+    mapping = plan_mapping(read_rows(index_text.split("\n")), target)
+    for old, new in mapping.items():
+        if (plan / f"phase-{new}.md").exists() and new not in mapping:
+            raise RenumberError(f"plan/phase-{new}.md exists but is not in the phase table")
+    before = leftover_mentions(root, mapping)
+    edits: dict[Path, str] = {}
+    for path in sorted(plan.glob("phase-*.md")):
+        text = path.read_text(encoding="utf-8")
+        phase = path.name.removeprefix("phase-").removesuffix(".md")
+        text = rewrite_links(rewrite_frontmatter(text, mapping), mapping, labels=True)
+        if phase in mapping:
+            text = re.sub(
+                rf"(?m)^(#\s+Phase ){re.escape(phase)}(?![\d.]*\d)",
+                lambda m: m.group(1) + mapping[phase],
+                text,
+                count=1,
+            )
+        edits[path] = text
+    for path, text in edits.items():
+        path.write_text(text, encoding="utf-8")
+    for old in sorted(mapping, key=key, reverse=True):
+        source = plan / f"phase-{old}.md"
+        if source.exists():
+            source.rename(plan / f"phase-{mapping[old]}.md")
+    index.write_text(
+        add_record(rewrite_index(index_text, mapping), record(mapping, target, today, reason)),
+        encoding="utf-8",
+    )
+    for old in sorted(mapping, key=key):
+        print(f"Phase {old} -> Phase {mapping[old]}")
+    if before:
+        print("Mentions of the old numbers left as written; read each one:")
+        for line in before:
+            print(f"  {line}")
+    print(f"RENUMBER OK Phase {target} is free; add its row to the phase table and its file")
+    return mapping
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="renumber-phases", description=__doc__)
+    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
+    actions = parser.add_subparsers(dest="action", required=True)
+    insert = actions.add_parser("insert-before", help="open this phase number for a new phase")
+    insert.add_argument("phase", help="the number the inserted phase will take, such as 5 or 3.2")
+    insert.add_argument("--date", default=date.today().isoformat())
+    insert.add_argument("--reason", default="", help="one sentence on why the phase is inserted")
+    arguments = parser.parse_args(argv)
+    if not re.fullmatch(r"\d+(?:\.\d+)*", arguments.phase):
+        parser.error("phase must be a dotted number such as 5 or 3.2")
+    try:
+        insert_before(arguments.root.resolve(), arguments.phase, arguments.date, arguments.reason)
+    except RenumberError as exc:
+        print(f"RENUMBER REFUSED {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

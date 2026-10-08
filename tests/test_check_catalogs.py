@@ -281,6 +281,48 @@ def _assert_phase_entry_ledgers(root: Path) -> None:
         index.write_bytes(original)
 
 
+def test_upcoming_phases_are_numbered_in_the_order_they_will_run(tmp_path: Path) -> None:
+    root = fixture(tmp_path)
+    index = root / "plan/INDEX.md"
+
+    def phase(number: str, depends_on: str) -> None:
+        (root / f"plan/phase-{number}.md").write_text(
+            f'---\nid: "{number}"\ndepends_on: {depends_on}\n---\n\n# Phase {number}\n'
+        )
+
+    def ledger(*rows: tuple[str, str]) -> None:
+        table = "".join(f"| Phase {number} | T | {marker} |\n" for number, marker in rows)
+        index.write_text(
+            f"# Plan\n\n## Phase Table\n\n| Phase | Title | Status |\n|---|---|---|\n{table}"
+        )
+
+    # Not-started work that depends on a later-numbered not-started phase is out of order.
+    phase("1", "[]")
+    phase("2", '["3"]')
+    phase("3", "[]")
+    ledger(("1", "✅"), ("2", "⬅️"), ("3", "⏳"))
+    refused = run(root)
+    assert refused.returncode == 1
+    assert "not-started Phase 2 depends on not-started Phase 3" in refused.stdout
+    assert "./bin/renumber-phases" in refused.stdout
+    # The same edge is history once the earlier-numbered phase has started.
+    ledger(("1", "✅"), ("2", "🚧"), ("3", "⏳"))
+    assert run(root).returncode == 0
+    # A block-style dependency list is read the same way.
+    phase("2", '\n  - "1"\n  - "3"')
+    ledger(("1", "✅"), ("2", "⬅️"), ("3", "⏳"))
+    assert "not-started Phase 2 depends on not-started Phase 3" in run(root).stdout
+    # Rows run in ascending phase order, sub-phases under their parent.
+    phase("2", '["1"]')
+    ledger(("1", "✅"), ("3", "⏳"), ("2", "⬅️"))
+    disordered = run(root)
+    assert disordered.returncode == 1
+    assert "ascending phase order; Phase 2 follows Phase 3" in disordered.stdout
+    phase("2.1", '["2"]')
+    ledger(("1", "✅"), ("2", "⬅️"), ("2.1", "⏳"), ("3", "⏳"))
+    assert run(root).returncode == 0
+
+
 def test_missing_internal_inline_and_reference_links_are_reported(
     tmp_path: Path,
 ) -> None:

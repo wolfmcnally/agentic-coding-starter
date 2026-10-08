@@ -99,6 +99,7 @@ run_lint() {
       ../bin/check-execution-dashboards ../bin/check-harness-parity \
       ../bin/check-toolchain-callers ../bin/lessons ../bin/treatise ../bin/check-catalogs \
       ../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name \
+      ../bin/renumber-phases \
       ../bin/check-plan-concreteness ../bin/check-plan-delivery ../bin/review-verdicts \
       ../bin/check-log-prefix ../bin/check-log-monotonic ../bin/kickoff-command-zero \
       ../bin/log-append ../bin/log-relocate ../bin/normalize-final-newline ../bin/check-candidate-partition ../tests
@@ -114,6 +115,7 @@ run_format() {
       ../bin/check-execution-dashboards ../bin/check-harness-parity \
       ../bin/check-toolchain-callers ../bin/lessons ../bin/treatise ../bin/check-catalogs \
       ../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name \
+      ../bin/renumber-phases \
       ../bin/check-plan-concreteness ../bin/check-plan-delivery ../bin/review-verdicts \
       ../bin/check-log-prefix ../bin/check-log-monotonic ../bin/kickoff-command-zero \
       ../bin/log-append ../bin/log-relocate ../bin/normalize-final-newline ../bin/check-candidate-partition ../tests

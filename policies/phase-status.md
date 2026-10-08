@@ -25,7 +25,7 @@ Duplicating status across files invites drift. The orchestrator (`kickoff`) read
 `kickoff` owns all status transitions:
 
 - On phase entry: `⬅️` → `🚧` and append a START block to `LOG.md`.
-- On phase completion: `🚧` → `✅`, advance the next `⏳` row to `⬅️` per the dependency graph, and append an END block to `LOG.md`.
+- On phase completion: `🚧` → `✅`, advance `⬅️` to the lowest-numbered `⏳` row whose dependencies are complete, and append an END block to `LOG.md`.
 - On phase pause: leave the row at `🚧` and append an END block to `LOG.md`
   documenting the pause reason. Do not advance `⬅️`; zero next rows is valid
   while work remains active.
@@ -53,6 +53,27 @@ queues at most one executable phase. If recovery finds two `⬅️` rows, the
 ledger is invalid; `kickoff` stops and the human corrects it rather than letting
 the orchestrator choose through ambiguity.
 
+## Numbers follow the order of upcoming work
+
+Among phases that have not started, a phase's number says when it runs. A reader who sees Phase 5 and Phase 6 both waiting should be able to assume 5 comes first, and the next marker advances to the lowest-numbered waiting phase whose dependencies are complete. Doing a higher-numbered phase while a lower-numbered one is ready is running the plan out of sequence, and the remedy is to renumber, not to explain the order in a note. (Operator ruling, 2026-10-07.)
+
+So a phase inserted ahead of waiting work takes the number of the first phase it must precede, and that phase, every later waiting sibling, and all their sub-phases move up by one. The same holds one level down: a sub-phase inserted at 3.2 moves the waiting 3.2 to 3.3. A deterministic script does the whole move:
+
+```bash
+./bin/renumber-phases insert-before 5 --reason "<one sentence on why the phase is inserted>"
+```
+
+It renames the phase files, rewrites their `id`, `depends_on` and `informs` fields, the phase table, the dependency graph and every plan link, and adds a dated renumbering record to the ledger that says how to read the old numbers. The author then adds the new phase's file and row at the number that was opened. Renumbering by hand is how a `depends_on` gets left pointing at the wrong phase.
+
+What does not move:
+
+- **A phase that is in progress or completed keeps its number.** Logs, commits, reports and lessons already refer to it. The script refuses when a started phase would move, so an insertion goes after the last started phase at that level; work that must precede an in-progress phase is a sub-phase of it or a decision for the operator.
+- **An abandoned path keeps its numbers.** A phase that was retired or set aside is history; its number is not reclaimed, and closing the gap it leaves is not a reason to renumber.
+- **Dated history is never rewritten.** `LOG.md`, lessons, user actions and earlier ledger notes keep their wording. The renumbering record is the decoder ring, and the script lists the prose mentions it left alone so each can be read.
+- **The unstarted children of an in-progress parent are upcoming work** and do renumber among themselves.
+
+The checker enforces the two parts of this that can be read mechanically: phase-table rows run in ascending phase order, and no waiting phase depends on a waiting phase numbered after it. Whether an undeclared ordering exists between two waiting phases is a judgment the checker cannot make; declare the dependency, and the numbering follows.
+
 ## Verification
 
 The deterministic catalog checker validates the lifecycle state and
@@ -71,6 +92,10 @@ When a child phase closes, the close operation additionally runs
 and its direct parent must either be `✅` too or remain `🚧` with another
 drafted, incomplete direct child. A close may not strand a decomposed parent
 whose ledger promises work but names no executable continuation.
+
+The same checker refuses a phase table whose rows are out of ascending phase
+order, and a not-started phase whose `depends_on` names a not-started phase
+numbered after it.
 
 The checker runs inside the authoritative full gate:
 

@@ -642,6 +642,28 @@ acceptable slug is found within the attempt budget.
 
 Behavioral coverage lives in `tests/test_new_name.py`.
 
+### `renumber-phases` — open a phase number for an inserted phase
+
+Phase numbers of work that has not started follow its order of execution. To
+insert a phase ahead of waiting work, this script moves the waiting phase at
+that number, every later waiting sibling and all their sub-phases up by one:
+it renames the phase files, rewrites their `id`, `depends_on` and `informs`
+fields, the phase table, the dependency graph and every plan link, and adds a
+dated renumbering record to the ledger. It refuses when a phase that is in
+progress or completed would move, and it rewrites no dated prose: it lists the
+mentions it left for a reader.
+
+```bash
+./bin/renumber-phases insert-before 5 --reason "<why the phase is inserted>"
+./bin/renumber-phases insert-before 3.2
+```
+
+Then add the new phase's file and its row at the number that was opened.
+Governed by [`policies/phase-status.md`](../policies/phase-status.md) § Numbers
+follow the order of upcoming work; `bin/check-catalogs` refuses a plan whose
+waiting phases are numbered out of their declared order. Behavioral coverage
+lives in `tests/test_renumber_phases.py`.
+
 ### `check-anonymization.sh` — pre-publish leak guard *(starter-only)*
 
 Scans every tracked file, and every new file not yet staged, for the two *mechanizable* leak classes — real absolute/home paths and commit-SHA-like tokens — and exits non-zero on any finding. Optionally reads a gitignored local name denylist (`bin/anonymization-denylist.local`, seeded from the committed `.example`) and greps for those private names too. Run it before any push.
