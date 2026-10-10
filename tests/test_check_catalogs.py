@@ -323,6 +323,45 @@ def test_upcoming_phases_are_numbered_in_the_order_they_will_run(tmp_path: Path)
     assert run(root).returncode == 0
 
 
+def test_a_phase_names_other_phases_by_id_and_a_path_is_refused(tmp_path: Path) -> None:
+    root = fixture(tmp_path)
+    rows = (("1", "✅"), ("2", "⬅️"), ("2.1", "⏳"), ("3", "⏳"))
+    table = "".join(f"| Phase {number} | T | {marker} |\n" for number, marker in rows)
+    (root / "plan/INDEX.md").write_text(
+        f"# Plan\n\n## Phase Table\n\n| Phase | Title | Status |\n|---|---|---|\n{table}"
+    )
+
+    def phase(number: str, links: str) -> None:
+        (root / f"plan/phase-{number}.md").write_text(
+            f'---\nid: "{number}"\n{links}\n---\n\n# Phase {number}\n'
+        )
+
+    # Phase 2 waits on the later-numbered Phase 3. Written as a path, that dependency
+    # must be refused where it stands, never read as "depends on nothing".
+    phase("1", 'depends_on: []\ninforms: ["plan/phase-2.md"]')
+    phase("2", 'depends_on: ["1", "plan/phase-3.md"]\ninforms: []')
+    phase("2.1", 'depends_on:\n  - "2"\n  - phase-2.1.md\ninforms: []')
+    phase("3", "depends_on: [1]\ninforms: []  # nothing later yet")
+    refused = run(root)
+    assert refused.returncode == 1
+    for relative, line, key, entry, wanted in (
+        ("plan/phase-1.md", 4, "informs", "plan/phase-2.md", "2"),
+        ("plan/phase-2.md", 3, "depends_on", "plan/phase-3.md", "3"),
+        ("plan/phase-2.1.md", 5, "depends_on", "phase-2.1.md", "2.1"),
+    ):
+        assert (
+            f"ERROR\tplan\t{relative}\tline {line}: `{key}` names '{entry}', which is not a "
+            f'phase id; name the phase by its id, "{wanted}", never by path'
+        ) in refused.stdout
+    assert refused.stdout.count("which is not a phase id") == 3
+    # The same plan written with ids is read: quoted, bare, block-listed or commented.
+    phase("1", 'depends_on: []\ninforms: ["2"]')
+    phase("2", 'depends_on: ["1"]\ninforms: []')
+    phase("2.1", 'depends_on:\n  - "2"\ninforms: []')
+    accepted = run(root)
+    assert accepted.returncode == 0, accepted.stdout + accepted.stderr
+
+
 def test_missing_internal_inline_and_reference_links_are_reported(
     tmp_path: Path,
 ) -> None:

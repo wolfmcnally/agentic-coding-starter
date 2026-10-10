@@ -946,7 +946,7 @@ def _assert_complete_synthetic_kickoff(
     (repository / "plan").mkdir(exist_ok=True)
     (repository / "plan/phase-0.md").write_text("# Prepared dependency\n")
     (repository / "plan/phase-1.md").write_text(
-        '---\nid: "1"\ndepends_on: ["plan/phase-0.md"]\n---\n'
+        '---\nid: "1"\ndepends_on: ["0"]\n---\n'
         "# Qualification\n\n## Acceptance\n\nDeliver VALUE = 2 under frozen authorities.\n"
         "\n## Brief refs\n\n[Design](../briefs/design.md)\n"
     )

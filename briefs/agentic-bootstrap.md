@@ -595,7 +595,7 @@ Body sections, in order:
 - **Phase-level acceptance** — concrete, empirical, observable.
 - **Brief refs** — links to every brief under `briefs/` that this phase implements.
 
-Sub-phase files (`plan/phase-1.1.md`, etc.) follow the same frontmatter shape with `id: "1.1"` and `depends_on: ["1"]` (or sibling sub-phases). Bodies: Goal / Deliverables / Acceptance / Brief refs. Do not draft child files at bootstrap. Once a boundary is authorized, kickoff drafts the first at parent entry and each successor at its predecessor’s close.
+Sub-phase files (`plan/phase-1.1.md`, etc.) follow the same frontmatter shape with `id: "1.1"` and `depends_on: ["1"]` (or sibling sub-phases). `depends_on` and `informs` are lists of phase ids, written as `id` is and never as file paths: the ordering check and a renumbering can follow an id and nothing else. Bodies: Goal / Deliverables / Acceptance / Brief refs. Do not draft child files at bootstrap. Once a boundary is authorized, kickoff drafts the first at parent entry and each successor at its predecessor’s close.
 
 **Phase 2+ at bootstrap.** For every major phase the brief surfaces beyond Phase 1, draft a sketched `plan/phase-N.md` at lower fidelity:
 

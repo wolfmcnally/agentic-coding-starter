@@ -40,6 +40,7 @@ PROSE_MENTION = re.compile(r"\bPhase (\d+(?:\.\d+)*)(?![\d.]*\d)")
 LEDGER_HEADING = "## Decomposition ledger (convention)"
 RECORD_HEADING = "## Renumbering records"
 LINKED_KEYS = ("id", "depends_on", "informs")
+LIST_KEYS = ("depends_on", "informs")
 
 
 class RenumberError(RuntimeError):
@@ -104,6 +105,33 @@ def plan_mapping(rows: dict[str, str], target: str) -> dict[str, str]:
             + f". Insert after the last started phase instead of before Phase {target}"
         )
     return mapping
+
+
+def unreadable_links(text: str) -> list[tuple[str, str]]:
+    """`depends_on` and `informs` values that are not phase ids, as (key, value).
+
+    Only an id can be renumbered. A file path would be left as written and would
+    then name whichever phase took the old number.
+    """
+    lines = text.split("\n")
+    if not lines or lines[0].strip() != "---":
+        return []
+    found: list[tuple[str, str]] = []
+    current = None
+    for line in lines[1:]:
+        if line.strip() == "---":
+            break
+        named = re.match(r"^([A-Za-z_][\w-]*)\s*:(.*)$", line)
+        if named:
+            current, line = named.group(1), named.group(2)
+        if current not in LIST_KEYS:
+            continue
+        value = re.sub(r"^-(\s+|$)", "", re.sub(r"(^|\s)#.*$", "", line).strip())
+        for piece in value.strip("[]").split(","):
+            entry = piece.strip().strip("\"'")
+            if entry and not re.fullmatch(r"\d+(?:\.\d+)*", entry):
+                found.append((current, entry))
+    return found
 
 
 def rewrite_frontmatter(text: str, mapping: dict[str, str]) -> str:
@@ -233,10 +261,20 @@ def insert_before(root: Path, target: str, today: str, reason: str) -> dict[str,
     for old, new in mapping.items():
         if (plan / f"phase-{new}.md").exists() and new not in mapping:
             raise RenumberError(f"plan/phase-{new}.md exists but is not in the phase table")
+    texts = {path: path.read_text(encoding="utf-8") for path in sorted(plan.glob("phase-*.md"))}
+    unreadable = [
+        f"plan/{path.name} `{name}` names '{entry}'"
+        for path, text in texts.items()
+        for name, entry in unreadable_links(text)
+    ]
+    if unreadable:
+        raise RenumberError(
+            '`depends_on` and `informs` name phases by id, such as "3", and only an id can '
+            "be renumbered; " + "; ".join(unreadable) + ". Write the ids and run this again"
+        )
     before = leftover_mentions(root, mapping)
     edits: dict[Path, str] = {}
-    for path in sorted(plan.glob("phase-*.md")):
-        text = path.read_text(encoding="utf-8")
+    for path, text in texts.items():
         phase = path.name.removeprefix("phase-").removesuffix(".md")
         text = rewrite_links(rewrite_frontmatter(text, mapping), mapping, labels=True)
         if phase in mapping:

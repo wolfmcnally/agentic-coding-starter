@@ -520,9 +520,11 @@ link quoted inside backticks is a quoted edit target, not a live link. It also
 enforces [`policies/phase-status.md`](../policies/phase-status.md) over
 per-phase files: a `status:` frontmatter field or a `Status: ✅`-shaped
 declaration line in any `plan/phase-*.md` fails; narrative emoji mentions in
-prose stay fine. `--closing-phase <id>` additionally refuses a completed child
-that neither completes its parent nor leaves that parent in progress with
-another drafted incomplete direct child.
+prose stay fine. A `depends_on` or `informs` value that is not a phase id, a
+file path above all, fails with the id to write, since the ordering check
+could not read it. `--closing-phase <id>` additionally refuses a completed
+child that neither completes its parent nor leaves that parent in progress
+with another drafted incomplete direct child.
 
 ```bash
 ./bin/check-catalogs
@@ -650,8 +652,9 @@ that number, every later waiting sibling and all their sub-phases up by one:
 it renames the phase files, rewrites their `id`, `depends_on` and `informs`
 fields, the phase table, the dependency graph and every plan link, and adds a
 dated renumbering record to the ledger. It refuses when a phase that is in
-progress or completed would move, and it rewrites no dated prose: it lists the
-mentions it left for a reader.
+progress or completed would move, or when a `depends_on` or `informs` value is
+not a phase id and so could not be carried to the new number. It rewrites no
+dated prose: it lists the mentions it left for a reader.
 
 ```bash
 ./bin/renumber-phases insert-before 5 --reason "<why the phase is inserted>"

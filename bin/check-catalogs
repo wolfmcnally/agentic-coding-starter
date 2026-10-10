@@ -37,6 +37,8 @@ DOCS_DIRECTORY = "docs"
 DOCS_CATALOG = "README.md"
 PHASE_STATUSES = ("⏳", "⬅️", "🚧", "✅")
 NEXT_MARKER = "⬅️"
+PHASE_LINK_KEYS = ("depends_on", "informs")
+PHASE_ID_PATTERN = re.compile(r"\d+(?:\.\d+)*")
 IN_PROGRESS_MARKER = "🚧"
 NOT_STARTED_MARKER = "⏳"
 FENCE_PATTERN = re.compile(r"^ {0,3}(`{3,}|~{3,})")
@@ -250,22 +252,40 @@ def phase_key(phase: str) -> tuple[int, ...]:
     return tuple(int(part) for part in phase.split("."))
 
 
+def phase_link_entries(block: list[tuple[int, str]]) -> list[tuple[int, str, str]]:
+    """Every `depends_on` and `informs` value in a phase file's frontmatter, as
+    (line number, key, value), inline or as a block list.
+
+    Values come back as written, less their quotes, so that one which is not a
+    phase id is refused instead of being skipped.
+    """
+    found: list[tuple[int, str, str]] = []
+    current = None
+    for line_number, line in block:
+        named = re.match(r"^([A-Za-z_][\w-]*)\s*:(.*)$", line)
+        if named:
+            current, line = named.group(1), named.group(2)
+        if current not in PHASE_LINK_KEYS:
+            continue
+        value = re.sub(r"^-(\s+|$)", "", re.sub(r"(^|\s)#.*$", "", line).strip())
+        for piece in value.strip("[]").split(","):
+            entry = piece.strip().strip("\"'")
+            if entry:
+                found.append((line_number, current, entry))
+    return found
+
+
 def phase_dependencies(phase_file: Path) -> list[str]:
-    """The phase ids a phase file's `depends_on` names, inline or as a block list."""
+    """The phase ids a phase file's `depends_on` names."""
     try:
         block = frontmatter_lines(phase_file.read_text(encoding="utf-8"))
     except OSError:
         return []
-    found: list[str] = []
-    collecting = False
-    for _, line in block:
-        named = re.match(r"^([A-Za-z_][\w-]*)\s*:(.*)$", line)
-        if named:
-            collecting = named.group(1) == "depends_on"
-            line = named.group(2)
-        if collecting:
-            found.extend(re.findall(r"(?<![\w.])\d+(?:\.\d+)*(?![\w.])", line))
-    return found
+    return [
+        entry
+        for _, name, entry in phase_link_entries(block)
+        if name == "depends_on" and PHASE_ID_PATTERN.fullmatch(entry)
+    ]
 
 
 def check_phase_numbering(rows: list[str], row_markers: list[str | None]) -> None:
@@ -386,6 +406,10 @@ def check_phase_files() -> None:
     Narrative mentions of the status emojis in prose are fine; the failure mode
     is a *declaration* — a frontmatter `status:` key or a `Status: ✅`-shaped
     line — which creates a second source of truth.
+
+    `depends_on` and `informs` name phases by id (same policy). Any other value,
+    a file path above all, is one the ordering check and a renumbering cannot
+    read, so it is refused here.
     """
     for phase_file in sorted((ROOT / "plan").glob("phase-*.md")):
         relative = phase_file.relative_to(ROOT).as_posix()
@@ -402,6 +426,17 @@ def check_phase_files() -> None:
                     relative,
                     f"line {line_number}: frontmatter must not carry a status field",
                 )
+        for line_number, name, entry in phase_link_entries(frontmatter):
+            if PHASE_ID_PATTERN.fullmatch(entry):
+                continue
+            path_form = re.search(r"phase-(\d+(?:\.\d+)*)\.md$", entry)
+            wanted = f'"{path_form.group(1)}"' if path_form else "its number"
+            report(
+                "plan",
+                relative,
+                f"line {line_number}: `{name}` names '{entry}', which is not a phase id; "
+                f"name the phase by its id, {wanted}, never by path",
+            )
         frontmatter_numbers = {line_number for line_number, _ in frontmatter}
         for line_number, line in markdown_prose_lines(text):
             if line_number in frontmatter_numbers:

@@ -25,6 +25,8 @@ occurrences:
     ref: "Donor A — a review seeing the binding without the bound: the rebind lived in a tracked file and the assertion it bound to in an untracked one, so a tracked-diff review sees the suspicious half and not the half that justifies it"
   - date: 2026-08-20
     ref: "Donor A — a process listing truncated by the reader's own `head -5`; the orchestrator declared all five results to be the operator's own editor processes and concluded no cleanup was needed. Two of its own probe processes had been running the whole time. Identical to this family's first member (output cut by the reader's own `sed`), committed by a reader who had cited that member earlier the same day"
+  - date: 2026-10-09
+    ref: "A derived project — a check that parsed a field read a value in a form it did not expect as an empty list: the phase-order check passed a plan whose dependencies were written as file paths without reading one of them, two days after it shipped with proofs that used only the form its author had in mind. The field's format was stated nowhere, and the template's own reading protocol called its entries files"
 ---
 
 Most defects in one donor phase were **one species in different clothes**: a thing

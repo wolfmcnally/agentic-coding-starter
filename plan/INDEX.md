@@ -23,7 +23,7 @@ If you are working on a phase:
 2. Read the parent `phase-N.md` to understand the larger context (when a sub-phase is targeted).
 3. Read the target `phase-N.md` (or `phase-N.M.md`).
 4. Read every brief listed under that phase's "Brief refs" section — those are the contracts the phase implements.
-5. Read every file listed under `depends_on` in the frontmatter.
+5. Read the phase file of every phase id listed under `depends_on` in the frontmatter (`"3"` is `phase-3.md`).
 6. Do **not** slurp every `phase-*.md`. The frontmatter and brief refs are the contract for which predecessors and contracts actually matter.
 
 ## Phase Dependency Graph

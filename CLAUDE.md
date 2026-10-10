@@ -153,7 +153,7 @@ Only [plan/INDEX.md](plan/INDEX.md) holds status: ⏳ not started, ⬅️ next, 
 1. Read `plan/INDEX.md` for dependencies and cross-cutting concerns.
 2. Read the parent phase if targeting a child, then the target phase.
 3. Read every Brief ref and every pinned document on which it depends.
-4. Read every `depends_on` file and the immediately preceding completed phase.
+4. Read the phase file of every `depends_on` id and the immediately preceding completed phase.
 5. Read applicable policies, root invariants and the stage resource. Read only required phase files.
 
 ### Architectural invariants (load-bearing — do not violate)

@@ -133,3 +133,27 @@ def test_a_started_phase_is_never_renumbered_and_a_refusal_writes_nothing(tmp_pa
     child = run(root, "insert-before", "2")
     assert child.returncode == 1 and "Phase 2.1 is 🚧" in child.stderr
     assert snapshot(root) == before
+
+
+def test_a_dependency_written_as_a_path_refuses_the_renumbering_and_writes_nothing(
+    tmp_path: Path,
+) -> None:
+    root = plan(tmp_path)
+    ship, part = root / "plan/phase-3.md", root / "plan/phase-2.1.md"
+    by_id = ship.read_text()
+    ship.write_text(by_id.replace('["2", "2.2"]', '["plan/phase-2.md", "2.2"]'))
+    part.write_text(part.read_text().replace("informs: []", "informs:\n  - phase-2.2.md"))
+    before = snapshot(root)
+    # Left as written, the path would name the inserted Phase 2, not the phase that moved to 3.
+    refused = run(root, "insert-before", "2", "--date", "2026-10-09")
+    assert refused.returncode == 1
+    assert "plan/phase-3.md `depends_on` names 'plan/phase-2.md'" in refused.stderr
+    assert "plan/phase-2.1.md `informs` names 'phase-2.2.md'" in refused.stderr
+    assert "Write the ids and run this again" in refused.stderr
+    assert snapshot(root) == before
+    # Written as ids, with a trailing comment, the same plan renumbers.
+    ship.write_text(by_id.replace('["2", "2.2"]', '["2", "2.2"]  # build first'))
+    part.write_text(part.read_text().replace("  - phase-2.2.md", '  - "2.2"'))
+    assert run(root, "insert-before", "2", "--date", "2026-10-09").returncode == 0
+    assert 'depends_on: ["3", "3.2"]  # build first' in (root / "plan/phase-4.md").read_text()
+    assert 'informs:\n  - "3.2"' in (root / "plan/phase-3.1.md").read_text()

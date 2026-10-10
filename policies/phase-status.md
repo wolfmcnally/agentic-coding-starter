@@ -53,6 +53,10 @@ queues at most one executable phase. If recovery finds two `⬅️` rows, the
 ledger is invalid; `kickoff` stops and the human corrects it rather than letting
 the orchestrator choose through ambiguity.
 
+## Phases are named by id in `depends_on` and `informs`
+
+Each is a list of phase ids written as `id` is: `depends_on: ["3", "3.1"]`, or `[]` when there are none. An entry is never a file path or a link. A reader turns id N into `plan/phase-N.md`; the tools read the ids themselves. The ordering check and a renumbering can only follow an id, so a path is not a harmless variant: the check would read it as no dependency, and a renumbering would leave it naming whichever phase took the old number. The checker refuses any other value and `bin/renumber-phases` refuses to run over one. (Format settled 2026-10-09, after a derived project's path-form plan was found to pass the ordering check unread.)
+
 ## Numbers follow the order of upcoming work
 
 Among phases that have not started, a phase's number says when it runs. A reader who sees Phase 5 and Phase 6 both waiting should be able to assume 5 comes first, and the next marker advances to the lowest-numbered waiting phase whose dependencies are complete. Doing a higher-numbered phase while a lower-numbered one is ready is running the plan out of sequence, and the remedy is to renumber, not to explain the order in a note. (Operator ruling, 2026-10-07.)
@@ -63,7 +67,7 @@ So a phase inserted ahead of waiting work takes the number of the first phase it
 ./bin/renumber-phases insert-before 5 --reason "<one sentence on why the phase is inserted>"
 ```
 
-It renames the phase files, rewrites their `id`, `depends_on` and `informs` fields, the phase table, the dependency graph and every plan link, and adds a dated renumbering record to the ledger that says how to read the old numbers. The author then adds the new phase's file and row at the number that was opened. Renumbering by hand is how a `depends_on` gets left pointing at the wrong phase.
+It renames the phase files, rewrites their `id`, `depends_on` and `informs` fields, the phase table, the dependency graph and every plan link, and adds a dated renumbering record to the ledger that says how to read the old numbers. The author then adds the new phase's file and row at the number that was opened. Renumbering by hand is how a `depends_on` gets left pointing at the wrong phase. The script refuses, writing nothing, when a `depends_on` or `informs` value is not a phase id, because it could not carry that value to the new number.
 
 What does not move:
 
@@ -94,8 +98,9 @@ drafted, incomplete direct child. A close may not strand a decomposed parent
 whose ledger promises work but names no executable continuation.
 
 The same checker refuses a phase table whose rows are out of ascending phase
-order, and a not-started phase whose `depends_on` names a not-started phase
-numbered after it.
+order, a not-started phase whose `depends_on` names a not-started phase
+numbered after it, and a `depends_on` or `informs` value in any phase file that
+is not a phase id.
 
 The checker runs inside the authoritative full gate:
 

@@ -2695,3 +2695,41 @@ A correction to the report change recorded just above, found before the operator
 **Gates before this record.** `./bin/test --changed-from '@{upstream}'` passed with no warning or error line. Format, lint, lessons, the report checker and `./bin/test-governance validate` passed. The one full gate follows this record.
 
 Lessons: `dazzling-hippogriff` filed, methodology scope — verify a presentation through the path the reader takes, not the one that is convenient to automate. Independent review is not applicable because this is primary one-shot methodology work.
+
+## 2026-10-09 22:21 — METHODOLOGY SCOPE
+
+One operator instruction, given in session on 2026-10-09, before any implementation.
+
+**Instruction.** The operator passed on a problem report from a derived project. The phase-order check in `bin/check-catalogs` and `bin/renumber-phases` read `depends_on` and `informs` only as bare phase ids. A plan that writes them as file paths is passed by the order check without anything being checked, and a renumbering leaves the paths as written, so each then names whichever phase took the old number. The report traces the path form to this template's own wording, which says "every file listed under `depends_on`" in three places while the bootstrap brief writes ids, and it offers two remedies: accept both forms, or declare one and refuse the other.
+
+**Authorized outcome.** The format of `depends_on` and `informs` is stated once, at `policies/phase-status.md`: a list of phase ids, written as `id` is. Both tools refuse any other value and name the correction, so neither can be passed by a format it does not read. The reading-protocol wording that invited paths is aligned with the rule.
+
+**One default the operator can overturn.** The report's second remedy is taken: one form, the other refused. The first, accepting both, would keep two shapes for one field, which the greenfield rule and the existing bootstrap text both argue against. A derived project that wrote paths fails the checker when taught, until its frontmatter is rewritten to ids.
+
+**Surfaces.** `policies/phase-status.md`; `bin/check-catalogs` and `bin/renumber-phases` with their tests; the reading-protocol wording in `plan/INDEX.md`, the root instructions and the four role definitions; `briefs/agentic-bootstrap.md`; `bin/README.md`; one inert path-form fixture in `tests/test_kickoff_evidence.py`; the proof ledger and witness receipts for the new or extended proofs.
+
+**Exclusions.** No helper shared between the two tools, so no transfer list changes. No check that a named dependency exists in the phase table. No tool that converts path-form frontmatter. No derived repository is taught in this pass.
+
+## 2026-10-09 22:26 — METHODOLOGY — depends_on and informs name phases by id; a path is refused
+
+The instruction recorded in the scope above.
+
+**What changed.** `policies/phase-status.md` has a new section, Phases are named by id in `depends_on` and `informs`: each is a list of phase ids written as `id` is, never a file path or a link, and a reader turns id N into `plan/phase-N.md`. `bin/check-catalogs` now refuses any other value in any phase file, naming the file, the line, the value and the id to write. `bin/renumber-phases` refuses to run over one, names every such value, and writes nothing. Before this, the order check read a path as no dependency and passed, and a renumbering left the path as written.
+
+The wording that invited paths is aligned: step 5 of the reading protocol in `plan/INDEX.md`, step 4 in the root instructions, and the reading list in each of the four role definitions now say to read the phase file of every `depends_on` id. `briefs/agentic-bootstrap.md` states the format beside its examples, and `bin/README.md` describes both refusals. One fixture in `tests/test_kickoff_evidence.py` that wrote a path, and that no code reads, now writes an id.
+
+**Changed paths.** `policies/phase-status.md`, `bin/check-catalogs`, `bin/renumber-phases`, `bin/README.md`, `plan/INDEX.md`, `CLAUDE.md`, `.claude/agents/phase-planner.md`, `.claude/agents/plan-reviewer.md`, `.claude/agents/phase-coder.md`, `.claude/agents/code-critic.md`, `briefs/agentic-bootstrap.md`, `tests/test_check_catalogs.py`, `tests/test_renumber_phases.py`, `tests/test_kickoff_evidence.py`, `reports/test-governance/starter-reset.jsonl`, `reports/test-governance/starter-witnesses.jsonl`, `lessons-archived/russet-mole.md`, `LOG.md`.
+
+**Proof estate.** Two proofs admitted, each with a receipt: the checker's refusal of inline, block-listed and sub-phase path values with the same plan accepted once written as ids, and the renumbering's refusal of the report's repoint case with every plan file left byte-identical. The witness ledger holds 55 receipts.
+
+**Scope departures.** One. The scope did not name the lessons ledger; the harvest below added an occurrence to an archived lesson.
+
+**Primary self-check.** The report's claims were reproduced before any edit: the id pattern matches nothing in `"plan/phase-3.md"`, and no code other than these two tools reads either field. Each tool carries its own short parser; a shared one would have meant a new file in every transfer list for two copies. A trailing comment on either field, which the bootstrap brief's own example carries, is not read as a value, and the proofs cover it. The checker's refusal applies to every phase file, completed ones included, because a renumbering rewrites the `informs` of a completed phase. Not done: no check that a named id exists in the phase table.
+
+**Gates before this record.** `./bin/test --changed-from '@{upstream}'` widened to the full suite and passed, 130 tests in 112 seconds, with no warning or error line. Format, lint, `./bin/check-catalogs`, `./bin/lessons validate` and `./bin/test-governance validate` passed. The one full gate follows this record.
+
+**Independent review.** Not applicable — primary one-shot methodology work.
+
+**Remaining for the operator.** The choice of one form over accepting both was made as a default and can be overturned. A derived project whose plan writes paths fails the checker when taught, until each value is rewritten as an id; the refusal names each one, and no tool converts them. The full test run took 112 seconds, three more than at the last record.
+
+Lessons: one occurrence appended to the archived `russet-mole`, a check that reported success while proving less than its name claimed. No new lesson.

@@ -35,7 +35,7 @@ Candidate ids supplied by the orchestrator bind the product identity under `cand
 1. **`plan/INDEX.md`** for cross-cutting concerns.
 2. **`plan/phase-<id>.md`** in full. (For sub-phases, also the parent `plan/phase-<N>.md`.)
 3. **Every brief listed under "Brief refs"** in the phase file — these are the contracts the plan must implement. Check the cited section ids exist and match the plan's reading. When a cited brief or the plan rests on a pinned document under `docs/`, read the pin and check the plan cites it by file and section; a plan that leans on a live URL where a pin exists, or that introduces external authority without proposing a cataloged pin, is `REVISE` (`policies/docs.md`).
-4. Every file listed in the phase frontmatter `depends_on`.
+4. The phase file of every phase id in the phase frontmatter `depends_on` (`plan/phase-<id>.md`).
 5. The immediately preceding completed phase in `plan/INDEX.md`.
 6. **`CLAUDE.md`** for architectural invariants.
 7. **Every policy file** the plan cites under "Policy Constraints," plus any policy that obviously touches the phase's surfaces. (You don't need to read every policy every time; you do need to read the ones that apply.)
