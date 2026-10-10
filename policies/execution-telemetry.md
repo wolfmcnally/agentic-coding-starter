@@ -165,23 +165,25 @@ implementation stage is Planning or Implementation, because the stage is the
 work. Stage time around a delegated role is coordination and is shown as such.
 The activity breakdown accounts for the whole recorded execution; no measured
 stage is dropped from it. Operator
-parks remain separate from both work and unmeasured orchestration. Charts use readable minutes;
-machine payloads and exact tables retain nanoseconds. Root wrappers, internal
+parks remain separate from both work and unmeasured orchestration. Charts and tables use readable durations;
+machine payloads retain nanoseconds, which the report never displays. Root wrappers, internal
 ids, model names, harness names, and wait mirrors stay out of the default
 presentation.
 
 The archive is fully offline: data and presentation are separate files,
 network access is denied by CSP, ECharts 6.1.0 and its Apache license are
-vendored, and no fetch/XHR/WebSocket/eval or inline event handler is allowed.
+vendored, as are three Font Awesome Free icons with their license, and no
+fetch/XHR/WebSocket/eval or inline event handler is allowed.
 The same trace ledger, accepted trace, operator-park summary, and handoff must
 regenerate byte-identically.
 
 The handoff schema is
-`agentic_starter.execution_dashboard_handoff.v1`:
+`agentic_starter.execution_dashboard_handoff.v2`:
 
 ```json
 {
-  "schema": "agentic_starter.execution_dashboard_handoff.v1",
+  "schema": "agentic_starter.execution_dashboard_handoff.v2",
+  "project": "Example Project",
   "phase_id": "1.2",
   "what_just_landed": [{"title": "...", "detail": "..."}],
   "see_for_yourself": [{"title": "...", "steps": ["..."], "expected": "..."}],
@@ -190,7 +192,9 @@ The handoff schema is
 }
 ```
 
-`coming_up_next` may be null. Recommendation kinds are `action`,
+`project` is the project's name as its own README titles it, at most 80
+characters; it heads the report so a reader with several projects' reports open
+can tell them apart. `coming_up_next` may be null. Recommendation kinds are `action`,
 `blocking`, and `ready`. The handoff contains only accepted outcomes,
 concrete safe demos, applied next-phase state, and genuine prerequisites. It
 never discusses commit state or embeds arbitrary HTML.
@@ -204,9 +208,18 @@ handoff gate is presentation-only and does not change tracked artifacts.
 
 When dashboard presentation changes, deterministic checks are insufficient.
 Serve it with `bin/serve-execution-dashboard`, inspect archive and phase pages
-at desktop and mobile widths, exercise trace selection, zoom, disclosure, and
-navigation, compare charts with tables, and check the browser console. Blank
-charts, clipped labels, misleading hierarchy, or DOM-only interactions fail.
+at desktop and mobile widths in both light and dark color modes, exercise run
+selection, the timeline slider, disclosure, and navigation, compare charts with
+tables, and check the browser console. Blank charts, clipped labels, misleading
+hierarchy, or DOM-only interactions fail.
+
+Four presentation rules are fixed (operator ruling, 2026-10-09). The heading,
+page title and archive name the project. A control at the top cycles the color
+mode through System, Light and Dark, and a printed report is always light. The
+run menu appears only when a phase took more than one run, labels each run for
+what it is, and says why one would look at a single run. No chart responds to
+the wheel or a trackpad scroll: the page scrolls, and the timeline zooms only by
+its slider.
 
 ## Phase-close ordering
 

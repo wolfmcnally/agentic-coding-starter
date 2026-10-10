@@ -2639,3 +2639,45 @@ The instruction recorded in the scope above.
 **Remaining for the operator.** The script has run only on fixture plans. Derived repositories with real plans get the rule and the checker when they are taught, and a plan already numbered out of order will fail the checker until it is renumbered. The test lane is now 16 seconds from failing its budget.
 
 Lessons: none new. Independent review is not applicable because this is primary one-shot methodology work.
+
+## 2026-10-09 19:21 — METHODOLOGY SCOPE
+
+Two operator instructions, given together in session on 2026-10-09, before any implementation.
+
+**First.** Add the rule that commits carry no agent credit to the mini-method brief as a rule of its own. The mini-method block already said it in a clause of the commit-discipline rule.
+
+**Second.** Four defects in the end-of-phase HTML report, as the operator described them: the main heading names the phase but not the project, which is confusing across several projects; a human never needs to see exact nanoseconds; the View menu offers a "recovery run" without explaining why anyone would want it; and scrolling the page with a wheel or trackpad is captured by the Build Timeline, which stops the scroll and rescales the chart until it is unreadable. The operator would have that chart ignore wheel events entirely.
+
+**Authorized outcome.** The mini-method block states the no-credit rule separately, with its reasons. The report's heading, page title and archive name the project. The nanosecond toggle is removed. The View menu appears only when a phase took more than one run, labels each run for what it is, and says in a sentence why one would look at a single run. The timeline no longer responds to the wheel; its slider remains.
+
+**Surfaces.** `briefs/mini-method.md`. For the report: `lib/agentic_starter/execution_dashboard.py`, the renderer and stylesheet under `reports/execution/assets/`, `bin/check-execution-dashboards`, `tests/test_execution_dashboard.py` and its fixtures, the committed report under `reports/execution/`, the handoff schema in `policies/execution-telemetry.md`, and the close step in the `kickoff` skill that writes the handoff. The project name has to come from somewhere recorded, so the handoff gains a required project field and the report schemas and renderer version move forward by direct replacement.
+
+**Exclusions.** No change to what is measured or how durations are computed. No derived repository is taught in this pass.
+
+## 2026-10-09 19:30 — METHODOLOGY — mini-method no-credit rule; phase report names its project, drops nanoseconds, gains color modes
+
+The two instructions recorded in the scope above, with one addition the operator made while the work was under way: the report should work in dark and light modes and carry a three-state control at the top, with Font Awesome icons, that cycles the color mode through System, Light and Dark.
+
+**Mini-method.** The block in `briefs/mini-method.md` now states "No agent credit in commits" as its own rule, with its reasons, covering commit messages and pull request descriptions and saying it holds even when a harness instructs otherwise. The clause it replaces is gone from the commit-discipline rule, and the design notes count nine rules. A project that copied the earlier block keeps the earlier wording until it copies the block again.
+
+**The report.**
+
+- The heading, page title, breadcrumb and archive name the project. The name comes from a new required `project` field in the close handoff, so it is recorded with the report and does not change if a title is later edited. The handoff, report and archive schemas moved to v2 and the renderer to `dashboard-v5`, by direct replacement.
+- The nanosecond toggle is gone; no view shows nanoseconds. Machine payloads still carry them. Two table captions and one header line that said "exact" now say what they show.
+- The run menu appears only when a phase took more than one run. Its entries read "Whole phase · all N runs" and "Run 1 of N · stopped with issues" or "· accepted", and a sentence beside it says why one would look at a single run. The archive's "required recovery" wording is replaced by a count of runs that stopped with issues.
+- The Build Timeline no longer captures the wheel or a trackpad scroll. Its slider remains.
+- Light and dark modes: the stylesheet's colors are variables with a dark set, charts take their text and axis colors from them and redraw on a change, and a control in the top bar cycles System, Light and Dark and remembers the choice in the browser. A printed report is always light. The three icons are Font Awesome Free 6.7.2 files vendored verbatim under `reports/execution/assets/` with the license text, loaded as local masks, so the report stays offline under its content security policy.
+
+`bin/check-execution-dashboards` pins the three icon files by digest, requires the license, requires the dark-mode and project markers, and forbids the removed wording and any inside zoom. `policies/execution-telemetry.md` carries the schema and four fixed presentation rules. The `kickoff` close step sets the project name, and `stamp` clears it in a fresh archive. The committed Phase 2 report was regenerated with this template's name.
+
+**Proof estate.** Three cases were added to the handoff table and admitted, each with a receipt. The witness ledger holds 52 receipts.
+
+**Scope departures.** Two. The color modes and their control were added on the operator's instruction after the scope was recorded. Two of the new table cases at first reused existing match strings, which renamed two existing leaves; validation refused, and the cases were given distinct names before anything was admitted.
+
+**Primary self-check.** The policy requires a browser inspection for any presentation change, and it was made against the committed report served locally: desktop and phone widths; System with a dark preference, forced Light, and Dark; run selection, which changed the summary cards; a table disclosure; the archive page; and print, which rendered light with Dark chosen and hid the control. A wheel event dispatched on the timeline was not cancelled. The console showed only a missing favicon. One wording flaw found in a screenshot, a note that said the whole phase was shown while one run was selected, was corrected. Not checked: a real trackpad gesture, which the test browser cannot produce; and browsers other than the one driven.
+
+**Gates before this record.** `./bin/test --changed-from '@{upstream}'` passed with no warning or error line. Format, lint, catalogs, harness parity, lessons, treatise, anonymization, the report checker and `./bin/test-governance validate` passed. The one full gate follows this record.
+
+**Remaining for the operator.** Judging the look of both color modes is the operator's. Derived repositories keep the old report until they are taught, and their next phase close will need the project name in its handoff.
+
+Lessons: none new. Independent review is not applicable because this is primary one-shot methodology work.

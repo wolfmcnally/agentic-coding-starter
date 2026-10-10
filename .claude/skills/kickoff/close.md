@@ -193,7 +193,7 @@ When to skip: mandatory unless the phase is a pure internal refactor with no use
 
 ### Step 11: Generate the tracked phase report
 
-After status, ripple, lessons harvest, next-phase selection, and the END block are complete, write `$RUN_DIR/dashboard-handoff.json` using the exact schema in [`policies/execution-telemetry.md`](../../../policies/execution-telemetry.md). Ground `what_just_landed`, `see_for_yourself`, `coming_up_next`, and `recommended_steps` in accepted work, the User Demo, applied ripple, and real operator prerequisites. Never discuss commit state or place arbitrary HTML, prompts, responses, secrets, absolute paths, or private source material in the handoff.
+After status, ripple, lessons harvest, next-phase selection, and the END block are complete, write `$RUN_DIR/dashboard-handoff.json` using the exact schema in [`policies/execution-telemetry.md`](../../../policies/execution-telemetry.md). Set `project` to the project's name as its README titles it. Ground `what_just_landed`, `see_for_yourself`, `coming_up_next`, and `recommended_steps` in accepted work, the User Demo, applied ripple, and real operator prerequisites. Never discuss commit state or place arbitrary HTML, prompts, responses, secrets, absolute paths, or private source material in the handoff.
 
 Invoke the pinned command without `--open`:
 

@@ -23,10 +23,10 @@ from agentic_starter.execution_telemetry import (
     validate_ledger,
 )
 
-DASHBOARD_SCHEMA = "agentic_starter.execution_dashboard.v1"
-INDEX_SCHEMA = "agentic_starter.execution_dashboard_index.v1"
-HANDOFF_SCHEMA = "agentic_starter.execution_dashboard_handoff.v1"
-RENDERER_VERSION = "dashboard-v4"
+DASHBOARD_SCHEMA = "agentic_starter.execution_dashboard.v2"
+INDEX_SCHEMA = "agentic_starter.execution_dashboard_index.v2"
+HANDOFF_SCHEMA = "agentic_starter.execution_dashboard_handoff.v2"
+RENDERER_VERSION = "dashboard-v5"
 DATA_PREFIX = "window.AGENTIC_STARTER_EXECUTION_DASHBOARD_DATA="
 INDEX_PREFIX = "window.AGENTIC_STARTER_EXECUTION_DASHBOARD_INDEX="
 PHASE_RE = re.compile(r"^\d+(?:\.\d+)*$")
@@ -87,6 +87,7 @@ RECOMMENDATION_KINDS = frozenset({"action", "blocking", "ready"})
 HANDOFF_KEYS = frozenset(
     {
         "schema",
+        "project",
         "phase_id",
         "what_just_landed",
         "see_for_yourself",
@@ -265,6 +266,8 @@ def validate_handoff(value: Mapping[str, Any], *, phase_id: str) -> dict[str, An
         )
     return {
         "schema": HANDOFF_SCHEMA,
+        # The reader may have several projects' reports open; the name says whose this is.
+        "project": _handoff_text(value["project"], "project", maximum=80),
         "phase_id": phase_id,
         "what_just_landed": valid_landed,
         "see_for_yourself": valid_demos,
@@ -698,6 +701,7 @@ def build_phase_payload(
     return {
         "schema": DASHBOARD_SCHEMA,
         "renderer_version": RENDERER_VERSION,
+        "project": valid_handoff["project"],
         "phase_id": phase_id,
         "utc_date": finalized_date,
         "accepted_trace_id": accepted_trace_id,
@@ -723,7 +727,7 @@ PHASE_HTML = """<!doctype html>
  img-src 'self' data:; font-src 'none'; connect-src 'none'; object-src 'none';
  base-uri 'none'; form-action 'none'">
 <title>Execution dashboard</title>
-<link rel="stylesheet" href="../../assets/dashboard-v4.css"></head>
+<link rel="stylesheet" href="../../assets/dashboard-v5.css"></head>
 <body data-view="phase"><header class="sticky"><nav aria-label="Breadcrumb">
 <a href="../../index.html">Execution archive</a><span aria-hidden="true">›</span>
 <span id="crumb-date"></span><span aria-hidden="true">›</span>
@@ -733,7 +737,7 @@ PHASE_HTML = """<!doctype html>
 <main id="app"><p class="loading">Loading local telemetry…</p></main>
 <script src="../../assets/echarts-6.1.0.min.js"></script>
 <script src="data.js"></script><script src="../../index-data.js"></script>
-<script src="../../assets/dashboard-v4.js"></script></body></html>
+<script src="../../assets/dashboard-v5.js"></script></body></html>
 """
 
 INDEX_HTML = """<!doctype html>
@@ -744,13 +748,13 @@ INDEX_HTML = """<!doctype html>
  img-src 'self' data:; font-src 'none'; connect-src 'none'; object-src 'none';
  base-uri 'none'; form-action 'none'">
 <title>Execution dashboard archive</title>
-<link rel="stylesheet" href="assets/dashboard-v4.css"></head>
+<link rel="stylesheet" href="assets/dashboard-v5.css"></head>
 <body data-view="index"><header class="sticky"><nav aria-label="Breadcrumb">
 <strong>Execution archive</strong></nav></header>
 <main id="app"><p class="loading">Loading local telemetry…</p></main>
 <script src="assets/echarts-6.1.0.min.js"></script>
 <script src="index-data.js"></script>
-<script src="assets/dashboard-v4.js"></script></body></html>
+<script src="assets/dashboard-v5.js"></script></body></html>
 """
 
 
@@ -784,6 +788,7 @@ def _archive_lock(engine_root: Path) -> Iterator[None]:
 def _summary(payload: Mapping[str, Any]) -> dict[str, Any]:
     phase_view = payload["phase_view"]
     return {
+        "project": payload["project"],
         "phase_id": payload["phase_id"],
         "utc_date": payload["utc_date"],
         "accepted_trace_id": payload["accepted_trace_id"],
@@ -829,6 +834,8 @@ def _write_index(output_root: Path, payloads: Sequence[Mapping[str, Any]]) -> No
     index = {
         "schema": INDEX_SCHEMA,
         "renderer_version": RENDERER_VERSION,
+        # The archive is named for the most recently finished phase's project.
+        "project": summaries[-1]["project"] if summaries else None,
         "phases": summaries,
         "dates": [{"utc_date": key, "phases": grouped[key]} for key in sorted(grouped)],
     }

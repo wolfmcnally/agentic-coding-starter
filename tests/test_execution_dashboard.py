@@ -29,6 +29,7 @@ def kickoff_bundle() -> dict[str, Any]:
 def sample_handoff(phase_id: str = "31.2") -> dict[str, Any]:
     return {
         "schema": dashboard.HANDOFF_SCHEMA,
+        "project": "Sample Project",
         "phase_id": phase_id,
         "what_just_landed": [
             {
@@ -106,6 +107,7 @@ def test_payload_reports_each_operator_park_and_nonexact_total() -> None:
         operator_parks=parks,
     )
 
+    assert payload["project"] == "Sample Project"
     assert payload["operator_parks"] == parks
     assert payload["phase_view"]["operator_parks"] == parks
     assert payload["operator_parks"]["total_duration_ns"] == 75_000_000_000
@@ -152,6 +154,9 @@ def test_render_is_byte_identical_and_recovers_interrupted_replacement(
     assert first == second
     assert not backup.exists()
     assert json.loads((phase_dir / "handoff.json").read_text()) == sample_handoff()
+    archive = dashboard.parse_data_script((output / "index-data.js").read_text(), index=True)
+    assert archive["project"] == "Sample Project"
+    assert archive["phases"][0]["project"] == "Sample Project"
 
 
 @pytest.mark.parametrize(
@@ -164,6 +169,9 @@ def test_render_is_byte_identical_and_recovers_interrupted_replacement(
         (lambda value: value["recommended_steps"][0].update(kind="maybe"), "kind"),
         (lambda value: value.update(phase_id="31.9"), "phase"),
         (lambda value: value.update(extra="no"), "unknown"),
+        (lambda value: value.pop("project"), "missing fields"),
+        (lambda value: value.update(project=" "), "nonempty"),
+        (lambda value: value.update(project="/Users/me/app"), "out-of-scope"),
     ],
 )
 def test_handoff_schema_rejects_private_or_malformed_content(mutation: Any, match: str) -> None:

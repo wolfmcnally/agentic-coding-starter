@@ -24,8 +24,25 @@
     success: "#087a55",
     failure: "#a63d40"
   };
-  let exact = false;
   const charts = [];
+  // Color mode: follow the system, or force light or dark. The choice is remembered
+  // in this browser only; the report itself never changes.
+  const MODE_KEY = "agentic-starter-dashboard-color-mode";
+  const MODES = ["system", "light", "dark"];
+  const MODE_LABELS = {system: "System", light: "Light", dark: "Dark"};
+  const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
+  let repaint = () => {};
+  let mode = "system";
+  try {
+    const stored = window.localStorage.getItem(MODE_KEY);
+    if (MODES.includes(stored)) mode = stored;
+  } catch (error) { /* Storage can be unavailable for a local file; the default stands. */ }
+  const applyMode = () => {
+    if (mode === "system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", mode);
+  };
+  applyMode();
+  const cssColor = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
   const el = (tag, attrs = {}, children = []) => {
     const node = document.createElement(tag);
@@ -41,7 +58,6 @@
   };
   const ns = (value) => {
     if (value === null || value === undefined) return "Unknown";
-    if (exact) return `${Number(value).toLocaleString("en-US")} ns`;
     const seconds = Number(value) / 1e9;
     if (seconds < 1) return `${(seconds * 1000).toFixed(1)} ms`;
     if (seconds < 120) return `${seconds.toFixed(seconds < 10 ? 2 : 1)} s`;
@@ -82,7 +98,36 @@
   };
   const chartNode = (label, size = "standard") =>
     el("div", {class: `chart${size === "tall" ? " tall" : size === "compact" ? " compact" : ""}`, role: "img", tabindex: "0", "aria-label": label});
-  const initChart = (node, option) => {
+  const themedAxis = (axis) => {
+    if (!axis) return axis;
+    const ink = cssColor("--ink");
+    const muted = cssColor("--muted");
+    const line = cssColor("--line");
+    return {
+      ...axis,
+      nameTextStyle: {color: muted, ...(axis.nameTextStyle || {})},
+      axisLabel: {color: muted, ...(axis.axisLabel || {})},
+      axisLine: {lineStyle: {color: line}, ...(axis.axisLine || {})},
+      splitLine: {lineStyle: {color: cssColor("--line-soft")}, ...(axis.splitLine || {})},
+      ...(axis.type === "category" ? {axisLabel: {color: ink, ...(axis.axisLabel || {})}} : {})
+    };
+  };
+  const themedOption = (option) => {
+    const themed = {...option, xAxis: themedAxis(option.xAxis), yAxis: themedAxis(option.yAxis)};
+    if (option.tooltip) {
+      themed.tooltip = {
+        backgroundColor: cssColor("--panel"),
+        textStyle: {color: cssColor("--ink")},
+        ...option.tooltip
+      };
+    }
+    if (option.dataZoom) {
+      themed.dataZoom = option.dataZoom.map((zoom) => ({textStyle: {color: cssColor("--muted")}, ...zoom}));
+    }
+    return themed;
+  };
+  const initChart = (node, rawOption) => {
+    const option = themedOption(rawOption);
     const chart = echarts.init(node, null, {renderer: "svg"});
     const accessibleDescription = node.getAttribute("aria-label");
     chart.setOption({
@@ -92,7 +137,7 @@
       animationEasing: "cubicOut",
       animationEasingUpdate: "cubicOut",
       aria: {enabled: true, description: accessibleDescription, decal: {show: false}},
-      textStyle: {fontFamily: "system-ui, sans-serif", color: "#172033"},
+      textStyle: {fontFamily: "system-ui, sans-serif", color: cssColor("--ink")},
       ...option
     });
     charts.push(chart);
@@ -346,7 +391,7 @@
       }]
     });
     target.append(detailsTable(
-      "Exact activity values",
+      "Activity values",
       ["Activity", "Elapsed Time", "Share"],
       rows.map((row) => [row.label, ns(row.value), pct(row.value / (view.makespan_ns || 1))])
     ));
@@ -392,7 +437,7 @@
       });
     }
     target.append(detailsTable(
-      "Exact check values",
+      "Check values",
       ["Automated Check", "Runs", "Unsuccessful", "Elapsed Time"],
       rows.map((row) => [gateLabel(row.operation), row.attempt_count, row.failed_attempts, ns(row.exclusive_duration_ns)])
     ));
@@ -436,7 +481,8 @@
       },
       xAxis: {type: "value", name: "Elapsed Minutes", nameLocation: "middle", nameGap: 30, axisLabel: {formatter: axisMinutes}},
       yAxis: {type: "category", inverse: true, data: labels, axisLabel: {width: 205, overflow: "truncate"}},
-      dataZoom: [{type: "slider", xAxisIndex: 0, bottom: 15, height: 22}, {type: "inside", xAxisIndex: 0}],
+      // Slider only: the wheel and trackpad scroll the page, never the chart.
+      dataZoom: [{type: "slider", xAxisIndex: 0, bottom: 15, height: 22}],
       series: [{
         type: "custom",
         encode: {x: [1, 2], y: 0},
@@ -679,12 +725,12 @@
   }
 
   function renderPhase() {
-    if (!phaseData || phaseData.schema !== "agentic_starter.execution_dashboard.v1") throw new Error("Missing or invalid phase data");
+    if (!phaseData || phaseData.schema !== "agentic_starter.execution_dashboard.v2") throw new Error("Missing or invalid phase data");
     const phaseView = phaseData.phase_view;
     let active = phaseView;
-    document.title = `Phase ${phaseData.phase_id} execution`;
+    document.title = `${phaseData.project} · Phase ${phaseData.phase_id}`;
     document.getElementById("crumb-date").textContent = `${phaseData.utc_date} UTC`;
-    document.getElementById("crumb-phase").textContent = `Phase ${phaseData.phase_id}`;
+    document.getElementById("crumb-phase").textContent = `${phaseData.project} · Phase ${phaseData.phase_id}`;
     if (indexData) {
       const summary = indexData.phases.find((item) => item.phase_id === phaseData.phase_id);
       [["previous-phase", summary?.previous_href], ["next-phase", summary?.next_href]].forEach(([id, href]) => {
@@ -695,29 +741,29 @@
       });
     }
     const header = el("section", {}, [
-      el("p", {class: "eyebrow", text: `${phaseData.utc_date} UTC · exact monotonic telemetry`}),
-      el("h1", {text: `Phase ${phaseData.phase_id}`}),
+      el("p", {class: "eyebrow", text: `${phaseData.utc_date} UTC`}),
+      el("h1", {}, [
+        el("span", {class: "project", text: phaseData.project}),
+        el("span", {text: `Phase ${phaseData.phase_id}`})
+      ]),
       el("p", {class: "lede", text: "A user-facing account of what made this build take as long as it did: agent work, automated checks, rework, and gaps in measurement."})
     ]);
-    const traceSelect = el("select", {"aria-label": "Displayed execution view"});
-    traceSelect.append(el("option", {
-      value: "phase",
-      text: "Complete accepted phase"
-    }));
+    // A phase that finished in one run has nothing to choose between, so the menu
+    // appears only when work stopped and resumed in a new run.
+    const runCount = phaseData.traces.length;
+    const traceSelect = el("select", {"aria-label": "Runs shown"});
+    traceSelect.append(el("option", {value: "phase", text: `Whole phase · all ${runCount} runs`}));
     phaseData.traces.forEach((trace, index) => {
-      const label = trace.accepted
-        ? "Accepted recovery run"
-        : trace.unsuccessful
-          ? `${index === 0 ? "Primary" : `Run ${index + 1}`} · issues found`
-          : `${index === 0 ? "Primary" : `Run ${index + 1}`} · superseded`;
-      traceSelect.append(el("option", {value: trace.trace_id, text: label}));
+      const fate = trace.accepted ? "accepted" : trace.unsuccessful ? "stopped with issues" : "superseded";
+      traceSelect.append(el("option", {value: trace.trace_id, text: `Run ${index + 1} of ${runCount} · ${fate}`}));
     });
     traceSelect.value = "phase";
-    const exactButton = el("button", {type: "button", "aria-pressed": "false", text: "Show exact nanoseconds"});
-    const toolbar = el("div", {class: "toolbar"}, [
-      el("label", {}, [el("span", {text: "View"}), traceSelect]),
-      exactButton
-    ]);
+    const toolbar = runCount > 1
+      ? el("div", {class: "toolbar"}, [
+        el("label", {}, [el("span", {text: "Show"}), traceSelect]),
+        el("p", {class: "toolbar-note", text: `This phase took ${runCount} runs: an earlier run stopped and the work resumed in a new one. Show the whole phase, or one run to see only where its time went.`})
+      ])
+      : null;
     const content = el("div");
     const redraw = () => {
       charts.splice(0).forEach((chart) => chart.dispose());
@@ -779,13 +825,8 @@
         : phaseData.traces.find((trace) => trace.trace_id === traceSelect.value);
       redraw();
     });
-    exactButton.addEventListener("click", () => {
-      exact = !exact;
-      exactButton.setAttribute("aria-pressed", String(exact));
-      exactButton.textContent = exact ? "Use readable durations" : "Show exact nanoseconds";
-      redraw();
-    });
-    app.replaceChildren(header, toolbar, content);
+    app.replaceChildren(...[header, toolbar, content].filter(Boolean));
+    repaint = redraw;
     redraw();
   }
 
@@ -811,11 +852,14 @@
   }
 
   function renderIndex() {
-    if (!indexData || indexData.schema !== "agentic_starter.execution_dashboard_index.v1") throw new Error("Missing or invalid archive data");
-    document.title = "Execution dashboard archive";
+    if (!indexData || indexData.schema !== "agentic_starter.execution_dashboard_index.v2") throw new Error("Missing or invalid archive data");
+    charts.splice(0).forEach((chart) => chart.dispose());
+    repaint = renderIndex;
+    const project = indexData.project || "Project";
+    document.title = `${project} · phase execution`;
     const header = el("section", {}, [
       el("p", {class: "eyebrow", text: "Offline execution archive · UTC"}),
-      el("h1", {text: "Phase execution"}),
+      el("h1", {}, [el("span", {class: "project", text: project}), el("span", {text: "Phase execution"})]),
       el("p", {class: "lede", text: "Chronological, exact wall-clock telemetry for completed kickoff phases. No cost or inferred historical data appears here."})
     ]);
     const phases = indexData.phases;
@@ -834,7 +878,7 @@
           outcomeMark(item.outcome),
           el("span", {}, [
             el("span", {class: "phase", text: `Phase ${item.phase_id}`}),
-            el("span", {class: "meta", text: ` · ${item.trace_count} recorded run${item.trace_count === 1 ? "" : "s"} · ${item.failed_trace_count} required recovery`})
+            el("span", {class: "meta", text: ` · ${item.trace_count} run${item.trace_count === 1 ? "" : "s"}${item.failed_trace_count ? ` · ${item.failed_trace_count} stopped with issues` : ""}`})
           ]),
           el("strong", {text: ns(item.calendar_elapsed_ns)})
         ]);
@@ -847,7 +891,31 @@
     charts.forEach((chart) => chart.resize());
   }
 
+  const mountModeControl = () => {
+    const icon = el("span", {class: "mode-icon", "aria-hidden": "true"});
+    const label = el("span", {class: "mode-label"});
+    const button = el("button", {type: "button", class: "mode-toggle"}, [icon, label]);
+    const show = () => {
+      const next = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
+      icon.dataset.mode = mode;
+      label.textContent = MODE_LABELS[mode];
+      button.setAttribute("aria-label", `Color mode: ${MODE_LABELS[mode]}. Switch to ${MODE_LABELS[next]}.`);
+      button.title = `Color mode: ${MODE_LABELS[mode]}`;
+    };
+    button.addEventListener("click", () => {
+      mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
+      try { window.localStorage.setItem(MODE_KEY, mode); } catch (error) { /* Not remembered; still applied. */ }
+      applyMode();
+      show();
+      repaint();
+    });
+    systemDark.addEventListener("change", () => { if (mode === "system") repaint(); });
+    show();
+    document.querySelector("header.sticky")?.append(button);
+  };
+
   try {
+    mountModeControl();
     if (document.body.dataset.view === "phase") renderPhase();
     else renderIndex();
     window.addEventListener("resize", () => charts.forEach((chart) => chart.resize()));

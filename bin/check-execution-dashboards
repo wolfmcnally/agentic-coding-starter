@@ -28,6 +28,14 @@ from agentic_starter.execution_telemetry import TelemetryError  # noqa: E402
 ARCHIVE = REPO_ROOT / "reports" / "execution"
 ASSETS = ARCHIVE / "assets"
 ECHARTS_SHA256 = "b66b25aeb4df84e33199dc21694014d336d222cbd9deb0e5a7c14bd6aa0d0fd0"
+# Font Awesome Free 6.7.2 solid icons, vendored verbatim for the color-mode control.
+FONTAWESOME_SHA256 = {
+    "fontawesome-circle-half-stroke.svg": (
+        "7a66a3750d7df6c744babbba0dd8861d1f02876d151638ba3bf78cab2655a4cb"
+    ),
+    "fontawesome-moon.svg": "05d1bbe1770543053e5e0baf8d41c0600aad05ce8e3d1e7a2315b8557a7883cd",
+    "fontawesome-sun.svg": "46cd7adf3ea370040ae7b0599eee42efccb0ab86f6d0d876c7a63985f7e32fcc",
+}
 FORBIDDEN_PAYLOAD = tuple(
     re.compile(pattern, re.IGNORECASE)
     for pattern in (
@@ -74,6 +82,11 @@ FORBIDDEN_REPORT_COPY = (
     "Elapsed seconds",
     'name: "Seconds"',
     "axisDuration",
+    "Show exact nanoseconds",
+    "Accepted recovery run",
+    "required recovery",
+    # The wheel scrolls the page; an inside zoom would capture it and rescale the timeline.
+    'type: "inside"',
 )
 
 
@@ -98,8 +111,15 @@ def validate_static_assets() -> None:
         fail("vendored ECharts asset must be the pinned 6.1.0 release")
     if not license_path.is_file() or "Apache License" not in license_path.read_text():
         fail("vendored ECharts license is missing or invalid")
-    renderer = (ASSETS / "dashboard-v4.js").read_text(encoding="utf-8")
-    stylesheet = (ASSETS / "dashboard-v4.css").read_text(encoding="utf-8")
+    for name, digest in FONTAWESOME_SHA256.items():
+        icon = ASSETS / name
+        if not icon.is_file() or hashlib.sha256(icon.read_bytes()).hexdigest() != digest:
+            fail(f"vendored Font Awesome icon is missing or altered: {name}")
+    icon_license = ASSETS / "LICENSE-fontawesome.txt"
+    if not icon_license.is_file() or "CC BY 4.0" not in icon_license.read_text():
+        fail("vendored Font Awesome license is missing or invalid")
+    renderer = (ASSETS / "dashboard-v5.js").read_text(encoding="utf-8")
+    stylesheet = (ASSETS / "dashboard-v5.css").read_text(encoding="utf-8")
     for pattern in FORBIDDEN_RENDERER:
         if pattern.search(renderer) or pattern.search(stylesheet):
             fail(f"unsafe or online renderer construct: {pattern.pattern}")
@@ -121,6 +141,10 @@ def validate_static_assets() -> None:
         "Awaiting User Input",
         "prefers-reduced-motion: reduce",
         "@media print",
+        "prefers-color-scheme: dark",
+        ':root[data-theme="dark"]',
+        "mode-toggle",
+        "phaseData.project",
     )
     combined = renderer + stylesheet
     for marker in required:

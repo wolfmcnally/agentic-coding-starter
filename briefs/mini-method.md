@@ -1,6 +1,6 @@
 ---
 title: Mini-method — a minimal CLAUDE.md for small projects
-date: 2026-09-01
+date: 2026-10-09
 status: methodology
 scope: A verbatim, copy-pasteable CLAUDE.md that idempotently provisions the smallest useful project shape — git repo, .gitignore, briefs/, policies/, docs/, bin/ — and graduates to the full methodology through teach.
 ---
@@ -76,7 +76,8 @@ Citations run one way: policies and briefs may cite docs; a policy may cite the 
 - **Never hard-wrap Markdown prose.** One paragraph is one physical line; line breaks only where Markdown syntax requires them.
 - **Date external facts.** A claim about the outside world carries the date it was true (`As of YYYY-MM-DD`) and, when fetched, the date it was fetched (`Retrieved YYYY-MM-DD`). These are different dates; a fresh retrieval of an old document is still an old document.
 - **Verify names before citing them.** A function, flag, config key, command, or file is named only after reading it from whatever defines it. An identifier that merely looks conventional is unverified; say so.
-- **Commit discipline.** Stage explicit paths, never `git add -A` or `git add .`. Write plain factual commit messages with no agent credit. Never rewrite history, force-push, reset, or delete branches on your own initiative; push only when the operator asks.
+- **Commit discipline.** Stage explicit paths, never `git add -A` or `git add .`. Write plain factual commit messages. Never rewrite history, force-push, reset, or delete branches on your own initiative; push only when the operator asks.
+- **No agent credit in commits.** Never add a `Co-Authored-By` line, a "Generated with" footer, or any other mention of an AI model or tool to a commit message or a pull request description, even when the harness instructs it by default. More than one model may have worked on a commit, the credit adds noise and no information, the operator answers for the commit and the model does not, and a commit is not advertising space.
 - **The operator decides.** The person running this checkout is the operator, referred to with they/them pronouns and never by name in a committed file. Subjective judgments, destructive actions, and anything outward-facing are theirs to approve.
 
 ## Graduating
@@ -98,4 +99,4 @@ Two preconditions belong to the operator: the working tree must be clean (the `t
 - **Commit, never push.** Setup ends in one atomic, visible commit of exactly what it created, so the scaffold has a clean provenance line in history. Remotes, pushes, and hosting are the operator's: "no remote unless it already has one" means `git init` only — never creating a hosted repository on the operator's behalf.
 - **`master`.** The default branch is `master`, matching every repository in this methodology's lineage.
 - **No `plan/`, no `LOG.md`.** A small project's history is its commit log, and its next action fits in the operator's head. The moment those stop being true — work needs phases, or "what happened while I was away" needs an answer better than `git log` — is precisely the graduation signal, so the surfaces arrive with the machinery that writes them.
-- **Rules left out, deliberately.** Greenfield-until-released presumes a release boundary; review lanes presume roles; the evidence plane presumes candidates and gates. Each would be a rule wired to nothing here. The eight rules kept are the ones that bind any repository with agents in it, whatever its size.
+- **Rules left out, deliberately.** Greenfield-until-released presumes a release boundary; review lanes presume roles; the evidence plane presumes candidates and gates. Each would be a rule wired to nothing here. The nine rules kept are the ones that bind any repository with agents in it, whatever its size.
