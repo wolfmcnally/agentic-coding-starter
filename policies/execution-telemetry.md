@@ -207,7 +207,10 @@ uncommitted close and retry idempotently. A browser-open failure after the
 handoff gate is presentation-only and does not change tracked artifacts.
 
 When dashboard presentation changes, deterministic checks are insufficient.
-Serve it with `bin/serve-execution-dashboard`, inspect archive and phase pages
+Open a phase page as a local file first, the way a report is normally opened:
+a browser applies stricter rules to files than to a server, and an asset that
+loads when served can be refused from a file. Then
+serve it with `bin/serve-execution-dashboard`, inspect archive and phase pages
 at desktop and mobile widths in both light and dark color modes, exercise run
 selection, the timeline slider, disclosure, and navigation, compare charts with
 tables, and check the browser console. Blank charts, clipped labels, misleading

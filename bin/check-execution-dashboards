@@ -60,6 +60,8 @@ FORBIDDEN_RENDERER = tuple(
         r"\beval\s*\(",
         r"https?://",
         r"\bon(?:click|load|error)\s*=",
+        # A report opened as a local file cannot load a CSS mask image; use an image element.
+        r"\bmask(?:-image)?\s*:",
     )
 )
 FORBIDDEN_GRAPH_STYLING = (

@@ -892,12 +892,15 @@
   }
 
   const mountModeControl = () => {
-    const icon = el("span", {class: "mode-icon", "aria-hidden": "true"});
+    // Plain images, not CSS masks: a report opened as a local file may not load a mask.
+    const assetBase = document.querySelector('link[rel="stylesheet"]').getAttribute("href").replace(/[^/]*$/, "");
+    const iconFiles = {system: "circle-half-stroke", light: "sun", dark: "moon"};
+    const icon = el("img", {class: "mode-icon", alt: "", "aria-hidden": "true"});
     const label = el("span", {class: "mode-label"});
     const button = el("button", {type: "button", class: "mode-toggle"}, [icon, label]);
     const show = () => {
       const next = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
-      icon.dataset.mode = mode;
+      icon.setAttribute("src", `${assetBase}fontawesome-${iconFiles[mode]}.svg`);
       label.textContent = MODE_LABELS[mode];
       button.setAttribute("aria-label", `Color mode: ${MODE_LABELS[mode]}. Switch to ${MODE_LABELS[next]}.`);
       button.title = `Color mode: ${MODE_LABELS[mode]}`;

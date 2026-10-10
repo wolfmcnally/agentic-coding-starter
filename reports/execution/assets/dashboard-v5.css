@@ -131,20 +131,13 @@ h2 { margin: 0; font-size: clamp(1.15rem, 2vw, 1.55rem); }
 .toolbar-note { flex: 1 1 28rem; max-width: 75ch; margin: 0; color: var(--muted); font-size: .92rem; }
 h1 .project { display: block; margin-bottom: .35rem; color: var(--muted); font-size: .42em; font-weight: 700; letter-spacing: 0; line-height: 1.2; }
 .mode-toggle { display: inline-flex; gap: .45rem; align-items: center; margin-left: auto; }
-.mode-icon {
-  width: 1em;
-  height: 1em;
-  background-color: currentColor;
-  -webkit-mask: url("fontawesome-circle-half-stroke.svg") center / contain no-repeat;
-  mask: url("fontawesome-circle-half-stroke.svg") center / contain no-repeat;
+.mode-icon { width: 1em; height: 1em; }
+/* The icon files are black; in a dark mode they are inverted to stay legible. */
+@media screen and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mode-icon { filter: invert(1); }
 }
-.mode-icon[data-mode="light"] {
-  -webkit-mask-image: url("fontawesome-sun.svg");
-  mask-image: url("fontawesome-sun.svg");
-}
-.mode-icon[data-mode="dark"] {
-  -webkit-mask-image: url("fontawesome-moon.svg");
-  mask-image: url("fontawesome-moon.svg");
+@media screen {
+  :root[data-theme="dark"] .mode-icon { filter: invert(1); }
 }
 .toolbar label { display: flex; gap: .55rem; align-items: center; font-weight: 650; }
 select, button {

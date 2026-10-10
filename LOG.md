@@ -2681,3 +2681,17 @@ The two instructions recorded in the scope above, with one addition the operator
 **Remaining for the operator.** Judging the look of both color modes is the operator's. Derived repositories keep the old report until they are taught, and their next phase close will need the project name in its handoff.
 
 Lessons: none new. Independent review is not applicable because this is primary one-shot methodology work.
+
+## 2026-10-09 19:50 — METHODOLOGY — phase report icons load when opened as a file
+
+A correction to the report change recorded just above, found before the operator saw it.
+
+**The defect.** The color-mode control's icons were loaded as CSS mask images. The earlier inspection ran against a local server, where they showed. A report is normally opened as a local file, and there the browser refuses a mask image, so the control showed its label with no icon. The operator asked for the report to be opened; the file path was tried first and a screenshot showed the gap. The defective version had already been committed and pushed.
+
+**The correction.** The icons are plain image elements, inverted in a dark mode since the vendored files are black. A screenshot of the page opened as a file now shows the icon. `bin/check-execution-dashboards` forbids mask images in the report, and that guard was tripped for real through the witness command, which recorded a receipt for the gate. `policies/execution-telemetry.md` now starts the inspection by opening a page as a local file.
+
+**Primary self-check.** The earlier record said what was not checked, a real trackpad gesture and other browsers, and did not say that every observation had gone through a server. That omission is the error. The file-opened check used a second, command-line browser because the automated one refuses file addresses; it covered the top of the phase page in the system color mode only.
+
+**Gates before this record.** `./bin/test --changed-from '@{upstream}'` passed with no warning or error line. Format, lint, lessons, the report checker and `./bin/test-governance validate` passed. The one full gate follows this record.
+
+Lessons: `dazzling-hippogriff` filed, methodology scope — verify a presentation through the path the reader takes, not the one that is convenient to automate. Independent review is not applicable because this is primary one-shot methodology work.
