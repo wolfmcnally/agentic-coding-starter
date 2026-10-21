@@ -35,39 +35,11 @@ The arguments are a positional `<directory>` followed by an optional `<descripti
 - `<directory>` — the destination path. May be absolute (`~/projects/foo`, `/Users/me/foo`) or relative to the current working directory. Tilde is expanded.
 - `<description>` (optional) — a one-line description of what the new project is for. When provided and informative, it answers most of the configuration questions automatically.
 
-If the arguments are empty, run the **Interview** below before anything else; it produces the `<directory>` and a seed brief, and the stamp then continues from *Pre-flight checks* with that directory and no `<description>`.
+If the arguments are empty, run the **Interview** below before anything else.
 
 ## Interview — invoked with no arguments
 
-With nothing to go on, the stamp asks before it builds. The interview's product is a seed brief good enough to enumerate real phases, written where the operator wants it, and a destination the rest of this procedure can adopt. Only the operator invokes this path, so they are present; it is a conversation, not a form.
-
-**How to ask.** Ask about one topic at a time, in plain language, and let the operator answer in their own words. Open questions are free text. Use the harness's structured question tool (`AskUserQuestion` in Claude Code; `request_user_input` in Codex when the active mode offers it, otherwise plain text) only for genuinely closed choices, formulated as [`ask`](../ask/SKILL.md) prescribes. Follow up where an answer is vague, then play back a short summary of what you understood before moving on. Do not lead with a guess: when the operator says "you choose," make the choice, give the reason, and record it in the brief as a decision they can overturn.
-
-**What to discover**, in this order, since each answer shapes the next question:
-
-1. **What they want to build.** What it is, who it is for, the problem it solves, and what it explicitly is not. Include the surface it presents (CLI, web app, service, library, desktop, TUI, something else); the *Gather configuration* heuristics then apply to the answers.
-2. **Major dependencies.** Primary language and runtime, and the frameworks, libraries, services, data stores, platforms and external APIs they already intend to use. Record only what they name or explicitly delegate. Never fill the list with a stack nobody chose (see *Named dependencies* below).
-3. **Build order.** What they want to see working first, then next, and so on: an ordered list of visible outcomes. This list becomes the brief's roadmap, which Step 3 turns into Phase 1 and the sketched later phases. Ask what "first visible slice" means to them rather than assuming the Step 3 default.
-4. **Where it lives.** The project's name, and the destination directory. Offer `<parent of this template checkout>/<project-slug>` as the default, since it places the new project beside this one; the operator may name any other path. Then ask where the seed brief goes. The default is `<directory>/briefs/BRIEF.md`; follow any other location the operator gives.
-
-Anything still unknown after a follow-up goes into the brief as an open question, not a guess.
-
-**Check the destination before writing.** Apply pre-flight check 2 to the chosen directory now, before writing anything: a destination that exists and is neither empty nor a seed is refused there, so ask for another location while the operator is still present, rather than writing a brief and then refusing it.
-
-**Draft, confirm, write.** Draft the brief and show it to the operator in full. Revise until they approve it, and write nothing to disk before that approval. The brief carries the frontmatter [`policies/briefs.md`](../../../policies/briefs.md) requires: `title`, today's `date`, `status: draft`, and a one-sentence `scope`. The body sections are:
-
-- an H1 and an italic one-line tagline;
-- `## Thesis` — what it is and why it should exist;
-- `## Users and problem`;
-- `## Scope` — what it does, and `### Non-goals`;
-- `## Architecture and dependencies` — the surface, language and runtime, every named dependency, and any delegated choice with its reason;
-- `## Build order` — the ordered list of visible outcomes, numbered, each with a sentence on what "working" means;
-- `## Constraints` — only when the operator gave any;
-- `## Open questions`.
-
-Write the operator's words where they gave them, and do not embellish them. Then create the destination with `mkdir -p` and write the brief to the approved location. When that location is inside the destination, the destination is now a seed. When the operator put it **outside** the destination, also write a copy to `<directory>/briefs/BRIEF.md` so there is a seed to adopt, and say in the report that the copy is not kept in sync with the original.
-
-**Continue as a seed stamp.** Proceed from *Pre-flight checks* with the chosen directory and no `<description>`. The brief is adopted like any other seed: its frontmatter is already complete, its body is not rewritten, and the Step 7 byte-identity check covers it. *Gather configuration* reads the interview's answers from the brief and asks nothing it already answered. The final report says the brief came from the interview and gives its path.
+Read [`interview.md`](interview.md) before asking anything, and follow it. It interviews the operator about what to build, its major dependencies, the build order and where the project lives; writes the approved seed brief; and returns here with `<directory>` set and no `<description>`. An invocation with arguments never reads it.
 
 ## Pre-flight checks
 
