@@ -30,6 +30,8 @@ A real brief is the best input to `stamp`. It gives the bootstrap enough informa
 
 The brief does not need to begin as a formal specification. A person can write it directly, or ask an AI chatbot or coding harness to interview them about the project and turn the answers into Markdown. Unknowns belong in the brief as open questions rather than guesses.
 
+`stamp` invoked with no arguments runs that interview itself. It asks what the operator wants to build, which major dependencies are already chosen, what they want to see working first and in what order, and where the project and its brief should live. It checks that the destination is eligible before writing anything. It writes the brief only after the operator approves the full draft, by default at `<project>/briefs/BRIEF.md`, and then continues as an ordinary seed stamp. The interview records only the dependencies the operator names or explicitly delegates, and its ordered build list becomes the roadmap that the phases enumerate.
+
 To adopt a seed, `stamp` accepts a destination containing only:
 
 - an optional `.git/` directory and `.gitignore`;

@@ -29,6 +29,8 @@ Codex:
 $stamp ~/path/to/new-project "one-line description of what to build"
 ```
 
+Run either one with no arguments (`/stamp` or `$stamp`) to be interviewed instead: the skill writes a seed brief from your answers and then stamps onto it.
+
 The `stamp` skill will create the new directory, transfer the template's structural files, customize them for your project, and leave you with a project ready for `kickoff` from a real Phase 1. You can return here to this repo afterward and either close out Phase 1 (`✅ Completed` — "adoption happened via stamp") or leave it `⬅️ Next` for the next user.
 
 ## Option B — You're using this repo directly to build something here

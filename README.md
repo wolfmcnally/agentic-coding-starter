@@ -71,7 +71,9 @@ A seed brief is a plain Markdown account of the project you want. It does not ne
 - what success would look like
 - open questions or tradeoffs that still need work
 
-You do not have to write it alone. Give your idea to an AI chatbot or coding harness and ask it to interview you. For example:
+You do not have to write it alone. Run `stamp` with no arguments (`/stamp` in Claude Code, `$stamp` in Codex) and it will interview you: what you want to build, its major dependencies, what you want to see working first and in what order, and where the new project should live. It shows you the drafted brief for approval, writes it to `briefs/BRIEF.md` in the new project unless you say otherwise, and then stamps the project onto it.
+
+You can also take your idea to any AI chatbot or coding harness and ask it to interview you. For example:
 
 > Help me turn this project idea into a seed brief. Ask me one question at a time about its users, purpose, behavior, constraints, technology, success criteria, and open questions. Then write the result as Markdown.
 
