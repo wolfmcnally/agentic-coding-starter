@@ -204,7 +204,10 @@ def with_stages(bundle: dict[str, Any], *, drop_roles: tuple[str, ...]) -> dict[
     root = next(span for span in staged["spans"] if span["parent_span_id"] is None)
     staged["spans"] = [span for span in staged["spans"] if span.get("role") not in drop_roles]
     for index, (operation, start, end) in enumerate(
-        (("orchestration.planning", 0, 400), ("orchestration.implementation", 400, 900)),
+        (
+            ("orchestration.planning", 0, 400),
+            ("orchestration.implementation", 400, 900),
+        ),
         start=0xA0,
     ):
         stage = copy.deepcopy(root)
@@ -258,3 +261,92 @@ def test_inline_planning_and_coding_are_attributed_to_their_activities() -> None
         "orchestration.planning": "planner",
         "orchestration.implementation": None,
     }
+
+
+def test_named_phase_identity_waits_and_reader_refusals(tmp_path: Path) -> None:
+    accepted = kickoff_bundle()
+    root = next(span for span in accepted["spans"] if span["parent_span_id"] is None)
+    root["operation"] = "phase.release"
+    accepted = telemetry.validate_bundle(accepted)
+    engine = tmp_path / "engine"
+    output = engine / "reports" / "execution"
+    write_ledger(engine, [accepted])
+    parks = tmp_path / "parks.jsonl"
+    events = [
+        json.loads(line) | {"phase_id": "release"} for line in PARK_FIXTURE.read_text().splitlines()
+    ]
+    parks.write_text("".join(json.dumps(event) + "\n" for event in events))
+    summary = telemetry.phase_park_summary(engine_root=engine, phase_id="release", ledger=parks)
+    assert summary["total_duration_ns"] == 75_000_000_000
+    assert summary["total_exact"] is False
+    assert summary["total_method"] == "calendar-union-cross-boot"
+    dashboard.render_phase_dashboard(
+        engine_root=engine,
+        output_root=output,
+        phase_id="release",
+        accepted_trace_id=accepted["trace_id"],
+        handoff=sample_handoff("release"),
+        operator_parks=summary,
+    )
+    data = dashboard.parse_data_script(
+        (output / "2026-07-28" / "phase-release" / "data.js").read_text()
+    )
+    assert data["phase_id"] == "release"
+    assert data["operator_parks"] == summary
+    index = dashboard.parse_data_script((output / "index-data.js").read_text(), index=True)
+    assert index["phases"][0]["phase_id"] == "release"
+    assert sorted(["release", "31.10", "alpha", "31.2"], key=dashboard.semantic_phase_key) == [
+        "31.2",
+        "31.10",
+        "alpha",
+        "release",
+    ]
+    events.pop()
+    parks.write_text("".join(json.dumps(event) + "\n" for event in events))
+    open_summary = telemetry.phase_park_summary(
+        engine_root=engine, phase_id="release", ledger=parks
+    )
+    assert open_summary["open"] is True
+    assert open_summary["total_duration_ns"] is None
+    assert open_summary["total_method"] == "incomplete"
+    assert telemetry._park_state_path(engine, "release").name == "phase-release.json"
+    history = telemetry.report_history(engine / "EXECUTION_LOG.jsonl", phase_id="release")
+    assert len(history) == 1
+    assert history[0]["root_operation"] == "phase.release"
+    assert history[0]["trace_id"] == accepted["trace_id"]
+    for invalid in (
+        "",
+        "../release",
+        "release/other",
+        "release..other",
+        "1..2",
+        "release\n",
+        "a" * 123,
+    ):
+        with pytest.raises(telemetry.ValidationError, match="phase must be"):
+            dashboard.semantic_phase_key(invalid)
+        with pytest.raises(telemetry.ValidationError, match="phase_id must be"):
+            telemetry.phase_park_summary(engine_root=engine, phase_id=invalid, ledger=parks)
+    other = copy.deepcopy(accepted)
+    other["trace_id"] = "f" * 32
+    for span in other["spans"]:
+        span["trace_id"] = other["trace_id"]
+        if span["parent_span_id"] is None:
+            span["operation"] = "phase.31.2"
+    with pytest.raises(
+        telemetry.ValidationError,
+        match="accepted trace is absent or belongs to another phase",
+    ):
+        dashboard.build_phase_payload(
+            [accepted, other],
+            phase_id="release",
+            accepted_trace_id=other["trace_id"],
+            handoff=sample_handoff("release"),
+        )
+    with pytest.raises(telemetry.ValidationError, match="handoff schema or phase does not match"):
+        dashboard.build_phase_payload(
+            [accepted],
+            phase_id="release",
+            accepted_trace_id=accepted["trace_id"],
+            handoff=sample_handoff("other"),
+        )

@@ -17,6 +17,7 @@ from typing import Any
 
 from agentic_starter.execution_telemetry import (
     PARK_REASONS,
+    PHASE_ID_RE,
     ValidationError,
     aggregate_trace,
     phase_park_summary,
@@ -108,7 +109,14 @@ HANDOFF_FORBIDDEN = tuple(
     )
 )
 PARK_SUMMARY_KEYS = frozenset(
-    {"phase_id", "intervals", "total_duration_ns", "total_exact", "total_method", "open"}
+    {
+        "phase_id",
+        "intervals",
+        "total_duration_ns",
+        "total_exact",
+        "total_method",
+        "open",
+    }
 )
 PARK_INTERVAL_KEYS = frozenset(
     {
@@ -178,10 +186,12 @@ def parse_data_script(text: str, *, index: bool = False) -> dict[str, Any]:
     return value
 
 
-def semantic_phase_key(phase_id: str) -> tuple[int, ...]:
-    if not PHASE_RE.fullmatch(phase_id):
-        raise ValidationError("phase must be a dotted numeric phase id")
-    return tuple(int(part) for part in phase_id.split("."))
+def semantic_phase_key(phase_id: str) -> tuple[int | str, ...]:
+    if not PHASE_ID_RE.fullmatch(phase_id):
+        raise ValidationError("phase must be a dotted numeric or safe named phase id")
+    if PHASE_RE.fullmatch(phase_id):
+        return (0, *(int(part) for part in phase_id.split(".")))
+    return (1, phase_id)
 
 
 def _handoff_text(value: Any, field: str, *, maximum: int = 500) -> str:
@@ -333,7 +343,7 @@ def _phase_for(bundle: Mapping[str, Any]) -> str | None:
     if root["run_type"] != "kickoff" or not operation.startswith("phase."):
         return None
     phase_id = operation.removeprefix("phase.")
-    return phase_id if PHASE_RE.fullmatch(phase_id) else None
+    return phase_id if PHASE_ID_RE.fullmatch(phase_id) else None
 
 
 def _root(bundle: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -852,6 +862,7 @@ def render_phase_dashboard(
     handoff: Mapping[str, Any] | None = None,
     operator_parks: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
+    semantic_phase_key(phase_id)
     bundles = validate_ledger(engine_root / "EXECUTION_LOG.jsonl")
     output_root = output_root.resolve()
     selected = [bundle for bundle in bundles if _phase_for(bundle) == phase_id]

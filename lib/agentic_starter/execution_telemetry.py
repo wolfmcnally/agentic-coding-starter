@@ -49,7 +49,10 @@ PARK_REASONS = frozenset(
 
 _ID_RE = re.compile(r"^[0-9a-f]{32}$")
 _CYCLE_RE = re.compile(r"^[0-9a-f]{8}$")
-_PHASE_RE = re.compile(r"^\d+(?:\.\d+)*$")
+# A phase is a safe suffix of the bounded phase.<id> operation token.
+PHASE_ID_RE = re.compile(
+    r"^(?=.{1,122}$)(?:\d+(?:\.\d+)*|[A-Za-z][A-Za-z0-9_+-]*(?:\.[A-Za-z0-9_+-]+)*)$"
+)
 _TOKEN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,127}$")
 _WINDOWS_ABS_RE = re.compile(r"^[A-Za-z]:[\\/]")
 _SPAN_REQUIRED = frozenset(
@@ -92,7 +95,16 @@ _TRACE_KEYS = frozenset(
     {"schema", "trace_id", "finalized_at", "scope", "scope_id", "root_span_id", "spans"}
 )
 _PARK_EVENT_KEYS = frozenset(
-    {"schema", "event", "park_id", "phase_id", "reason", "at", "boot_id", "monotonic_ns"}
+    {
+        "schema",
+        "event",
+        "park_id",
+        "phase_id",
+        "reason",
+        "at",
+        "boot_id",
+        "monotonic_ns",
+    }
 )
 _METADATA_KEYS = (
     "harness",
@@ -239,7 +251,10 @@ def _utc_nanoseconds(value: object, field: str) -> int:
 
 
 def _require_exact_keys(
-    value: Mapping[str, Any], required: frozenset[str], optional: frozenset[str], label: str
+    value: Mapping[str, Any],
+    required: frozenset[str],
+    optional: frozenset[str],
+    label: str,
 ) -> None:
     keys = frozenset(value)
     missing = required - keys
@@ -446,8 +461,8 @@ def validate_park_event(event: Mapping[str, Any]) -> dict[str, Any]:
     if event["event"] not in {"open", "close"}:
         raise ValidationError("operator park event must be open or close")
     _require_id(event["park_id"], "park_id")
-    if not isinstance(event["phase_id"], str) or not _PHASE_RE.fullmatch(event["phase_id"]):
-        raise ValidationError("phase_id must be a dotted numeric phase id")
+    if not isinstance(event["phase_id"], str) or not PHASE_ID_RE.fullmatch(event["phase_id"]):
+        raise ValidationError("phase_id must be a dotted numeric or safe named phase id")
     if event["reason"] not in PARK_REASONS:
         raise ValidationError("unknown operator park reason")
     _parse_utc(event["at"], "at")
@@ -575,8 +590,8 @@ def park_ledger_path(engine_root: Path | str) -> Path:
 
 
 def _park_state_path(engine_root: Path | str, phase_id: str) -> Path:
-    if not _PHASE_RE.fullmatch(phase_id):
-        raise ValidationError("phase_id must be a dotted numeric phase id")
+    if not PHASE_ID_RE.fullmatch(phase_id):
+        raise ValidationError("phase_id must be a dotted numeric or safe named phase id")
     state_root = telemetry_state_root() / repo_key(engine_root) / "operator-parks"
     return state_root / f"phase-{phase_id}.json"
 
@@ -784,6 +799,8 @@ def close_operator_park(
 def phase_park_summary(
     *, engine_root: Path | str, phase_id: str, ledger: Path | str | None = None
 ) -> dict[str, Any]:
+    if not PHASE_ID_RE.fullmatch(phase_id):
+        raise ValidationError("phase_id must be a dotted numeric or safe named phase id")
     events = validate_park_ledger(ledger or park_ledger_path(engine_root))
     internal = _park_intervals(events, phase_id)
     public = [
@@ -1524,7 +1541,10 @@ def finalize_trace(
             raise TelemetryError("cannot append execution ledger") from exc
         _atomic_json(
             marker_path,
-            {"schema": "agentic_starter.execution_finalized.runtime.v1", "bundle": bundle},
+            {
+                "schema": "agentic_starter.execution_finalized.runtime.v1",
+                "bundle": bundle,
+            },
         )
         return bundle
 
@@ -2016,8 +2036,8 @@ def report_history(
     if batch_id is not None:
         _require_token(batch_id, "batch_id")
     if phase_id is not None:
-        if not _PHASE_RE.fullmatch(phase_id):
-            raise ValidationError("phase_id must be a dotted numeric phase id")
+        if not PHASE_ID_RE.fullmatch(phase_id):
+            raise ValidationError("phase_id must be a dotted numeric or safe named phase id")
         if run_type not in {None, "kickoff"}:
             raise ValidationError("phase_id requires kickoff run_type")
         if batch_id is not None:
@@ -2284,7 +2304,11 @@ def mark_expected_finalized(*, engine_root: Path | str, run_id: str) -> dict[str
     return _update_managed_run(
         engine_root,
         run_id,
-        {"lifecycle_state": "finalized", "persistence_state": "finalized", "error_code": None},
+        {
+            "lifecycle_state": "finalized",
+            "persistence_state": "finalized",
+            "error_code": None,
+        },
     )
 
 
@@ -2301,7 +2325,11 @@ def mark_expected_persisted(*, engine_root: Path | str, run_id: str) -> dict[str
     return _update_managed_run(
         engine_root,
         run_id,
-        {"lifecycle_state": "persisted", "persistence_state": "persisted", "error_code": None},
+        {
+            "lifecycle_state": "persisted",
+            "persistence_state": "persisted",
+            "error_code": None,
+        },
     )
 
 
@@ -2430,7 +2458,10 @@ def report_across_scopes(
         ledger = item["ledger"]
         if not ledger.exists():
             diagnostics.append(
-                {**{key: item[key] for key in ("scope", "scope_id")}, "state": "missing"}
+                {
+                    **{key: item[key] for key in ("scope", "scope_id")},
+                    "state": "missing",
+                }
             )
             continue
         try:
@@ -2446,11 +2477,17 @@ def report_across_scopes(
             present_traces.update(report["trace_id"] for report in selected)
         except PermissionError:
             diagnostics.append(
-                {**{key: item[key] for key in ("scope", "scope_id")}, "state": "unreadable"}
+                {
+                    **{key: item[key] for key in ("scope", "scope_id")},
+                    "state": "unreadable",
+                }
             )
         except TelemetryError:
             diagnostics.append(
-                {**{key: item[key] for key in ("scope", "scope_id")}, "state": "invalid"}
+                {
+                    **{key: item[key] for key in ("scope", "scope_id")},
+                    "state": "invalid",
+                }
             )
     incomplete = []
     for record in managed_run_expectations(engine_root):

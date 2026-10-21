@@ -23,7 +23,7 @@ categories are `intelligence`, `gate`, `reconciliation`, and `wait`.
 Outcomes are `success`, `error`, `timeout`, `cancelled`, or
 `interrupted`.
 
-Operator-park events carry only event kind, UUID, dotted phase id, stable reason
+Operator-park events carry only event kind, UUID, phase id, stable reason
 code, UTC timestamp, boot identity, and monotonic reading. Stable reasons are
 `approval`, `decision`, `manual-check`, `environment-action`, `acceptance`, and
 `required-input`. Question text, responses, prompts, paths, and arbitrary prose
@@ -139,6 +139,10 @@ arguments, environment, stdout/stderr, exception bodies, credentials,
 absolute paths, home-relative paths, private source material, or arbitrary
 prose. Runtime state may contain local roots needed to enforce ownership; it
 never enters the durable projection. Fixtures are synthetic.
+
+## Phase identity
+
+Report selection, archive paths, history filters and operator-input park records use the exact same phase id. A safe phase id is at most 122 characters (the suffix of the bounded `phase.<id>` operation): a dotted numeric id, or a letter-led name containing letters, digits, underscores, plus signs and hyphens, optionally separated by nonempty dots. Path separators, whitespace, empty dot segments and traversal names refuse. Numeric ids sort by integer components; named ids sort lexically after numeric ids when completion timestamps tie. A different phase never supplies the accepted trace or handoff. Named ids do not alter review budgets, input-wait ownership or accepted records.
 
 ## Deterministic phase report
 
