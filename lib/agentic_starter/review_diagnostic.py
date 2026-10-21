@@ -65,6 +65,7 @@ def prepare(run: Path, *, authority: str) -> None:
         "model": "fable",
         "effort": "high",
         "attempt": 1,
+        "candidate_id": digest(FIXTURE.encode()),
         "telemetry_trace_id": trace_id,
         "telemetry_root_span_id": "root-" + native_id,
     }
@@ -99,6 +100,7 @@ def validate(run: Path) -> dict:
     record, registration_digest = workflow.review_registration(run / "code-registration.json")
     if (
         document["purpose"] != "native-binding-diagnostic"
+        or record.get("candidate_id") != digest(FIXTURE.encode())
         or record["telemetry_trace_id"] != document["trace_id"]
         or registration_digest != document["registration_sha256"]
         or document["fixture_sha256"] != digest(FIXTURE.encode())
@@ -118,59 +120,58 @@ def validate(run: Path) -> dict:
 
 
 def context_profile(settings: Path, hook: Path) -> dict:
-    """Fail closed on unqualified output producers, not on harmless catalog names.
+    """Inventory configuration without inventing runtime observations or gates.
 
-    This initial profile recognizes only the independently qualified continuation
-    guard. Additional hook contracts require source qualification, not a caller
-    allowlist or an asserted boolean. No installed settings are changed.
+    Ambient MCP/plugins are permitted. Availability, connection, enrollment,
+    assignment-scoped messages and unrelated context are different properties;
+    inspecting settings establishes only the first. No installed settings change.
     """
     if digest(hook.read_bytes()) != HOOK_SHA256:
         raise DiagnosticError("installed continuation hook differs from qualified bytes")
     document = json.loads(settings.read_text())
-    blockers = []
-    retained_events = set()
+    configured_hooks = []
     for event, groups in document.get("hooks", {}).items():
-        # These are the lifecycle context/identity producers on the proposed
-        # no-tools, no-subagent diagnostic. Sound/permission/tool hook presence
-        # alone is not evidence of private context and must not become a consent
-        # gate. Their existing configuration is retained, never disabled here.
-        if event not in {"SessionStart", "UserPromptSubmit", "Stop"}:
-            retained_events.add(event)
-            continue
         for group in groups:
             for entry in group.get("hooks", []):
-                command = entry.get("command", "")
-                recognized = (
-                    event == "SessionStart"
-                    and group.get("matcher") == "compact"
-                    and entry.get("type") == "command"
-                    and command == '"$HOME/.claude/hooks/continuation-restore.py" claude'
-                    and not entry.get("async")
+                configured_hooks.append(
+                    {
+                        "event": event,
+                        "matcher": group.get("matcher"),
+                        "configuration_sha256": digest(json.dumps(entry, sort_keys=True).encode()),
+                    }
                 )
-                if not recognized:
-                    blockers.append(
-                        {
-                            "event": event,
-                            "command_sha256": digest(command.encode()),
-                            "reason": "hook execution/output contract not qualified",
-                        }
-                    )
-    # Names alone imply neither a private read nor a context-producing action.
+    # Do not print config values, infer a connection from a catalog, or require
+    # a new bus-nonparticipant architecture as a precondition for every review.
     return {
-        "state": "HOLD" if blockers else "PROFILE-INCOMPLETE",
-        "blockers": blockers,
+        "state": "INSPECTION-ONLY",
+        "configured_availability": {
+            "enabled_plugin_entries": sum(
+                bool(value) for value in document.get("enabledPlugins", {}).values()
+            ),
+            "mcp_entries_in_this_document": len(document.get("mcpServers", {})),
+            "configured_hooks": configured_hooks,
+        },
+        "runtime_evidence": {
+            name: {"state": "NOT-OBSERVED", "evidence": []}
+            for name in (
+                "connection_startup",
+                "identity_enrollment",
+                "assignment_scoped_messaging",
+                "unrelated_context_delivery",
+            )
+        },
         "settings_sha256": digest(settings.read_bytes()),
         "hook_sha256": HOOK_SHA256,
-        "retained_nonlifecycle_hook_events": sorted(retained_events),
         "remaining_evidence": [
-            "effective invocation settings merge preserves mandatory policy and hooks",
-            "all instruction loaders, memory, managed context and plugin actions qualified",
+            "current fresh candidate-bound registration and native launch contract",
+            "independent initial review context and actual delivered context evidence",
+            "actual native startup, compact and exact-session resume observations",
         ],
     }
 
 
 def local_settings(run: Path, hook: Path) -> dict:
-    """Proposed additive keys; native launch stays held until effective merge proof."""
+    """Add an observer only; preserve ambient MCP/plugins and security settings."""
     observer = [
         sys.executable,
         str(Path(__file__).resolve()),
@@ -183,13 +184,6 @@ def local_settings(run: Path, hook: Path) -> dict:
     import shlex
 
     return {
-        "autoMemoryEnabled": False,
-        "claudeMdExcludes": [
-            "**/CLAUDE.md",
-            "**/CLAUDE.local.md",
-            "**/AGENTS.md",
-            "**/.claude/rules/**",
-        ],
         "hooks": {
             "SessionStart": [
                 {
@@ -259,7 +253,7 @@ def observe(run: Path, hook: Path, event: dict) -> None:
 
 
 def launch(run: Path, *, settings: Path, hook: Path) -> None:
-    """Native egress is unavailable until the actual context profile qualifies.
+    """Inspection is not a verified native registration/launch contract.
 
     Deliberately no force/receipt/skip flag: a hand-authored approval receipt or
     absent hooks cannot turn incomplete evidence into permission to send data.
@@ -272,7 +266,7 @@ def launch(run: Path, *, settings: Path, hook: Path) -> None:
         profile = context_profile(settings, hook)
         append(run / "events.jsonl", {"event": "prelaunch-held", "profile": profile})
         raise DiagnosticError(
-            "native launch held: context profile has unqualified producer/merge evidence"
+            "native launch held: current registered launch/lifecycle contract is unverified"
         )
 
 

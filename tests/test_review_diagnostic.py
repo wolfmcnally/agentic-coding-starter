@@ -21,6 +21,11 @@ def test_diagnostic_seal_and_held_admission(tmp_path, monkeypatch):
     diagnostic.prepare(run, authority="operator-approved synthetic diagnostic")
     document = diagnostic.validate(run)
     assert document["purpose"] == "native-binding-diagnostic"
+    registration = json.loads((run / "code-registration.json").read_text())
+    assert registration["candidate_id"] == document["fixture_sha256"]
+    other = tmp_path / "fresh-diagnostic"
+    diagnostic.prepare(other, authority="same bounded synthetic assignment")
+    assert diagnostic.validate(other)["session_id"] != document["session_id"]
     assert 0 < document["remaining"] <= 600
     assert not (tmp_path / ".kickoff").exists()
     assert not (run / "run.json").exists()  # Never impersonate a kickoff phase.
@@ -34,6 +39,7 @@ def test_diagnostic_seal_and_held_admission(tmp_path, monkeypatch):
         json.dumps(
             {
                 "enabledPlugins": {"generic-tool-catalog": True},
+                "mcpServers": {"generic-bus": {"command": "synthetic-config-only"}},
                 "hooks": {
                     "SessionStart": [
                         {"hooks": [{"type": "command", "command": "unqualified-startup"}]}
@@ -43,8 +49,22 @@ def test_diagnostic_seal_and_held_admission(tmp_path, monkeypatch):
         )
     )
     profile = diagnostic.context_profile(settings, hook)
-    assert profile["state"] == "HOLD"
-    assert profile["blockers"][0]["event"] == "SessionStart"
+    assert profile["state"] == "INSPECTION-ONLY"
+    assert "blockers" not in profile
+    assert profile["configured_availability"]["enabled_plugin_entries"] == 1
+    assert profile["configured_availability"]["mcp_entries_in_this_document"] == 1
+    assert all(
+        row == {"state": "NOT-OBSERVED", "evidence": []}
+        for row in profile["runtime_evidence"].values()
+    ), "AVAILABILITY IS NOT RUNTIME EVIDENCE"
+    empty_settings = tmp_path / "empty-settings.json"
+    empty_settings.write_text("{}")
+    empty_profile = diagnostic.context_profile(empty_settings, hook)
+    assert empty_profile["state"] == profile["state"]
+    assert empty_profile["runtime_evidence"] == profile["runtime_evidence"]
+    observer_settings = diagnostic.local_settings(run, hook)
+    assert set(observer_settings) == {"hooks"}
+    assert set(observer_settings["hooks"]) == {"SessionStart"}
     assert "generic-tool-catalog" not in json.dumps(profile)
     before = (run / "role-attempts.jsonl").read_bytes()
     with pytest.raises(diagnostic.DiagnosticError, match="native launch held"):
@@ -58,6 +78,22 @@ def test_diagnostic_seal_and_held_admission(tmp_path, monkeypatch):
     with pytest.raises(diagnostic.DiagnosticError, match="seal mismatch"):
         diagnostic.validate(run)
     (run / "fixture.txt").write_text(diagnostic.FIXTURE)
+    # Even internally consistent metadata cannot relabel the fixed candidate.
+    registration["candidate_id"] = "foreign-candidate"
+    raw = json.dumps(registration)
+    (run / "code-registration.json").write_text(raw)
+    (run / "role-attempts.jsonl").write_text(raw + "\n")
+    sealed = json.loads((run / "diagnostic.json").read_text())
+    sealed["registration_sha256"] = diagnostic.digest(raw.encode())
+    (run / "diagnostic.json").write_text(json.dumps(sealed))
+    with pytest.raises(diagnostic.DiagnosticError, match="seal mismatch"):
+        diagnostic.validate(run)
+    registration["candidate_id"] = document["fixture_sha256"]
+    raw = json.dumps(registration)
+    (run / "code-registration.json").write_text(raw)
+    (run / "role-attempts.jsonl").write_text(raw + "\n")
+    sealed["registration_sha256"] = diagnostic.digest(raw.encode())
+    (run / "diagnostic.json").write_text(json.dumps(sealed))
     monkeypatch.setattr(diagnostic.time, "monotonic", lambda: document["boot_monotonic"] + 601)
     with pytest.raises(diagnostic.DiagnosticError, match="deadline expired"):
         diagnostic.validate(run)
