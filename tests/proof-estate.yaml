@@ -258,6 +258,25 @@ families:
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
+- id: native-review-diagnostic
+  kind: pytest
+  selectors:
+  - tests/test_review_diagnostic.py
+  source_paths: &id-native-review-diagnostic
+  - bin/review-diagnostic
+  - lib/agentic_starter/review_diagnostic.py
+  - lib/agentic_starter/test_runner.py
+  - lib/agentic_starter/workflow.py
+  - tests/test_review_diagnostic.py
+  covers: *id-native-review-diagnostic
+  contract: Nonprivate diagnostic preparation is separate from phase advice and refuses native egress without qualified context evidence.
+  risk_class: diagnostic-context-custody
+  oracle: Fixed synthetic fixtures expose seal drift, actual exec identity, supervised hang termination and mismatched observer events.
+  admission: Three locally witnessed no-model proofs cover the held preparation boundary only.
+  nearest_overlap: Phase watcher proofs cannot establish independent diagnostic preparation or its native context hold.
+  tier: changed
+  flake_rate: 0.0
+  replacement_lineage: []
 - id: orchestration-evidence
   kind: pytest
   selectors:

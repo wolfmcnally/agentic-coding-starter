@@ -50,6 +50,7 @@ def run_command(
     timeout: float = DEFAULT_HANG_SECONDS,
     capture: bool = False,
     cleanup_grace: float = 0.5,
+    environment: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Return 124 for incomplete work; preserve completed child statuses.
 
@@ -82,6 +83,7 @@ def run_command(
             cwd=cwd,
             text=True,
             start_new_session=True,
+            env=environment,
             stdout=subprocess.PIPE if capture else None,
             stderr=subprocess.PIPE if capture else None,
         )

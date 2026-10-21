@@ -117,6 +117,16 @@ lockfile. Behavioral coverage lives in
 `tests/test_toolchain_entrypoints.py`, `tests/test_check.py`, and
 `tests/test_check_receipt.py`.
 
+### `review-diagnostic` — held, nonprivate lifecycle preparation
+
+Prepares a fixed synthetic code-review fixture and a separate diagnostic registration/ledger without creating a product phase or charging advice. `prepare --run-dir <new-canonical-directory> --authority <attributable-reference>` seals fixture and registration bytes with a ten-minute wall/monotonic window. `inspect-profile --run-dir <directory> --settings <host-settings.json> --hook <qualified-hook.py>` reports unqualified hook contracts using event names and command digests, without printing instruction bodies or credentials. Generic plugin names are not classified as private data.
+
+**Native qualification is not delivered by this command.** `launch` deliberately refuses before any child or model call: effective invocation-local settings merge and context-producing hook behavior remain unqualified. The suggested additive profile uses `autoMemoryEnabled: false`, `claudeMdExcludes` for instruction/rules files and a SessionStart observer; it is a proposal, never an applied or verified settings change. No force/skip/hand-authored-receipt switch bypasses the hold. Existing phase `watch`, `start-advice`, review limits and permission controls are unchanged.
+
+The internal synthetic seam reuses the real session binder and process-group supervisor. The observer checks native UUID/cwd/OS session/deadline/registration and installed-hook hash before invoking the guard, recording only bounded metadata and silent-output predicates. Its direct invocation does not establish that the ordinary installed compact hook ran. Startup/resume are not substitutes for actual compact evidence. A future admitted native lifecycle must share one remaining ten-minute deadline across startup, exactly one real manual/driver compact and one exact-UUID resume; absent compaction is `NOT-EXERCISED`, with no context padding or retries. No general standalone product-review facility is provided.
+
+Behavioral coverage: `tests/test_review_diagnostic.py`. Native model operations performed by these tests: zero. Ordinary test-supervisor callers retain their inherited environment; only an explicit caller supplies the optional scrubbed environment mapping.
+
 ### `test-governance` — test value, authoring witnesses, and safe selection
 
 Inventories families, expanded leaves, gates and hooks; validates preserved baseline/ledger replay, explicit pending review, witness references and direct risks; reports diagnostic runtime without thresholds or automatic reruns; records authoring observations; and selects vital/changed feedback. `lib/agentic_starter/test_runner.py` supplies the Python profile's separately qualified process-group hang supervision. Timeout/interruption is incomplete evidence, never a pass or a red witness. Runtime startup remains outside this guard. The supervisor puts tests in their own session and forwards TERM, INT and HUP; killing the supervisor with SIGKILL can orphan that group. Enclosing tools must allow cleanup or track both owned groups. Deliberately detached descendants need separate cleanup.
