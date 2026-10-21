@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 
 import yaml
@@ -41,6 +42,7 @@ def run_manager(
     cli: Path | None = None,
     manager: Path | None = None,
     usage_data: dict | None = None,
+    cwd: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
     environment = os.environ.copy()
     environment["KICKOFF_CONFIG_FILE"] = str(config)
@@ -77,7 +79,7 @@ def run_manager(
         environment["PATH"] = str(config.parent) + os.pathsep + environment.get("PATH", "")
     return subprocess.run(
         [UV, "run", "--script", str(manager or MANAGER), *arguments],
-        cwd=ROOT,
+        cwd=cwd or ROOT,
         env=environment,
         capture_output=True,
         text=True,
@@ -294,6 +296,8 @@ def test_watch_extracts_fresh_claude_result_and_telemetry(tmp_path: Path) -> Non
         tmp_path,
         "claude",
         'test "$CLAUDE_CODE_DISABLE_BACKGROUND_TASKS" = 1 || exit 79\n'
+        'test -z "${CONTINUATION_REVIEW_BINDING+x}" || { '
+        'echo "AMBIENT REVIEW BINDING LEAK" >&2; exit 78; }\n'
         'printf \'%s\\n\' \'{"type":"assistant","usage":{"input_tokens":3}}\'\n'
         'printf \'%s\\n\' \'{"type":"result","result":"FRESH",'
         '"usage":{"output_tokens":2}}\'',
@@ -306,7 +310,10 @@ def test_watch_extracts_fresh_claude_result_and_telemetry(tmp_path: Path) -> Non
     result = run_manager(
         config,
         *arguments,
-        extra_env={"KICKOFF_TIMING_LOG": str(telemetry)},
+        extra_env={
+            "KICKOFF_TIMING_LOG": str(telemetry),
+            "CONTINUATION_REVIEW_BINDING": "malformed ambient",
+        },
         cli=cli,
     )
 
@@ -889,8 +896,16 @@ def _assert_primary_routing_and_usage(tmp_path: Path) -> None:
     flagged["anthropic"]["windows"] = {
         "seven_day": {"utilization": 38, "window_seconds": 604800, "is_active": False},
         "five_hour": {"utilization": 7, "window_seconds": 18000, "is_active": False},
-        "seven_day_fable": {"utilization": 61, "window_seconds": 604800, "is_active": True},
-        "seven_day_opus": {"utilization": 99, "window_seconds": 604800, "is_active": False},
+        "seven_day_fable": {
+            "utilization": 61,
+            "window_seconds": 604800,
+            "is_active": True,
+        },
+        "seven_day_opus": {
+            "utilization": 99,
+            "window_seconds": 604800,
+            "is_active": False,
+        },
     }
     measured = workflow.usage_windows(flagged, workflow.target("opus", config))
     assert sorted(window["window"] for window in measured) == ["five_hour", "seven_day"]
@@ -923,7 +938,9 @@ def _assert_primary_routing_and_usage(tmp_path: Path) -> None:
     original = quota_config.read_bytes()
     attempted = tmp_path / "model-called"
     fake = fake_cli(
-        tmp_path, "claude", f"from pathlib import Path\nPath({str(attempted)!r}).touch()\n"
+        tmp_path,
+        "claude",
+        f"from pathlib import Path\nPath({str(attempted)!r}).touch()\n",
     )
     saturated["openai"]["windows"]["week"]["utilization"] = 95
     refusal = run_manager(
@@ -1088,3 +1105,165 @@ def _prompt(tmp_path: Path) -> Path:
     path = tmp_path / "prompt.txt"
     path.write_text("Inspect the candidate against the requirements.")
     return path
+
+
+def test_watch_binds_registered_review_session(tmp_path: Path) -> None:
+    """The real watcher binds native UUID, OS session and metadata through exec."""
+    import test_kickoff_evidence as evidence
+
+    observed = []
+    for role, resume in (("reviewer", None), ("critic", str(uuid.uuid4()))):
+        case = tmp_path / role
+        case.mkdir()
+        repository = evidence.repository.__wrapped__(case)
+        run_dir = case / "run"
+        evidence.initialize(repository, run_dir)
+        operation = "role.plan-review" if role == "reviewer" else "role.code-review"
+        registration = run_dir / (
+            "plan-registration.json" if role == "reviewer" else "code-registration.json"
+        )
+        registered = evidence.run(
+            "register-role-attempt",
+            "--run-dir",
+            str(run_dir),
+            "--operation",
+            operation,
+            "--attempt",
+            "1",
+            "--role",
+            role,
+            "--harness",
+            "claude",
+            "--model",
+            "opus",
+            "--effort",
+            "high",
+            "--reason",
+            "initial",
+            "--output",
+            str(registration),
+        )
+        assert registered.returncode == 0, registered.stderr
+        receipt = case / "observed.json"
+        cli = case / "claude"
+        cli.write_text(
+            f"#!{sys.executable}\n"
+            "import os,sys,json\n"
+            "if sys.argv[1:] == ['--version']: print('test-cli 1.0'); sys.exit(0)\n"
+            "binding=json.loads(os.environ['CONTINUATION_REVIEW_BINDING'])\n"
+            f"open({str(receipt)!r},'w').write(json.dumps({{'binding':binding,'argv':sys.argv[1:],'pid':os.getpid(),'sid':os.getsid(0),'cwd':os.getcwd(),'depth':os.environ.get('KICKOFF_DELEGATION_DEPTH'),'api_key':os.environ.get('ANTHROPIC_API_KEY')}}))\n"
+            "print(json.dumps({'type':'result','result':'BOUND'}))\n"
+        )
+        cli.chmod(0o755)
+        evidence.write_fixture_receipt(run_dir / "role-preflight.json", executable=cli)
+        config = seeded_config(case)
+        args = list(
+            watch_arguments(
+                case,
+                role=role,
+                extra_watch=(
+                    "--telemetry-role-registration",
+                    str(registration),
+                    "--hard-timeout",
+                    "10",
+                ),
+            )
+        )
+        args[args.index("--phase") + 1] = "1.1"
+        if resume:
+            args.extend(("--resume-session", resume))
+        watched = run_manager(
+            config,
+            *args,
+            manager=run_dir / "tools/kickoff-config",
+            cwd=repository,
+            cli=cli if resume else None,
+            extra_env={
+                "CONTINUATION_REVIEW_BINDING": "stale inherited",
+                "ANTHROPIC_API_KEY": "synthetic",
+                "KICKOFF_CLI_CLAUDE": str(cli) if resume else "claude",
+                "PATH": str(case) + os.pathsep + os.environ.get("PATH", ""),
+            },
+        )
+        assert watched.returncode == 0, watched.stderr
+        value = json.loads(receipt.read_text())
+        binding, argv = value["binding"], value["argv"]
+        assert set(binding) == {
+            "schema_version",
+            "session_id",
+            "cwd",
+            "process_session_id",
+            "issued_at",
+            "expires_at",
+            "registration_path",
+            "registration_sha256",
+        }
+        native = argv[argv.index("--resume" if resume else "--session-id") + 1]
+        assert native == resume if resume else str(uuid.UUID(native)) == native
+        assert binding["session_id"] == native, "NATIVE REVIEW SESSION NOT BOUND"
+        assert binding["process_session_id"] == value["sid"] == value["pid"], "EXEC LOST OS SESSION"
+        assert binding["cwd"] == value["cwd"] == str(repository)
+        assert binding["registration_path"] == str(registration.resolve())
+        assert (
+            binding["registration_sha256"] == hashlib.sha256(registration.read_bytes()).hexdigest()
+        )
+        assert 0 < binding["expires_at"] - binding["issued_at"] <= 10
+        assert binding["issued_at"] <= time.time() < binding["expires_at"]
+        assert value["api_key"] is None and value["depth"] == "1"
+        assert argv[argv.index("--permission-mode") + 1] == "dontAsk"
+        assert not resume or "--session-id" not in argv
+        observed.append(value)
+    assert observed[0]["binding"]["session_id"] != observed[1]["binding"]["session_id"]
+
+
+def test_review_exec_refuses_changed_metadata(tmp_path: Path) -> None:
+    """The pre-exec race check refuses stale registration or ledger before CLI IO."""
+    from agentic_starter import workflow
+
+    registration = tmp_path / "code-registration.json"
+    record = {
+        "schema_version": 3,
+        "role": "critic",
+        "operation": "role.code-review",
+        "harness": "claude",
+        "attempt": 1,
+        "telemetry_trace_id": "synthetic",
+        "telemetry_root_span_id": "synthetic-root",
+    }
+    registration.write_text(json.dumps(record))
+    ledger = tmp_path / "role-attempts.jsonl"
+    ledger.write_text(json.dumps(record) + "\n")
+    _, digest = workflow.review_registration(registration.resolve())
+    binding = {
+        "schema_version": 1,
+        "session_id": str(uuid.uuid4()),
+        "cwd": str(tmp_path),
+        "issued_at": time.time(),
+        "expires_at": time.time() + 30,
+        "registration_path": str(registration.resolve()),
+        "registration_sha256": digest,
+    }
+    for fault in ("registration", "ledger", "deadline"):
+        registration.write_text(json.dumps(record))
+        ledger.write_text(json.dumps(record) + "\n")
+        current = binding.copy()
+        if fault == "registration":
+            registration.write_text(json.dumps({**record, "attempt": 2}))
+            ledger.write_text(registration.read_text() + "\n")
+        elif fault == "ledger":
+            ledger.write_text("")
+        else:
+            current["expires_at"] = current["issued_at"] - 1
+        payload = {
+            "command": [sys.executable, "-c", "print('UNSAFE CLI EXECUTED')"],
+            "binding": current,
+        }
+        child = subprocess.run(
+            [sys.executable, workflow.__file__, "--review-exec", json.dumps(payload)],
+            cwd=tmp_path,
+            start_new_session=True,
+            capture_output=True,
+            text=True,
+        )
+        assert child.returncode == 127, "STALE REVIEW METADATA REACHED CLI"
+        assert not child.stdout and "review exec failed" in child.stderr

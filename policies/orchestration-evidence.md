@@ -24,6 +24,14 @@ Authority mode follows [four-canonical-agents.md](four-canonical-agents.md). Pro
 Every material review, revision, and gate is bound to exact run-scoped
 evidence. Narrative continuity or a remembered green result is not evidence.
 
+## Registered review context binding
+
+Only a validated, explicitly registered Claude reviewer or critic receives a newly minted `CONTINUATION_REVIEW_BINDING`. New invocations preassign a native UUID through `--session-id`; resumed invocations preserve their exact canonical `--resume` UUID. Registration uses canonical `plan-registration.json` or `code-registration.json`, bounded owner-held regular metadata and an identical unique sibling ledger record. Unsupported names, symlink aliases, unsafe metadata or a changed registration refuse; do not rename a frozen attempt to qualify it.
+
+The existing pinned workflow module finalizes the binding only after the watcher creates its new OS session, then execs the original CLI in that same PID/session with its original supervision and stdio. The binding covers native session, exact cwd, actual OS session, registration digest and the current hard deadline. Child-side metadata revalidation refuses pre-exec drift. Inherited bindings are scrubbed for every role and harness; ordinary and unrelated sessions retain their normal behavior. Native permissions, routing, open-trace/preflight checks and phase-wide review allowances remain independent and unchanged. A created exec-stage process that fails is a consumed launch, not a fabricated no-child refund.
+
+This producer does not install or authenticate a hook, create an access grant, or establish filesystem isolation. Before private review release, separately qualify the receiving host's exact continuation-hook contract and active bytes against the producer using synthetic events/packets, preserving all other hooks and ordinary-session behavior. Missing or unqualified hook activation remains a blocker; a minted binding alone is not proof that native startup or later compaction ran the guard. Preserve frozen tools and prior failed evidence; downstream owners adopt the bounded tooling through a fresh authorized continuation, not hand-edited historical bundles.
+
 ## Run isolation
 
 After the target phase or sub-phase is resolved and before its first

@@ -321,7 +321,7 @@ def advisory_continuation(repository: Path, tmp_path: Path, request):
         plan.write_text(f"# Plan\n\nCheck constant VALUE = 1, pass {attempt}.\n")
         captured = run("capture-plan", "--run-dir", str(directory), "--plan", str(plan))
         assert captured.returncode == 0, captured.stderr
-        registration = directory / f"review-{attempt}.json"
+        registration = directory / "plan-registration.json"
         registered = run(
             "register-role-attempt",
             "--run-dir",
@@ -446,7 +446,11 @@ def test_primary_continuation_carries_original_predecessors(advisory_continuatio
         assert refused.returncode == 2 and "not contiguous" in refused.stderr, refused.stderr
         immutable = {
             name: (second / name).read_bytes()
-            for name in ("role-attempts.jsonl", "role-dispatch.jsonl", "advisory-reports.json")
+            for name in (
+                "role-attempts.jsonl",
+                "role-dispatch.jsonl",
+                "advisory-reports.json",
+            )
         }
         repinned = subprocess.run(
             [str(EVIDENCE), "repin-tools", "--run-dir", str(second)],
@@ -1389,7 +1393,13 @@ def _assert_complete_synthetic_kickoff(
         model: str | None = None,
         effort: str | None = None,
     ) -> None:
-        handoff = run_dir / f"{operation}-{attempt}.json"
+        handoff = run_dir / (
+            "plan-registration.json"
+            if role == "reviewer" and harness == "claude"
+            else "code-registration.json"
+            if role == "critic" and harness == "claude"
+            else f"{operation}-{attempt}.json"
+        )
         arguments = [
             "register-role-attempt",
             "--run-dir",
