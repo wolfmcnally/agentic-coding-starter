@@ -558,6 +558,14 @@ def validate_candidate_manifest(value: Any) -> None:
 
 
 def validate_run_dir(run_dir: Path) -> dict[str, Any]:
+    pinned = (run_dir / "tools" / "kickoff-evidence").resolve()
+    if SCRIPT_PATH != pinned:
+        raise EvidenceError(f"active run must use pinned tool: {pinned}")
+    return validate_historical_run_metadata(run_dir)
+
+
+def validate_historical_run_metadata(run_dir: Path) -> dict[str, Any]:
+    """Read-only provenance audit; never authorizes executing a historical run."""
     run = load_json(run_dir / "run.json")
     if not isinstance(run, dict) or run.get("schema_version") != SCHEMA_VERSION:
         raise EvidenceError("invalid run metadata schema")
@@ -599,9 +607,6 @@ def validate_run_dir(run_dir: Path) -> dict[str, Any]:
         raise EvidenceError("run metadata has an unknown review lane")
     if run.get("evidence_lane") not in EVIDENCE_LANES:
         raise EvidenceError("run metadata has an unknown evidence lane")
-    pinned = (run_dir / "tools" / "kickoff-evidence").resolve()
-    if SCRIPT_PATH != pinned:
-        raise EvidenceError(f"active run must use pinned tool: {pinned}")
     bundle = run.get("tool_bundle")
     if (
         not isinstance(bundle, dict)
@@ -1377,6 +1382,11 @@ def command_register_role_attempt(arguments: argparse.Namespace) -> None:
         for item in existing
     ):
         raise EvidenceError("duplicate role operation/attempt registration")
+    by_operation: dict[str, list[int]] = {}
+    for item in [*existing, record]:
+        validate_role_record(item, run)
+        by_operation.setdefault(item["operation"], []).append(item["attempt"])
+    validate_role_continuity(arguments.run_dir, run, by_operation)
     append_jsonl(arguments.run_dir / "role-attempts.jsonl", record)
     atomic_json(arguments.output, record)
     if arguments.cause:
@@ -2266,8 +2276,13 @@ def command_ingest_advice(arguments: argparse.Namespace) -> None:
     print("ADVICE RECORDED; primary disposition owns acceptance")
 
 
-def read_advice_source(source: Path) -> dict[str, Any]:
+def read_advice_source(source: Path, *, consumer: Path | None = None) -> dict[str, Any]:
     source = source.resolve()
+    if consumer is not None:
+        attestations = load_advice_attestations(consumer)
+        matching = [item for item in attestations if item["source_run"] == str(source)]
+        if matching:
+            return validate_advice_attestation(consumer, matching[0])
     try:
         chain = json.loads(os.environ.get("KICKOFF_ADVICE_SOURCE_CHAIN", "[]"))
     except json.JSONDecodeError as exc:
@@ -2287,7 +2302,10 @@ def read_advice_source(source: Path) -> dict[str, Any]:
         capture_output=True,
         text=True,
         check=False,
-        env={**os.environ, "KICKOFF_ADVICE_SOURCE_CHAIN": json.dumps([*chain, str(source)])},
+        env={
+            **os.environ,
+            "KICKOFF_ADVICE_SOURCE_CHAIN": json.dumps([*chain, str(source)]),
+        },
     )
     if result.returncode:
         raise EvidenceError(result.stderr.strip() or "prior advisory source validation failed")
@@ -2300,6 +2318,8 @@ def read_advice_source(source: Path) -> dict[str, Any]:
 
 def command_advice_source(arguments: argparse.Namespace) -> None:
     run = validate_run_dir(arguments.run_dir)
+    for record in load_advice_attestations(arguments.run_dir):
+        validate_advice_attestation(arguments.run_dir, record)
     if run["workflow"]["mode"] != "primary":
         raise EvidenceError("advice source must have primary authority")
     validate_role_preflight_receipt(arguments.run_dir, Path(run["repository_root"]))
@@ -2321,13 +2341,13 @@ def report_dispatches(
     source = Path(report.get("source_run", str(run_dir))).resolve()
     if source == run_dir.resolve():
         return load_role_dispatches(source)
-    return carried_advice_source(run, report, source)["dispatches"]
+    return carried_advice_source(run_dir, run, report, source)["dispatches"]
 
 
 def carried_advice_source(
-    run: dict[str, Any], report: dict[str, Any], source: Path
+    run_dir: Path, run: dict[str, Any], report: dict[str, Any], source: Path
 ) -> dict[str, Any]:
-    verified = read_advice_source(source)
+    verified = read_advice_source(source, consumer=run_dir)
     prior = verified["run"]
     if (prior["repository_root"], prior["phase"], prior["workflow"]["mode"]) != (
         run["repository_root"],
@@ -2342,13 +2362,20 @@ def carried_advice_source(
 
 
 def validate_role_continuity(
-    run_dir: Path, run: dict[str, Any], by_operation: dict[str, list[int]]
+    run_dir: Path,
+    run: dict[str, Any],
+    by_operation: dict[str, list[int]],
+    *,
+    predecessors: list[dict[str, Any]] | None = None,
 ) -> None:
     for operation, attempts in by_operation.items():
         missing = set(range(1, max(attempts) + 1)) - set(attempts)
         if not missing:
             continue
-        if run["workflow"]["mode"] == "primary":
+        if run["workflow"]["mode"] == "primary" and (
+            predecessors
+            or any("source_run" in item for item in load_json(run_dir / "advisory-reports.json"))
+        ):
             root = Path(run["repository_root"])
             try:
                 budget = advisory.budget_path(root, run["phase"])
@@ -2371,7 +2398,7 @@ def validate_role_continuity(
                 source = Path(report["source_run"]).resolve()
                 if source == run_dir.resolve():
                     raise EvidenceError("advisory predecessor cannot name its own run")
-                verified = carried_advice_source(run, report, source)
+                verified = carried_advice_source(run_dir, run, report, source)
                 dispatches = [
                     item
                     for item in verified["dispatches"]
@@ -2406,14 +2433,290 @@ def validate_role_continuity(
                 if attempt in covered:
                     raise EvidenceError("ambiguous advisory predecessor attempt")
                 covered.add(attempt)
+            for predecessor in predecessors or []:
+                prior_run = predecessor["run"]
+                if (
+                    prior_run["repository_root"],
+                    prior_run["phase"],
+                    prior_run["workflow"]["mode"],
+                ) != (run["repository_root"], run["phase"], "primary"):
+                    raise EvidenceError("attested predecessor belongs to another work item")
+                for dispatch in predecessor["dispatches"]:
+                    attempt = dispatch["attempt"]
+                    if dispatch["operation"] != operation or attempt not in missing:
+                        continue
+                    registrations = [
+                        item
+                        for item in predecessor["registrations"]
+                        if item["operation"] == operation and item["attempt"] == attempt
+                    ]
+                    launched = [
+                        item
+                        for item in claims
+                        if item["run"] == predecessor["source_run"]
+                        and item["operation"] == operation
+                        and item["attempt"] == attempt
+                    ]
+                    if (
+                        len(registrations) != 1
+                        or len(launched) != 1
+                        or launched[0]["pass"] >= before_pass
+                        or not dispatch["accepted"]
+                        or dispatch["dispatch_candidate_id"] != dispatch["return_candidate_id"]
+                        or dispatch["dispatch_candidate_id"] is None
+                        or attempt in covered
+                    ):
+                        raise EvidenceError(
+                            "attested predecessor lacks its unique earlier accepted launch"
+                        )
+                    covered.add(attempt)
             missing -= covered
         if missing:
             raise EvidenceError(f"role attempts are not contiguous for {operation}")
 
 
+ATTESTATION_LEDGER = "advice-source-attestations.jsonl"
+
+
+def load_advice_attestations(run_dir: Path) -> list[dict[str, Any]]:
+    ledger = run_dir / ATTESTATION_LEDGER
+    if not ledger.exists():
+        return []
+    with ledger.open() as handle:
+        fcntl.flock(handle, fcntl.LOCK_SH)
+        return validate_advice_attestations([json.loads(line) for line in handle if line.strip()])
+
+
+def validate_advice_attestations(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[str] = set()
+    for record in records:
+        if (
+            not isinstance(record, dict)
+            or set(record)
+            != {
+                "schema_version",
+                "source_run",
+                "predecessor_runs",
+                "snapshot",
+                "budget_prefix",
+            }
+            or record["schema_version"] != 1
+            or not isinstance(record["source_run"], str)
+            or not isinstance(record["predecessor_runs"], list)
+            or not record["predecessor_runs"]
+            or any(not isinstance(item, str) for item in record["predecessor_runs"])
+            or not isinstance(record["snapshot"], dict)
+            or not isinstance(record["budget_prefix"], dict)
+            or record["source_run"] in seen
+        ):
+            raise EvidenceError("invalid or duplicate advice-source attestation")
+        seen.add(record["source_run"])
+    return records
+
+
+def advice_source_snapshot(source: Path) -> dict[str, Any]:
+    # Only evidence metadata and captured plans; never read native packets or product source.
+    files = sorted([*source.glob("*.json"), *source.glob("*.jsonl"), *source.glob("plans/*.md")])
+    metadata = load_json(source / "run.json")
+    spans = closed_spans(
+        engine_root=Path(metadata["repository_root"]),
+        trace_id=metadata["telemetry_trace_id"],
+    )
+    return {
+        "files": {
+            str(item.relative_to(source)): hashlib.sha256(item.read_bytes()).hexdigest()
+            for item in files
+        },
+        "spans_sha256": hashlib.sha256(json.dumps(spans, sort_keys=True).encode()).hexdigest(),
+    }
+
+
+def audit_historical_advice(source: Path, predecessors: list[Path]) -> dict[str, Any]:
+    if not predecessors or len(set(predecessors)) != len(predecessors) or source in predecessors:
+        raise EvidenceError("advice source requires distinct original predecessors")
+    run = validate_historical_run_metadata(source)
+    prior = []
+    for predecessor in predecessors:
+        prior_run = validate_historical_run_metadata(predecessor)
+        if run["workflow"]["mode"] != "primary" or (
+            prior_run["repository_root"],
+            prior_run["phase"],
+            prior_run["workflow"]["mode"],
+        ) != (run["repository_root"], run["phase"], "primary"):
+            raise EvidenceError("attestation requires the same primary work item")
+        # Each original independently passes strict continuity and every original join.
+        validate_role_preflight_receipt(predecessor, Path(run["repository_root"]))
+        validate_role_spans(predecessor, prior_run, require_initial=False)
+        prior.append(
+            {
+                "source_run": str(predecessor),
+                "run": prior_run,
+                "registrations": load_jsonl(predecessor / "role-attempts.jsonl"),
+                "dispatches": load_role_dispatches(predecessor),
+            }
+        )
+    validate_role_preflight_receipt(source, Path(run["repository_root"]))
+    records = load_jsonl(source / "role-attempts.jsonl")
+    if not any(
+        set(
+            range(
+                1,
+                max(item["attempt"] for item in records if item["operation"] == operation) + 1,
+            )
+        )
+        - {item["attempt"] for item in records if item["operation"] == operation}
+        for operation in {item["operation"] for item in records}
+    ):
+        raise EvidenceError("attestation requires an actual historical local numbering gap")
+    validate_role_spans(source, run, require_initial=False, predecessors=prior)
+    root = Path(run["repository_root"])
+    claims = advisory.active_launches(
+        advisory.validate_budget(
+            root, run["phase"], advisory.budget_path(root, run["phase"]).read_text()
+        )
+    )
+    for origin in (source, *predecessors):
+        for dispatch in load_role_dispatches(origin):
+            if (
+                dispatch["accepted"]
+                and len(
+                    [
+                        claim
+                        for claim in claims
+                        if claim["run"] == str(origin)
+                        and claim["operation"] == dispatch["operation"]
+                        and claim["attempt"] == dispatch["attempt"]
+                    ]
+                )
+                != 1
+            ):
+                raise EvidenceError("historical dispatch lacks one original phase launch")
+    return {
+        "run": run,
+        "reports": load_json(source / "advisory-reports.json"),
+        "dispatches": load_role_dispatches(source),
+        "registrations": records,
+    }
+
+
+def validate_advice_attestation(consumer: Path, record: dict[str, Any]) -> dict[str, Any]:
+    source = Path(record["source_run"])
+    predecessors = [Path(item) for item in record["predecessor_runs"]]
+    origins = (source, *predecessors)
+    if any(not item.is_absolute() or item.resolve() != item for item in origins):
+        raise EvidenceError("attestation source paths must be canonical absolute paths")
+    if consumer.resolve() in set(origins):
+        raise EvidenceError("attestation belongs in a separate continuation")
+    metadata = validate_historical_run_metadata(source)
+    budget = advisory.budget_path(Path(metadata["repository_root"]), metadata["phase"]).read_bytes()
+    prefix = record["budget_prefix"]
+    if (
+        set(prefix) != {"bytes", "sha256"}
+        or type(prefix["bytes"]) is not int
+        or prefix["bytes"] <= 0
+        or prefix["bytes"] > len(budget)
+        or hashlib.sha256(budget[: prefix["bytes"]]).hexdigest() != prefix["sha256"]
+    ):
+        raise EvidenceError("attested original phase-budget prefix changed")
+    before = {str(item): advice_source_snapshot(item) for item in origins}
+    if before != record["snapshot"]:
+        raise EvidenceError("attested original evidence changed")
+    previous_chain = os.environ.get("KICKOFF_ADVICE_SOURCE_CHAIN")
+    chain = json.loads(previous_chain or "[]")
+    if not isinstance(chain, list) or any(not isinstance(item, str) for item in chain):
+        raise EvidenceError("invalid advisory source ancestry")
+    if str(source) in chain:
+        raise EvidenceError("cyclic advisory source attestation")
+    os.environ["KICKOFF_ADVICE_SOURCE_CHAIN"] = json.dumps([*chain, str(source)])
+    try:
+        verified = audit_historical_advice(source, predecessors)
+    finally:
+        if previous_chain is None:
+            os.environ.pop("KICKOFF_ADVICE_SOURCE_CHAIN", None)
+        else:
+            os.environ["KICKOFF_ADVICE_SOURCE_CHAIN"] = previous_chain
+    current = validate_run_dir(consumer)
+    prior = verified["run"]
+    if (current["repository_root"], current["phase"], current["workflow"]["mode"]) != (
+        prior["repository_root"],
+        prior["phase"],
+        "primary",
+    ):
+        raise EvidenceError("attestation belongs to another continuation work item")
+    if before != {str(item): advice_source_snapshot(item) for item in origins}:
+        raise EvidenceError("original evidence changed during attestation validation")
+    if (
+        hashlib.sha256(
+            advisory.budget_path(Path(metadata["repository_root"]), metadata["phase"]).read_bytes()[
+                : prefix["bytes"]
+            ]
+        ).hexdigest()
+        != prefix["sha256"]
+    ):
+        raise EvidenceError("original phase-budget prefix changed during attestation validation")
+    return verified
+
+
+def append_advice_attestations(consumer: Path, incoming: list[dict[str, Any]]) -> None:
+    # One owner can still have simultaneous CLI calls. Compare the whole batch
+    # under the append lock before publishing any new immutable receipt.
+    with (consumer / ATTESTATION_LEDGER).open("a+") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        handle.seek(0)
+        existing = validate_advice_attestations(
+            [json.loads(line) for line in handle if line.strip()]
+        )
+        additions = []
+        for record in incoming:
+            matches = [
+                item
+                for item in [*existing, *additions]
+                if item["source_run"] == record["source_run"]
+            ]
+            if matches and matches != [record]:
+                raise EvidenceError("conflicting immutable advice-source attestation")
+            if not matches:
+                additions.append(record)
+        handle.write("".join(json.dumps(item, sort_keys=True) + "\n" for item in additions))
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
+def command_attest_advice_source(arguments: argparse.Namespace) -> None:
+    run = validate_run_dir(arguments.run_dir)
+    validate_kickoff_context(
+        Path(run["repository_root"]),
+        run["phase"],
+        run["telemetry_trace_id"],
+        run["telemetry_root_span_id"],
+        open_required=True,
+    )
+    source = arguments.source_run.resolve()
+    predecessors = [item.resolve() for item in arguments.predecessor_run]
+    origins = (source, *predecessors)
+    prior = validate_historical_run_metadata(source)
+    budget = advisory.budget_path(Path(prior["repository_root"]), prior["phase"]).read_bytes()
+    record = {
+        "schema_version": 1,
+        "source_run": str(source),
+        "predecessor_runs": [str(item) for item in predecessors],
+        "snapshot": {str(item): advice_source_snapshot(item) for item in origins},
+        "budget_prefix": {
+            "bytes": len(budget),
+            "sha256": hashlib.sha256(budget).hexdigest(),
+        },
+    }
+    validate_advice_attestation(arguments.run_dir, record)
+    append_advice_attestations(arguments.run_dir, [record])
+    print("ADVICE SOURCE ATTESTED; original evidence and phase accounting unchanged")
+
+
 def command_carry_advice(arguments: argparse.Namespace) -> None:
     run = validate_run_dir(arguments.run_dir)
-    prior = read_advice_source(arguments.source_run)["run"]
+    incoming = load_advice_attestations(arguments.source_run)
+    for item in incoming:
+        validate_advice_attestation(arguments.run_dir, item)
+    prior = read_advice_source(arguments.source_run, consumer=arguments.run_dir)["run"]
     if arguments.run_dir.resolve() == arguments.source_run.resolve():
         raise EvidenceError("carry-advice requires a prior run")
     if (prior["repository_root"], prior["phase"], prior["workflow"]["mode"]) != (
@@ -2426,11 +2729,21 @@ def command_carry_advice(arguments: argparse.Namespace) -> None:
     for report in load_json(arguments.source_run / "advisory-reports.json"):
         source = Path(report.get("source_run", str(arguments.source_run))).resolve()
         carried = {**report, "source_run": str(source)}
-        report_dispatches(arguments.run_dir, run, carried)
+        source_receipt = next(
+            (item for item in incoming if item["source_run"] == str(source)), None
+        )
+        if source_receipt is not None:
+            verified = validate_advice_attestation(arguments.run_dir, source_receipt)
+            original = {key: value for key, value in carried.items() if key != "source_run"}
+            if original not in verified["reports"]:
+                raise EvidenceError("carried advice differs from attested original report")
+        else:
+            report_dispatches(arguments.run_dir, run, carried)
         if any(r["report_id"] == report["report_id"] and r != carried for r in reports):
             raise EvidenceError("conflicting carried advisory report identity")
         if carried not in reports:
             reports.append(carried)
+    append_advice_attestations(arguments.run_dir, incoming)
     atomic_json(arguments.run_dir / "advisory-reports.json", reports)
     print("ADVICE CARRIED; original identities and pass budget retained; reassess final delta")
 
@@ -3161,7 +3474,11 @@ def accept_incomplete_wait_join(
 
 
 def validate_role_spans(
-    run_dir: Path, run: dict[str, Any], *, require_initial: bool = True
+    run_dir: Path,
+    run: dict[str, Any],
+    *,
+    require_initial: bool = True,
+    predecessors: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     declarations = load_telemetry_declarations(run_dir)
     degraded: list[dict[str, Any]] = []
@@ -3175,7 +3492,7 @@ def validate_role_spans(
             raise EvidenceError("duplicate role-attempt registration")
         keys.add(key)
         by_operation.setdefault(record["operation"], []).append(record["attempt"])
-    validate_role_continuity(run_dir, run, by_operation)
+    validate_role_continuity(run_dir, run, by_operation, predecessors=predecessors)
     for operation in run["required_initial_role_operations"]:
         if (
             require_initial
@@ -5336,6 +5653,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="action", required=True)
 
+    attest = subparsers.add_parser("attest-advice-source")
+    add_run_dir(attest)
+    attest.add_argument("--source-run", type=Path, required=True)
+    attest.add_argument("--predecessor-run", type=Path, required=True, action="append")
+    attest.set_defaults(handler=command_attest_advice_source)
     source = subparsers.add_parser("advice-source")
     add_run_dir(source)
     source.set_defaults(handler=command_advice_source)

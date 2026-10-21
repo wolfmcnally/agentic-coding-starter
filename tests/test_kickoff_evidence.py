@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -316,22 +317,32 @@ def advisory_continuation(repository: Path, tmp_path: Path, request):
             directory / "role-preflight.json", mode="primary", executable=executable
         )
 
-    def review(directory: Path, attempt: int):
+    historical = getattr(request, "param", None) in {"historical-gap", "historical-two-roles"}
+    two_roles = getattr(request, "param", None) == "historical-two-roles"
+    code_first = tmp_path / "code-first"
+    if two_roles:
+        initialize(repository, code_first, mode="primary")
+        write_fixture_receipt(
+            code_first / "role-preflight.json", mode="primary", executable=executable
+        )
+
+    def review(directory: Path, attempt: int, kind: str = "plan"):
+        role = "reviewer" if kind == "plan" else "critic"
         plan = tmp_path / f"plan-{attempt}.md"
         plan.write_text(f"# Plan\n\nCheck constant VALUE = 1, pass {attempt}.\n")
         captured = run("capture-plan", "--run-dir", str(directory), "--plan", str(plan))
         assert captured.returncode == 0, captured.stderr
-        registration = directory / "plan-registration.json"
+        registration = directory / f"{kind}-registration.json"
         registered = run(
             "register-role-attempt",
             "--run-dir",
             str(directory),
             "--operation",
-            "role.plan-review",
+            f"role.{kind}-review",
             "--attempt",
             str(attempt),
             "--role",
-            "reviewer",
+            role,
             "--harness",
             "claude",
             "--model",
@@ -350,7 +361,7 @@ def advisory_continuation(repository: Path, tmp_path: Path, request):
                 str(directory / "tools/kickoff-config"),
                 "watch",
                 "--role",
-                "reviewer",
+                role,
                 "--venue",
                 "claude",
                 "--model",
@@ -388,12 +399,14 @@ def advisory_continuation(repository: Path, tmp_path: Path, request):
             json.loads(line)
             for line in (directory / "role-dispatch.jsonl").read_text().splitlines()
         ][-1]
+        if historical and directory == first:
+            return  # A real returned dispatch whose artifact was never ingested.
         ingested = run(
             "ingest-findings",
             "--run-dir",
             str(directory),
             "--kind",
-            "plan",
+            kind,
             "--artifact",
             str(artifact),
             "--candidate",
@@ -404,9 +417,33 @@ def advisory_continuation(repository: Path, tmp_path: Path, request):
         assert ingested.returncode == 0, ingested.stderr
 
     review(first, 1)
-    carried = run("carry-advice", "--run-dir", str(second), "--source-run", str(first))
-    assert carried.returncode == 0, carried.stderr
-    review(second, getattr(request, "param", 2))
+    if two_roles:
+        review(code_first, 1, "code")
+    if historical:
+        # Exact legacy registrar behavior in a disposable pinned fixture only.
+        # Preserve the production strict guard and the historical bytes thereafter.
+        tool = second / "tools/kickoff-evidence"
+        old = tool.read_text().replace(
+            "    validate_role_continuity(arguments.run_dir, run, by_operation)\n", ""
+        )
+        tool.write_text(old)
+        manifest_path = second / "tools/manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        for entry in manifest["files"]:
+            if entry["path"] == "kickoff-evidence":
+                entry["sha256"] = hashlib.sha256(tool.read_bytes()).hexdigest()
+        manifest_path.write_text(json.dumps(manifest))
+        metadata = json.loads((second / "run.json").read_text())
+        metadata["tool_bundle"]["manifest_sha256"] = hashlib.sha256(
+            manifest_path.read_bytes()
+        ).hexdigest()
+        (second / "run.json").write_text(json.dumps(metadata))
+    else:
+        carried = run("carry-advice", "--run-dir", str(second), "--source-run", str(first))
+        assert carried.returncode == 0, carried.stderr
+    review(second, 2 if historical else getattr(request, "param", 2))
+    if two_roles:
+        review(second, 2, "code")
     return repository, first, second, target
 
 
@@ -422,7 +459,7 @@ def test_primary_continuation_carries_original_predecessors(advisory_continuatio
         # cannot repair the source executable that carry actually invokes.
         tool = second / "tools/kickoff-evidence"
         old = tool.read_text().replace(
-            "    validate_role_continuity(run_dir, run, by_operation)",
+            "    validate_role_continuity(run_dir, run, by_operation, predecessors=predecessors)",
             "    for operation, attempts in by_operation.items():\n"
             "        if sorted(attempts) != list(range(1, max(attempts) + 1)):\n"
             '            raise EvidenceError(f"role attempts are not contiguous for {operation}")',
@@ -2634,3 +2671,220 @@ def test_owner_exception_budget_is_scoped_atomic_and_auditable(tmp_path: Path) -
         advisory.validate_budget(
             root, "1", "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows)
         )
+
+
+@pytest.mark.parametrize("advisory_continuation", ["historical-gap"], indirect=True)
+def test_historical_advice_attestation_preserves_originals(advisory_continuation, tmp_path):
+    repository, first, second, target = advisory_continuation
+    budget = advisory.budget_path(repository, "1.1")
+    saved_budget = budget.read_bytes()
+    originals = {
+        p: p.read_bytes() for root in (first, second) for p in root.rglob("*") if p.is_file()
+    }
+    refused = run("carry-advice", "--run-dir", str(target), "--source-run", str(second))
+    assert refused.returncode != 0
+    assert "not contiguous" in refused.stderr
+    assert json.loads((first / "advisory-reports.json").read_text()) == []
+    attested = run(
+        "attest-advice-source",
+        "--run-dir",
+        str(target),
+        "--source-run",
+        str(second),
+        "--predecessor-run",
+        str(first),
+    )
+    assert attested.returncode == 0, attested.stderr
+    carried = run("carry-advice", "--run-dir", str(target), "--source-run", str(second))
+    assert carried.returncode == 0, carried.stderr
+    reports = json.loads((target / "advisory-reports.json").read_text())
+    assert len(reports) == 1 and reports[0]["report_id"] == "plan-2"
+    original = json.loads((second / "advisory-reports.json").read_text())[0]
+    assert {k: v for k, v in reports[0].items() if k != "source_run"} == original
+
+    def replay():
+        return run(
+            "attest-advice-source",
+            "--run-dir",
+            str(target),
+            "--source-run",
+            str(second),
+            "--predecessor-run",
+            str(first),
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        replays = list(pool.map(lambda _: replay(), range(2)))
+    assert all(item.returncode == 0 for item in replays), [item.stderr for item in replays]
+    assert len((target / "advice-source-attestations.jsonl").read_text().splitlines()) == 1
+    # A later continuation inherits exactly the same attestation and original report joins.
+    later = tmp_path / "later"
+    initialize(repository, later, mode="primary")
+    passed = run("carry-advice", "--run-dir", str(later), "--source-run", str(target))
+    assert passed.returncode == 0, passed.stderr
+    assert json.loads((later / "advisory-reports.json").read_text()) == reports
+    decision = tmp_path / "decision.json"
+    decision.write_text(
+        json.dumps(
+            {
+                "delta_assessment": "Original report retained without relabeling.",
+                "requirements_checked": "Candidate remains the same constant.",
+                "dispositions": [],
+            }
+        )
+    )
+    accepted = run("accept-primary", "--run-dir", str(later), "--input", str(decision))
+    assert accepted.returncode == 0, accepted.stderr
+    valid = run("validate", "--run-dir", str(later), "--level", "integrity")
+    assert valid.returncode == 0, valid.stderr
+    assert budget.read_bytes() == saved_budget
+    assert all(p.read_bytes() == data for p, data in originals.items())
+    rows = [json.loads(line) for line in budget.read_text().splitlines()]
+    rows[0]["cause"] = "Altered but structurally valid past cause"
+    budget.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in rows))
+    changed_budget = run("carry-advice", "--run-dir", str(later), "--source-run", str(target))
+    assert changed_budget.returncode != 0 and "budget prefix changed" in changed_budget.stderr
+    budget.write_bytes(saved_budget)
+    # Mutating preserved source evidence invalidates every later use, never a fallback.
+    (first / "role-attempts.jsonl").write_text("[]\n")
+    rejected = run("carry-advice", "--run-dir", str(later), "--source-run", str(target))
+    assert rejected.returncode != 0 and "attested original evidence changed" in rejected.stderr
+    exported = run("advice-source", "--run-dir", str(target))
+    assert exported.returncode == 2 and "attested original evidence changed" in exported.stderr
+
+
+@pytest.mark.parametrize("advisory_continuation", ["historical-gap"], indirect=True)
+@pytest.mark.parametrize(
+    "fault",
+    ["self", "wrong-phase", "missing-claim", "not-earlier", "wrong-candidate", "missing-span"],
+)
+def test_historical_advice_attestation_refuses_unfaithful_evidence(advisory_continuation, fault):
+    repository, first, second, target = advisory_continuation
+    budget = advisory.budget_path(repository, "1.1")
+    predecessor = first
+    if fault == "self":
+        predecessor = second
+    elif fault == "wrong-phase":
+        metadata = json.loads((first / "run.json").read_text())
+        metadata["phase"] = "other"
+        (first / "run.json").write_text(json.dumps(metadata))
+    elif fault == "missing-claim":
+        rows = [json.loads(line) for line in budget.read_text().splitlines()]
+        rows[0]["run"] = str(repository / "not-the-original-run")
+        budget.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in rows))
+    elif fault == "not-earlier":
+        rows = [json.loads(line) for line in budget.read_text().splitlines()]
+        rows[0].update(run=str(second), attempt=2)
+        rows[1].update(run=str(first), attempt=1)
+        budget.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in rows))
+    elif fault == "wrong-candidate":
+        ledger = first / "role-dispatch.jsonl"
+        rows = [json.loads(line) for line in ledger.read_text().splitlines()]
+        rows[-1]["return_candidate_id"] = "f" * 64
+        ledger.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    else:
+        ledger = first / "role-dispatch.jsonl"
+        rows = [json.loads(line) for line in ledger.read_text().splitlines()]
+        rows[-1]["intelligence_span_id"] = "f" * 32
+        ledger.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    rejected = run(
+        "attest-advice-source",
+        "--run-dir",
+        str(target),
+        "--source-run",
+        str(second),
+        "--predecessor-run",
+        str(predecessor),
+    )
+    diagnostic = {
+        "self": "distinct original predecessors",
+        "wrong-phase": "same primary work item",
+        "missing-claim": "unique earlier accepted launch",
+        "not-earlier": "unique earlier accepted launch",
+        "wrong-candidate": "unique earlier accepted launch",
+        "missing-span": "changes the intelligence span recorded",
+    }[fault]
+    assert rejected.returncode == 2 and diagnostic in rejected.stderr, rejected.stderr
+    assert not (target / "advice-source-attestations.jsonl").exists()
+    assert json.loads((target / "advisory-reports.json").read_text()) == []
+
+
+def test_registrar_refuses_gap_before_any_dispatch(repository, tmp_path):
+    directory = tmp_path / "registration"
+    initialize(repository, directory, mode="primary")
+    ledger = directory / "role-attempts.jsonl"
+    saved = ledger.read_bytes()
+    output = directory / "registration.json"
+    common = (
+        "register-role-attempt",
+        "--run-dir",
+        str(directory),
+        "--operation",
+        "role.plan-review",
+        "--role",
+        "reviewer",
+        "--harness",
+        "claude",
+        "--model",
+        "opus",
+        "--reason",
+        "revision",
+        "--output",
+        str(output),
+    )
+    rejected = run(*common, "--attempt", "2")
+    assert rejected.returncode != 0 and "not contiguous" in rejected.stderr
+    assert ledger.read_bytes() == saved and not output.exists()
+    assert not advisory.budget_path(repository, "1.1").exists()
+    accepted = run(*common, "--attempt", "1")
+    assert accepted.returncode == 0, accepted.stderr
+    sequential = run(*common, "--attempt", "2")
+    assert sequential.returncode == 0, sequential.stderr
+
+
+@pytest.mark.parametrize("advisory_continuation", ["historical-two-roles"], indirect=True)
+def test_historical_distinct_role_predecessors(advisory_continuation, tmp_path):
+    repository, first, second, target = advisory_continuation
+    code_first = tmp_path / "code-first"
+    originals = {
+        p: p.read_bytes()
+        for folder in (first, code_first, second)
+        for p in folder.rglob("*")
+        if p.is_file()
+    }
+    budget = advisory.budget_path(repository, "1.1")
+    saved = budget.read_bytes()
+    common = ("attest-advice-source", "--run-dir", str(target), "--source-run", str(second))
+    incomplete = run(*common, "--predecessor-run", str(first))
+    assert incomplete.returncode != 0 and "not contiguous for role.code-review" in incomplete.stderr
+    duplicate = run(*common, "--predecessor-run", str(first), "--predecessor-run", str(first))
+    assert duplicate.returncode != 0 and "distinct original predecessors" in duplicate.stderr
+    assert not (target / "advice-source-attestations.jsonl").exists()
+    complete = run(*common, "--predecessor-run", str(first), "--predecessor-run", str(code_first))
+    assert complete.returncode == 0, complete.stderr
+    receipt_before = (target / "advice-source-attestations.jsonl").read_bytes()
+    conflicting = run(
+        *common, "--predecessor-run", str(code_first), "--predecessor-run", str(first)
+    )
+    assert conflicting.returncode == 2 and "conflicting immutable" in conflicting.stderr
+    assert (target / "advice-source-attestations.jsonl").read_bytes() == receipt_before
+    carried = run("carry-advice", "--run-dir", str(target), "--source-run", str(second))
+    assert carried.returncode == 0, carried.stderr
+    assert [r["report_id"] for r in json.loads((target / "advisory-reports.json").read_text())] == [
+        "plan-2",
+        "code-2",
+    ]
+    decision = tmp_path / "two-role-decision.json"
+    decision.write_text(
+        json.dumps(
+            {
+                "delta_assessment": "Both original final reports retained.",
+                "requirements_checked": "Historical code report is continuity only.",
+                "dispositions": [],
+            }
+        )
+    )
+    accepted = run("accept-primary", "--run-dir", str(target), "--input", str(decision))
+    assert accepted.returncode == 0, accepted.stderr
+    assert budget.read_bytes() == saved
+    assert all(p.read_bytes() == data for p, data in originals.items())
