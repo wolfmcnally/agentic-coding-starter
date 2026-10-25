@@ -4,7 +4,7 @@ description: >-
   Orchestrate a single phase of plan/ end-to-end: pick up the next phase,
   plan, review plan, implement, review code, build/test, update status
   markers in plan/INDEX.md, and log; route later test- or user-driven
-  corrections by risk and size. Language- and surface-agnostic; the project's
+  corrections by risk, size and the operator's phase/inter-phase ruling. Language- and surface-agnostic; the project's
   CLAUDE.md and phase file declare which build gates to run.
   Invoke as /kickoff in Claude Code or $kickoff in Codex (picks up the ⬅️
   phase); append "phase N" to target a specific phase.

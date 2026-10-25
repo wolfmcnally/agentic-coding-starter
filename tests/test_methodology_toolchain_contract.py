@@ -179,6 +179,9 @@ def test_every_universal_skill_propagates_with_its_codex_mirror(tmp_path: Path) 
         "recovery.md",
         (
             "$TELEMETRY_TOOL park-open --phase",
+            "normally an additional sub-phase of the current phase",
+            "If the operator chooses **inter-phase implementation without formal review**",
+            "No new permission, worker or review allowance follows from the route.",
             "Read [acceptance.md](acceptance.md) before validation and [close.md](close.md) "
             "before terminal bookkeeping, the handoff gate or delivery.",
         ),

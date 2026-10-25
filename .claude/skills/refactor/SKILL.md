@@ -41,7 +41,7 @@ Go through all of these; stopping at the first few leaves most of the value behi
 
 - **Apply** a change that stays inside one module and alters nothing that another module, a caller outside the project, or a stored format can observe. Judge that by the callers, subclasses and overrides that exist, not by ones that could be written; a class the project documents as an extension point is the exception.
 - **Propose** anything else, and leave the code as it is: a renamed, moved or removed public name, a changed signature, a deleted module or test, anything touching concurrency, security, or a decision the project has recorded. Say what would change and what it buys; the operator decides.
-- **Hand off** work that is cross-cutting or high-risk by the follow-up test in [`policies/review-lanes.md`](../../../policies/review-lanes.md): give a phase sketch — goal, write set, the behavior that must not change, the checks that would show it — and do not start it.
+- **Recommend an inserted phase** for cross-cutting or high-risk work under [`policies/review-lanes.md`](../../../policies/review-lanes.md), normally an additional sub-phase of the current phase rather than a new major top-level phase. Give its goal, write set, behavior that must not change and falsifying checks. Honor the operator's ruling: phase/sub-phase work gets formal planning and reviews; if they authorize inter-phase implementation without formal review, proceed within that scope while retaining tests, safety and permissions. Do not start unapproved consequential work or turn the recommendation into a mandatory review gate.
 
 In `survey`, apply nothing.
 

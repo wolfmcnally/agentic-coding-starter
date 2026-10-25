@@ -120,18 +120,20 @@ When a phase pauses (not completes), the END block uses the same format but adds
 
 ## Follow-up correction format
 
-When concrete user feedback changes code after a phase has already closed, preserve the historical START/END pair and append:
+For an inter-phase correction, preserve the historical START/END pair and completed phase status, and append the record below. If the operator chose an inserted phase/sub-phase instead, use its own normal START/END records with formal planning and reviews; do not present it as an unreviewed inter-phase correction.
 
 ```markdown
 ## <YYYY-MM-DD HH:MM> — END (correction)
 <Phase heading>
 
 Follow-up route:
-- direct fix | coder only | full cycle — <risk/size reason>
+- inter-phase implementation without formal review — <risk/size reason>
+- Phase recommendation: <inserted sub-phase normally recommended for high-risk/large work, or not needed for a small low-risk correction>
+- Operator ruling: <attributable route/scope decision, or existing authority for a small low-risk correction>
 
 Role model/venue:
-- Coder: skipped (direct fix) | model=<model> effort=<effort|default> venue=<native|claude|codex>
-- Critic: skipped (direct fix or coder only) | model=<model> effort=<effort|default> venue=<native|claude|codex>
+- Implementation: <primary or already-authorized delegate>
+- Formal planning/reviews: not invoked — inter-phase route
 
 Files changed:
 - <path> — <brief description of correction>
@@ -146,7 +148,7 @@ Remaining:
 - <anything significant left incomplete, or "None">
 ```
 
-This block records a correction to an already authorized goal; it does not reopen the phase or change its `✅` marker. New scope gets a new phase and a normal START/END pair.
+This block records the approved inter-phase scope and route; it does not reopen the phase or change its `✅` marker. High-risk or large/cross-cutting work normally receives an inserted sub-phase recommendation, but the operator may choose inter-phase implementation without formal review. That ruling never waives tests, applicable gates, safety/permissions or preservation of earlier evidence and consumed review accounting. New consequential scope needs explicit authorization, not a silently invented phase.
 
 ## Rules
 

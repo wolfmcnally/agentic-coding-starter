@@ -32,7 +32,7 @@ The evidence guard already refuses a dispatch whose candidate moved, and useful 
 | `light` | planner → coder → code-critic | Mechanical initial implementations only (eligibility below). Plan review (kickoff Step 4) is skipped. |
 | `one-shot` | coder → code-critic | Invocation-only (§ The one-shot lane). Well-specified, isolated phases; the phase file is the binding contract and the human's invocation substitutes for plan review. Kickoff Steps 3–4 are skipped. |
 
-There is no **initial implementation** lane with zero review. The code critic runs on the initial implementation in every lane, including `one-shot`. The planner runs in both planner-bearing lanes, because a file-level plan is cheap and the coder needs it; `light` removes only the initial plan-review stage. In `one-shot`, the phase file itself must already carry what a plan would have supplied — which is exactly what its eligibility bar tests. Later test- or user-driven corrections follow the proportional routing rule below and do not automatically repeat the coder → critic cycle.
+There is no **initial phase implementation** lane with zero review. The code critic runs on the initial implementation in every lane, including `one-shot`. The planner runs in both planner-bearing lanes, because a file-level plan is cheap and the coder needs it; `light` removes only the initial plan-review stage. In `one-shot`, the phase file itself must already carry what a plan would have supplied — which is exactly what its eligibility bar tests. Later test- or user-driven corrections follow the proportional routing rule below and do not automatically repeat the coder → critic cycle.
 
 ## Declaration
 
@@ -140,24 +140,22 @@ The coder completes the real remaining work. The first code-critic pass still re
 
 ## Follow-up revisions are proportional
 
-After the initial implementation has passed code review, a correction prompted by a build/test/acceptance failure or by concrete user feedback is a **follow-up revision**. Before changing code, the orchestrator classifies both its **risk** and its **size**. The initial phase lane does not force the follow-up route.
+Operator-ratified 2026-10-25. A correction prompted by a build/test/acceptance failure or concrete user feedback is routed by its risk, size and the operator's ruling before implementation. Formal planning and reviews belong to phase work; they are not an automatic requirement for an inter-phase change.
 
-A full coder → critic cycle is required when **either** dimension is high:
+Recommend an **inserted phase** when either dimension is high:
 
 - **High risk:** the correction touches a public API, schema or persisted state, concurrency or ordering, security-sensitive behavior, an architectural boundary, or ambiguous product behavior; weak or missing test coverage also makes the correction high risk.
 - **Large or cross-cutting:** the correction spans multiple subsystems or user-visible surfaces, forces a broad call-site update, or produces a diff too large to inspect confidently as one focused change.
 
-Risk tags are recorded in the candidate-bound change manifest governed by [`orchestration-evidence.md`](orchestration-evidence.md). A revision that adds a risk tag not present in the reviewed snapshot rebases to a complete review; it is not eligible for a delta-only pass. Authority or scope drift, lost review continuity, or indeterminate impact has the same fail-closed result.
+The inserted phase should normally be an additional **sub-phase of the current phase**. A new major top-level phase is rare and requires a separately coherent major outcome. Present the bounded goal, likely write set, risk/size reason and falsifying checks with the recommendation. Do not insert the phase or start formal reviews before the operator chooses the route.
 
-When neither condition holds, use the least ceremony that safely completes the correction:
+**Honor the operator's ruling.** If they choose a phase/sub-phase, create it through the ordinary phase-ledger procedure and perform its formal planning and reviews under the configured authority mode. If they choose **inter-phase implementation without formal review**, implement within that approved scope without a planner/reviewer/critic ceremony, even when risk or size motivated the phase recommendation. Record the recommendation and attributable ruling; do not ask for the same decision again or silently force a review loop. A small, low-risk correction may use already-authorized direct implementation without proposing a phase merely as ceremony. Implementation may be inline or delegated only within existing authority; the route grants no new worker or permissions.
 
-1. **Direct fix** — for a small, localized correction whose intended shape is already determined by a diagnostic or explicit user instruction. The orchestrator may edit the code itself.
-2. **Coder only** — for a low-risk correction that benefits from implementation delegation but is not large or cross-cutting. Invoke `phase-coder`; do not invoke `code-critic` merely because a coder ran.
-3. **Full cycle** — for any high-risk or large/cross-cutting correction. Invoke `phase-coder`, then `code-critic`, using the normal revision loop.
+The ruling changes review routing, not safety or proof. Every route preserves scope, validation/tests, candidate integrity, applicable build gates, permissions and original evidence/history. Re-run the failing check first, then focused and touched-surface checks; changed candidates invalidate earlier gate evidence. The changed-path selection and final bare full gate remain required for delivery under the repository's toolchain contract. Inter-phase work uses ordinary repository checks and truthful correction bookkeeping, not fabricated phase runs, reviews or acceptance records. Preserve prior reports, refusals and phase-wide pass accounting; choosing this route never refunds a consumed review or grants an extra invocation.
 
-Validation is never proportionalized away. Every route reruns the failing check first, then the focused tests and affected revision-close gates. After code-critic approval, the orchestrator runs the implementation-candidate sequence, ending in the changed-path selection, against the unchanged candidate, then the one bare full handoff gate after tracked close writes. If a direct or coder-only correction grows beyond its classification, exposes an architectural question, or lacks convincing validation, upgrade it immediately to the full cycle.
+If a direct correction fails, recurs, grows, reveals a design question or lacks convincing validation, diagnose and renew the inserted-phase recommendation with the new evidence. Do not automatically turn that recommendation into mandatory formal review or override a still-applicable inter-phase ruling. A consequential scope change or genuinely missing safety/permission decision remains a concrete blocker to resolve with the operator. For work that stays in a phase, risk tags, truthful delta assessment, candidate-bound evidence and the phase's configured review requirements continue to apply.
 
-The orchestrator reports the selected route, the risk/size reason, files changed, and validation evidence. This is a routing decision, not a new `review_lane:` value and not permission to skip the initial code review.
+Report the chosen route, recommendation and ruling where applicable, risk/size reason, changed files, actual validation and remaining limits. Preserve completed phase status and historical START/END records; an inserted phase gets its own record, while an inter-phase correction gets an append-only correction record.
 
 ## Scope and risk determine the lane
 
@@ -175,7 +173,7 @@ Whenever the work under review asserts an **isolation, containment, or firewall 
 
 ## Relationship to other policies
 
-- [`four-canonical-agents.md`](four-canonical-agents.md) — the roles, tool stances, verdict headers, and cycle caps are unchanged. `light` skips one initial *invocation* of `plan-reviewer`; `one-shot` skips the initial invocations of `phase-planner` and `plan-reviewer`; follow-up routing may omit role invocations without changing the roles themselves.
+- [`four-canonical-agents.md`](four-canonical-agents.md) — the roles, tool stances, verdict headers, and cycle caps are unchanged. `light` skips one initial *invocation* of `plan-reviewer`; `one-shot` skips the initial invocations of `phase-planner` and `plan-reviewer`; formal reviews apply to phase work; an operator-selected inter-phase correction invokes none, without changing the canonical roles.
 - [`role-models.md`](role-models.md) — lane and venue are orthogonal. In the light and one-shot lanes, the initial code critique (the only initial review that runs) still executes in the resolved venue with a separate review context. Cross-vendor selection is explicit; its incremental value is not presumed from the lane. The one-shot implementer resolves through the `coder` pin; there is no separate config role.
 - [`phase-status.md`](phase-status.md) — `review_lane` and `evidence_lane` are phase properties, not statuses. They live in per-phase frontmatter; status still lives only in `plan/INDEX.md`.
-- [`human-in-the-loop.md`](human-in-the-loop.md) — the human may request a concrete correction after a phase closes without reopening its historical status; new scope still requires a new phase.
+- [`human-in-the-loop.md`](human-in-the-loop.md) — the human may request a concrete correction after a phase closes without reopening its historical status; new scope requires the operator's explicit route/scope ruling, with an inserted sub-phase normally recommended.

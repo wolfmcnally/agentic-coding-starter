@@ -301,6 +301,50 @@ def test_named_phase_identity_waits_and_reader_refusals(tmp_path: Path) -> None:
         "alpha",
         "release",
     ]
+    numeric = copy.deepcopy(accepted)
+    numeric["trace_id"] = "20000000000040008000000000000000"
+    for span in numeric["spans"]:
+        span["trace_id"] = numeric["trace_id"]
+        if span["parent_span_id"] is None:
+            span["operation"] = "phase.31.2"
+    (engine / "EXECUTION_LOG.jsonl").write_text(
+        json.dumps(accepted) + "\n" + json.dumps(numeric) + "\n"
+    )
+    dashboard.render_phase_dashboard(
+        engine_root=engine,
+        output_root=output,
+        phase_id="31.2",
+        accepted_trace_id=numeric["trace_id"],
+        handoff=sample_handoff(),
+    )
+    mixed = dashboard.parse_data_script((output / "index-data.js").read_text(), index=True)
+    assert [item["phase_id"] for item in mixed["phases"]] == ["31.2", "release"]
+    saved = {p.relative_to(output): p.read_bytes() for p in output.rglob("*") if p.is_file()}
+    upper = copy.deepcopy(accepted)
+    next(span for span in upper["spans"] if span["parent_span_id"] is None)["operation"] = (
+        "phase.Release"
+    )
+    (engine / "EXECUTION_LOG.jsonl").write_text(json.dumps(upper) + "\n")
+    with pytest.raises(telemetry.ValidationError, match="phase must be"):
+        dashboard.render_phase_dashboard(
+            engine_root=engine,
+            output_root=output,
+            phase_id="Release",
+            accepted_trace_id=accepted["trace_id"],
+            handoff=sample_handoff("Release"),
+        )
+    with pytest.raises(telemetry.ValidationError, match="phase_id must be"):
+        telemetry._park_state_path(engine, "Release")
+    assert saved == {
+        p.relative_to(output): p.read_bytes() for p in output.rglob("*") if p.is_file()
+    }
+    (engine / "EXECUTION_LOG.jsonl").write_text(json.dumps(accepted) + "\n")
+    next_handoff = sample_handoff("release")
+    next_handoff["coming_up_next"]["phase_id"] = "a" * 122
+    assert (
+        dashboard.validate_handoff(next_handoff, phase_id="release")["coming_up_next"]["phase_id"]
+        == "a" * 122
+    )
     events.pop()
     parks.write_text("".join(json.dumps(event) + "\n" for event in events))
     open_summary = telemetry.phase_park_summary(

@@ -277,7 +277,7 @@ Every phase row carries exactly one recognized status. The initial idle ledger h
 | `phase-coder`   | Read, Write, Edit, Grep, Glob, Bash, WebFetch          | Yes         |
 | `code-critic`   | Read, Grep, Glob, WebFetch                             | No          |
 
-The `kickoff` skill is itself **also** an agent in spirit, but it behaves as a user-invoked workflow, not a subagent. It delegates initial implementation to the four roles above and edits `plan/INDEX.md` + `LOG.md`; for a small low-risk follow-up correction, it may edit code directly under the proportional routing rule in `policies/review-lanes.md`.
+The `kickoff` skill is itself **also** an agent in spirit, but behaves as a user-invoked phase workflow. It owns phase planning/reviews, evidence and delivery under the configured authority mode. For high-risk or large/cross-cutting corrections, recommend an inserted phase, normally an additional sub-phase of the current phase rather than a new major top-level phase. Honor the operator's ruling to implement inter-phase without formal review, retaining validation/tests, permissions, safety, scope and history.
 
 ---
 

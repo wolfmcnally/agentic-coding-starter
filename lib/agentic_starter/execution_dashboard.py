@@ -254,7 +254,7 @@ def validate_handoff(value: Mapping[str, Any], *, phase_id: str) -> dict[str, An
     if next_phase is not None:
         if not isinstance(next_phase, Mapping) or set(next_phase) != NEXT_KEYS:
             raise ValidationError("coming_up_next has an invalid shape")
-        next_id = _handoff_text(next_phase["phase_id"], "coming_up_next.phase_id", maximum=32)
+        next_id = _handoff_text(next_phase["phase_id"], "coming_up_next.phase_id", maximum=122)
         semantic_phase_key(next_id)
         valid_next = {
             "phase_id": next_id,

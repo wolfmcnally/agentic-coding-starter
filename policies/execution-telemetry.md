@@ -142,7 +142,7 @@ never enters the durable projection. Fixtures are synthetic.
 
 ## Phase identity
 
-Report selection, archive paths, history filters and operator-input park records use the exact same phase id. A safe phase id is at most 122 characters (the suffix of the bounded `phase.<id>` operation): a dotted numeric id, or a letter-led name containing letters, digits, underscores, plus signs and hyphens, optionally separated by nonempty dots. Path separators, whitespace, empty dot segments and traversal names refuse. Numeric ids sort by integer components; named ids sort lexically after numeric ids when completion timestamps tie. A different phase never supplies the accepted trace or handoff. Named ids do not alter review budgets, input-wait ownership or accepted records.
+Report selection, archive paths, history filters and operator-input park records use the exact same phase id. A safe phase id is at most 122 characters (the suffix of the bounded `phase.<id>` operation): a dotted numeric id, or a lowercase letter-led name containing lowercase letters, digits, underscores, plus signs and hyphens, optionally separated by nonempty dots. Path separators, whitespace, empty dot segments and traversal names refuse. Uppercase named ids refuse rather than aliasing existing report or park-state files on case-insensitive filesystems. Numeric ids sort by integer components; named ids sort lexically after numeric ids when completion timestamps tie. A different phase never supplies the accepted trace or handoff. Named ids do not alter review budgets, input-wait ownership or accepted records.
 
 ## Deterministic phase report
 

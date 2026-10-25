@@ -110,7 +110,7 @@ Initialization pins `kickoff-evidence`, `kickoff-tree-id`, `kickoff-command-zero
 
 The root owns sequential, non-overlapping `reconciliation` stages: `orchestration.setup`, `orchestration.planning`, `orchestration.implementation`, `orchestration.acceptance`, and `orchestration.close`. Close one before opening the next and increment a stage's attempt on re-entry. Role, wait, and gate spans may nest or overlap, but aggregation assigns specific work first and counts only the stage's exclusive remainder as orchestration. Never fabricate a missing span.
 
-For a follow-up correction, create a fresh trace and evidence run against the correction brief and current tree. Runtime state remains outside the repository; only the finalized privacy projection enters `EXECUTION_LOG.jsonl`.
+For a follow-up correction that remains phase work, create a fresh trace and evidence run against the correction brief and current tree. An operator-selected inter-phase correction uses ordinary repository checks and correction bookkeeping without initializing a fictitious phase run; see [recovery.md](recovery.md#follow-up-entry). Runtime state remains outside the repository; only the finalized privacy projection enters `EXECUTION_LOG.jsonl`.
 
 ### Step 2: Open the log after authority capture
 

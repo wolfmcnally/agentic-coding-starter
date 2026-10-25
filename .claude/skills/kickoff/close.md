@@ -5,6 +5,8 @@
 Read the frozen workflow mode. Product primary mode dispatches only independent advisory reviewers, retains planning/coding on the invoking instance, and accepts through a current primary decision plus required checks. A reviewer verdict or remaining suggestion cannot block it. Second review/critique requires recorded cause; two passes per stage is the default maximum across continuations, subject only to the explicit single-use User exception in [orchestration-evidence.md](../../../policies/orchestration-evidence.md#single-use-owner-exception). Candidate changes require truthful delta assessment and fresh tests, not mandatory additional advice. Delegated product mode retains the approval/revision procedures below. Methodology work follows the separate primary one-shot route with no delegated role or independent review and with commit/push authority after required checks.
 
 
+Inter-phase corrections use the append-only `END (correction)` format in [`policies/log-discipline.md`](../../../policies/log-discipline.md#follow-up-correction-format), recording the phase recommendation and operator ruling without formal reviews or fabricated phase evidence. Preserve completed status/history; the normal phase status, acceptance-close and END machinery below applies only to actual phase/sub-phase work. Validation and the final full handoff gate still apply to both routes.
+
 Read this resource before executing its branch. Enter through [SKILL.md](SKILL.md); its resource table defines the order. Before any failure, resume or operator-input branch, read [recovery.md](recovery.md).
 
 ### Step 9: Update status markers
@@ -83,7 +85,8 @@ Evidence lane (per `policies/review-lanes.md`):
 - full | light | light → full (orchestrator upgrade: <reason>) | light refused (<trigger>) → full
 
 Follow-up route (per `policies/review-lanes.md`):
-- N/A (initial implementation) | direct fix — <risk/size reason> | coder only — <risk/size reason> | full cycle — <risk/size reason>
+- N/A (initial implementation) | inserted phase/sub-phase with formal planning/reviews — <risk/size reason>
+- Phase recommendation and operator ruling: <inserted sub-phase recommendation and attributable choice, or existing authority for a small low-risk correction>
 
 Role model/venue (per `policies/role-models.md`) — orchestrated by <claude|codex>:
 - Preflight: OK (<validated targets>) | N/A (every role native)
@@ -207,7 +210,7 @@ It validates and archives the sanitized handoff and regenerates the chronologica
 
 Run a **bare** `./bin/check all` after every tracked close write—status, ripple, lessons, END block, dashboard handoff, report, and index—is present. This is the handoff gate and the phase's one full run; its receipt qualifies the push. It is deliberately outside the candidate-bound implementation ledger because the close writes changed the tree; its ignored full-gate receipt binds the actual tree handed to the user.
 
-No tracked write may follow a successful handoff gate. Opening the already generated local report is read-only and may follow. If the gate fails, do not report completion. Append a truthful PARK block with the failing evidence and Lessons witness, restore the phase to `🚧` when necessary, then correct or regenerate the failing close artifact. A resumed close appends a new terminal block; it never amends, truncates, or context-patches an earlier block. Rerun the bare gate only after `bin/check-log` proves the resulting append-only log. If the failure exposes an implementation defect rather than close bookkeeping, return to Step 7's proportional correction route; the prior implementation gate is invalidated by any implementation-candidate change.
+No tracked write may follow a successful handoff gate. Opening the already generated local report is read-only and may follow. If the gate fails, do not report completion. Append a truthful PARK block with the failing evidence and Lessons witness, restore the phase to `🚧` when necessary, then correct or regenerate the failing close artifact. A resumed close appends a new terminal block; it never amends, truncates, or context-patches an earlier block. Rerun the bare gate only after `bin/check-log` proves the resulting append-only log. If the failure exposes an implementation defect rather than close bookkeeping, return to the correction-routing rule: recommend an inserted sub-phase when risk or size warrants it and honor the operator's phase versus inter-phase ruling. The prior implementation gate is invalidated by any implementation-candidate change.
 
 ### Step 13: Deliver the accepted phase
 

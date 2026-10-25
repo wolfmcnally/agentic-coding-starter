@@ -50,9 +50,7 @@ PARK_REASONS = frozenset(
 _ID_RE = re.compile(r"^[0-9a-f]{32}$")
 _CYCLE_RE = re.compile(r"^[0-9a-f]{8}$")
 # A phase is a safe suffix of the bounded phase.<id> operation token.
-PHASE_ID_RE = re.compile(
-    r"^(?=.{1,122}$)(?:\d+(?:\.\d+)*|[A-Za-z][A-Za-z0-9_+-]*(?:\.[A-Za-z0-9_+-]+)*)$"
-)
+PHASE_ID_RE = re.compile(r"^(?=.{1,122}$)(?:\d+(?:\.\d+)*|[a-z][a-z0-9_+-]*(?:\.[a-z0-9_+-]+)*)$")
 _TOKEN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,127}$")
 _WINDOWS_ABS_RE = re.compile(r"^[A-Za-z]:[\\/]")
 _SPAN_REQUIRED = frozenset(
