@@ -47,6 +47,7 @@ from agentic_starter.execution_telemetry import (  # noqa: E402
     open_operator_park,
     phase_park_summary,
     reconcile_managed_runs,
+    record_trace_interruption,
     recover_trace,
     report_across_scopes,
     report_history,
@@ -121,6 +122,12 @@ def _engine(args: argparse.Namespace, fallback: Path | None = None) -> Path:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="execution-telemetry")
     commands = parser.add_subparsers(dest="command", required=True)
+    interrupted = commands.add_parser("interrupt")
+    _add_repo(interrupted)
+    interrupted.add_argument("--trace-id", required=True)
+    interrupted.add_argument("--successor-trace-id", required=True)
+    interrupted.add_argument("--custody-evidence", type=Path, required=True)
+    interrupted.set_defaults(handler=cmd_interrupt)
 
     start = commands.add_parser("start")
     _add_repo(start)
@@ -409,6 +416,18 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 def cmd_finalize(args: argparse.Namespace) -> int:
     _json(finalize_trace(engine_root=_engine(args), trace_id=args.trace_id))
+    return 0
+
+
+def cmd_interrupt(args: argparse.Namespace) -> int:
+    _json(
+        record_trace_interruption(
+            engine_root=_engine(args),
+            trace_id=args.trace_id,
+            successor_trace_id=args.successor_trace_id,
+            custody_evidence=args.custody_evidence,
+        )
+    )
     return 0
 
 

@@ -477,6 +477,81 @@ def validate_park_event(event: Mapping[str, Any]) -> dict[str, Any]:
     return dict(event)
 
 
+def require_persistent_directory(directory: Path | str) -> Path:
+    """Reject known ephemeral storage, including symlink aliases.
+
+    This verifies location, not the mount's backup or reboot guarantees. The
+    operator must provide a persistent local filesystem, not a RAM disk.
+    """
+    resolved = Path(directory).expanduser().resolve()
+    roots = {
+        Path("/tmp"),
+        Path("/private/tmp"),
+        Path("/var/tmp"),
+        Path("/dev/shm"),
+        Path("/run"),
+        Path("/private/var/tmp"),
+        Path("/var/folders"),
+        Path("/private/var/folders"),
+        Path(tempfile.gettempdir()),
+    }
+    for item in roots:
+        temporary = item.resolve()
+        if resolved == temporary or temporary in resolved.parents:
+            raise ValidationError("required evidence cannot use temporary storage")
+    return resolved
+
+
+def retain_evidence(directory: Path, data: bytes) -> str:
+    """Materialize immutable content-addressed bytes before recording a digest."""
+    digest = hashlib.sha256(data).hexdigest()
+    objects = directory / "retained-artifacts"
+    require_persistent_directory(objects)
+    if objects.is_symlink():
+        raise ValidationError("retained artifact directory is unsafe")
+    objects.mkdir(parents=True, exist_ok=True)
+    _fsync_directory(directory)
+    target = objects / digest
+    # Publish a complete fsynced object exclusively. A crash can leave an
+    # unreferenced staging file, never a digest pointing to a partial write.
+    descriptor, name = tempfile.mkstemp(prefix=".retaining-", dir=objects)
+    staging = Path(name)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            os.link(staging, target)
+            _fsync_directory(objects)
+        except FileExistsError:
+            pass
+    finally:
+        staging.unlink()
+    verify_retained_evidence(directory, digest)
+    return digest
+
+
+def verify_retained_evidence(directory: Path, digest: str) -> bytes:
+    if not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise ValidationError("invalid retained artifact identity")
+    objects = directory / "retained-artifacts"
+    require_persistent_directory(objects)
+    if objects.is_symlink():
+        raise ValidationError("retained artifact directory is unsafe")
+    target = objects / digest
+    if (
+        target.is_symlink()
+        or not target.is_file()
+        or target.resolve().parent != (directory / "retained-artifacts").resolve()
+    ):
+        raise ValidationError("retained artifact is missing or unsafe")
+    data = target.read_bytes()
+    if hashlib.sha256(data).hexdigest() != digest:
+        raise ValidationError("retained artifact bytes changed")
+    return data
+
+
 def telemetry_state_root() -> Path:
     explicit = os.environ.get("AGENTIC_STARTER_EXECUTION_TELEMETRY_DIR")
     if explicit:
@@ -916,7 +991,7 @@ def start_trace(
     projected_metadata = _metadata(**metadata)
     monotonic = current_clock.monotonic_ns()
     started = _utc_text(current_clock.utc_now())
-    trace_dir = _trace_dir(engine, trace_id)
+    trace_dir = require_persistent_directory(_trace_dir(engine, trace_id))
     trace = {
         "schema": RUNTIME_TRACE_SCHEMA,
         "trace_id": trace_id,
@@ -1597,6 +1672,106 @@ def recover_trace(
     return finalize_trace(engine_root=engine_root, trace_id=trace_id, clock=recovery_clock)
 
 
+def record_trace_interruption(
+    *,
+    engine_root: Path | str,
+    trace_id: str,
+    successor_trace_id: str,
+    custody_evidence: Path,
+    clock: Clock | None = None,
+) -> dict[str, Any]:
+    """Observe a cross-boot interruption; never close or finalize old spans.
+
+    The caller supplies attributable, independently checked process/resource
+    custody and candidate lineage. This records that assertion, not a process
+    probe, permission grant, accepted review or evidence of old completion.
+    """
+    current_clock = clock or SystemClock()
+    if trace_id == successor_trace_id:
+        raise ValidationError("interruption requires a distinct successor")
+    old_dir, old = _load_runtime(engine_root, trace_id)
+    new_dir, new = _load_runtime(engine_root, successor_trace_id)
+    require_persistent_directory(new_dir)
+    with _trace_lock(old_dir):
+        validate_runtime_trace(engine_root=engine_root, trace_id=trace_id)
+        validate_runtime_trace(engine_root=engine_root, trace_id=successor_trace_id)
+        if any(
+            old[key] != new[key]
+            for key in ("engine_root", "scope_root", "scope", "scope_id", "run_type")
+        ):
+            raise ValidationError("successor scope differs from interrupted trace")
+        old_context = trace_context(engine_root=engine_root, trace_id=trace_id)
+        new_context = trace_context(engine_root=engine_root, trace_id=successor_trace_id)
+        if old_context["state"] != "open" or old_context["operation"] != new_context["operation"]:
+            raise ValidationError("interruption requires matching open work and successor")
+        if (old_dir / "finalized.json").exists():
+            raise ValidationError("finalized trace cannot be interrupted")
+        try:
+            custody_bytes = custody_evidence.read_bytes()
+            custody = json.loads(custody_bytes)
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise TelemetryError("cannot read telemetry state: custody evidence") from exc
+        if not isinstance(custody, dict):
+            raise ValidationError("custody evidence must be an object")
+        if (
+            set(custody)
+            != {
+                "source",
+                "reference",
+                "processes_quiescent",
+                "resources_released",
+                "candidate_lineage",
+            }
+            or any(
+                not isinstance(custody.get(key), str) or not custody[key].strip()
+                for key in ("source", "reference", "candidate_lineage")
+            )
+            or custody["processes_quiescent"] is not True
+            or custody["resources_released"] is not True
+        ):
+            raise ValidationError("interruption requires verified custody and candidate lineage")
+        sources = [old_dir / "trace.json", *sorted((old_dir / "spans").glob("*.json"))]
+        snapshot = {
+            str(item.relative_to(old_dir)): hashlib.sha256(item.read_bytes()).hexdigest()
+            for item in sources
+        }
+        request = {
+            "schema": "agentic_starter.execution_interruption.v1",
+            "trace_id": trace_id,
+            "successor_trace_id": successor_trace_id,
+            "source_snapshot": snapshot,
+            "old_boot_id": old["boot_id"],
+            "observed_boot_id": new["boot_id"],
+            "custody_sha256": hashlib.sha256(custody_bytes).hexdigest(),
+            "old_completion": "unknown",
+            "old_exit_code": None,
+            "old_duration_ns": None,
+        }
+        target = old_dir / "interruption.json"
+        if target.exists():
+            previous = _read_json(target)
+            if {key: value for key, value in previous.items() if key != "observed_at"} != request:
+                raise ValidationError("conflicting interruption record")
+            verify_retained_evidence(new_dir, request["custody_sha256"])
+            return previous
+        observed_boot = current_clock.boot_id()
+        if (
+            not observed_boot
+            or observed_boot.startswith("unknown")
+            or old["boot_id"].startswith("unknown")
+            or same_boot(observed_boot, old["boot_id"])
+        ):
+            raise ClockDomainError("interruption requires a proven changed boot")
+        if not same_boot(observed_boot, new["boot_id"]):
+            raise ClockDomainError("successor must belong to the current boot")
+        if new_context["state"] != "open":
+            raise ValidationError("new interruption requires an open successor")
+        retain_evidence(new_dir, custody_bytes)
+        record = {**request, "observed_at": _utc_text(current_clock.utc_now())}
+        _atomic_json(target, record)
+        return record
+
+
 def _process_group_exists(group_id: int) -> bool:
     try:
         os.killpg(group_id, 0)
@@ -1657,6 +1832,7 @@ def run_observed(
     attempt: int = 1,
     timeout_seconds: float | None = None,
     clock: Clock | None = None,
+    output_file: Path | None = None,
     **metadata: Any,
 ) -> ObservedResult:
     if not argv:
@@ -1667,6 +1843,10 @@ def run_observed(
     if timeout_seconds is not None:
         timeout_ns = _timeout_nanoseconds(timeout_seconds)
     current_clock = clock or SystemClock()
+    output_stream = None
+    if output_file is not None:
+        require_persistent_directory(output_file.parent)
+        output_stream = output_file.open("xb")
     handle: SpanHandle | None = None
     telemetry_complete = True
     error_code: str | None = None
@@ -1715,7 +1895,13 @@ def run_observed(
                 }
             )
         try:
-            process = subprocess.Popen(list(argv), start_new_session=True, env=child_environment)
+            process = subprocess.Popen(
+                list(argv),
+                start_new_session=True,
+                env=child_environment,
+                stdout=output_stream,
+                stderr=subprocess.STDOUT if output_stream else None,
+            )
         except OSError:
             process = None
         if process is not None:
@@ -1751,6 +1937,10 @@ def run_observed(
     finally:
         for signum, handler in old_handlers.items():
             signal.signal(signum, handler)
+        if output_stream is not None:
+            output_stream.flush()
+            os.fsync(output_stream.fileno())
+            output_stream.close()
     if handle is not None:
         finish_kwargs: dict[str, Any] = {
             "engine_root": engine_root,

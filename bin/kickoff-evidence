@@ -47,9 +47,12 @@ from agentic_starter.execution_telemetry import (  # noqa: E402
     closed_spans,
     finalized_trace,
     recover_trace,
+    require_persistent_directory,
+    retain_evidence,
     run_observed,
     runtime_span_context,
     trace_context,
+    verify_retained_evidence,
 )
 from agentic_starter.finding_schema import (  # noqa: E402
     CLASSIFICATIONS,
@@ -266,8 +269,16 @@ def now() -> str:
 def atomic_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    temporary.write_text(json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
+    with temporary.open("w") as handle:
+        handle.write(json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
     temporary.replace(path)
+    descriptor = os.open(path.parent, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def append_jsonl(path: Path, value: Any) -> None:
@@ -275,6 +286,8 @@ def append_jsonl(path: Path, value: Any) -> None:
     with path.open("a") as handle:
         json.dump(value, handle, sort_keys=True, separators=(",", ":"))
         handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
 
 
 def append_text_once(path: Path, payload: str) -> None:
@@ -558,6 +571,7 @@ def validate_candidate_manifest(value: Any) -> None:
 
 
 def validate_run_dir(run_dir: Path) -> dict[str, Any]:
+    require_persistent_directory(run_dir)
     pinned = (run_dir / "tools" / "kickoff-evidence").resolve()
     if SCRIPT_PATH != pinned:
         raise EvidenceError(f"active run must use pinned tool: {pinned}")
@@ -890,9 +904,17 @@ def parse_authority_spec(specification: str, root: Path, priority: int) -> dict[
 
 def command_init(arguments: argparse.Namespace) -> None:
     root = git_root(arguments.root.resolve())
-    run_dir = arguments.run_dir.resolve()
+    run_dir = require_persistent_directory(
+        arguments.run_dir or root / ".kickoff" / "runs" / os.urandom(16).hex()
+    )
     if run_dir.exists() and any(run_dir.iterdir()):
         raise EvidenceError(f"run directory is not empty: {run_dir}")
+    if run_dir.is_relative_to(root):
+        ignored = subprocess.run(
+            ["git", "check-ignore", "--quiet", "--", str(run_dir)], cwd=root, check=False
+        )
+        if ignored.returncode:
+            raise EvidenceError("project evidence directory must be explicitly gitignored")
     if not arguments.preflight_receipt.is_file():
         raise EvidenceError("init requires a role-venue preflight receipt")
     receipt_check = subprocess.run(
@@ -912,6 +934,7 @@ def command_init(arguments: argparse.Namespace) -> None:
             receipt_check.stderr.strip() or "role-venue preflight receipt is invalid"
         )
     run_dir.mkdir(parents=True, exist_ok=True)
+    arguments.run_dir = run_dir
     tool_bundle = install_tool_bundle(run_dir)
     candidate = product_manifest(root)
     product = product_manifest(root)
@@ -1003,6 +1026,7 @@ def command_init(arguments: argparse.Namespace) -> None:
     (run_dir / "gate-manifests.jsonl").touch()
     (run_dir / "lineage.jsonl").touch()
     record_lineage(run_dir, candidate, "init")
+    print(f"RUN DIRECTORY {run_dir}", file=sys.stderr)
     print(candidate["candidate_id"])
 
 
@@ -2224,9 +2248,10 @@ def command_start_advice(arguments: argparse.Namespace) -> None:
 
 def command_ingest_advice(arguments: argparse.Namespace) -> None:
     validate_run_dir(arguments.run_dir)
-    document = (
-        load_json(arguments.input) if arguments.input else read_role_artifact(arguments.artifact)
-    )
+    source = arguments.input or arguments.artifact
+    raw_digest = retain_evidence(arguments.run_dir, source.read_bytes())
+    retained = arguments.run_dir / "retained-artifacts" / raw_digest
+    document = load_json(retained) if arguments.input else read_role_artifact(retained)
     try:
         advisory.check_report(document)
     except advisory.AdvisoryError as exc:
@@ -2271,6 +2296,7 @@ def command_ingest_advice(arguments: argparse.Namespace) -> None:
         )["plan_sha256"]
     if any(r["report_id"] == identifier for r in reports):
         raise EvidenceError("advisory report is immutable and already recorded")
+    row["raw_artifact_sha256"] = raw_digest
     reports.append(row)
     atomic_json(arguments.run_dir / "advisory-reports.json", reports)
     print("ADVICE RECORDED; primary disposition owns acceptance")
@@ -2316,6 +2342,14 @@ def read_advice_source(source: Path, *, consumer: Path | None = None) -> dict[st
     return verified
 
 
+def validate_raw_advice(run_dir: Path, reports: list[dict[str, Any]]) -> None:
+    for report in reports:
+        if "raw_artifact_sha256" in report:
+            verify_retained_evidence(
+                Path(report.get("source_run", str(run_dir))), report["raw_artifact_sha256"]
+            )
+
+
 def command_advice_source(arguments: argparse.Namespace) -> None:
     run = validate_run_dir(arguments.run_dir)
     for record in load_advice_attestations(arguments.run_dir):
@@ -2324,6 +2358,7 @@ def command_advice_source(arguments: argparse.Namespace) -> None:
         raise EvidenceError("advice source must have primary authority")
     validate_role_preflight_receipt(arguments.run_dir, Path(run["repository_root"]))
     validate_role_spans(arguments.run_dir, run, require_initial=False)
+    validate_raw_advice(arguments.run_dir, load_json(arguments.run_dir / "advisory-reports.json"))
     print(
         json.dumps(
             {
@@ -2809,6 +2844,7 @@ def validate_primary_acceptance(run_dir: Path, run: dict[str, Any]) -> None:
                 )
             ):
                 raise EvidenceError("exception candidate differs from independent dispatch")
+    validate_raw_advice(run_dir, reports)
     for report in reports:
         if report["kind"] == "plan":
             plan_id = validate_candidate_id(report.get("plan_sha256"), "advised plan identity")
@@ -2878,14 +2914,13 @@ def command_ingest_findings(arguments: argparse.Namespace) -> None:
             f"candidate mismatch: expected {expected_candidate}, found {current['candidate_id']}"
         )
     source_path = arguments.input if arguments.input else arguments.artifact
-    incoming_document = (
-        load_json(arguments.input) if arguments.input else read_role_artifact(arguments.artifact)
-    )
+    artifact_sha256 = retain_evidence(arguments.run_dir, source_path.read_bytes())
+    retained = arguments.run_dir / "retained-artifacts" / artifact_sha256
+    incoming_document = load_json(retained) if arguments.input else read_role_artifact(retained)
     if not isinstance(incoming_document, dict) or not isinstance(
         incoming_document.get("findings"), list
     ):
         raise EvidenceError("finding input must be an object with a findings array")
-    artifact_sha256 = source_digest(source_path)
     reported = len(incoming_document["findings"])
     incoming: list[dict[str, Any]] = []
     validation_errors: list[tuple[str, str]] = []
@@ -3153,7 +3188,7 @@ def command_record_gate(arguments: argparse.Namespace) -> None:
     if arguments.artifact:
         if not arguments.artifact.is_file():
             raise EvidenceError(f"gate artifact does not exist: {arguments.artifact}")
-        artifact_digest = hashlib.sha256(arguments.artifact.read_bytes()).hexdigest()
+        artifact_digest = retain_evidence(arguments.run_dir, arguments.artifact.read_bytes())
     if arguments.final:
         raise EvidenceError("managed final gates must use run-gate")
     full_candidate = tree_manifest(root)["candidate_id"]
@@ -3174,6 +3209,8 @@ def command_record_gate(arguments: argparse.Namespace) -> None:
         "outcome": "success" if arguments.exit_code == 0 else "error",
         "warning_count": arguments.warning_count,
         "artifact_sha256": artifact_digest,
+        "artifact_required": arguments.artifact is not None,
+        "diagnostics_sha256": None,
         "final": False,
         "telemetry_trace_id": run["telemetry_trace_id"],
         "telemetry_span_id": None,
@@ -3303,6 +3340,7 @@ def command_run_gate(arguments: argparse.Namespace) -> None:
         if not parent.is_dir():
             raise EvidenceError(f"gate artifact directory does not exist: {parent}")
     original_directory = Path.cwd()
+    diagnostics = arguments.run_dir.resolve() / ("gate-output-" + os.urandom(16).hex() + ".log")
     try:
         os.chdir(root)
         result = run_observed(
@@ -3314,15 +3352,19 @@ def command_run_gate(arguments: argparse.Namespace) -> None:
             attempt=arguments.attempt,
             timeout_seconds=arguments.timeout_seconds,
             argv=argv,
+            output_file=diagnostics,
         )
     finally:
         os.chdir(original_directory)
     after = tree_manifest(root)
+    diagnostic_bytes = diagnostics.read_bytes()
+    print(diagnostic_bytes.decode("utf-8", errors="replace"), end="", flush=True)
+    diagnostic_digest = retain_evidence(arguments.run_dir, diagnostic_bytes)
     product_after = product_manifest(root)
     artifact_digest = None
     if arguments.artifact:
         if arguments.artifact.is_file():
-            artifact_digest = hashlib.sha256(arguments.artifact.read_bytes()).hexdigest()
+            artifact_digest = retain_evidence(arguments.run_dir, arguments.artifact.read_bytes())
         else:
             # The command ran and its span is closed. Refusing here would orphan
             # that span permanently, so record the gate truthfully with no
@@ -3360,6 +3402,8 @@ def command_run_gate(arguments: argparse.Namespace) -> None:
         "outcome": result.outcome,
         "warning_count": None,
         "artifact_sha256": artifact_digest,
+        "artifact_required": arguments.artifact is not None,
+        "diagnostics_sha256": diagnostic_digest,
         "final": arguments.final,
         "telemetry_trace_id": run["telemetry_trace_id"],
         "telemetry_span_id": result.span_id if telemetry_complete else None,
@@ -3376,6 +3420,9 @@ def command_run_gate(arguments: argparse.Namespace) -> None:
         raise SystemExit(2)
     if not telemetry_complete:
         print("kickoff-evidence: gate telemetry is incomplete", file=sys.stderr)
+        raise SystemExit(result.exit_code or 2)
+    if arguments.artifact is not None and artifact_digest is None:
+        print("kickoff-evidence: required artifact capture is incomplete", file=sys.stderr)
         raise SystemExit(result.exit_code or 2)
     raise SystemExit(result.exit_code)
 
@@ -4255,8 +4302,7 @@ def unmeasured_review_passes(run_dir: Path, run: dict[str, Any]) -> list[dict[st
     """
     try:
         spans = closed_spans(
-            engine_root=Path(run["repository_root"]),
-            trace_id=run["telemetry_trace_id"],
+            engine_root=Path(run["repository_root"]), trace_id=run["telemetry_trace_id"]
         )
     except TelemetryError as exc:
         raise EvidenceError(f"cannot read review convergence metrics: {exc}") from exc
@@ -4553,6 +4599,8 @@ def validate_gate_record(
         "outcome",
         "warning_count",
         "artifact_sha256",
+        "artifact_required",
+        "diagnostics_sha256",
         "final",
         "telemetry_trace_id",
         "telemetry_span_id",
@@ -4624,7 +4672,10 @@ def validate_gate_span_join(gates: list[dict[str, Any]], run: dict[str, Any], ro
     if len(evidence_ids) != len(set(evidence_ids)):
         raise EvidenceError("multiple gate evidence rows reference one span")
     try:
-        spans = closed_spans(engine_root=root, trace_id=run["telemetry_trace_id"])
+        spans = closed_spans(
+            engine_root=root,
+            trace_id=run["telemetry_trace_id"],
+        )
     except TelemetryError as exc:
         raise EvidenceError(f"invalid runtime trace: {exc}") from exc
     # Only gates the orchestrator ran are evidence-bearing. A gate span nested
@@ -4986,6 +5037,7 @@ def command_packet(arguments: argparse.Namespace) -> None:
         ]
     )
     text = "\n".join(lines)
+    retain_evidence(arguments.run_dir, text.encode())
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     arguments.output.write_text(text)
     packet_record = {
@@ -5155,11 +5207,23 @@ def command_validate(arguments: argparse.Namespace) -> None:
                 )
             records.append(record)
         ledgers[ledger_name] = records
+    for entry in load_ingest_journal(arguments.run_dir):
+        verify_retained_evidence(arguments.run_dir, entry["artifact_sha256"])
     for line_number, gate in enumerate(ledgers["gates.jsonl"], 1):
         validate_gate_record(gate, run, root, label=f"gates.jsonl line {line_number}")
         artifact_hash = gate.get("artifact_sha256")
+        if type(gate.get("artifact_required")) is not bool:
+            raise EvidenceError("invalid gate artifact requirement")
+        # A missing output remains truthful incomplete history, not a
+        # permanent integrity failure. It cannot qualify a successful seal.
         if artifact_hash is not None:
             validate_candidate_id(artifact_hash, f"artifact hash in gates.jsonl line {line_number}")
+            verify_retained_evidence(arguments.run_dir, artifact_hash)
+        diagnostics_hash = gate["diagnostics_sha256"]
+        if gate["operation"] != "gate.imported" or diagnostics_hash is not None:
+            if diagnostics_hash is None:
+                raise EvidenceError("managed gate diagnostics are missing")
+            verify_retained_evidence(arguments.run_dir, diagnostics_hash)
     if acceptance:
         validate_gate_span_join(ledgers["gates.jsonl"], run, root)
     reviews = gate_reviews(arguments.run_dir, ledgers["gates.jsonl"])
@@ -5186,6 +5250,9 @@ def command_validate(arguments: argparse.Namespace) -> None:
         ):
             raise EvidenceError(f"invalid packet record in packets.jsonl line {line_number}")
         validate_candidate_id(packet.get("sha256"), "packet hash")
+        retained = verify_retained_evidence(arguments.run_dir, packet["sha256"])
+        if len(retained) != packet["bytes"]:
+            raise EvidenceError("retained packet size differs from record")
         source_hashes = packet.get("source_sha256")
         if not isinstance(source_hashes, dict):
             raise EvidenceError(f"invalid packet sources in packets.jsonl line {line_number}")
@@ -5219,6 +5286,7 @@ def command_validate(arguments: argparse.Namespace) -> None:
             and gate["product_candidate_after_id"] == current_product_id
             and gate["exit_code"] == 0
             and gate["outcome"] == "success"
+            and (not gate["artifact_required"] or gate["artifact_sha256"] is not None)
         ]
         if not successful_final:
             raise EvidenceError(
@@ -5681,7 +5749,11 @@ def build_parser() -> argparse.ArgumentParser:
     accept_primary.set_defaults(handler=command_accept_primary)
 
     init = subparsers.add_parser("init")
-    init.add_argument("--run-dir", type=Path, required=True)
+    init.add_argument(
+        "--run-dir",
+        type=Path,
+        help="Persistent evidence directory; default .kickoff/runs/<opaque-id>",
+    )
     init.add_argument("--root", type=Path, default=Path.cwd())
     init.add_argument("--phase", required=True)
     init.add_argument("--authority", action="append", default=[])
@@ -6002,7 +6074,14 @@ def main() -> int:
     arguments = build_parser().parse_args()
     try:
         result = arguments.handler(arguments)
-    except (AttributeError, EvidenceError, KeyError, OSError, TypeError) as exc:
+    except (
+        AttributeError,
+        EvidenceError,
+        TelemetryError,
+        KeyError,
+        OSError,
+        TypeError,
+    ) as exc:
         print(f"kickoff-evidence: {exc}", file=sys.stderr)
         return 2
     return 0 if result is None else result

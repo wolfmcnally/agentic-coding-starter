@@ -28,6 +28,12 @@ import yaml
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from agentic_starter.execution_telemetry import (  # noqa: E402
+    TelemetryError,
+    require_persistent_directory,
+    retain_evidence,
+    verify_retained_evidence,
+)
 from agentic_starter.test_runner import run_command  # noqa: E402
 
 SCHEMA = "agentic.proof_estate.v5"
@@ -482,6 +488,16 @@ def _is_iso_date(value: Any) -> bool:
 
 def validate(root: Path) -> dict[str, Any]:
     _refuse_pending_witness(root)
+    captures = root / ".kickoff/witness/captures"
+    try:
+        for capture in (
+            load_ledger(captures / "index.jsonl") if (captures / "index.jsonl").exists() else []
+        ):
+            data = verify_retained_evidence(captures, capture["sha256"])
+            if len(data) != capture["bytes"]:
+                raise GovernanceError("witness capture size differs")
+    except (TelemetryError, KeyError) as exc:
+        raise GovernanceError(f"witness capture invalid: {exc}") from exc
     manifest_path = root / "tests/proof-estate.yaml"
     manifest = load_yaml(manifest_path)
     errors: list[str] = []
@@ -1021,10 +1037,26 @@ def _load_pending(root: Path) -> dict[str, Any]:
 
 def _witness_run(command: str, root: Path) -> tuple[int, str]:
     try:
+        require_persistent_directory(root / ".kickoff/witness")
         result = _run(shlex.split(command), root, check=False)
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, TelemetryError) as exc:
         raise GovernanceError(f"witness command cannot run: {command}: {exc}") from exc
-    return result.returncode, result.stdout + "\n" + result.stderr
+    output = result.stdout + "\n" + result.stderr
+    captures = root / ".kickoff" / "witness" / "captures"
+    captures.mkdir(parents=True, exist_ok=True)
+    data = json.dumps(
+        {"command": command, "exit_code": result.returncode, "output": output},
+        sort_keys=True,
+    ).encode()
+    try:
+        digest = retain_evidence(captures, data)
+    except TelemetryError as exc:
+        raise GovernanceError(f"cannot retain witness output: {exc}") from exc
+    with (captures / "index.jsonl").open("a") as stream:
+        stream.write(json.dumps({"sha256": digest, "bytes": len(data)}) + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    return result.returncode, output
 
 
 def _leave_second(paths: Sequence[Path], second: int) -> None:
@@ -1217,6 +1249,8 @@ def witness_finish(root: Path) -> dict[str, Any]:
     ledger.parent.mkdir(parents=True, exist_ok=True)
     with ledger.open("a") as handle:
         handle.write(json.dumps(row, sort_keys=True) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
     return row
 
 

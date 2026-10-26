@@ -247,6 +247,13 @@ No tracked write follows step 6; step 7 changes no tracked content. A step-5 or
 step-6 failure reopens the current uncommitted close; completion is not reported
 until the handoff gate passes.
 
+## Cross-boot interruption observation
+
+`execution-telemetry interrupt --trace-id <old> --successor-trace-id <new> --custody-evidence <file>` records a private, append-only observation after independently verified custody. It requires matching open work/scope, a distinct current-boot successor, a provably changed boot and attributable process/resource/candidate-lineage evidence. It binds the old trace/span byte snapshot, old and observed boot identities, successor identity and retained custody bytes. Identical requests are idempotent; changed originals, lineage or successor conflict. It never writes old span bytes, terminal events or the finalized ledger. Completion, exit and duration of old open work remain unknown, not success or zero. Same-boot recovery and operator-park accounting are unchanged.
+
+The JSON custody file has exactly `source`, `reference`, `candidate_lineage` (nonempty strings), `processes_quiescent` and `resources_released` (both true). Verify those claims through authorized evidence before invoking; the record authenticates no user and probes no processes. Keep this private runtime record out of public timing projections. Consumers retain the original incomplete run and initialize fresh durable successor evidence through their owning session; observation alone is not acceptance or permission to reuse missing advice. Missing originals remain missing, with consumed review budgets preserved.
+
+
 ## Related policies
 
 - `policies/orchestration-evidence.md`

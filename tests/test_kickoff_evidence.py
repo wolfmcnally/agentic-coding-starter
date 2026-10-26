@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -127,6 +128,9 @@ def run(
         config = directory.parent / "fixture-config.yaml"
         if config.exists():
             environment["KICKOFF_CONFIG_FILE"] = str(config)
+    if arguments[0] == "init" and "--preflight-receipt" in arguments:
+        receipt = Path(arguments[arguments.index("--preflight-receipt") + 1])
+        environment["KICKOFF_CONFIG_FILE"] = str(receipt.parent / "fixture-config.yaml")
     return subprocess.run(
         [str(executable), *arguments],
         env=environment,
@@ -276,8 +280,20 @@ def initialize(
                         "argv": ["/usr/bin/true"],
                     },
                     {
+                        "operation": "gate.focused",
+                        "attempt": 2,
+                        "final": False,
+                        "argv": ["/usr/bin/false"],
+                    },
+                    {
                         "operation": "gate.check-all",
                         "attempt": 1,
+                        "final": True,
+                        "argv": ["/usr/bin/true"],
+                    },
+                    {
+                        "operation": "gate.check-all",
+                        "attempt": 2,
                         "final": True,
                         "argv": ["/usr/bin/true"],
                     },
@@ -518,6 +534,24 @@ def test_primary_continuation_carries_original_predecessors(advisory_continuatio
             }
         )
     )
+    raw_digest = reports[0]["raw_artifact_sha256"]
+    raw_object = first / "retained-artifacts" / raw_digest
+    original_raw = raw_object.read_bytes()
+    for body in (b"changed raw advice", None):
+        if body is None:
+            raw_object.unlink()
+        else:
+            raw_object.write_bytes(body)
+        for arguments in (
+            ("advice-source", "--run-dir", str(first)),
+            ("accept-primary", "--run-dir", str(target), "--input", str(decision)),
+        ):
+            rejected = run(*arguments)
+            assert rejected.returncode == 2 and "retained artifact" in rejected.stderr, (
+                "DURABILITY RAW ADVICE ACCEPTED: " + rejected.stderr
+            )
+    raw_object.write_bytes(original_raw)
+    assert budget.read_bytes() == saved_budget
     accepted = run("accept-primary", "--run-dir", str(target), "--input", str(decision))
     assert accepted.returncode == 0, f"CONTINUATION ACCEPTANCE: {accepted.stderr}"
     valid = run("validate", "--run-dir", str(target), "--level", "integrity")
@@ -806,6 +840,50 @@ def test_change_manifest_is_candidate_bound_and_detects_authority_drift(
     assert (run_dir / "findings.json").is_file()
     assert (run_dir / "gates.jsonl").is_file()
 
+    metadata = json.loads((run_dir / "run.json").read_text())
+    init_arguments = [
+        "init",
+        "--root",
+        str(repository),
+        "--phase",
+        "1.1",
+        "--authority",
+        "phase.md",
+        "--preflight-receipt",
+        str(tmp_path / "run-preflight.json"),
+        "--telemetry-trace-id",
+        metadata["telemetry_trace_id"],
+        "--telemetry-root-span-id",
+        metadata["telemetry_root_span_id"],
+        "--initial-orchestration-span-id",
+        metadata["initial_orchestration_span_id"],
+        "--review-lane",
+        "full",
+        "--evidence-lane",
+        "full",
+        "--follow-up-route",
+        "direct-fix",
+    ]
+    # Real OS temporary storage and a persistent-looking symlink to it must
+    # refuse before creating run bytes. No injected production bypass.
+    with tempfile.TemporaryDirectory() as transient:
+        alias = tmp_path / "temporary-alias"
+        alias.symlink_to(transient, target_is_directory=True)
+        for location in (
+            Path(transient) / "run",
+            alias / "run",
+            Path("/private/tmp") / ("durability-refusal-" + os.urandom(8).hex()),
+        ):
+            refused = run(*init_arguments, "--run-dir", str(location))
+            assert refused.returncode == 2 and "temporary storage" in refused.stderr, (
+                "DURABILITY TEMPORARY RUN ADMITTED: " + refused.stderr
+            )
+            assert not location.exists(), "temporary evidence was published"
+    automatic = run(*init_arguments)
+    assert automatic.returncode == 0, automatic.stderr
+    defaults = list((repository / ".kickoff/runs").iterdir())
+    assert len(defaults) == 1 and (defaults[0] / "tools/manifest.json").is_file()
+
     # Neither the source executable nor its pinned copy may require an
     # ambient interpreter before reaching their own imports and argument parser.
     launch_path = tmp_path / "launch-path"
@@ -948,6 +1026,22 @@ def test_role_artifacts_feed_findings_and_change_metadata_without_reparsing(
         str(review_artifact),
     )
     assert review.returncode == 0, review.stderr
+    digest = hashlib.sha256(review_artifact.read_bytes()).hexdigest()
+    raw_object = run_dir / "retained-artifacts" / digest
+    original = raw_object.read_bytes()
+    review_artifact.unlink()
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
+    for body in (b"changed raw ingest", None):
+        if body is None:
+            raw_object.unlink()
+        else:
+            raw_object.write_bytes(body)
+        rejected = run("validate", "--run-dir", str(run_dir))
+        assert rejected.returncode == 2 and "retained artifact" in rejected.stderr, (
+            "DURABILITY RAW INGEST ACCEPTED: " + rejected.stderr
+        )
+    raw_object.write_bytes(original)
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
 
     (repository / "code.py").write_text("VALUE = 2\n")
     coder_artifact = tmp_path / "coder.md"
@@ -1055,6 +1149,18 @@ def test_revision_round_requires_and_carries_failure_analysis(
     text = output.read_text()
     assert "## Failure analysis" in text
     assert analysis in text
+    packet_digest = packet.stdout.strip()
+    packet_object = run_dir / "retained-artifacts" / packet_digest
+    output.unlink()
+    assert packet_object.read_text() == text
+    packet_object.write_bytes(b"damaged packet")
+    rejected_packet = run("validate", "--run-dir", str(run_dir))
+    assert (
+        rejected_packet.returncode == 2
+        and "retained artifact bytes changed" in rejected_packet.stderr
+    ), "DURABILITY PACKET CORRUPTION ACCEPTED"
+    packet_object.write_text(text)
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
 
 
 @pytest.mark.parametrize("state", ["open", "addressed", "blocked-owner"])
@@ -1091,6 +1197,44 @@ def test_validate_detects_corrupt_evidence(repository: Path, tmp_path: Path) -> 
     valid = run("validate", "--run-dir", str(run_dir))
     assert valid.returncode == 0, valid.stderr
     assert "EVIDENCE VALID" in valid.stdout
+
+    artifact = tmp_path / "disposable-proof.txt"
+    artifact.write_bytes(b"genuine retained proof\n")
+    candidate = json.loads((run_dir / "run.json").read_text())["initial_product_candidate_id"]
+    recorded = run(
+        "record-gate",
+        "--run-dir",
+        str(run_dir),
+        "--candidate",
+        candidate,
+        "--selection-reason",
+        "retention boundary",
+        "--exit-code",
+        "0",
+        "--warning-count",
+        "0",
+        "--artifact",
+        str(artifact),
+        "--",
+        "/usr/bin/true",
+    )
+    assert recorded.returncode == 0, recorded.stderr
+    digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
+    artifact.unlink()
+    retained = run_dir / "retained-artifacts" / digest
+    assert retained.read_bytes() == b"genuine retained proof\n"
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
+    for body in (b"changed", None):
+        if body is None:
+            retained.unlink()
+        else:
+            retained.write_bytes(body)
+        rejected = run("validate", "--run-dir", str(run_dir))
+        assert rejected.returncode == 2 and "retained artifact" in rejected.stderr, (
+            "DURABILITY IMPORTED BYTES ACCEPTED: " + rejected.stderr
+        )
+    retained.write_bytes(b"genuine retained proof\n")
+    assert run("validate", "--run-dir", str(run_dir)).returncode == 0
 
     (run_dir / "findings.json").write_text("{broken")
     invalid = run("validate", "--run-dir", str(run_dir))
@@ -1384,8 +1528,20 @@ def _assert_complete_synthetic_kickoff(
                         "argv": ["/usr/bin/true"],
                     },
                     {
+                        "operation": "gate.focused",
+                        "attempt": 2,
+                        "final": False,
+                        "argv": ["/usr/bin/false"],
+                    },
+                    {
                         "operation": "gate.check-all",
                         "attempt": 1,
+                        "final": True,
+                        "argv": ["/usr/bin/true"],
+                    },
+                    {
+                        "operation": "gate.check-all",
+                        "attempt": 2,
                         "final": True,
                         "argv": ["/usr/bin/true"],
                     },
@@ -1608,7 +1764,7 @@ def _assert_complete_synthetic_kickoff(
                 )
             else:
                 assert watched.returncode == exit_code, watched.stderr
-            return
+            return  # A real returned dispatch whose artifact was never ingested.
         metadata = {"role": role, "harness": harness}
         if model:
             metadata["model"] = model
@@ -1895,7 +2051,70 @@ def _assert_complete_synthetic_kickoff(
         cwd=repository,
     )
     assert focused.returncode == 0, focused.stderr
+    if thorough:
+        missing_artifact = tmp_path / "failed-gate-artifact.txt"
+        failed_gate = run(
+            "run-gate",
+            "--run-dir",
+            str(run_dir),
+            "--candidate",
+            candidate,
+            "--operation",
+            "gate.focused",
+            "--attempt",
+            "2",
+            "--selection-reason",
+            "failed artifact producer",
+            "--artifact",
+            str(missing_artifact),
+            "--",
+            "/usr/bin/false",
+            cwd=repository,
+        )
+        assert failed_gate.returncode == 1 and "recorded with no digest" in failed_gate.stderr, (
+            "DURABILITY FAILED GATE NOT RECORDED"
+        )
+        before_retry = run("validate", "--run-dir", str(run_dir))
+        assert before_retry.returncode == 0, (
+            "DURABILITY MISSING ARTIFACT STRANDED RUN: " + before_retry.stderr
+        )
+        failed_row = json.loads((run_dir / "gates.jsonl").read_text().splitlines()[-1])
+        assert (
+            failed_row["artifact_required"]
+            and failed_row["artifact_sha256"] is None
+            and failed_row["exit_code"] == 1
+        )
+        review_gate_output(run_dir, failed_gate)
     complete_orchestration(repository, run_dir)
+    if thorough:
+        review_gate_output(run_dir, focused)
+        missing_final = run(
+            "run-gate",
+            "--run-dir",
+            str(run_dir),
+            "--candidate",
+            candidate,
+            "--operation",
+            "gate.check-all",
+            "--attempt",
+            "2",
+            "--selection-reason",
+            "missing final output",
+            "--artifact",
+            str(tmp_path / "missing-final.txt"),
+            "--final",
+            "--",
+            "/usr/bin/true",
+            cwd=repository,
+        )
+        assert missing_final.returncode == 2 and "capture is incomplete" in missing_final.stderr, (
+            "DURABILITY MISSING FINAL CAPTURE REPORTED GREEN"
+        )
+        review_gate_output(run_dir, missing_final)
+        no_seal = run("validate", "--run-dir", str(run_dir), "--level", "acceptance")
+        assert no_seal.returncode == 2 and "no successful final gate" in no_seal.stderr, (
+            "DURABILITY OUTPUTLESS FINAL WAS ACCEPTED: " + no_seal.stderr
+        )
     artifact = tmp_path / "gate.txt"
     artifact.write_text("PASS\n")
     final = run(
@@ -1921,6 +2140,21 @@ def _assert_complete_synthetic_kickoff(
     assert gates[-1]["artifact_sha256"] == hashlib.sha256(artifact.read_bytes()).hexdigest()
     assert gates[-1]["final"]
     assert all(gate["warning_count"] is None for gate in gates)
+    if thorough:
+        artifact.unlink()
+        for key in ("artifact_sha256", "diagnostics_sha256"):
+            stored = run_dir / "retained-artifacts" / gates[-1][key]
+            original = stored.read_bytes()
+            for changed in (b"altered retained gate evidence", None):
+                if changed is None:
+                    stored.unlink()
+                else:
+                    stored.write_bytes(changed)
+                refused = run("validate", "--run-dir", str(run_dir))
+                assert refused.returncode == 2 and "retained artifact" in refused.stderr, (
+                    "DURABILITY GATE BYTES ACCEPTED: " + refused.stderr
+                )
+            stored.write_bytes(original)
     if not thorough:
         review_gate_output(run_dir, focused)
         review_gate_output(run_dir, final)
@@ -1960,8 +2194,8 @@ def _assert_complete_synthetic_kickoff(
         assert run(*correction).returncode == 2
         corrected = run(*correction, "--supersedes", reviewed.stdout.split()[2])
         assert corrected.returncode == 0, corrected.stderr
-        assert len((run_dir / "gates.jsonl").read_text().splitlines()) == 2
-        assert len((run_dir / "gate-reviews.jsonl").read_text().splitlines()) == 3
+        assert len((run_dir / "gates.jsonl").read_text().splitlines()) == 4
+        assert len((run_dir / "gate-reviews.jsonl").read_text().splitlines()) == 5
     validated = run(
         "validate",
         "--run-dir",
@@ -2756,7 +2990,14 @@ def test_historical_advice_attestation_preserves_originals(advisory_continuation
 @pytest.mark.parametrize("advisory_continuation", ["historical-gap"], indirect=True)
 @pytest.mark.parametrize(
     "fault",
-    ["self", "wrong-phase", "missing-claim", "not-earlier", "wrong-candidate", "missing-span"],
+    [
+        "self",
+        "wrong-phase",
+        "missing-claim",
+        "not-earlier",
+        "wrong-candidate",
+        "missing-span",
+    ],
 )
 def test_historical_advice_attestation_refuses_unfaithful_evidence(advisory_continuation, fault):
     repository, first, second, target = advisory_continuation

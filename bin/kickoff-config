@@ -74,6 +74,7 @@ from agentic_starter.execution_telemetry import (  # noqa: E402
     TelemetryError,
     closed_span,
     finish_span,
+    require_persistent_directory,
     start_span,
     trace_context,
 )
@@ -1743,7 +1744,7 @@ def prepare_watched_command(
 
 def numbers_from_usage(value: Any) -> tuple[int | None, int | None]:
     if not isinstance(value, dict):
-        return (None, None)
+        return None, None
     input_tokens = value.get("input_tokens", value.get("inputTokens"))
     output_tokens = value.get("output_tokens", value.get("outputTokens"))
 
@@ -2140,6 +2141,25 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
     registration = validate_telemetry_registration(arguments)
     if registration is None and arguments.authority_mode == "primary":
         die("primary advice requires a registered evidence run")
+    if registration is not None:
+        try:
+            evidence_directory = Path(arguments.telemetry_role_registration).resolve().parent
+            native_prefix = "native-" + os.urandom(16).hex()
+            if not arguments.stdout_file:
+                arguments.stdout_file = str(evidence_directory / (native_prefix + "-stdout.jsonl"))
+            if not arguments.stderr_file:
+                arguments.stderr_file = str(evidence_directory / (native_prefix + "-stderr.log"))
+            require_persistent_directory(Path(arguments.prompt_file).parent)
+            for value in (
+                arguments.stdout_file,
+                arguments.stderr_file,
+                arguments.result_file,
+                arguments.required_output_file,
+            ):
+                if value:
+                    require_persistent_directory(Path(value).parent)
+        except TelemetryError as exc:
+            die(str(exc))
     refuse_unproved_executable(arguments, child_environment)
     intelligence = None
     wait_span = None

@@ -10,6 +10,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 from pathlib import Path
@@ -1172,6 +1173,30 @@ def test_watch_binds_registered_review_session(tmp_path: Path) -> None:
         args[args.index("--phase") + 1] = "1.1"
         if resume:
             args.extend(("--resume-session", resume))
+        if not resume:
+            with tempfile.TemporaryDirectory() as temporary:
+                for flag in ("--prompt-file", "--result-file", "--stdout-file", "--stderr-file"):
+                    invalid = args.copy()
+                    location = Path(temporary) / "unretained.txt"
+                    if flag in invalid:
+                        location.write_text("nonprivate fixture prompt")
+                        invalid[invalid.index(flag) + 1] = str(location)
+                    else:
+                        invalid.extend((flag, str(location)))
+                    refused = run_manager(
+                        config,
+                        *invalid,
+                        manager=run_dir / "tools/kickoff-config",
+                        cwd=repository,
+                        extra_env={"PATH": str(case) + os.pathsep + os.environ.get("PATH", "")},
+                    )
+                    assert refused.returncode != 0 and "temporary storage" in refused.stderr, (
+                        "DURABILITY WATCHER TEMPORARY IO ADMITTED: " + flag + refused.stderr
+                    )
+                    assert not receipt.exists(), "DURABILITY REFUSED WATCHER CREATED CHILD"
+                    assert not (run_dir / "role-dispatch.jsonl").read_text().strip(), (
+                        "DURABILITY REFUSED WATCHER CLAIMED DISPATCH"
+                    )
         watched = run_manager(
             config,
             *args,
@@ -1186,6 +1211,11 @@ def test_watch_binds_registered_review_session(tmp_path: Path) -> None:
             },
         )
         assert watched.returncode == 0, watched.stderr
+        captures = list(run_dir.glob("native-*-stdout.jsonl"))
+        errors = list(run_dir.glob("native-*-stderr.log"))
+        assert len(captures) == len(errors) == 1 and "BOUND" in captures[0].read_text(), (
+            "DURABILITY DEFAULT NATIVE CAPTURE LOST"
+        )
         value = json.loads(receipt.read_text())
         binding, argv = value["binding"], value["argv"]
         assert set(binding) == {

@@ -273,6 +273,167 @@ def test_lifecycle_idempotency_finalization_and_crash_recovery(engine: Path) -> 
     assert marker.is_file()
     assert len(ledger.read_text(encoding="utf-8").splitlines()) == 1
 
+    # A new boot is an observation boundary, never a synthetic end time for
+    # the old open root/child. Exercise the real persistence API with clocks.
+    old = telemetry.start_trace(
+        engine_root=engine,
+        scope_root=engine,
+        scope="engine",
+        scope_id="engine",
+        run_type="kickoff",
+        operation="phase.1",
+        clock=clock,
+    )
+    telemetry.start_span(
+        engine_root=engine,
+        trace_id=old.trace_id,
+        parent_span_id=old.span_id,
+        category="reconciliation",
+        operation="orchestration.implementation",
+        clock=clock,
+    )
+    old_directory = trace_dir(engine, old.trace_id)
+    originals = {item: item.read_bytes() for item in old_directory.rglob("*.json")}
+    custody = engine / "custody.json"
+    custody.write_text(
+        json.dumps(
+            {
+                "source": "verified coordinator",
+                "reference": "synthetic snapshot",
+                "processes_quiescent": True,
+                "resources_released": True,
+                "candidate_lineage": "retained candidate",
+            }
+        )
+    )
+    clock.boot = "next-synthetic-boot"
+    clock.monotonic = 10
+    successor = telemetry.start_trace(
+        engine_root=engine,
+        scope_root=engine,
+        scope="engine",
+        scope_id="engine",
+        run_type="kickoff",
+        operation="phase.1",
+        clock=clock,
+    )
+    with pytest.raises(telemetry.ClockDomainError):
+        telemetry.recover_trace(engine_root=engine, trace_id=old.trace_id, clock=clock)
+    with pytest.raises(telemetry.ClockDomainError):
+        telemetry.finish_span(
+            engine_root=engine,
+            trace_id=old.trace_id,
+            span_id=old.span_id,
+            outcome="success",
+            clock=clock,
+        )
+    custody_original = custody.read_bytes()
+    for key, value in (
+        ("processes_quiescent", False),
+        ("resources_released", False),
+        ("extra", True),
+    ):
+        invalid = json.loads(custody_original)
+        invalid[key] = value
+        custody.write_text(json.dumps(invalid))
+        refused = False
+        try:
+            telemetry.record_trace_interruption(
+                engine_root=engine,
+                trace_id=old.trace_id,
+                successor_trace_id=successor.trace_id,
+                custody_evidence=custody,
+                clock=clock,
+            )
+        except telemetry.ValidationError as exc:
+            refused = "verified custody" in str(exc)
+        assert refused, "DURABILITY UNVERIFIED CUSTODY ADMITTED: " + key
+        assert not (old_directory / "interruption.json").exists()
+    custody.write_bytes(custody_original)
+    clock.boot = "synthetic-boot"
+    with pytest.raises(telemetry.ClockDomainError, match="changed boot"):
+        telemetry.record_trace_interruption(
+            engine_root=engine,
+            trace_id=old.trace_id,
+            successor_trace_id=successor.trace_id,
+            custody_evidence=custody,
+            clock=clock,
+        )
+    clock.boot = "next-synthetic-boot"
+    record = telemetry.record_trace_interruption(
+        engine_root=engine,
+        trace_id=old.trace_id,
+        successor_trace_id=successor.trace_id,
+        custody_evidence=custody,
+        clock=clock,
+    )
+    assert record["old_completion"] == "unknown", "DURABILITY INTERRUPTED WORK FALSE SUCCESS"
+    assert record["old_exit_code"] is record["old_duration_ns"] is None
+    assert all(item.read_bytes() == body for item, body in originals.items()), (
+        "DURABILITY OLD TRACE BYTES CHANGED"
+    )
+    assert not (old_directory / "finalized.json").exists()
+    assert len(ledger.read_text().splitlines()) == 1
+    assert telemetry.trace_context(engine_root=engine, trace_id=old.trace_id)["state"] == "open"
+    assert (
+        telemetry.record_trace_interruption(
+            engine_root=engine,
+            trace_id=old.trace_id,
+            successor_trace_id=successor.trace_id,
+            custody_evidence=custody,
+            clock=clock,
+        )
+        == record
+    )
+    custody.write_text(custody.read_text().replace("retained candidate", "other candidate"))
+    with pytest.raises(telemetry.ValidationError, match="conflicting interruption"):
+        telemetry.record_trace_interruption(
+            engine_root=engine,
+            trace_id=old.trace_id,
+            successor_trace_id=successor.trace_id,
+            custody_evidence=custody,
+            clock=clock,
+        )
+    custody.write_text(custody.read_text().replace("other candidate", "retained candidate"))
+    clock.boot = "next-synthetic-boot"
+    wrong = telemetry.start_trace(
+        engine_root=engine,
+        scope_root=engine,
+        scope="engine",
+        scope_id="engine",
+        run_type="kickoff",
+        operation="phase.other",
+        clock=clock,
+    )
+    with pytest.raises(telemetry.ValidationError, match="matching open work"):
+        telemetry.record_trace_interruption(
+            engine_root=engine,
+            trace_id=old.trace_id,
+            successor_trace_id=wrong.trace_id,
+            custody_evidence=custody,
+            clock=clock,
+        )
+    clock.advance(20)
+    finish_trace(engine, successor, clock=clock)
+    clock.boot = "third-synthetic-boot"
+    repeated = telemetry.record_trace_interruption(
+        engine_root=engine,
+        trace_id=old.trace_id,
+        successor_trace_id=successor.trace_id,
+        custody_evidence=custody,
+        clock=clock,
+    )
+    assert repeated == record, "DURABILITY CLOSED SUCCESSOR REPLAY REFUSED"
+    custody.unlink()
+    with pytest.raises(telemetry.TelemetryError, match="cannot read telemetry state"):
+        telemetry.record_trace_interruption(
+            engine_root=engine,
+            trace_id=old.trace_id,
+            successor_trace_id=successor.trace_id,
+            custody_evidence=custody,
+            clock=clock,
+        )
+
 
 def test_atomic_state_and_first_ledger_creation_fsync_directories(
     engine: Path, monkeypatch: pytest.MonkeyPatch

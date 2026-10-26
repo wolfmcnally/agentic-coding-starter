@@ -8,6 +8,7 @@ import shlex
 import stat
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -188,8 +189,11 @@ def _write_estate(root: Path, *, pruned: bool) -> Path:
 
 
 @pytest.fixture(scope="module")
-def estate(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    return _write_estate(tmp_path_factory.mktemp("estate"), pruned=True)
+def estate():
+    storage = REPO_ROOT / ".kickoff/proof-runtime"
+    storage.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="estate-", dir=storage) as directory:
+        yield _write_estate(Path(directory), pruned=True)
 
 
 def test_inventory_counts_executable_families_and_expanded_leaves(estate: Path) -> None:
@@ -203,6 +207,26 @@ def test_live_reset_validates(estate: Path, tmp_path: Path) -> None:
     assert summary["dispositions"] == {"retain": 7, "repair": 0, "consolidate": 1, "delete": 1}
     assert (summary["admissions"], summary["post_reset_retirements"]) == (1, 1)
     assert (summary["witness_receipts"], summary["unwitnessed_baseline"]) == (1, 6)
+    status, _ = governance._witness_run("/usr/bin/true", estate)
+    assert status == 0
+    capture_root = estate / ".kickoff/witness/captures"
+    digest = governance.load_ledger(capture_root / "index.jsonl")[0]["sha256"]
+    stored = capture_root / "retained-artifacts" / digest
+    original = stored.read_bytes()
+    assert governance.validate(estate)["state"] == "valid"
+    for changed in (b"altered observation", None):
+        if changed is None:
+            stored.unlink()
+        else:
+            stored.write_bytes(changed)
+        refused = False
+        try:
+            governance.validate(estate)
+        except governance.GovernanceError as exc:
+            refused = "witness capture invalid" in str(exc)
+        assert refused, "DURABILITY WITNESS CORRUPTION ACCEPTED"
+    stored.write_bytes(original)
+    assert governance.validate(estate)["state"] == "valid"
     # A new repository keeps every proof it was given and has witnessed nothing yet.
     fresh = governance.validate(_write_estate(tmp_path / "fresh", pruned=False))
     assert fresh["state"] == "valid"
@@ -587,7 +611,9 @@ def _witness_repo(root: Path, guard: str = "deny\n", *, validates_itself: bool =
     return root
 
 
-def test_witness_observes_red_restores_exactly_and_records_a_receipt(tmp_path: Path) -> None:
+def test_witness_observes_red_restores_exactly_and_records_a_receipt(
+    tmp_path: Path,
+) -> None:
     root = _witness_repo(tmp_path, validates_itself=True)
     check = root / "check.sh"
     check.write_text(check.read_text().replace("exit 1", "exit 101"))
@@ -600,6 +626,19 @@ def test_witness_observes_red_restores_exactly_and_records_a_receipt(tmp_path: P
     assert int((root / "guard.txt").stat().st_mtime) > planted_second
     assert not (root / governance.WITNESS_PENDING).exists()
     assert governance.load_ledger(root / "reports/witnesses.jsonl") == [receipt]
+    capture_root = root / ".kickoff/witness/captures"
+    captures = [
+        json.loads((capture_root / "retained-artifacts" / row["sha256"]).read_text())
+        for row in governance.load_ledger(capture_root / "index.jsonl")
+    ]
+    assert [item["exit_code"] for item in captures].count(0) == 2, (
+        "DURABILITY WITNESS CAPTURE LOST RED STATUS"
+    )
+    red = [item for item in captures if item["exit_code"] == 101]
+    assert (
+        len(red) == 1
+        and hashlib.sha256(red[0]["output"].encode()).hexdigest() == receipt["red_output_sha256"]
+    ), "DURABILITY WITNESS CAPTURE LOST RED STATUS"
     assert (
         receipt["paths"] == ["guard.txt"]
         and receipt["defect"] == "Completed failure exit 101: " + WITNESS["defect"]
@@ -608,6 +647,9 @@ def test_witness_observes_red_restores_exactly_and_records_a_receipt(tmp_path: P
 
     with pytest.raises(governance.GovernanceError, match="failure-exit must identify"):
         governance.witness_begin(root, failure_exit=124, **WITNESS)
+    with tempfile.TemporaryDirectory() as temporary:
+        with pytest.raises(governance.GovernanceError, match="temporary storage"):
+            governance._witness_run("/usr/bin/true", Path(temporary))
 
 
 def test_witness_refuses_anything_short_of_the_named_failure(tmp_path: Path) -> None:
