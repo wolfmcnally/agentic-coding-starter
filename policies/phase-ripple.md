@@ -31,15 +31,13 @@ Mirrors `teach`'s stale-sweep model. Every potential ripple gets one classificat
   - Renaming a path the closing phase pinned that a downstream phase references verbatim.
   - Adding a brief ref the closing phase introduced to a downstream phase's "Brief refs" section when the downstream phase's Deliverables genuinely depend on it.
   - Tightening a downstream Acceptance criterion from "TBD in phase N" to the actual value phase N just pinned.
-  - Updating a flag/value/version number the downstream phase references.
-  AUTO ripples are classified before acceptance and applied after the accepted status transition. The prepared END block identifies pending edits; append their actual outcomes before the full handoff gate.
+  - Updating a flag/value/version number the downstream phase references. AUTO ripples are classified before acceptance and applied after the accepted status transition. The prepared END block identifies pending edits; append their actual outcomes before the full handoff gate.
 
 - **DECIDE** — touches judgment-bearing content. Examples:
   - The closing phase reveals a downstream Goal needs revision (its scope shifted).
   - A downstream Deliverable became obsolete or was absorbed by the closing phase.
   - The dependency graph changes (a downstream phase no longer depends on this one, or vice versa).
-  - Multiple acceptable shapes exist for the downstream edit and the orchestrator can't pick.
-  DECIDE ripples are *not* applied. They are surfaced before acceptance as named operator decisions. An unresolved DECIDE parks the current close and delivery; it is not deferred past acceptance.
+  - Multiple acceptable shapes exist for the downstream edit and the orchestrator can't pick. DECIDE ripples are *not* applied. They are surfaced before acceptance as named operator decisions. An unresolved DECIDE parks the current close and delivery; it is not deferred past acceptance.
 
 When in doubt, classify as DECIDE. The cost of surfacing a mechanical edit for human approval is one extra round-trip; the cost of an unwanted auto-edit to a downstream draft is silent drift.
 
@@ -62,25 +60,10 @@ The user owns DECIDE resolution and may also override any AUTO edit by editing t
 
 ## Verification
 
-Verification here is a **manual sweep**, and there is deliberately no command for
-it. Read the closing phase's `Ripple:` block in `LOG.md`, then:
+Verification here is a **manual sweep**, and there is deliberately no command for it. Read the closing phase's `Ripple:` block in `LOG.md`, then:
 
-- For every `AUTO:` line, confirm a corresponding edit is in the phase's delivered
-  diff. An AUTO claim with no edit behind it is a false END block, which
-  [`log-discipline.md`](log-discipline.md) § Rules treats as the most dangerous
-  failure mode in the file.
-- For every name, path, or value the closing phase pinned, search `plan/phase-*.md`
-  for stragglers the classifier missed.
-- For every `DECIDE:` line, confirm it names a follow-up condition. DECIDE items
-  reappear in the next kickoff's reading protocol until resolved.
+- For every `AUTO:` line, confirm a corresponding edit is in the phase's delivered diff. An AUTO claim with no edit behind it is a false END block, which [`log-discipline.md`](log-discipline.md) § Rules treats as the most dangerous failure mode in the file.
+- For every name, path, or value the closing phase pinned, search `plan/phase-*.md` for stragglers the classifier missed.
+- For every `DECIDE:` line, confirm it names a follow-up condition. DECIDE items reappear in the next kickoff's reading protocol until resolved.
 
-**No grep against `LOG.md` substitutes for that read.** The previous version of
-this section shipped two, and both were structurally incapable of reporting a
-problem: they matched `- AUTO` and `- DECIDE` followed by a space, while the
-orchestrator writes those lines with a colon, so one branch never fired and the
-other printed "clean" on every run regardless of the truth. A check that can only
-return one answer carries no information —
-[`acceptance-empirical.md`](acceptance-empirical.md) § "A check must be able to
-fail". Mechanizing this properly means comparing END-block claims against the
-delivered diff, which is a real checker and not a one-liner; until one exists, the
-honest form is the read above.
+**No grep against `LOG.md` substitutes for that read.** The previous version of this section shipped two, and both were structurally incapable of reporting a problem: they matched `- AUTO` and `- DECIDE` followed by a space, while the orchestrator writes those lines with a colon, so one branch never fired and the other printed "clean" on every run regardless of the truth. A check that can only return one answer carries no information — [`acceptance-empirical.md`](acceptance-empirical.md) § "A check must be able to fail". Mechanizing this properly means comparing END-block claims against the delivered diff, which is a real checker and not a one-liner; until one exists, the honest form is the read above.

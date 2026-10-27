@@ -246,6 +246,7 @@ families:
   source_paths: &id012
   - bin/kickoff-config
   - kickoff.yaml
+  - lib/agentic_starter/workflow.py
   - tests/test_kickoff_config.py
   - .claude/agents/**
   - .codex/agents/**
@@ -255,25 +256,6 @@ families:
   oracle: Config fixtures validate schemas and exact generated child invocations.
   admission: Configuration interactions retain the full matrix.
   nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
-  tier: changed
-  flake_rate: 0.0
-  replacement_lineage: []
-- id: native-review-diagnostic
-  kind: pytest
-  selectors:
-  - tests/test_review_diagnostic.py
-  source_paths: &id-native-review-diagnostic
-  - bin/review-diagnostic
-  - lib/agentic_starter/review_diagnostic.py
-  - lib/agentic_starter/test_runner.py
-  - lib/agentic_starter/workflow.py
-  - tests/test_review_diagnostic.py
-  covers: *id-native-review-diagnostic
-  contract: Nonprivate diagnostic preparation keeps availability distinct from runtime evidence and preserves candidate binding, phase advice and native launch holds.
-  risk_class: diagnostic-context-custody
-  oracle: Fixed synthetic fixtures reject inferred runtime observations and candidate relabeling, expose actual exec identity and reject mismatched observer events.
-  admission: Three locally witnessed no-model proofs cover the held preparation boundary only.
-  nearest_overlap: Phase watcher proofs cannot establish independent diagnostic preparation or its native context hold.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []

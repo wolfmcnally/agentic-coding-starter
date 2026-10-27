@@ -86,12 +86,7 @@ Resolve once per evidence run and retain its frozen tool/config bundle through a
 
 Planner, reviewer, and critic remain read-only; the coder remains write-enabled.
 
-Read/write posture and research authority are independent. Per
-[`research-authority.md`](research-authority.md), planner and reviewer may
-originate search and retrieval; coder and critic may retrieve plan/brief-named
-resources but may not originate search. Ambient MCP servers and plugins are
-allow-by-default and are not disabled by model routing. A project or phase may
-explicitly narrow them.
+Read/write posture and research authority are independent. Per [`research-authority.md`](research-authority.md), planner and reviewer may originate search and retrieval; coder and critic may retrieve plan/brief-named resources but may not originate search. Ambient MCP servers and plugins are allow-by-default and are not disabled by model routing. A project or phase may explicitly narrow them.
 
 **A tool stance is only as guaranteed as its venue's enforcement.** Measured in a donor project: a delegated Claude-venue role launched with a restricted `--allowedTools` list still executed tools outside it — a planner launched without `Bash` made twenty-four Bash calls of which one was denied, despite an explicit taboo in its role definition. Treat that flag as a strong hint and the role's tool stance as self-policed discipline, not a sandbox; the Codex venue's `-s read-only` enforces the read-only stance structurally. Where a stance must be guaranteed rather than requested, route the role to a venue that enforces it.
 
@@ -109,105 +104,37 @@ Before phase identification, decomposition, status mutation, log writes, or agen
 ./bin/kickoff-config preflight --receipt "$RUN_DIR/role-preflight.json"
 ```
 
-The manager probes every non-native role target with its resolved `(CLI, model,
-effort, access mode, research capability)`. It writes unpredictable ASCII text to an isolated local file and requires the venue to read and return that exact text beside `KICKOFF_PREFLIGHT_OK`. The text is absent from the prompt; echoing a prompt sentinel is insufficient. The manager validates the response and computes the SHA-256 of the file bytes for the receipt, so read-only roles need no hashing tool or shell permission.
-The receipt binds the configuration digest, harness, resolved targets, and
-shared probe digest. All-native routing writes the same schema with no targets.
-For each target it also records the absolute executable the venue name resolved to and the version that executable reported. The watcher resolves the venue again in the environment it will launch in and refuses, before any span, launch claim or dispatch row, when the executable or its version differs from the receipt's. A machine can hold two installs of one CLI, and which is first on `PATH` can differ between the shell that ran preflight and the one that launches a role; a green preflight proves only the install it ran. The refusal is a prelaunch rejection: launch from the environment that ran preflight, or run preflight again.
-Production credential scrubs, model/effort and research flags, stdin closure,
-approval posture, and read-only/write-enabled access still apply.
+The manager probes every non-native role target with its resolved `(CLI, model, effort, access mode, research capability)`. It writes unpredictable ASCII text to an isolated local file and requires the venue to read and return that exact text beside `KICKOFF_PREFLIGHT_OK`. The text is absent from the prompt; echoing a prompt sentinel is insufficient. The manager validates the response and computes the SHA-256 of the file bytes for the receipt, so read-only roles need no hashing tool or shell permission. The receipt binds the configuration digest, harness, resolved targets, and shared probe digest. All-native routing writes the same schema with no targets. For each target it also records the absolute executable the venue name resolved to and the version that executable reported. The watcher resolves the venue again in the environment it will launch in and refuses, before any span, launch claim or dispatch row, when the executable or its version differs from the receipt's. A machine can hold two installs of one CLI, and which is first on `PATH` can differ between the shell that ran preflight and the one that launches a role; a green preflight proves only the install it ran. The refusal is a prelaunch rejection: launch from the environment that ran preflight, or run preflight again. Production credential scrubs, model/effort and research flags, stdin closure, approval posture, and read-only/write-enabled access still apply.
 
 Preflight is fail-closed. A missing CLI, unusable authentication, unavailable model, network or sandbox error, flag incompatibility, timeout, malformed response, wrong challenge response, stale configuration, or incomplete target set aborts `kickoff` before phase state exists. Only the declared preflight/usage fallback above may change a target; other upstream failures have no implicit native fallback.
 
 ## Invocation and resume
 
-`bin/kickoff-config` owns the production command. `render-command` emits the
-exact inspectable argv; `watch` generates and launches it from role, venue,
-model, effort, prompt, artifact, resume, and timeout metadata. Callers never
-hand-build a Claude or Codex command. The manager alone owns auth scrubs,
-recursion depth, access posture, research capability flags/directives,
-artifact wiring, and model/effort flags. Roles
-resume the same external session across revision rounds.
+`bin/kickoff-config` owns the production command. `render-command` emits the exact inspectable argv; `watch` generates and launches it from role, venue, model, effort, prompt, artifact, resume, and timeout metadata. Callers never hand-build a Claude or Codex command. The manager alone owns auth scrubs, recursion depth, access posture, research capability flags/directives, artifact wiring, and model/effort flags. Roles resume the same external session across revision rounds.
 
-Before dispatch, `kickoff-evidence register-role-attempt` creates an immutable
-per-attempt registration. The watcher accepts that registration—not the
-append-only ledger—and binds it to exact intelligence and nested wait spans.
-Review roles receive a strict structured-output schema generated from the same
-finding vocabularies the evidence validator enforces — constraint at
-generation, because post-hoc validation makes the cheapest repair (one more
-turn saying "invalid token, re-emit") unavailable, and a single invented
-vocabulary token can discard an entire expensive review batch. The post-hoc
-validator stays in the path for what strict structured-output subsets cannot
-express (id shapes, non-empty text, transition legality). A missing
-registration, routing mismatch, stale artifact, malformed schema result, or
-bad span join fails closed.
+Before dispatch, `kickoff-evidence register-role-attempt` creates an immutable per-attempt registration. The watcher accepts that registration—not the append-only ledger—and binds it to exact intelligence and nested wait spans. Review roles receive a strict structured-output schema generated from the same finding vocabularies the evidence validator enforces — constraint at generation, because post-hoc validation makes the cheapest repair (one more turn saying "invalid token, re-emit") unavailable, and a single invented vocabulary token can discard an entire expensive review batch. The post-hoc validator stays in the path for what strict structured-output subsets cannot express (id shapes, non-empty text, transition legality). A missing registration, routing mismatch, stale artifact, malformed schema result, or bad span join fails closed.
 
 ### Credential precedence
 
-Both CLIs rank an environment API key **above** their subscription OAuth, and
-*set does not mean valid*. Claude Code injects a session-scoped
-`ANTHROPIC_API_KEY` into its children, so any delegation chain beginning in a
-Claude Code session can carry a key that fails direct API auth; a stale
-`OPENAI_API_KEY` likewise outranks a ChatGPT-plan login, flipping billing or
-failing outright — while the CLI's status display still reports the plan
-login. Neither CLI's status display reliably reveals which credential is live.
+Both CLIs rank an environment API key **above** their subscription OAuth, and *set does not mean valid*. Claude Code injects a session-scoped `ANTHROPIC_API_KEY` into its children, so any delegation chain beginning in a Claude Code session can carry a key that fails direct API auth; a stale `OPENAI_API_KEY` likewise outranks a ChatGPT-plan login, flipping billing or failing outright — while the CLI's status display still reports the plan login. Neither CLI's status display reliably reveals which credential is live.
 
-Under the subscription auth model an environment key is never the intended
-credential, so the dispatch manager scrubs it unconditionally at the spawn
-point: `ANTHROPIC_API_KEY`, `CLAUDECODE`, and `CLAUDE_CODE_ENTRYPOINT` for the
-Claude venue; `OPENAI_API_KEY` and `CODEX_API_KEY` for the Codex venue. The
-scrub costs nothing when no key is present and never harms keychain OAuth or
-an explicit OAuth token. Do not rely on the parent's hygiene: Codex strips
-key-shaped variables from its children's environment, but Claude Code forwards
-the full environment *and adds* its own key. An API-key-authenticated project
-inverts this: pass the key inline to a single invocation, never as a job-level
-export.
+Under the subscription auth model an environment key is never the intended credential, so the dispatch manager scrubs it unconditionally at the spawn point: `ANTHROPIC_API_KEY`, `CLAUDECODE`, and `CLAUDE_CODE_ENTRYPOINT` for the Claude venue; `OPENAI_API_KEY` and `CODEX_API_KEY` for the Codex venue. The scrub costs nothing when no key is present and never harms keychain OAuth or an explicit OAuth token. Do not rely on the parent's hygiene: Codex strips key-shaped variables from its children's environment, but Claude Code forwards the full environment *and adds* its own key. An API-key-authenticated project inverts this: pass the key inline to a single invocation, never as a job-level export.
 
 ### Review handoff
 
-Pass a review role the raw artifact and the requirements, adversarially
-framed — never the implementer's self-assessment, and never its build-status
-narrative. This is measured, not stylistic: the strongest published experience
-report (cited in [`../briefs/cross-agent-invocation.md`](../briefs/cross-agent-invocation.md) §1)
-found a cold artifact produced roughly 9.4 mean findings against 2.4–4.0 when
-the implementer's narrative was included, and critical-severity tagging
-roughly halved under even mild framing.
+Pass a review role the raw artifact and the requirements, adversarially framed — never the implementer's self-assessment, and never its build-status narrative. This is measured, not stylistic: the strongest published experience report (cited in [`../briefs/cross-agent-invocation.md`](../briefs/cross-agent-invocation.md) §1) found a cold artifact produced roughly 9.4 mean findings against 2.4–4.0 when the implementer's narrative was included, and critical-severity tagging roughly halved under even mild framing.
 
-**Hand the reviewer a map, not a payload, and never reject a venue on diff
-size.** An external reviewer runs against a read-only checkout with its own
-Read and Grep, exactly like a native subagent, so a large change travels as
-the changed-file list plus `git diff --stat`; inline a full diff only when it
-is small enough to read whole. Flag machine-regenerated blobs — fixtures,
-snapshot data, lockfiles — as spot-check material so a diff dominated by
-generated data does not *read* as unreviewably large. Computing the diff's
-byte count and falling back to native without ever making the external call
-confuses an on-disk artifact with tokens in a context window; a reviewer never
-loads a whole diff at once. Delegation is discarded on the three-signal
-success gate below, never on a pre-computed size estimate.
+**Hand the reviewer a map, not a payload, and never reject a venue on diff size.** An external reviewer runs against a read-only checkout with its own Read and Grep, exactly like a native subagent, so a large change travels as the changed-file list plus `git diff --stat`; inline a full diff only when it is small enough to read whole. Flag machine-regenerated blobs — fixtures, snapshot data, lockfiles — as spot-check material so a diff dominated by generated data does not *read* as unreviewably large. Computing the diff's byte count and falling back to native without ever making the external call confuses an on-disk artifact with tokens in a context window; a reviewer never loads a whole diff at once. Delegation is discarded on the three-signal success gate below, never on a pre-computed size estimate.
 
-**Generate each round's invocation from explicit parameters.** Deriving round
-N's launcher from round N−1 by search-replacing a token silently no-ops when
-the token does not match, and the new round is then handed the *previous*
-round's prompt. The symptom mimics model misbehavior exactly — a reviewer
-re-raising already-fixed findings, a coder reporting "already done" — and gets
-misdiagnosed as drift. Assert the prompt file exists before spawning. When a
-delegated agent's output contradicts what you believe you sent it, suspect the
-plumbing before the model.
+**Generate each round's invocation from explicit parameters.** Deriving round N's launcher from round N−1 by search-replacing a token silently no-ops when the token does not match, and the new round is then handed the *previous* round's prompt. The symptom mimics model misbehavior exactly — a reviewer re-raising already-fixed findings, a coder reporting "already done" — and gets misdiagnosed as drift. Assert the prompt file exists before spawning. When a delegated agent's output contradicts what you believe you sent it, suspect the plumbing before the model.
 
 A delegated call is an ordinary success only when all three hold:
 
 1. its output artifact exists and is non-empty;
 2. it has the role's required output shape or exact verdict header; and
-3. its child succeeded and its terminal event stream completed inside the
-   first-event, idle-progress, and hard deadlines.
+3. its child succeeded and its terminal event stream completed inside the first-event, idle-progress, and hard deadlines.
 
-The watchdog records child status, artifact freshness, and stream completeness
-independently. Exit 66 (`completed-unverified-protocol`) preserves a fresh
-artifact from a successful child whose terminal stream was incomplete. The
-orchestrator may use it only after validating the role shape, ingesting and
-validating any finding/change evidence, and confirming the expected candidate
-id per [`orchestration-evidence.md`](orchestration-evidence.md). It records the
-protocol recovery in the END block. Failed verification follows [Governed recovery](#governed-recovery).
+The watchdog records child status, artifact freshness, and stream completeness independently. Exit 66 (`completed-unverified-protocol`) preserves a fresh artifact from a successful child whose terminal stream was incomplete. The orchestrator may use it only after validating the role shape, ingesting and validating any finding/change evidence, and confirming the expected candidate id per [`orchestration-evidence.md`](orchestration-evidence.md). It records the protocol recovery in the END block. Failed verification follows [Governed recovery](#governed-recovery).
 
 After successful preflight, a non-zero child, timeout, network failure, stale or missing artifact, malformed output, candidate mismatch, or unrecoverable protocol error remains a failed attempt under [Governed recovery](#governed-recovery). A Claude review that exhausts its turn cap after completing investigation may resume once only to emit its verdict under the existing timeout policy.
 
@@ -221,13 +148,7 @@ Record authorized recovery and verified protocol recovery separately, retaining 
 
 ## Propagation
 
-`kickoff.yaml`, `bin/kickoff-config`, `bin/kickoff-evidence`, the finding schema,
-the exact telemetry substrate, `roles`, this policy, and the timeout policy are
-one universal configuration/execution bundle. `stamp` carries it. `teach`
-upgrades its schema and mechanics while preserving target values, comments,
-`extensions` data, ambient MCP/plugin availability, and local operational
-state. `learn` may absorb general
-mechanics but never donor operational state.
+`kickoff.yaml`, `bin/kickoff-config`, `bin/kickoff-evidence`, the finding schema, the exact telemetry substrate, `roles`, this policy, and the timeout policy are one universal configuration/execution bundle. `stamp` carries it. `teach` upgrades its schema and mechanics while preserving target values, comments, `extensions` data, ambient MCP/plugin availability, and local operational state. `learn` may absorb general mechanics but never donor operational state.
 
 ## Relationship to other policies
 

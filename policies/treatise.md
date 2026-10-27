@@ -1,47 +1,22 @@
 # Policy: Treatises
 
-A treatise is an outward-facing explanation of a repository's principles and
-decisions for a named audience. It is derived from live repository authority;
-it is not an inventory dump, a transcript, or a substitute for the canonical
-briefs and policies.
+A treatise is an outward-facing explanation of a repository's principles and decisions for a named audience. It is derived from live repository authority; it is not an inventory dump, a transcript, or a substitute for the canonical briefs and policies.
 
 ## Canonical source first
 
-Before rendering a treatise, identify the brief or policy that owns each
-material claim. If the repository lacks a canonical explanation, write or
-repair that internal brief first. Rendered formats are derivatives; corrections
-land in the canonical source and are regenerated outward.
+Before rendering a treatise, identify the brief or policy that owns each material claim. If the repository lacks a canonical explanation, write or repair that internal brief first. Rendered formats are derivatives; corrections land in the canonical source and are regenerated outward.
 
 ## Intent is recorded in the brief's frontmatter
 
-A treatise is a brief whose YAML frontmatter carries a `treatise:` mapping. That
-mapping is the editorial record: `purpose`, `audience`, `register`, `coverage`,
-the operator's dated `directives`, the published `renderings`, and every
-`external_facts` entry with its retrieval date. The prose argues; the block
-records the instructions that shaped it, which the prose cannot state about
-itself.
+A treatise is a brief whose YAML frontmatter carries a `treatise:` mapping. That mapping is the editorial record: `purpose`, `audience`, `register`, `coverage`, the operator's dated `directives`, the published `renderings`, and every `external_facts` entry with its retrieval date. The prose argues; the block records the instructions that shaped it, which the prose cannot state about itself.
 
-**Presence of the block is the marker.** There is no separate boolean that could
-contradict it and no sidecar file that could be renamed, orphaned, or forgotten
-apart from the brief it describes. The record travels with the document by
-construction.
+**Presence of the block is the marker.** There is no separate boolean that could contradict it and no sidecar file that could be renamed, orphaned, or forgotten apart from the brief it describes. The record travels with the document by construction.
 
-Read the block before drafting and update it in the same pass that changes the
-treatise. A revision that contradicts a recorded ruling surfaces the conflict to
-the operator rather than resolving it silently. A treatise revised without
-reading its record re-derives audience and register from whatever draft is in
-front of it, which is how a piece drifts from what was asked for.
+Read the block before drafting and update it in the same pass that changes the treatise. A revision that contradicts a recorded ruling surfaces the conflict to the operator rather than resolving it silently. A treatise revised without reading its record re-derives audience and register from whatever draft is in front of it, which is how a piece drifts from what was asked for.
 
-The block separates two things deliberately. `audience`, `register`, and
-`coverage` are **current state**, edited freely to say what is true now.
-`directives` is a **provenance log** explaining how that state was arrived at:
-one dated entry per ruling, quoting the operator where possible. Removing a past
-entry is a deliberate act, not a tidy-up, and the repository's own version
-history holds every earlier state of the log.
+The block separates two things deliberately. `audience`, `register`, and `coverage` are **current state**, edited freely to say what is true now. `directives` is a **provenance log** explaining how that state was arrived at: one dated entry per ruling, quoting the operator where possible. Removing a past entry is a deliberate act, not a tidy-up, and the repository's own version history holds every earlier state of the log.
 
-`bin/treatise validate` enforces the schema, the required fields, and ISO dates;
-it runs in `./bin/check all`. A leftover `briefs/<name>.yaml` beside its brief
-fails the check, because the record has one home.
+`bin/treatise validate` enforces the schema, the required fields, and ISO dates; it runs in `./bin/check all`. A leftover `briefs/<name>.yaml` beside its brief fails the check, because the record has one home.
 
 ## Explain decisions, not files
 
@@ -53,18 +28,13 @@ A treatise answers:
 - What alternatives or limits matter to the audience?
 - How can the audience verify the claims?
 
-File paths and implementation details appear only as evidence. A directory
-tour is not a treatise.
+File paths and implementation details appear only as evidence. A directory tour is not a treatise.
 
 ## Audience and disclosure
 
-Name the audience and the intended venue before writing. Elide secrets,
-private paths, external-project identities, unpublished implementation detail,
-and internal operational vocabulary while drafting—not as a cleanup pass.
-Honor every repository publication, anonymization, and disclosure policy.
+Name the audience and the intended venue before writing. Elide secrets, private paths, external-project identities, unpublished implementation detail, and internal operational vocabulary while drafting—not as a cleanup pass. Honor every repository publication, anonymization, and disclosure policy.
 
-Internal generation of a canonical brief is allowed under ordinary repository
-write authority. External publication requires both:
+Internal generation of a canonical brief is allowed under ordinary repository write authority. External publication requires both:
 
 1. explicit user authority for the publication action; and
 2. a disclosure or release policy governing the receiving project or venue.
@@ -73,21 +43,12 @@ If either is absent, produce the internal artifact and stop before publishing.
 
 ## Freshness and attribution
 
-Volatile factual claims name both their evidence date (`As of YYYY-MM-DD`) and
-retrieval date (`Retrieved YYYY-MM-DD`) when fetched externally. Quote from the
-original source, never from an intermediate summary. Keep quotation within the
-source's permitted bounds and prefer concise paraphrase.
+Volatile factual claims name both their evidence date (`As of YYYY-MM-DD`) and retrieval date (`Retrieved YYYY-MM-DD`) when fetched externally. Quote from the original source, never from an intermediate summary. Keep quotation within the source's permitted bounds and prefer concise paraphrase.
 
 ## Rendered forms
 
-The canonical artifact is normally a repository brief. A user may request a
-Markdown article, document, presentation, site, or other rendering. Use the
-appropriate artifact workflow for that format, but preserve the same claim
-map, audience, disclosure boundary, and source provenance across renderings.
+The canonical artifact is normally a repository brief. A user may request a Markdown article, document, presentation, site, or other rendering. Use the appropriate artifact workflow for that format, but preserve the same claim map, audience, disclosure boundary, and source provenance across renderings.
 
 ## Review
 
-Review the treatise against its named audience and its canonical authorities.
-Confirm that it leads with the governing thesis, distinguishes principles from
-implementation details, exposes real limitations, and contains no claim that
-cannot be traced to the repository or an identified external source.
+Review the treatise against its named audience and its canonical authorities. Confirm that it leads with the governing thesis, distinguishes principles from implementation details, exposes real limitations, and contains no claim that cannot be traced to the repository or an identified external source.

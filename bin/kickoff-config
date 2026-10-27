@@ -34,7 +34,6 @@ recipe stays inspectable without being re-typed.
 from __future__ import annotations
 
 import argparse
-import errno
 import hashlib
 import json
 import math
@@ -1051,7 +1050,7 @@ def build_watch_command(
             die("claude venue requires --result-file")
         if arguments.required_output_file:
             die("claude venue extracts its artifact from the stream; use --result-file")
-        command = build_claude_command(
+        return build_claude_command(
             prompt=prompt,
             model_slug=CLAUDE_MODELS[model],
             effort=effort,
@@ -1060,16 +1059,6 @@ def build_watch_command(
             schema_kind=schema_kind,
             resume_session=arguments.resume_session,
         )
-        if registration_path and arguments.role in {"reviewer", "critic"}:
-            try:
-                arguments.native_review_session_id = workflow.review_session_id(
-                    arguments.resume_session
-                )
-            except (workflow.WorkflowError, ValueError) as exc:
-                die(str(exc))
-            if not arguments.resume_session:
-                command.extend(("--session-id", arguments.native_review_session_id))
-        return command
     if model not in CODEX_MODELS:
         die(f"model '{model}' does not route to the codex CLI")
     if not arguments.required_output_file:
@@ -2121,20 +2110,6 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
             "KICKOFF_DELEGATION_DEPTH is set: this session is itself a delegated "
             "role and may not delegate again; run the role natively"
         )
-    if (
-        arguments.telemetry_role_registration
-        and arguments.venue == "claude"
-        and arguments.role in {"reviewer", "critic"}
-    ):
-        try:
-            path = Path(arguments.telemetry_role_registration).absolute()
-            if path.name not in {"plan-registration.json", "code-registration.json"}:
-                raise workflow.WorkflowError(
-                    "review binding requires plan-registration.json or code-registration.json"
-                )
-            workflow.review_path(path)
-        except (workflow.WorkflowError, OSError) as exc:
-            die(f"cannot bind registered review: {exc}")
     command = build_watch_command(arguments, document)
     program_index = validate_watch_routing(arguments, command)
     command, child_environment = prepare_watched_command(arguments, command, program_index)
@@ -2214,33 +2189,6 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
     if idle_limit > hard_limit:
         die("idle timeout cannot exceed hard timeout")
 
-    review_binding = None
-    if (
-        registration is not None
-        and arguments.venue == "claude"
-        and arguments.role in {"reviewer", "critic"}
-    ):
-        try:
-            path = Path(arguments.telemetry_role_registration).absolute()
-            observed, registration_digest = workflow.review_registration(path)
-            if observed != registration or hard_limit > 86400:
-                raise workflow.WorkflowError("review binding registration or deadline mismatch")
-            review_binding = {
-                "schema_version": 1,
-                "session_id": arguments.native_review_session_id,
-                "cwd": os.getcwd(),
-                "registration_path": str(path),
-                "registration_sha256": registration_digest,
-            }
-        except (
-            workflow.WorkflowError,
-            OSError,
-            ValueError,
-            TypeError,
-            RecursionError,
-        ) as exc:
-            die(f"cannot bind registered review: {exc}")
-
     version = None
     version_errors: list[str] = []
     try:
@@ -2314,7 +2262,6 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
         die(f"could not open dispatch evidence before launch: {opening_error}")
     started_iso = utc_now()
     started = time.monotonic()
-    started_wall = time.time()
     last_activity = started
     first_event_at: float | None = None
     longest_idle = 0.0
@@ -2341,31 +2288,8 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
             if launch.returncode:
                 raise OSError(launch.stderr.strip() or "advice launch refused")
             claimed_now = True
-        launch_command = command
-        if review_binding is not None:
-            # Preserve the existing no-child refund when the CLI disappeared
-            # before process creation. A later exec-stage failure is consumed.
-            review_program = shutil.which(
-                command[program_index], path=child_environment.get("PATH")
-            )
-            if review_program is None:
-                raise FileNotFoundError(
-                    errno.ENOENT, os.strerror(errno.ENOENT), command[program_index]
-                )
-            os.stat(review_program)
-            binding = {
-                **review_binding,
-                "issued_at": started_wall,
-                "expires_at": started_wall + hard_limit,
-            }
-            launch_command = [
-                sys.executable,
-                str(Path(workflow.__file__).resolve()),
-                "--review-exec",
-                json.dumps({"command": command, "binding": binding}),
-            ]
         process = subprocess.Popen(
-            launch_command,
+            command,
             env=child_environment,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,

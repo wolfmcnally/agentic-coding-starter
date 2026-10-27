@@ -14,7 +14,7 @@ Phase status lives in **`plan/INDEX.md`** and nowhere else. This is a hard rule,
 ## Where status lives
 
 - **`plan/INDEX.md`'s phase table.** The phase table is the *single source of truth*. Each row carries one status emoji in its rightmost column.
-- **Nowhere else.** Per-phase files (`plan/phase-*.md`) do *not* carry a `status` field in their frontmatter. Their frontmatter is `id`, `title`, `depends_on`, `informs`, and optionally `review_lane` (a phase property, not a status — see [`review-lanes.md`](review-lanes.md)) — no more.
+- **Nowhere else.** Per-phase files (`plan/phase-*.md`) do *not* carry a `status` field in their frontmatter. Their frontmatter is `id`, `title`, `depends_on`, `informs`, and optionally `review_lane` and `evidence_lane` (phase properties, not statuses — see [`review-lanes.md`](review-lanes.md)) — no more.
 
 ## Why one place
 
@@ -26,9 +26,7 @@ Duplicating status across files invites drift. The orchestrator (`kickoff`) read
 
 - On phase entry: `⬅️` → `🚧` and append a START block to `LOG.md`.
 - On phase completion: `🚧` → `✅`, advance `⬅️` to the lowest-numbered `⏳` row whose dependencies are complete, and append an END block to `LOG.md`.
-- On phase pause: leave the row at `🚧` and append an END block to `LOG.md`
-  documenting the pause reason. Do not advance `⬅️`; zero next rows is valid
-  while work remains active.
+- On phase pause: leave the row at `🚧` and append an END block to `LOG.md` documenting the pause reason. Do not advance `⬅️`; zero next rows is valid while work remains active.
 
 Humans may flip markers manually only in two cases:
 
@@ -37,21 +35,14 @@ Humans may flip markers manually only in two cases:
 
 ## The phase-ledger state machine
 
-Every phase-table data row carries exactly one recognized status marker. The
-number of `⬅️` rows depends on lifecycle state:
+Every phase-table data row carries exactly one recognized status marker. The number of `⬅️` rows depends on lifecycle state:
 
 - **Idle and incomplete:** exactly one row is `⬅️`.
-- **Active:** zero or one row may be `⬅️`. Zero is normal after the executable
-  row changes to `🚧`; one is normal when a decomposed parent remains `🚧`
-  while its next child is queued.
+- **Active:** zero or one row may be `⬅️`. Zero is normal after the executable row changes to `🚧`; one is normal when a decomposed parent remains `🚧` while its next child is queued.
 - **Complete:** zero rows are `⬅️` because no work remains to advance.
-- **Always invalid:** more than one `⬅️`, a phase-table row with no recognized
-  status, or a row carrying multiple recognized statuses.
+- **Always invalid:** more than one `⬅️`, a phase-table row with no recognized status, or a row carrying multiple recognized statuses.
 
-The dependency graph may expose parallel opportunities, but the orchestrator
-queues at most one executable phase. If recovery finds two `⬅️` rows, the
-ledger is invalid; `kickoff` stops and the human corrects it rather than letting
-the orchestrator choose through ambiguity.
+The dependency graph may expose parallel opportunities, but the orchestrator queues at most one executable phase. If recovery finds two `⬅️` rows, the ledger is invalid; `kickoff` stops and the human corrects it rather than letting the orchestrator choose through ambiguity.
 
 ## Phases are named by id in `depends_on` and `informs`
 
@@ -80,27 +71,15 @@ The checker enforces the two parts of this that can be read mechanically: phase-
 
 ## Verification
 
-The deterministic catalog checker validates the lifecycle state and
-one-status-per-row invariant, rejects a `status:` field in any per-phase
-frontmatter, and rejects status-declaration lines in phase bodies. Narrative
-mentions of the status emojis in prose are fine — only a *declaration* (a
-frontmatter key or a `Status: ✅`-shaped line) creates a second source of
-truth, and quoted forms inside fenced blocks or inline code spans are exempt:
+The deterministic catalog checker validates the lifecycle state and one-status-per-row invariant, rejects a `status:` field in any per-phase frontmatter, and rejects status-declaration lines in phase bodies. Narrative mentions of the status emojis in prose are fine — only a *declaration* (a frontmatter key or a `Status: ✅`-shaped line) creates a second source of truth, and quoted forms inside fenced blocks or inline code spans are exempt:
 
 ```bash
 ./bin/check-catalogs
 ```
 
-When a child phase closes, the close operation additionally runs
-`./bin/check-catalogs --closing-phase <id>`. The child must already be `✅`,
-and its direct parent must either be `✅` too or remain `🚧` with another
-drafted, incomplete direct child. A close may not strand a decomposed parent
-whose ledger promises work but names no executable continuation.
+When a child phase closes, the close operation additionally runs `./bin/check-catalogs --closing-phase <id>`. The child must already be `✅`, and its direct parent must either be `✅` too or remain `🚧` with another drafted, incomplete direct child. A close may not strand a decomposed parent whose ledger promises work but names no executable continuation.
 
-The same checker refuses a phase table whose rows are out of ascending phase
-order, a not-started phase whose `depends_on` names a not-started phase
-numbered after it, and a `depends_on` or `informs` value in any phase file that
-is not a phase id.
+The same checker refuses a phase table whose rows are out of ascending phase order, a not-started phase whose `depends_on` names a not-started phase numbered after it, and a `depends_on` or `informs` value in any phase file that is not a phase id.
 
 The checker runs inside the authoritative full gate:
 

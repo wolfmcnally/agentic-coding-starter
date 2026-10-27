@@ -57,13 +57,7 @@ The planned-work list is the phase file's Deliverables list, copied verbatim (tr
 
 `Execution trace:` records the trace id opened for the phase ([`execution-telemetry.md`](execution-telemetry.md)), so START and END are mechanically joinable. The `Baseline:` line appears only when the phase carries a baseline-dependent acceptance criterion ("unchanged before and after", "byte-identical across the edit"): it records the commit id the comparison is against, per [`acceptance-empirical.md`](acceptance-empirical.md) § Baseline-dependent criteria. Omit the line when no criterion depends on a baseline.
 
-**Only finalized evidence may claim exact timing.** An END block's trace timing
-is the machine-generated projection from a finalized trace. Awaiting-user-input
-timing comes from the separate closed operator-park ledger: same-boot intervals
-may claim exact monotonic duration; cross-boot intervals must say non-exact
-calendar duration. Open, malformed, or unknowable intervals may not claim zero
-or an exact total. Narrative wall-clock observations remain separate and are
-never presented as exact.
+**Only finalized evidence may claim exact timing.** An END block's trace timing is the machine-generated projection from a finalized trace. Awaiting-user-input timing comes from the separate closed operator-park ledger: same-boot intervals may claim exact monotonic duration; cross-boot intervals must say non-exact calendar duration. Open, malformed, or unknowable intervals may not claim zero or an exact total. Narrative wall-clock observations remain separate and are never presented as exact.
 
 **Multi-session phases use suffixed blocks.** A phase that pauses and resumes across sessions appends `## <ts> — START (resumed)` when work re-enters, paired with its own END; a continuation that re-derives evidence rather than re-doing work may annotate the suffix (`START (evidence continuation)`). Suffixed blocks keep every session's record distinct instead of overwriting or re-editing the original START — the same append-only discipline, extended to the phase's whole lifetime. The most recent unmatched START of any suffix is the resume anchor.
 
@@ -108,13 +102,7 @@ Build-status lines are project-specific. A Python project might list `ruff check
 
 The `Lessons:` field is part of every truthful END or PARK contract because the harvest question is mandatory at every terminal seam ([`lessons.md`](lessons.md)): `none` is a valid answer, but the field may not be omitted. Ledger content and graduation mechanics are governed by `policies/lessons.md`; `kickoff` may extend the block with additional evidence fields.
 
-The `Acceptance:` field is likewise mandatory, and both halves are written even
-when one is `None`. It is the per-phase record of the boundary in
-[`human-in-the-loop.md`](human-in-the-loop.md): what the orchestrator closed on
-its own evidence, and what is waiting on the user's judgment. Writing only the
-objective half would let "delivered" read as "accepted"; writing only the parked
-half would hide what the gate actually proved. The `Delivery:` field records the
-policy in force *before* the handoff gate — never a predicted outcome.
+The `Acceptance:` field is likewise mandatory, and both halves are written even when one is `None`. It is the per-phase record of the boundary in [`human-in-the-loop.md`](human-in-the-loop.md): what the orchestrator closed on its own evidence, and what is waiting on the user's judgment. Writing only the objective half would let "delivered" read as "accepted"; writing only the parked half would hide what the gate actually proved. The `Delivery:` field records the policy in force *before* the handoff gate — never a predicted outcome.
 
 When a phase pauses (not completes), the END block uses the same format but adds a `Pause reason:` line and leaves the phase row in `plan/INDEX.md` at `🚧`.
 
@@ -156,11 +144,7 @@ This block records the approved inter-phase scope and route; it does not reopen 
 2. **Named writers only; humans read.** Only the writers named in the table above append to `LOG.md`, each writing only its own entry kind: the skills listed there, plus the direct-implementation route's `METHODOLOGY SCOPE` and `METHODOLOGY` blocks, which are the one non-skill writer. Humans don't write to it directly. The exceptions are bootstrapping (creating the initial `# Activity Log` header) and recovery (when a writer failed partway and left an inconsistent state).
 3. **Timestamps are real.** Use the orchestrator's actual wall-clock time when the block was written. Do not back-date.
 4. **The END block is a contract.** When the orchestrator writes an END block claiming the phase is done, the human is entitled to expect that every claim in the block is true. Fabricated evidence is the most dangerous failure mode this policy guards against; the orchestrator must never claim a build gate passed when it didn't, never claim a manual check was performed by the orchestrator, never embellish the file list.
-5. **The handoff gate closes the current block.** The active uncommitted END and
-   other close writes remain contingent until a bare `./bin/check all` passes
-   against the actual handoff tree. No tracked write follows that pass. A
-   failure reopens and corrects the current uncommitted close; committed
-   historical blocks remain append-only.
+5. **The handoff gate closes the current block.** The active uncommitted END and other close writes remain contingent until a bare `./bin/check all` passes against the actual handoff tree. No tracked write follows that pass. A failure reopens and corrects the current uncommitted close; committed historical blocks remain append-only.
 6. **Chronology corrections move effective time, never bytes.** A later exact `LOG CHRONOLOGY CORRECTION` block binds one earlier block digest, repeats its recorded anchor, and supplies a strictly later effective anchor no later than the correction record. Duplicate, missing, ambiguous, or backward corrections refuse.
 7. **One bounded mechanical repair.** A novel bookkeeping failure may receive one in-memory-validated atomic repair under `policies/orchestration-control-plane.md`. A second attempt, ambiguity, substantive change, recurring signature, or failed byte verification parks.
 8. **A diagnosed hook failure may correct the uncommitted block.** A hook that rejects the commit may name a defect in the block the orchestrator just wrote, and the remedy is a correction rather than another appended block. Under [`human-in-the-loop.md`](human-in-the-loop.md) § Correcting a diagnosed hook refusal, retain the rejected bytes, verify the committed prefix before and after the smallest targeted correction, and run `bin/check-log-prefix --staged --require-terminal-lessons` against the newly staged content before renewing the required gates. This narrow exception never authorizes changing committed bytes, moving a block outside `bin/log-relocate`, or rewriting another writer's work.

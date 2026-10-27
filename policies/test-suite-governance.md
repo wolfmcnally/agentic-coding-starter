@@ -1,9 +1,6 @@
 # Test-suite governance policy
 
-Every executable proof belongs to the repository's declared proof estate. The
-manager, schema, reset procedure, lane integration, gates, hooks, transfer rules,
-and reassessment obligation travel together. Family identities, selectors,
-timings, witness receipts, risk judgments, dispositions, and survivors do not.
+Every executable proof belongs to the repository's declared proof estate. The manager, schema, reset procedure, lane integration, gates, hooks, transfer rules, and reassessment obligation travel together. Family identities, selectors, timings, witness receipts, risk judgments, dispositions, and survivors do not.
 
 ## Adoption and scope
 
@@ -48,11 +45,7 @@ A proof that would break under behavior-preserving refactoring asserts the imple
 
 ## Removal and growth
 
-Deleted and consolidated proofs MUST leave the executable estate completely.
-Their dead fixtures, helpers, and caller wiring leave with them.
-Skipping, deselecting, renaming, quarantining, or hiding a proof is not removal.
-A consolidated proof names a retained executable replacement; a deleted proof
-explains why it has no independent contract.
+Deleted and consolidated proofs MUST leave the executable estate completely. Their dead fixtures, helpers, and caller wiring leave with them. Skipping, deselecting, renaming, quarantining, or hiding a proof is not removal. A consolidated proof names a retained executable replacement; a deleted proof explains why it has no independent contract.
 
 **Every retirement batch passes an independent read-only preservation review before it lands.** A reviewer who did not choose the retirements compares each removed scenario with its actual keepers: input and preconditions, boundary, oracle, order/history/concurrency, lane availability, failure attribution and diagnostic value. A counterexample where the removed check fails and keepers pass defeats domination. Uncertainty means retain. Similar lines or coverage are leads, never proof of redundancy; no exhaustive all-pairs analysis is required. New or modified keeper assertions receive authoring evidence. Untouched keepers do not trigger retroactive witnessing. Each reported gap is restored or rejected with source evidence.
 
@@ -72,14 +65,7 @@ Witness commands retain complete observed command/status/output JSON under ignor
 
 After the reset, retirement and repair are append-only events. A `proof_repair` targets one currently active proof, self-binds, carries the same evidence as a disposition, and leaves the active set unchanged; a proof may be repaired more than once.
 
-A `proof_retirement` may target only one currently active baseline or admitted
-proof, exactly once. It records `consolidate` with a named active replacement or
-`delete` with no replacement, plus the same contract, oracle, red-witness,
-overlap, replacement, and rationale evidence as the original reset. Replay
-removes that proof. Renaming a proof is an admission of the new name followed by
-a consolidating retirement of the old one. The replayed active set MUST equal
-the live inventory; a shadow proof, repeated retirement, or missing event
-refuses.
+A `proof_retirement` may target only one currently active baseline or admitted proof, exactly once. It records `consolidate` with a named active replacement or `delete` with no replacement, plus the same contract, oracle, red-witness, overlap, replacement, and rationale evidence as the original reset. Replay removes that proof. Renaming a proof is an admission of the new name followed by a consolidating retirement of the old one. The replayed active set MUST equal the live inventory; a shadow proof, repeated retirement, or missing event refuses.
 
 ## Mutation survey
 

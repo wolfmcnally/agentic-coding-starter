@@ -33,7 +33,7 @@ Start with an idea and turn it into a brief. The brief describes what you want t
 
 ### 2. Execute
 
-The `kickoff` skill runs one phase at a time. A capable primary instance plans and codes, with independent plan and code advice normally supplied through the other provider. One pass per stage is normal; a second requires a recorded reason, and two is the maximum. The primary decides which findings to adopt. A single-provider environment uses fresh instances of the same model; constrained primaries retain the four-role approval workflow.
+The `kickoff` skill runs one phase at a time. A capable primary instance plans and codes, with independent plan and code advice normally supplied through the other provider. One pass per stage is normal; a second requires a recorded reason, and two is the default maximum; only the operator's single-use exception admits a third code review. The primary decides which findings to adopt. A single-provider environment uses fresh instances of the same model; constrained primaries retain the four-role approval workflow.
 
 ### 3. Prove and deliver
 

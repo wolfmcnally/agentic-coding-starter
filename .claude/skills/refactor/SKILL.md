@@ -11,7 +11,7 @@ description: >-
   $refactor in Codex; an optional argument names a path, module or symbol, or
   `survey` for a proposal-only pass over the code under active development.
 argument-hint: "[<path|module|symbol> | survey]"
-last-reviewed: 2026-10-01
+last-reviewed: 2026-10-26
 ---
 
 # Refactor — change the structure, keep the behavior

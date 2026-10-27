@@ -27,9 +27,7 @@ Write a brief when:
 - A non-trivial decision is made whose reasoning matters more than its outcome.
 - An audit, evaluation, or discrepancy review produces findings that will inform future work.
 - A snapshot of an external system's *observed state or behavior* (cloud infrastructure as configured, how a third-party service actually responded) is worth pinning at a specific date. The vendor's own published document is a different thing: that goes under `docs/`, and the brief records what was observed and concluded against it.
-- An outward explanation, white paper, or treatise needs a canonical internal
-  source. Repair the owning brief before rendering derivative formats; see
-  [`treatise.md`](treatise.md).
+- An outward explanation, white paper, or treatise needs a canonical internal source. Repair the owning brief before rendering derivative formats; see [`treatise.md`](treatise.md).
 
 Don't write a brief for ephemeral state, single-session decisions, or anything that fits inside a commit message.
 
@@ -41,11 +39,7 @@ Don't write a brief for ephemeral state, single-session decisions, or anything t
   - `date:` — ISO date authored or last revised.
   - `status:` — one of `draft` | `methodology` | `implemented` | `historical`.
   - `scope:` — one sentence describing the brief's purpose.
-  - `treatise:` — **only on a treatise brief.** A mapping holding that
-    treatise's editorial record: purpose, audience, register, coverage, the
-    operator's dated directives, renderings, and external facts. Its presence is
-    what marks the brief as governed by [`treatise.md`](treatise.md), and
-    `bin/treatise validate` enforces its shape. Ordinary briefs never carry it.
+  - `treatise:` — **only on a treatise brief.** A mapping holding that treatise's editorial record: purpose, audience, register, coverage, the operator's dated directives, renderings, and external facts. Its presence is what marks the brief as governed by [`treatise.md`](treatise.md), and `bin/treatise validate` enforces its shape. Ordinary briefs never carry it.
 - **Body:** purpose paragraph, then numbered or named sections, then a Sources section if applicable.
 - **Cross-references:** when one brief depends on another's numbers or methodology, link explicitly so the dependency is auditable.
 

@@ -8,14 +8,14 @@ description: >-
   new project, setting up a repo's planning structure, breaking a large
   initiative into phases, or reviewing the steps without reading the full
   brief. Invoke as /methodology in Claude Code or $methodology in Codex.
-last-reviewed: 2026-09-29
+last-reviewed: 2026-10-26
 ---
 
 # The Agentic Coding Methodology
 
 ## Primary ownership and independent advice
 
-As of 2026-09-07, the primary use case is a configured SOTA instance that owns orchestration, planning, implementation and acceptance. A comparable or stronger model in another permitted provider's harness normally supplies independent plan and code advice; a single-provider environment uses fresh instances of the primary model. One comprehensive pass per stage is normal, a second needs recorded cause, and two is the maximum. Advisers report evidence and severity without veto; the primary decides corrections and records consequential dispositions. Objective requirements and both close gates remain binding.
+As of 2026-09-07, the primary use case is a configured SOTA instance that owns orchestration, planning, implementation and acceptance. A comparable or stronger model in another permitted provider's harness normally supplies independent plan and code advice; a single-provider environment uses fresh instances of the primary model. One comprehensive pass per stage is normal, a second needs recorded cause, and two is the default maximum; only the operator's single-use exception admits a third code review. Advisers report evidence and severity without veto; the primary decides corrections and records consequential dispositions. Objective requirements and both close gates remain binding.
 
 A constrained primary uses separate planner/coder roles and the established approval-gated reviewer/critic loops. Detailed references to mandatory reviewer approval or four-role delegation below describe that constrained product branch. Eligibility is maintained configuration, not a benchmark claim. Backend and handling restrictions prevail over preferred routing. Optional kickoff usage checks refuse a primary at >=95% of any applicable limit and substitute the primary for a secondary above 95% weekly; absent tooling does not prevent execution.
 
@@ -47,10 +47,10 @@ The eleven steps govern forward construction. Rule One governs what happens when
 7. **Orchestrator-driven phase execution.** Use the high-level `kickoff` orchestrator skill (`/kickoff` in Claude Code; `$kickoff` in Codex), which keeps implementation inline in primary mode and delegates it in constrained mode. It:
    - selects the current phase and freezes the authority mode and permitted model routes;
    - plans and codes inline in primary mode, obtaining the required independent advice;
-   - records primary dispositions and requests a second advisory pass only for recorded cause, never a third;
+   - records primary dispositions and requests a second advisory pass only for recorded cause; a third code review needs the operator's explicit single-use exception;
    - in constrained delegated mode, dispatches planner, reviewer, coder, and critic under the established bounded approval loops.
 
-8. **Acceptance check.** The primary or delegated coder runs focused behavioral checks during implementation. The primary then runs the required sequence ending in the changed-path selection, the implementation-candidate gate. After accepted close and all tracked bookkeeping, it runs the one bare full handoff gate, which qualifies the push. No tracked write follows success. Changed implementation invalidates prior gates. Follow-ups use their risk and size classification without automatically requiring another advisory pass. Methodology work always uses direct primary self-inspection, targeted checks before each local commit, and one full gate before the push.
+8. **Acceptance check.** The primary or delegated coder runs focused behavioral checks during implementation. The primary then runs the required sequence ending in the changed-path selection, the implementation-candidate gate. After accepted close and all tracked bookkeeping, it runs the one bare full handoff gate, which qualifies the push. No tracked write follows success. Changed implementation invalidates prior gates. A later correction is routed by its risk and size and by the operator's ruling: a high-risk or large one is recommended as an inserted sub-phase with formal reviews, and the operator may instead rule it an inter-phase change without formal review. Methodology work always uses direct primary self-inspection, targeted checks before each local commit, and one full gate before the push.
 
 9. **Append-only phase log and lessons harvest.** `LOG.md` opens and closes work on every phase. Closing requires recorded evidence plus the mandatory lessons question: harvest role Process Observations, revision failure analyses, wall-clock observations, and relevant dispositions into `lessons/`; `None` is valid, omission is not.
 
@@ -121,7 +121,7 @@ Hard-won rules for step 7 when the loop runs fail-closed and unattended:
 
 Full statement: `briefs/methodology.md` § Run-lifecycle vocabulary.
 
-**Enforcement status:** mostly doctrine — self-resume budgets are mechanized (`policies/fail-closed-resume.md`; `kickoff.yaml` `run_budgets.self_resume` via `bin/kickoff-config`), while delta-merge tooling and qualification harnesses remain prose-and-relay. Full statement: `briefs/methodology.md` § Orchestration runtime doctrine.
+**Enforcement status:** mostly doctrine — self-resume budgets are mechanized (`policies/fail-closed-resume.md`; `kickoff.yaml` `run_budgets.self_resume` via `bin/kickoff-config`), as are command zero and observed red-witness receipts, while delta-merge tooling and qualification harnesses remain prose-and-relay. Full statement: `briefs/methodology.md` § Orchestration runtime doctrine.
 
 ## Source
 

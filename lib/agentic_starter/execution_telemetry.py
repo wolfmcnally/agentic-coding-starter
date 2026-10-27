@@ -1713,21 +1713,9 @@ def record_trace_interruption(
             raise TelemetryError("cannot read telemetry state: custody evidence") from exc
         if not isinstance(custody, dict):
             raise ValidationError("custody evidence must be an object")
-        if (
-            set(custody)
-            != {
-                "source",
-                "reference",
-                "processes_quiescent",
-                "resources_released",
-                "candidate_lineage",
-            }
-            or any(
-                not isinstance(custody.get(key), str) or not custody[key].strip()
-                for key in ("source", "reference", "candidate_lineage")
-            )
-            or custody["processes_quiescent"] is not True
-            or custody["resources_released"] is not True
+        if set(custody) != {"source", "reference", "candidate_lineage"} or any(
+            not isinstance(custody.get(key), str) or not custody[key].strip()
+            for key in ("source", "reference", "candidate_lineage")
         ):
             raise ValidationError("interruption requires verified custody and candidate lineage")
         sources = [old_dir / "trace.json", *sorted((old_dir / "spans").glob("*.json"))]

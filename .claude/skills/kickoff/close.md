@@ -19,7 +19,7 @@ For a major phase, enter only after [acceptance.md](acceptance.md) Step 8c mater
 
 If the phase is only partially complete (the user paused mid-way), leave it `🚧` and do not advance `⬅️`.
 
-**Never edit the per-phase file's frontmatter or body to record status.** Per-phase frontmatter is `id` / `title` / `depends_on` / `informs` plus optional `review_lane` ([`policies/review-lanes.md`](../../../policies/review-lanes.md)) only.
+**Never edit the per-phase file's frontmatter or body to record status.** Per-phase frontmatter is `id` / `title` / `depends_on` / `informs` plus optional `review_lane` and `evidence_lane` ([`policies/review-lanes.md`](../../../policies/review-lanes.md)) only.
 
 ### Step 9a: Complete the prepared child transition
 
@@ -121,7 +121,7 @@ Candidate-bound evidence (per `policies/orchestration-evidence.md`):
 - Revision packets: <count>; <total bytes>; source hashes recorded
 - Findings: open=<n> addressed=<n> verified=<n> closed=<n> blocked=<n>; reopened=<n>; missed-in-full-pass=<n>
 - Gates: focused=<n> implementation-final=<n>; all recorded against approved implementation candidate=<yes|no>
-- Evidence validation: `bin/kickoff-evidence validate --require-final` <OK|failed>
+- Evidence validation: `$EVIDENCE_TOOL validate --run-dir <run> --level acceptance --required-final-command "./bin/test --changed-from '@{upstream}'"` <OK|failed>
 
 Wall-clock observations:
 - <material operation; substantial safe improvement used or surfaced; why guarantees were preserved> | None

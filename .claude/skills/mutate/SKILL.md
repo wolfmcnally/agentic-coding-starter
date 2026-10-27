@@ -12,7 +12,7 @@ description: >-
 disable-model-invocation: true
 argument-hint: "[all | since <rev> | <path>...] [budget <seconds>]"
 allowed-tools: Bash
-last-reviewed: 2026-10-07
+last-reviewed: 2026-10-26
 ---
 
 # Mutate — survey what the tests would miss

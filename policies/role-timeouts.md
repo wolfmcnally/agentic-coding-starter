@@ -29,18 +29,10 @@ External CLI roles run through `bin/kickoff-config watch`. The wrapper:
 4. truncates named result artifacts before launch and requires the current call to repopulate them;
 5. verifies that the actual CLI/model/effort flags match the recorded routing metadata;
 6. terminates the entire process group on timeout, preserving artifacts and any session identifier already emitted; and
-7. records child status, artifact freshness, and terminal stream completeness
-   independently; and
-8. returns 124 on timeout, 65 on an unrecoverable protocol failure, 66 when a
-   fresh artifact requires explicit verification after an incomplete terminal
-   stream, or the child's status otherwise.
+7. records child status, artifact freshness, and terminal stream completeness independently; and
+8. returns 124 on timeout, 65 on an unrecoverable protocol failure, 66 when a fresh artifact requires explicit verification after an incomplete terminal stream, or the child's status otherwise.
 
-Codex runs with JSONL events, requires a terminal `turn.completed`, and names
-its `--output-last-message` path as the watchdog's required output. Claude runs
-with `--output-format stream-json --verbose`; the wrapper normally extracts
-the final `result` event and can preserve the last assistant text for exit 66.
-The role-shape and candidate-bound evidence gates in
-[`role-models.md`](role-models.md) still apply after the process exits.
+Codex runs with JSONL events, requires a terminal `turn.completed`, and names its `--output-last-message` path as the watchdog's required output. Claude runs with `--output-format stream-json --verbose`; the wrapper normally extracts the final `result` event and can preserve the last assistant text for exit 66. The role-shape and candidate-bound evidence gates in [`role-models.md`](role-models.md) still apply after the process exits.
 
 Native roles use the same role-specific hard and idle budgets through the orchestrating harness's sub-agent wait/status mechanism. If the harness cannot expose structured progress or an idle watchdog, enforce the hard deadline and report that idle telemetry was unavailable; do not invent activity. The orchestrator remains responsive and gives the user a progress update at least every 60 seconds while it waits.
 
@@ -48,75 +40,34 @@ One max-turn rescue is allowed only for a review role that completed investigati
 
 ### The harness ceiling bounds every budget
 
-The effective role budget is the smaller of the configured role budget and the
-execution surface's own hard ceiling. Some harness foreground tools accept a
-requested timeout above their ceiling and silently clamp it; others return a
-durable session handle that the orchestrator can poll past the initial yield.
-Before dispatch, prove which behavior the current harness provides. A
-foreground `bin/kickoff-config watch` is valid only when its session remains
-observable for the full configured budget.
+The effective role budget is the smaller of the configured role budget and the execution surface's own hard ceiling. Some harness foreground tools accept a requested timeout above their ceiling and silently clamp it; others return a durable session handle that the orchestrator can poll past the initial yield. Before dispatch, prove which behavior the current harness provides. A foreground `bin/kickoff-config watch` is valid only when its session remains observable for the full configured budget.
 
-**When a foreground call would be silently clamped or its session handle would
-be lost, dispatch through the harness's own tracked background mechanism.** Do
-not use detached `nohup`: it dodges the foreground ceiling but forfeits the
-completion signal and leaves the orchestrator polling blind.
+**When a foreground call would be silently clamped or its session handle would be lost, dispatch through the harness's own tracked background mechanism.** Do not use detached `nohup`: it dodges the foreground ceiling but forfeits the completion signal and leaves the orchestrator polling blind.
 
-**The silent-death signature for a clamped foreground dispatch** — all four
-together, none of which says "timeout":
+**The silent-death signature for a clamped foreground dispatch** — all four together, none of which says "timeout":
 
 - exit 143 (SIGTERM to the watcher; the process group takes the child too);
 - an artifact present, zero bytes, well-formed path;
 - stdout that simply stops mid-stream;
 - no row in the role-timings ledger, and no dispatch row recorded at all.
 
-The discriminator that matters: an empty artifact **mid-run is normal**, because
-the child writes its final message at the end. Empty is a death signal only
-together with a stopped stream and exit 143.
+The discriminator that matters: an empty artifact **mid-run is normal**, because the child writes its final message at the end. Empty is a death signal only together with a stopped stream and exit 143.
 
-**Diagnose at the caller before the venue.** The observable symptom is the *child*
-dying beside a healthy-looking parent, and every instinct sends the investigation
-to the delegated venue — is the model wedged, is the CLI broken, is the sandbox
-denying something. Before blaming a venue, check what actually bounded the child:
-the tool's own limits, the harness ceiling, the parent's timeout, the process
-group. The caller is the last place anyone looks, because the caller is the thing
-doing the looking.
+**Diagnose at the caller before the venue.** The observable symptom is the *child* dying beside a healthy-looking parent, and every instinct sends the investigation to the delegated venue — is the model wedged, is the CLI broken, is the sandbox denying something. Before blaming a venue, check what actually bounded the child: the tool's own limits, the harness ceiling, the parent's timeout, the process group. The caller is the last place anyone looks, because the caller is the thing doing the looking.
 
-**Standing mitigation.** After *any* interrupted role dispatch, verify the dispatch
-row exists and close orphaned spans **unconditionally**. The append-then-amend
-opened/terminal dispatch lifecycle in `bin/kickoff-evidence`
-([`orchestration-evidence.md`](orchestration-evidence.md)) is the durable repair —
-a row written only at the end loses every death before that point — but a swept
-trace and an unswept one look identical afterward, so the sweep can never be
-conditional on having noticed.
+**Standing mitigation.** After *any* interrupted role dispatch, verify the dispatch row exists and close orphaned spans **unconditionally**. The append-then-amend opened/terminal dispatch lifecycle in `bin/kickoff-evidence` ([`orchestration-evidence.md`](orchestration-evidence.md)) is the durable repair — a row written only at the end loses every death before that point — but a swept trace and an unswept one look identical afterward, so the sweep can never be conditional on having noticed.
 
 ## Authoritative and local telemetry
 
-The finalized shared trace governed by
-[`execution-telemetry.md`](execution-telemetry.md) is authoritative for phase
-timing. It uses monotonic nanoseconds, exact role/wait joins, and truthful
-timeout/interruption outcomes. Wait spans mirror delegated work and are never
-counted as additional work. Time awaiting required user input is recorded in
-the separate phase-level operator-park ledger and never folded into a role's
-idle or wait duration.
+The finalized shared trace governed by [`execution-telemetry.md`](execution-telemetry.md) is authoritative for phase timing. It uses monotonic nanoseconds, exact role/wait joins, and truthful timeout/interruption outcomes. Wait spans mirror delegated work and are never counted as additional work. Time awaiting required user input is recorded in the separate phase-level operator-park ledger and never folded into a role's idle or wait duration.
 
-The watcher also keeps local protocol diagnostics for timeout recalibration.
-Those rows are not a second execution ledger and cannot fill a missing shared span. Their `model`/`effort` fields record requests; optional provider observations and null-as-unreported reporting follow [`role-models.md`](role-models.md#end-block-reporting). Observation failures neither establish success nor change routing.
+The watcher also keeps local protocol diagnostics for timeout recalibration. Those rows are not a second execution ledger and cannot fill a missing shared span. Their `model`/`effort` fields record requests; optional provider observations and null-as-unreported reporting follow [`role-models.md`](role-models.md#end-block-reporting). Observation failures neither establish success nor change routing.
 
 ## Local recalibration
 
-Every watched invocation appends one JSON object to
-`.kickoff/role-timings.jsonl`, which is local runtime state and must not be
-committed. Records include separate model and effort fields alongside phase,
-role, venue, timestamps, duration, first-event latency, longest idle gap,
-best-effort turns/tokens, outcome, timeout kind, wrapper exit code, child exit
-code, artifact status, and stream status. The END block summarizes timings and
-verified protocol recoveries for the phase; raw records stay local.
+Every watched invocation appends one JSON object to `.kickoff/role-timings.jsonl`, which is local runtime state and must not be committed. Records include separate model and effort fields alongside phase, role, venue, timestamps, duration, first-event latency, longest idle gap, best-effort turns/tokens, outcome, timeout kind, wrapper exit code, child exit code, artifact status, and stream status. The END block summarizes timings and verified protocol recoveries for the phase; raw records stay local.
 
-The run-scoped evidence ledgers separately record packet bytes and source
-hashes, candidate ids, changed-path counts, finding states/reopenings/
-classifications, and gate results. Do not infer nested reasoning, repository
-read, test, idle-cause, or critical-path spans when a venue does not emit them;
-record unavailable data as `unknown`.
+The run-scoped evidence ledgers separately record packet bytes and source hashes, candidate ids, changed-path counts, finding states/reopenings/ classifications, and gate results. Do not infer nested reasoning, repository read, test, idle-cause, or critical-path spans when a venue does not emit them; record unavailable data as `unknown`.
 
 `bin/kickoff-config recommend-timeouts` groups successful records by `(role, venue, model, effort)`. It emits a recommendation only after at least 30 successful samples in a group:
 

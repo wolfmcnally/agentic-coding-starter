@@ -25,8 +25,7 @@ For multi-deliverable repos, treat each top-level sibling like a `project/` for 
 Everything that is *the deliverable*:
 
 - The package metadata file (`pyproject.toml`, `package.json`, `Cargo.toml`, `go.mod`, …)
-- The runtime/toolchain version declaration (`.python-version`,
-  `rust-toolchain.toml`, `packageManager`, declared Go version, …)
+- The runtime/toolchain version declaration (`.python-version`, `rust-toolchain.toml`, `packageManager`, declared Go version, …)
 - The lockfile (`uv.lock`, `package-lock.json`, `Cargo.lock`, `go.sum`)
 - Source code (the package directory)
 - Tests (the test directory)
@@ -69,8 +68,7 @@ Cross-boundary references in the *other* direction (root referencing `project/`)
 
 - `CLAUDE.md` says "the project lives under `project/`".
 - `plan/phase-1.md` says "modify `project/example/cli.py`".
-- Root `bin/setup`, `bin/test`, `bin/check`, and any runtime wrapper select
-  `project/` and invoke its native toolchain.
+- Root `bin/setup`, `bin/test`, `bin/check`, and any runtime wrapper select `project/` and invoke its native toolchain.
 
 ## Toolchain entry points from the root
 
@@ -82,30 +80,18 @@ The repository owns one atomic interface:
 ./bin/check all
 ```
 
-The wrappers resolve the repository root from their own location, select the
-deliverable's runtime declaration, manifest, and lockfile, and invoke its
-native toolchain. They may use `cd project` or an ecosystem's explicit project
-selector; callers do not depend on that implementation detail.
+The wrappers resolve the repository root from their own location, select the deliverable's runtime declaration, manifest, and lockfile, and invoke its native toolchain. They may use `cd project` or an ecosystem's explicit project selector; callers do not depend on that implementation detail.
 
 The root wrapper is preferred because:
 
 - every human, agent, hook, and CI job calls the same checked-in mappings;
 - the command works from any current directory;
-- setup, runtime selection, lock enforcement, gate ordering, and failure
-  reporting remain synchronized;
-- root methodology tests and deliverable tests cannot drift into separate
-  undocumented command lists.
+- setup, runtime selection, lock enforcement, gate ordering, and failure reporting remain synchronized;
+- root methodology tests and deliverable tests cannot drift into separate undocumented command lists.
 
-Focused repository tests use `./bin/test <repo-relative selection>`. A
-developer working on the independently extracted `project/` may use the
-artifact's documented native commands; the parent repository's wrappers are
-governance metadata and intentionally stay outside the deliverable.
+Focused repository tests use `./bin/test <repo-relative selection>`. A developer working on the independently extracted `project/` may use the artifact's documented native commands; the parent repository's wrappers are governance metadata and intentionally stay outside the deliverable.
 
-Root-level methodology machinery is a separate surface, not part of the
-isolated deliverable. In this starter, root `tests/` exercises the atomic
-toolchain wrappers, `bin/install-hooks`, and `bin/kickoff-config`; `bin/test`
-runs those tests alongside `project/tests/`. Derived projects carry the
-universal machinery tests and adapt the complete contract during `stamp`.
+Root-level methodology machinery is a separate surface, not part of the isolated deliverable. In this starter, root `tests/` exercises the atomic toolchain wrappers, `bin/install-hooks`, and `bin/kickoff-config`; `bin/test` runs those tests alongside `project/tests/`. Derived projects carry the universal machinery tests and adapt the complete contract during `stamp`.
 
 ## Extracting `project/` as a submodule
 
@@ -113,8 +99,7 @@ When the artifact is ready to be reused outside this repo:
 
 1. `cd project`
 2. `git init` (if not already a repo)
-3. Stage the explicit extracted paths and commit them with a factual message,
-   following [`commit-staging.md`](commit-staging.md).
+3. Stage the explicit extracted paths and commit them with a factual message, following [`commit-staging.md`](commit-staging.md).
 4. Push to a new remote.
 5. In the parent repo: `git rm -rf project` (or back it up first), then `git submodule add <new-remote> project`.
 6. Commit the submodule pointer.

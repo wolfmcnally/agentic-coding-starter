@@ -2,11 +2,7 @@
 
 **This policy applies only to this repository** — the agentic-coding-starter-template. Projects derived from this template via `stamp`, and projects retrofitted via `teach`, do **not** inherit this policy. Their `LOG.md` files and other documents are their own business; their references to external work are theirs to disclose or not.
 
-The boundary follows the destination of the write, not the repository that
-originated the command. A `learn` entry written into this Starter must be
-anonymized. A `teach` entry written into a target follows the target's own LOG
-policy and the provenance/count template the target approved; Starter's
-anonymization rule must not erase an approved target source name or SHA.
+The boundary follows the destination of the write, not the repository that originated the command. A `learn` entry written into this Starter must be anonymized. A `teach` entry written into a target follows the target's own LOG policy and the provenance/count template the target approved; Starter's anonymization rule must not erase an approved target source name or SHA.
 
 The reason for the asymmetry: **this repository is intended to be public**. Every commit, every `LOG.md` entry, and every committed file will be readable by anyone with the repo URL. A public template must not leak the private context of the projects it absorbs patterns from (via `learn`) or teaches them to (via `teach`).
 
@@ -16,13 +12,7 @@ The reason for the asymmetry: **this repository is intended to be public**. Ever
 
 ## What must be anonymized
 
-**"External" means "not this repository," including the operator's own private
-projects.** The rule is about what a public template discloses, not about whose
-work it discloses. A sibling repository the same person owns is exactly as
-private as a third party's, and a worked example is exactly as much of a
-disclosure as a `LOG.md` entry — an example reaches for a familiar project
-precisely because the author knows it well, which is what makes it identifying.
-Invent the names in examples.
+**"External" means "not this repository," including the operator's own private projects.** The rule is about what a public template discloses, not about whose work it discloses. A sibling repository the same person owns is exactly as private as a third party's, and a worked example is exactly as much of a disclosure as a `LOG.md` entry — an example reaches for a familiar project precisely because the author knows it well, which is what makes it identifying. Invent the names in examples.
 
 Wherever a committed file documents a cross-repo operation or references external work, the following must not appear verbatim:
 

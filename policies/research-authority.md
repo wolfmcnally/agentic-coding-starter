@@ -4,9 +4,7 @@
 
 The role matrix below governs delegated roles and independent advisers. An eligible primary that plans and codes inline retains originating-research authority throughout implementation within one shared planner budget. It does not reset the budget, delegate a replacement planner, or lose authority merely because it is coding. Plan advice retains reviewer research permissions; code advice retains critic permissions. Repository egress restrictions remain unchanged.
 
-Research authority belongs to the **role**, not to the transport that happens
-to run it. A role dispatched through another harness keeps the same authority,
-and a tool being installed does not by itself authorize a role to use it.
+Research authority belongs to the **role**, not to the transport that happens to run it. A role dispatched through another harness keeps the same authority, and a tool being installed does not by itself authorize a role to use it.
 
 ## Role matrix
 
@@ -17,25 +15,13 @@ and a tool being installed does not by itself authorize a role to use it.
 | Coder | No | Yes | May retrieve plan- or brief-identified resources and same-host structural neighbors needed to interpret them. |
 | Code critic | No | Yes | May retrieve plan- or brief-identified resources and same-host structural neighbors needed to verify them. |
 
-`Search` means originating a new discovery query. `Retrieval` means fetching a
-known resource. A structural neighbor is a predictable document on the same
-authority surface, such as an API reference linked from an overview or an RFC
-section adjacent to the cited section; it is not permission to begin a new
-research topic.
+`Search` means originating a new discovery query. `Retrieval` means fetching a known resource. A structural neighbor is a predictable document on the same authority surface, such as an API reference linked from an overview or an RFC section adjacent to the cited section; it is not permission to begin a new research topic.
 
-Coder and critic retrieval is **consume-only**. If the approved authorities do
-not identify enough material to implement or verify safely, the role reports an
-authority-insufficiency advisory to the orchestrator. It does not silently turn
-that gap into originating research.
+Coder and critic retrieval is **consume-only**. If the approved authorities do not identify enough material to implement or verify safely, the role reports an authority-insufficiency advisory to the orchestrator. It does not silently turn that gap into originating research.
 
 ## Installed resources are allow-by-default
 
-Available MCP servers, plugins, local reference stores, and equivalent
-retrieval venues are usable by default within the role matrix above. Projects
-and phases may narrow that ambient set with an explicit allow or deny rule, but
-the template does not ship a global default-deny list. A named optional server
-is never assumed to exist, and its absence is not a failure unless the project
-or phase explicitly makes it a prerequisite.
+Available MCP servers, plugins, local reference stores, and equivalent retrieval venues are usable by default within the role matrix above. Projects and phases may narrow that ambient set with an explicit allow or deny rule, but the template does not ship a global default-deny list. A named optional server is never assumed to exist, and its absence is not a failure unless the project or phase explicitly makes it a prerequisite.
 
 The repository's own `docs/` directory is the local reference store that is always present: reading a pinned document there is retrieval for every role, and a pin that a brief, policy, or plan cites is a plan- or brief-identified resource for the coder and critic. Adding or replacing a pin originates from research and is planner or reviewer work under `policies/docs.md`.
 
@@ -51,32 +37,22 @@ Capability and authority are separate checks:
 External research is read-only and GET-only:
 
 - Use retrieval-equivalent `GET` operations only.
-- Never place repository or candidate content in a query string, form field,
-  request body, uploaded file, or tool argument sent to an external research
-  service.
-- A public identifier already named by an approved authority may be sent to
-  retrieve that authority.
-- Authenticated project data, mutation tools, publication tools, and external
-  writes remain outside research authority unless the user separately grants
-  them.
+- Never place repository or candidate content in a query string, form field, request body, uploaded file, or tool argument sent to an external research service.
+- A public identifier already named by an approved authority may be sent to retrieve that authority.
+- Authenticated project data, mutation tools, publication tools, and external writes remain outside research authority unless the user separately grants them.
 
 When a connector cannot make this boundary legible, do not use it for research.
 
 ## Query budgets
 
-`kickoff.yaml` owns per-role originating-query budgets under
-`research_budgets`. The shipped defaults are:
+`kickoff.yaml` owns per-role originating-query budgets under `research_budgets`. The shipped defaults are:
 
 - planner: 12
 - reviewer: 6
 - coder: 0
 - critic: 0
 
-A query budget limits discovery searches, not retrieval of already identified
-authorities. Zero means the role may not originate a query. A project or phase
-may lower a budget; widening it is a deliberate project decision. The runtime
-must render the resolved authority and budget into every role dispatch so the
-same contract follows cross-harness execution.
+A query budget limits discovery searches, not retrieval of already identified authorities. Zero means the role may not originate a query. A project or phase may lower a budget; widening it is a deliberate project decision. The runtime must render the resolved authority and budget into every role dispatch so the same contract follows cross-harness execution.
 
 ## Check consequential facts for freshness
 
@@ -88,16 +64,8 @@ The plan reviewer independently challenges assumptions whose staleness could cha
 
 ## Evidence and freshness
 
-Research that survives the run names its source and distinguishes the date the
-fact was true (`As of YYYY-MM-DD`) from the date it was fetched (`Retrieved
-YYYY-MM-DD`). Planner research belongs in the plan or owning brief. Reviewer,
-coder, and critic research stays in their evidence or advisory unless the
-orchestrator routes an approved correction back to an owning authority.
+Research that survives the run names its source and distinguishes the date the fact was true (`As of YYYY-MM-DD`) from the date it was fetched (`Retrieved YYYY-MM-DD`). Planner research belongs in the plan or owning brief. Reviewer, coder, and critic research stays in their evidence or advisory unless the orchestrator routes an approved correction back to an owning authority.
 
 ## Enforcement
 
-The canonical role files, `bin/kickoff-config`, and their behavioral tests form
-one contract. Tests must exercise the generated commands and dispatch prompts
-for every role and supported venue; source-text assertions alone are not
-sufficient. A venue that cannot provide the matrix's required capability fails
-preflight rather than silently dispatching a weaker role.
+The canonical role files, `bin/kickoff-config`, and their behavioral tests form one contract. Tests must exercise the generated commands and dispatch prompts for every role and supported venue; source-text assertions alone are not sufficient. A venue that cannot provide the matrix's required capability fails preflight rather than silently dispatching a weaker role.

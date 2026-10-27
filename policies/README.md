@@ -39,9 +39,9 @@ Don't add a policy for:
 ## How agents use this directory
 
 - The planner reads the policies that touch the phase's surfaces before drafting a plan.
-- The plan reviewer treats every policy as a blocking criterion: any plan that violates a policy is `REVISE`.
+- The plan reviewer treats every policy as a review criterion. In delegated mode any plan that violates a policy is `REVISE`; in primary mode a violation is an advisory finding the primary must dispose of ([`four-canonical-agents.md`](four-canonical-agents.md)).
 - The coder honors every policy while writing code.
-- The code critic treats every policy as a blocking criterion: any code that violates a policy is `REVISE`.
+- The code critic treats every policy as a review criterion. In delegated mode any code that violates a policy is `REVISE`; in primary mode a violation is an advisory finding the primary must dispose of.
 
 ## Catalog
 
@@ -61,5 +61,4 @@ If an apparent conflict can't be resolved by precedence, surface it. Don't paper
 
 Policies are themselves subordinate to:
 
-- The methodology in [`../briefs/methodology.md`](../briefs/methodology.md), which is foundational.
 - A direct instruction from the human, given in the current session, that explicitly overrides the policy for a clearly-scoped reason. (The human owns the repo; the agents serve the human's intent. But the override is one-shot — the policy survives unless the human asks for it to be amended.)

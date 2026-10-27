@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-# Diagnostic only: no phase advice, arbitrary prompt, or product-review entry.
-set -euo pipefail
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-exec "$repo_root/bin/python" "$repo_root/lib/agentic_starter/review_diagnostic.py" "$@"

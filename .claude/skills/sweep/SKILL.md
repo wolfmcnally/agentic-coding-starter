@@ -11,7 +11,7 @@ description: >-
   /sweep in Claude Code or $sweep in Codex; an optional focus argument narrows
   the pass (e.g. "skills", "lessons", "policies").
 argument-hint: "[<focus>]"
-last-reviewed: 2026-09-29
+last-reviewed: 2026-10-26
 ---
 
 # Sweep — Prune and graduate the rule surfaces
@@ -173,10 +173,11 @@ Graduating a lesson into a rule surface and retiring a policy are exactly the hu
 On approval:
 
 1. Apply the approved edits (AUTO batch plus each ratified DECIDE).
-2. For each graduated lesson: make the ratified edit to the target surface, then archive the lesson (`status: codified`, `closed:`, `graduated_to:`) into `lessons-archived/`. For each rejected lesson: archive with `status: rejected`. Run `./bin/lessons validate`.
-3. Update `last-reviewed:` to today's date on every skill the sweep actually re-read — including ones with no findings.
-4. Re-run the mechanical checks (`./bin/check-catalogs`, `./bin/lessons validate`) and finish with `./bin/check all`.
-5. After the unchanged approved sweep passes `./bin/check all`, re-check the live tree, stage only its explicit paths, inspect the staged diff, create an ordinary factual commit, verify the resulting commit's file set, and make a non-force push to one unambiguous configured upstream, then verify clean aligned tips ([`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md); [`policies/commit-staging.md`](../../../policies/commit-staging.md)). Park delivery on any unexpected path, unresolved shared-file ownership, unresolved gate, missing or ambiguous upstream, divergence, or destructive Git need. Then report: findings by area, what was applied, what was declined, what remains open, and delivery status.
+2. For every ratified change that adopts, corrects or retires a rule, retire what the old rule produced ([`policies/review-lanes.md`](../../../policies/review-lanes.md) § Methodology improvements): search by concept for statements, tools and artifacts written under the old rule, dispose of each, and record the search in the `SWEEP` entry.
+3. For each graduated lesson: make the ratified edit to the target surface, then archive the lesson (`status: codified`, `closed:`, `graduated_to:`) into `lessons-archived/`. For each rejected lesson: archive with `status: rejected`. Run `./bin/lessons validate`.
+4. Update `last-reviewed:` to today's date on every skill the sweep actually re-read — including ones with no findings.
+5. Re-run the mechanical checks (`./bin/check-catalogs`, `./bin/lessons validate`) and finish with `./bin/check all`.
+6. After the unchanged approved sweep passes `./bin/check all`, re-check the live tree, stage only its explicit paths, inspect the staged diff, create an ordinary factual commit, verify the resulting commit's file set, and make a non-force push to one unambiguous configured upstream, then verify clean aligned tips ([`policies/human-in-the-loop.md`](../../../policies/human-in-the-loop.md); [`policies/commit-staging.md`](../../../policies/commit-staging.md)). Park delivery on any unexpected path, unresolved shared-file ownership, unresolved gate, missing or ambiguous upstream, divergence, or destructive Git need. Then report: findings by area, what was applied, what was declined, what remains open, and delivery status.
 
 ## Rules
 

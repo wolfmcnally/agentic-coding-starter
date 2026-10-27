@@ -7,17 +7,10 @@ The same pure resolver drives preflight, receipts, and dispatch validation.
 from __future__ import annotations
 
 import copy
-import hashlib
 import json
 import math
-import os
 import shutil
-import stat
 import subprocess
-import sys
-import time
-import uuid
-from pathlib import Path
 from typing import Any
 
 ROLES = ("planner", "reviewer", "coder", "critic")
@@ -424,141 +417,5 @@ def child_environment(
         # Every generated Claude invocation is --print. Native background work
         # would be cleaned up when that CLI exits instead of reawakening it.
         environment["CLAUDE_CODE_DISABLE_BACKGROUND_TASKS"] = "1"
-    environment.pop("CONTINUATION_REVIEW_BINDING", None)
     environment["KICKOFF_DELEGATION_DEPTH"] = "1"
     return environment
-
-
-def review_path(path: Path) -> None:
-    """Reject unsupported names and aliases before metadata or packet discovery."""
-    if (
-        not path.is_absolute()
-        or "continuations" in path.parts
-        or path.name
-        not in {
-            "plan-registration.json",
-            "code-registration.json",
-            "role-attempts.jsonl",
-        }
-    ):
-        raise WorkflowError("review binding requires canonical registration metadata")
-    if path != path.resolve(strict=True):
-        raise WorkflowError("review binding requires canonical registration metadata")
-
-
-def review_metadata(path: Path, limit: int) -> bytes:
-    """Read only canonical, bounded, owner-held registration metadata."""
-    review_path(path)
-    directory = os.open("/", os.O_RDONLY | os.O_DIRECTORY)
-    fd = None
-    try:
-        for part in path.parts[1:-1]:
-            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=directory)
-            os.close(directory)
-            directory = child
-        fd = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
-        info = os.fstat(fd)
-        if (
-            not stat.S_ISREG(info.st_mode)
-            or info.st_uid != os.getuid()
-            or info.st_nlink != 1
-            or info.st_mode & 0o022
-            or info.st_size > limit
-        ):
-            raise WorkflowError("unsafe review registration metadata")
-        with os.fdopen(fd, "rb") as stream:
-            fd = None
-            data = stream.read(limit + 1)
-        if len(data) > limit:
-            raise WorkflowError("review registration metadata exceeds limit")
-        return data
-    finally:
-        if fd is not None:
-            os.close(fd)
-        os.close(directory)
-
-
-def review_registration(path: Path) -> tuple[dict[str, Any], str]:
-    if path.name not in {"plan-registration.json", "code-registration.json"}:
-        raise WorkflowError(
-            "review binding requires plan-registration.json or code-registration.json"
-        )
-    data = review_metadata(path, 16384)
-    record = json.loads(data)
-    operations = {"reviewer": "role.plan-review", "critic": "role.code-review"}
-    if (
-        not isinstance(record, dict)
-        or record.get("schema_version") != 3
-        or record.get("harness") != "claude"
-        or record.get("role") not in operations
-        or record.get("operation") != operations[record["role"]]
-        or type(record.get("attempt")) is not int
-        or record["attempt"] < 1
-        or any(
-            not isinstance(record.get(k), str) or not record[k]
-            for k in ("telemetry_trace_id", "telemetry_root_span_id")
-        )
-    ):
-        raise WorkflowError("not a registered Claude review")
-    ledger = review_metadata(path.parent / "role-attempts.jsonl", 262144)
-    if sum(json.loads(line) == record for line in ledger.splitlines() if line.strip()) != 1:
-        raise WorkflowError("review registration is not unique in its ledger")
-    return record, hashlib.sha256(data).hexdigest()
-
-
-def review_session_id(resume: str | None) -> str:
-    if resume is None:
-        return str(uuid.uuid4())
-    if str(uuid.UUID(resume)) != resume:
-        raise WorkflowError("registered review resume requires an exact canonical native UUID")
-    return resume
-
-
-def review_exec(command: list[str], binding: dict[str, Any]) -> None:
-    """Finish the binding in the watcher's new OS session, then replace this PID."""
-    fields = {
-        "schema_version",
-        "session_id",
-        "cwd",
-        "issued_at",
-        "expires_at",
-        "registration_path",
-        "registration_sha256",
-    }
-    if set(binding) != fields or binding["schema_version"] != 1:
-        raise WorkflowError("invalid review exec binding")
-    review_session_id(binding["session_id"])
-    now = time.time()
-    issued, expires = binding["issued_at"], binding["expires_at"]
-    if (
-        type(issued) not in (float, int)
-        or type(expires) not in (float, int)
-        or not math.isfinite(issued)
-        or not math.isfinite(expires)
-        or not issued <= now < expires
-        or not 0 < expires - issued <= 86400
-        or binding["cwd"] != os.getcwd()
-        or os.getsid(0) != os.getpid()
-    ):
-        raise WorkflowError("review exec requires the current deadline, cwd and new OS session")
-    _, digest = review_registration(Path(binding["registration_path"]))
-    if digest != binding["registration_sha256"]:
-        raise WorkflowError("review registration changed before exec")
-    binding["process_session_id"] = os.getsid(0)
-    environment = os.environ.copy()
-    environment["CONTINUATION_REVIEW_BINDING"] = json.dumps(binding, sort_keys=True)
-    os.execvpe(command[0], command, environment)
-
-
-if __name__ == "__main__":
-    try:
-        if len(sys.argv) != 3 or sys.argv[1] != "--review-exec":
-            raise WorkflowError("internal review exec invocation required")
-        payload = json.loads(sys.argv[2])
-        review_exec(payload["command"], payload["binding"])
-    except (WorkflowError, OSError, ValueError, TypeError, KeyError, RecursionError):
-        print(
-            "kickoff-config: registered review exec failed; no isolation success claimed",
-            file=sys.stderr,
-        )
-        sys.exit(127)

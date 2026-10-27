@@ -300,8 +300,6 @@ def test_lifecycle_idempotency_finalization_and_crash_recovery(engine: Path) -> 
             {
                 "source": "verified coordinator",
                 "reference": "synthetic snapshot",
-                "processes_quiescent": True,
-                "resources_released": True,
                 "candidate_lineage": "retained candidate",
             }
         )
@@ -328,11 +326,7 @@ def test_lifecycle_idempotency_finalization_and_crash_recovery(engine: Path) -> 
             clock=clock,
         )
     custody_original = custody.read_bytes()
-    for key, value in (
-        ("processes_quiescent", False),
-        ("resources_released", False),
-        ("extra", True),
-    ):
+    for key, value in (("candidate_lineage", " "), ("extra", True)):
         invalid = json.loads(custody_original)
         invalid[key] = value
         custody.write_text(json.dumps(invalid))

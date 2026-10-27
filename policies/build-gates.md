@@ -2,8 +2,7 @@
 
 Authority mode follows [four-canonical-agents.md](four-canonical-agents.md). Product primary mode uses independent advice and primary acceptance; delegated product mode retains approval verdicts and bounded revision loops. References below to reviewer assent or mandatory re-review govern delegated work only. Required objective gates and truthful evidence apply in both modes. All methodology work, including teach/learn, follows [review-lanes.md](review-lanes.md): one-shot by the primary, no delegated production or review, and commit/fast-forward-push authority after required checks.
 
-Every methodology-following repository owns one canonical, atomic interface
-for provisioning and verifying itself:
+Every methodology-following repository owns one canonical, atomic interface for provisioning and verifying itself:
 
 ```bash
 ./bin/setup
@@ -11,155 +10,76 @@ for provisioning and verifying itself:
 ./bin/check [all|lint|format|test|policy|vital|changed <ref>]
 ```
 
-A language profile may add a repository-selected runtime entry point such as
-`./bin/python`. The repository—not an agent prompt, shell history, IDE task, or
-machine-global environment—defines what these commands mean.
+A language profile may add a repository-selected runtime entry point such as `./bin/python`. The repository—not an agent prompt, shell history, IDE task, or machine-global environment—defines what these commands mean.
 
 ## Atomic bundle
 
 The contract is one unit:
 
-- `bin/setup`, `bin/test`, `bin/check`, the full-gate receipt manager, and the
-  proof-estate governance manager when governed fast lanes are present;
-- the command-zero preflight, immutable command-manifest manager, and composed
-  log-policy gate when candidate-bound orchestration is present;
+- `bin/setup`, `bin/test`, `bin/check`, the full-gate receipt manager, and the proof-estate governance manager when governed fast lanes are present;
+- the command-zero preflight, immutable command-manifest manager, and composed log-policy gate when candidate-bound orchestration is present;
 - any runtime entry point such as `bin/python`;
-- any shared runtime resolver or dependency-chain probe used by those entry
-  points;
+- any shared runtime resolver or dependency-chain probe used by those entry points;
 - the runtime-version file, package manifest, and lockfile;
 - behavioral tests for the entry points;
-- this policy and every dependency-bearing operational caller, generated
-  command, tracked hook, workflow, agent, and active instruction that calls
-  repository code.
+- this policy and every dependency-bearing operational caller, generated command, tracked hook, workflow, agent, and active instruction that calls repository code.
 
-A partial transfer is stale and blocking. Copying `bin/check` without its
-version pin, teaching a raw test command without `bin/test`, or changing a
-lockfile without checking the wrappers is not an adoption of the contract.
-`learn`, `teach`, and `stamp` assess and migrate the entire bundle atomically
-while preserving the target repository's language, version policy, package
-manager, and dependencies.
+A partial transfer is stale and blocking. Copying `bin/check` without its version pin, teaching a raw test command without `bin/test`, or changing a lockfile without checking the wrappers is not an adoption of the contract. `learn`, `teach`, and `stamp` assess and migrate the entire bundle atomically while preserving the target repository's language, version policy, package manager, and dependencies.
 
-Adaptation may change syntax and fixtures to fit the target, but it may not
-weaken coverage. Behavioral execution is the minimum test floor: source-text
-assertions may supplement it, but do not replace tests that invoke the
-entrypoints with controlled toolchain stubs and prove routing, ordering,
-working-directory independence, single-hop and chained-symlink independence,
-child-status propagation, and fail-closed selection.
+Adaptation may change syntax and fixtures to fit the target, but it may not weaken coverage. Behavioral execution is the minimum test floor: source-text assertions may supplement it, but do not replace tests that invoke the entrypoints with controlled toolchain stubs and prove routing, ordering, working-directory independence, single-hop and chained-symlink independence, child-status propagation, and fail-closed selection.
 
 ## Ownership boundary
 
-The host supplies only the ecosystem bootstrap manager (`uv`, `cargo`, `pnpm`,
-and so on). The repository owns:
+The host supplies only the ecosystem bootstrap manager (`uv`, `cargo`, `pnpm`, and so on). The repository owns:
 
 - the runtime version or accepted version range;
 - dependency versions through committed metadata and a lockfile;
 - setup, focused-test, and authoritative-gate command mappings;
 - the set of repository tests and policy checks.
 
-No caller assumes a versioned runtime executable such as `python3.12` is on
-`PATH`. If the bootstrap manager is unavailable, an entry point reports that
-exact prerequisite failure. A language profile may expose an explicit runtime
-override for compatibility testing. That override is authoritative: an invalid
-executable, incompatible runtime, environment-sync failure, or dependency
-probe failure stops the command without falling through to the repository
-default or an ambient executable.
+No caller assumes a versioned runtime executable such as `python3.12` is on `PATH`. If the bootstrap manager is unavailable, an entry point reports that exact prerequisite failure. A language profile may expose an explicit runtime override for compatibility testing. That override is authoritative: an invalid executable, incompatible runtime, environment-sync failure, or dependency probe failure stops the command without falling through to the repository default or an ambient executable.
 
-Runtime resolution validates capability, not identity. A version string or
-executable bit is insufficient: before an entry point makes a success claim,
-it runs a target-adapted load/run probe through the selected locked environment
-that exercises the deliverable import or startup path and its recurring test
-and gate dependencies. The probe and the real command receive identical
-runtime-selection arguments.
+Runtime resolution validates capability, not identity. A version string or executable bit is insufficient: before an entry point makes a success claim, it runs a target-adapted load/run probe through the selected locked environment that exercises the deliverable import or startup path and its recurring test and gate dependencies. The probe and the real command receive identical runtime-selection arguments.
 
 ## Interface
 
 ### `bin/setup`
 
-`./bin/setup` provisions or synchronizes the committed environment in
-lock-preserving mode. It is cwd- and symlink-independent, idempotent, rejects unexpected
-arguments, and fails if required metadata, the runtime pin, or the lockfile is
-missing or stale. After synchronization, it runs the dependency-chain probe;
-`SETUP PASS` means both provisioning and the probe succeeded.
+`./bin/setup` provisions or synchronizes the committed environment in lock-preserving mode. It is cwd- and symlink-independent, idempotent, rejects unexpected arguments, and fails if required metadata, the runtime pin, or the lockfile is missing or stale. After synchronization, it runs the dependency-chain probe; `SETUP PASS` means both provisioning and the probe succeeded.
 
 ### `bin/test`
 
-`./bin/test` with no arguments runs every repository test, including
-methodology/tooling tests outside the deliverable. Arguments are forwarded to
-the underlying test runner for focused iteration, with paths interpreted
-relative to the repository root. It uses the same locked environment as the
-full gate and preserves the test runner's exit status.
+`./bin/test` with no arguments runs every repository test, including methodology/tooling tests outside the deliverable. Arguments are forwarded to the underlying test runner for focused iteration, with paths interpreted relative to the repository root. It uses the same locked environment as the full gate and preserves the test runner's exit status.
 
-When the repository carries the universal proof-estate bundle,
-`--vital` selects every locally admitted vital family and
-`--changed-from <ref>` selects the union of every family mapped to the live
-candidate's changed paths. A Markdown document no family covers selects the families of the test, library and executable files that name it, or only the vital families when nothing names it; a document several families cover selects all of them. Changed code that maps to one family also selects the families of the test, library and executable files that name it, including a Python module imported by its dotted name, so a shared helper's users are tested at commit rather than only at push. Both selections are produced by the deterministic manager. Invalid governance, an unsupported runner, an unresolved ref, or any unmapped or ambiguously covered code path widens to the full retained suite. Every full run records per-test times for the manager. The manager validates preserved baseline/ledger replay, bounded-adoption state, witness references and direct-risk proofs, and reports diagnostic runtime. Ordinary elapsed time never determines correctness. The test subprocess has a separate generous hang deadline; timeout or interruption is INCOMPLETE, not a correctness pass or failure. See test-suite-governance.md for its qualified boundary. The manifest's family
-choices, mappings, risk labels, timings, and witness receipts are local
-state; they are never inherited from another repository.
+When the repository carries the universal proof-estate bundle, `--vital` selects every locally admitted vital family and `--changed-from <ref>` selects the union of every family mapped to the live candidate's changed paths. A Markdown document no family covers selects the families of the test, library and executable files that name it, or only the vital families when nothing names it; a document several families cover selects all of them. Changed code that maps to one family also selects the families of the test, library and executable files that name it, including a Python module imported by its dotted name, so a shared helper's users are tested at commit rather than only at push. Both selections are produced by the deterministic manager. Invalid governance, an unsupported runner, an unresolved ref, or any unmapped or ambiguously covered code path widens to the full retained suite. Every full run records per-test times for the manager. The manager validates preserved baseline/ledger replay, bounded-adoption state, witness references and direct-risk proofs, and reports diagnostic runtime. Ordinary elapsed time never determines correctness. The test subprocess has a separate generous hang deadline; timeout or interruption is INCOMPLETE, not a correctness pass or failure. See test-suite-governance.md for its qualified boundary. The manifest's family choices, mappings, risk labels, timings, and witness receipts are local state; they are never inherited from another repository.
 
 ### `bin/check`
 
-`./bin/check` with no arguments is identical to `./bin/check all`. Universal
-named modes are:
+`./bin/check` with no arguments is identical to `./bin/check all`. Universal named modes are:
 
 - `all` — every authoritative repository gate, in deterministic order;
 - `lint` — static lint checks;
 - `format` — formatting checks without rewriting files;
 - `test` — delegates to `./bin/test`;
-- `policy` — deterministic repository-policy checks that are not language
-  lint or tests.
+- `policy` — deterministic repository-policy checks that are not language lint or tests.
 
-The universal policy lane includes `policy-log`, which runs the composed exact
-committed-prefix and effective-chronology validator. The staged pre-commit hook
-runs the same wrapper against the staged blob. Neither substitutes for the
-full gate.
+The universal policy lane includes `policy-log`, which runs the composed exact committed-prefix and effective-chronology validator. The staged pre-commit hook runs the same wrapper against the staged blob. Neither substitutes for the full gate.
 
-A repository with governed proof lanes also exposes `vital` and
-`changed <ref>` modes that delegate to the matching `bin/test` selection;
-`changed` is the local-commit and implementation-candidate gate. Neither writes
-or satisfies a full-gate receipt.
+A repository with governed proof lanes also exposes `vital` and `changed <ref>` modes that delegate to the matching `bin/test` selection; `changed` is the local-commit and implementation-candidate gate. Neither writes or satisfies a full-gate receipt.
 
-A project may add named modes but does not remove or weaken `all`. Unknown
-modes and extra arguments are usage errors. Every entry point preserves child
-failures, emits unambiguous terminal results where applicable, hides no failure
-behind a pipe or fallback, and performs no commit, push, deploy, or other
-shared-state mutation.
+A project may add named modes but does not remove or weaken `all`. Unknown modes and extra arguments are usage errors. Every entry point preserves child failures, emits unambiguous terminal results where applicable, hides no failure behind a pipe or fallback, and performs no commit, push, deploy, or other shared-state mutation.
 
-Every `all` run starts durable, gitignored run metadata and captures its complete
-output under `.kickoff/check-all/`. Success writes a receipt bound to the exact
-`bin/kickoff-tree-id` candidate, an environment fingerprint, and the log digest;
-running, failed, identity-error, and candidate-drift runs retain terminal
-metadata but never create a reusable receipt. In this receipt format, `status: failed` with `exit_code: 124` (or a shell signal status of 128 or greater) encodes an incomplete invocation, not a completed correctness failure; consumers must inspect both fields. A log/storage failure remains an
-explicit failure and never creates a receipt. `CHECK ALL PASS` is emitted only
-after the log, receipt, and terminal run metadata are durable.
+Every `all` run starts durable, gitignored run metadata and captures its complete output under `.kickoff/check-all/`. Success writes a receipt bound to the exact `bin/kickoff-tree-id` candidate, an environment fingerprint, and the log digest; running, failed, identity-error, and candidate-drift runs retain terminal metadata but never create a reusable receipt. In this receipt format, `status: failed` with `exit_code: 124` (or a shell signal status of 128 or greater) encodes an incomplete invocation, not a completed correctness failure; consumers must inspect both fields. A log/storage failure remains an explicit failure and never creates a receipt. `CHECK ALL PASS` is emitted only after the log, receipt, and terminal run metadata are durable.
 
-The `format` mode evaluates the complete candidate working-tree state:
-staged changes, unstaged changes, and nonignored untracked files. Its result
-must not depend on whether the operator has staged a file, and the check never
-rewrites the candidate.
+The `format` mode evaluates the complete candidate working-tree state: staged changes, unstaged changes, and nonignored untracked files. Its result must not depend on whether the operator has staged a file, and the check never rewrites the candidate.
 
 ### Runtime entry points
 
-When a repository exposes a language runtime for scripts or diagnostics, the
-entry point selects the same pinned, locked environment. In this starter,
-`./bin/python [arguments...]` is the only supported way for methodology
-callers to request the project interpreter. It never assumes `python`,
-`python3`, or a minor-version binary on the host `PATH`.
+When a repository exposes a language runtime for scripts or diagnostics, the entry point selects the same pinned, locked environment. In this starter, `./bin/python [arguments...]` is the only supported way for methodology callers to request the project interpreter. It never assumes `python`, `python3`, or a minor-version binary on the host `PATH`.
 
-The Python profile accepts `TOOLCHAIN_PYTHON=/absolute/path/to/python` for
-deliberate compatibility testing. Without it, the committed `.python-version`
-selects a uv-managed interpreter. With it, every wrapper uses only that
-executable and fails closed if the executable or its locked dependency chain
-is unusable. The
-override names a base interpreter outside `project/.venv`; pointing into the
-environment that uv may replace during synchronization is self-referential and
-fails before uv runs.
+The Python profile accepts `TOOLCHAIN_PYTHON=/absolute/path/to/python` for deliberate compatibility testing. Without it, the committed `.python-version` selects a uv-managed interpreter. With it, every wrapper uses only that executable and fails closed if the executable or its locked dependency chain is unusable. The override names a base interpreter outside `project/.venv`; pointing into the environment that uv may replace during synchronization is self-referential and fails before uv runs.
 
-Runtime wrappers may probe on ordinary one-shot entry. A hot loop, mutation
-survey, generated multi-command workflow, or detached process resolves and
-validates the underlying repository interpreter once, then reuses that exact
-executable for every repeated call. It does not re-enter the wrapper for each
-iteration, start a background process through an ambient executable, or depend
-on a later `PATH` lookup after selection.
+Runtime wrappers may probe on ordinary one-shot entry. A hot loop, mutation survey, generated multi-command workflow, or detached process resolves and validates the underlying repository interpreter once, then reuses that exact executable for every repeated call. It does not re-enter the wrapper for each iteration, start a background process through an ambient executable, or depend on a later `PATH` lookup after selection.
 
 Project wrappers discard an inherited `VIRTUAL_ENV` before probing or executing: their project selection is authoritative, and `TOOLCHAIN_PYTHON` remains the explicit base-interpreter override. A standalone tool whose declared dependencies are outside the project environment must use its own executable contract; the role watcher is one such tool. Other tools follow their generated invocation contracts, including project-interpreter recipes when their dependencies are provided there.
 
@@ -167,25 +87,17 @@ Project wrappers discard an inherited `VIRTUAL_ENV` before probing or executing:
 
 The interface is universal; implementations are language-specific:
 
-- Python/uv: committed `.python-version`, `pyproject.toml`, and `uv.lock`;
-  `uv sync --locked --managed-python` for setup and
-  `uv run --locked --managed-python` for default execution; an authoritative
-  explicit interpreter is normalized by uv and uses `--python
+- Python/uv: committed `.python-version`, `pyproject.toml`, and `uv.lock`; `uv sync --locked --managed-python` for setup and `uv run --locked --managed-python` for default execution; an authoritative explicit interpreter is normalized by uv and uses `--python
   <resolved-path>` plus the matching managed/system preference, with the same
   selection applied to synchronization, probing, and execution;
-- Node: the package manager selected by the committed lockfile, with
-  immutable/frozen dependency setup and package scripts behind the wrappers;
-- Rust: the pinned toolchain when applicable and Cargo commands with
-  `--locked`;
+- Node: the package manager selected by the committed lockfile, with immutable/frozen dependency setup and package scripts behind the wrappers;
+- Rust: the pinned toolchain when applicable and Cargo commands with `--locked`;
 - Go: the declared Go version and module reads with `-mod=readonly`;
-- other ecosystems: their equivalent version selection and lock-preserving
-  modes.
+- other ecosystems: their equivalent version selection and lock-preserving modes.
 
 `bin/mutate` belongs to the same contract with the same split. The interface is universal: `--changed-from <rev>` or `--all`; one JSON document carrying `state` (`measured`, `partial` or `unmeasured`), `tool`, `scope`, the counts `generated`, `killed`, `survived`, `timed_out` and `not_run`, and `survivors` with a `path`, `line` and `change` each; exit 0 for those three states and non-zero for any failure. The tool behind it is the language's own, a committed development dependency like any other, run so that no fault is planted in the live tree. A profile with no maintained tool declares `mutation.tool: null` with its reason and the wrapper reports `unmeasured`. The survey is never a gate member; its use is governed by [`test-suite-governance.md`](test-suite-governance.md) § Mutation survey.
 
-Recurring tools belong in committed development dependencies. Do not use
-ephemeral dependency injection such as an unpinned `uv run --with ...` for a
-repository-owned gate.
+Recurring tools belong in committed development dependencies. Do not use ephemeral dependency injection such as an unpinned `uv run --with ...` for a repository-owned gate.
 
 ## Targeted tests for local commits; the full gate qualifies a push
 
@@ -195,77 +107,29 @@ The full suite is not rerun for every change. Outside construction phases (metho
 
 The planner's Build Gate Sequence has three explicit parts:
 
-1. **Iteration and revision-close gates** — focused invocations through
-   `./bin/test` or another repository-owned focused mode, plus affected
-   static/structural checks. When a validated proof estate exists, prefer its
-   `--vital` or `--changed-from` selection; explicit selectors remain available
-   for a named falsifier. The plan states why the selection exercises the
-   changed surface.
-2. **Implementation-candidate gate** — after code-critic approval, the phase's
-   prescribed checks ending with the changed-path selection
-   `./bin/test --changed-from '@{upstream}'`, recorded against the unchanged
-   approved implementation candidate. The selection widens itself to the full
-   suite when the change cannot be mapped safely.
-3. **Handoff gate** — after status, ripple, lessons, END, dashboard, and every
-   other tracked close write, a bare `./bin/check all` against the actual tree
-   handed to the user. It is the phase's one full run, and its receipt
-   qualifies the push. No tracked write follows a successful handoff gate.
+1. **Iteration and revision-close gates** — focused invocations through `./bin/test` or another repository-owned focused mode, plus affected static/structural checks. When a validated proof estate exists, prefer its `--vital` or `--changed-from` selection; explicit selectors remain available for a named falsifier. The plan states why the selection exercises the changed surface.
+2. **Implementation-candidate gate** — after code-critic approval, the phase's prescribed checks ending with the changed-path selection `./bin/test --changed-from '@{upstream}'`, recorded against the unchanged approved implementation candidate. The selection widens itself to the full suite when the change cannot be mapped safely.
+3. **Handoff gate** — after status, ripple, lessons, END, dashboard, and every other tracked close write, a bare `./bin/check all` against the actual tree handed to the user. It is the phase's one full run, and its receipt qualifies the push. No tracked write follows a successful handoff gate.
 
 Do not place an unchanged component suite immediately before a gate that already includes it. An additional pre-gate command needs a distinct acceptance property, configuration or environment. Both close gates remain mandatory at their separate candidate and handoff seams.
 
-A raw ecosystem command is acceptable only for a narrow operation the
-repository interface does not represent; it must still use committed metadata
-and lock-preserving mode.
+A raw ecosystem command is acceptable only for a narrow operation the repository interface does not represent; it must still use committed metadata and lock-preserving mode.
 
-The coder runs the iteration/revision-close part as often as needed and reports
-that focused evidence. The orchestrator runs the implementation-candidate gate
-after code-critic approval, finalizes its candidate-bound evidence, applies the
-tracked close writes, then runs the handoff gate. Evidence from a delegated or
-sandboxed environment proves only that environment; both close gates run in
-the orchestrator's host context.
+The coder runs the iteration/revision-close part as often as needed and reports that focused evidence. The orchestrator runs the implementation-candidate gate after code-critic approval, finalizes its candidate-bound evidence, applies the tracked close writes, then runs the handoff gate. Evidence from a delegated or sandboxed environment proves only that environment; both close gates run in the orchestrator's host context.
 
-Every gate record names the candidate identifier from
-`bin/kickoff-tree-id`, its exact command, selection reason, exit status,
-post-execution diagnostic assessment and observed warning count, and optional artifact digest, per
-[`orchestration-evidence.md`](orchestration-evidence.md). Verify the candidate
-before and after the implementation sequence. A relevant implementation
-candidate change invalidates prior evidence; a gate that mutates the candidate
-fails. The handoff gate writes only ignored receipt state. When the affected
-surface is indeterminate, select a broader suite rather than defaulting to a
-reassuring narrow one.
+Every gate record names the candidate identifier from `bin/kickoff-tree-id`, its exact command, selection reason, exit status, post-execution diagnostic assessment and observed warning count, and optional artifact digest, per [`orchestration-evidence.md`](orchestration-evidence.md). Verify the candidate before and after the implementation sequence. A relevant implementation candidate change invalidates prior evidence; a gate that mutates the candidate fails. The handoff gate writes only ignored receipt state. When the affected surface is indeterminate, select a broader suite rather than defaulting to a reassuring narrow one.
 
-Governed lanes are subject to
-[`test-suite-governance.md`](test-suite-governance.md). The changed-path selection is the implementation-candidate gate and the local commit gate; no lane replaces the handoff gate, a phase-prescribed acceptance command, or pre-push full-gate custody.
+Governed lanes are subject to [`test-suite-governance.md`](test-suite-governance.md). The changed-path selection is the implementation-candidate gate and the local commit gate; no lane replaces the handoff gate, a phase-prescribed acceptance command, or pre-push full-gate custody.
 
-If the handoff gate fails, the phase is not complete. Reopen the current
-uncommitted close, correct or regenerate the close artifact, and rerun the bare
-gate. A failure that exposes an implementation defect invalidates the prior implementation-candidate gate and follows the selected authority mode; it does not automatically order another advisory pass or introduce methodology review. Never write a
-tracked "gate passed" claim after the handoff gate; its ignored candidate- and
-environment-bound receipt is the durable proof.
+If the handoff gate fails, the phase is not complete. Reopen the current uncommitted close, correct or regenerate the close artifact, and rerun the bare gate. A failure that exposes an implementation defect invalidates the prior implementation-candidate gate and follows the selected authority mode; it does not automatically order another advisory pass or introduce methodology review. Never write a tracked "gate passed" claim after the handoff gate; its ignored candidate- and environment-bound receipt is the durable proof.
 
 ## Human wall-clock efficiency
 
-Correctness and both close gates are fixed; avoidable waiting is not.
-Agents remain alert when a gate or related deterministic operation materially
-dominates the development critical path, especially when independent work runs
-serially, invariant setup repeats, or a full suite is being used repeatedly
-during iteration.
+Correctness and both close gates are fixed; avoidable waiting is not. Agents remain alert when a gate or related deterministic operation materially dominates the development critical path, especially when independent work runs serially, invariant setup repeats, or a full suite is being used repeatedly during iteration.
 
-When a substantial improvement appears reasonably achievable with little risk
-or effort, make one bounded execution assessment before blindly paying the
-same cost again. Consider existing focused selectors, one-time preflight,
-safe isolation and parallel execution of genuinely independent units, and
-reuse only when complete input identity proves the result unchanged. Use an
-already available safe mode. If a permanent improvement would expand the
-authorized phase, surface it once as a concrete opportunity rather than
-implementing the tangent.
+When a substantial improvement appears reasonably achievable with little risk or effort, make one bounded execution assessment before blindly paying the same cost again. Consider existing focused selectors, one-time preflight, safe isolation and parallel execution of genuinely independent units, and reuse only when complete input identity proves the result unchanged. Use an already available safe mode. If a permanent improvement would expand the authorized phase, surface it once as a concrete opportunity rather than implementing the tangent.
 
-This rule has no fixed time threshold and does not mandate optimization. Do
-not spend heroic effort on marginal savings from an acceptable operation,
-collect telemetry without a concrete decision it can inform, or weaken
-coverage, determinism, diagnostics, failure propagation, candidate binding,
-or either close gate. An expensive operation with no obvious safe
-leverage may simply be reported and run.
+This rule has no fixed time threshold and does not mandate optimization. Do not spend heroic effort on marginal savings from an acceptable operation, collect telemetry without a concrete decision it can inform, or weaken coverage, determinism, diagnostics, failure propagation, candidate binding, or either close gate. An expensive operation with no obvious safe leverage may simply be reported and run.
 
 ## Candidate declaration gate
 
@@ -277,43 +141,15 @@ Bookkeeping classification preserves product review identity; it does not author
 
 Both close gates run: the changed-path selection against the approved implementation candidate and the one full gate against the post-bookkeeping handoff tree. A receipt is a durable record of a completed full gate, not permission to omit either gate or to reuse a result across candidates or environments.
 
-The opt-in pre-push hook may reuse a receipt only when every non-deleted pushed
-ref is the current `HEAD`, the working tree is clean, the current candidate and
-environment fingerprint exactly match the receipt, and the receipt, terminal
-run metadata, complete log path, and log digest all verify. Any absence,
-malformed input, corruption, mismatch, query error, or uncertain state is an
-explicit miss and runs `./bin/check all`. The lookup never falls back to a
-reassuring value on error. The receipt manager writes only ignored local runtime
-state; it performs no Git or other shared-state mutation.
+The opt-in pre-push hook may reuse a receipt only when every non-deleted pushed ref is the current `HEAD`, the working tree is clean, the current candidate and environment fingerprint exactly match the receipt, and the receipt, terminal run metadata, complete log path, and log digest all verify. Any absence, malformed input, corruption, mismatch, query error, or uncertain state is an explicit miss and runs `./bin/check all`. The lookup never falls back to a reassuring value on error. The receipt manager writes only ignored local runtime state; it performs no Git or other shared-state mutation.
 
-Candidate identity and environment identity are separate bindings. The
-environment fingerprint describes the runtime that actually executes the gate,
-not the standalone receipt helper and not a version declaration used as its
-proxy. In the Python profile, `bin/check-receipt` obtains a deterministic
-descriptor through the repository-owned `bin/python` selection path. That
-descriptor includes the selected implementation and actual version, resolved
-executable and base-executable identities with their file digests, machine,
-platform, and uv version. It does not hash `project/.venv` or an external
-runtime tree. Failure to select the runtime, query any descriptor member, parse
-the descriptor, or validate its schema is an explicit miss and runs the full
-gate.
+Candidate identity and environment identity are separate bindings. The environment fingerprint describes the runtime that actually executes the gate, not the standalone receipt helper and not a version declaration used as its proxy. In the Python profile, `bin/check-receipt` obtains a deterministic descriptor through the repository-owned `bin/python` selection path. That descriptor includes the selected implementation and actual version, resolved executable and base-executable identities with their file digests, machine, platform, and uv version. It does not hash `project/.venv` or an external runtime tree. Failure to select the runtime, query any descriptor member, parse the descriptor, or validate its schema is an explicit miss and runs the full gate.
 
 ## Lifecycle hooks
 
-Tracked hooks may invoke the candidate-bound receipt lookup and then
-`./bin/check all` on every miss, but installation is opt-in. Hooks contain no
-duplicate toolchain command list. Their installer is idempotent, reports
-conflicting configuration, and requires an explicit force option to replace
-it.
+Tracked hooks may invoke the candidate-bound receipt lookup and then `./bin/check all` on every miss, but installation is opt-in. Hooks contain no duplicate toolchain command list. Their installer is idempotent, reports conflicting configuration, and requires an explicit force option to replace it.
 
-Opt-in needs a liveness witness, because `core.hooksPath` is local Git
-configuration that does not survive a clone and can be silently repointed —
-a component whose failure mode is silence needs an external witness that can
-say "not running." `bin/check-hooks-installed` is that witness, and the
-`check` policy lane runs it: an unset hooks path passes as the healthy
-not-opted-in state (opting in is never mandated), a set-but-wrong path fails
-as the silent disablement it is, and the tracked hooks themselves must exist
-and stay executable in every checkout regardless of opt-in.
+Opt-in needs a liveness witness, because `core.hooksPath` is local Git configuration that does not survive a clone and can be silently repointed — a component whose failure mode is silence needs an external witness that can say "not running." `bin/check-hooks-installed` is that witness, and the `check` policy lane runs it: an unset hooks path passes as the healthy not-opted-in state (opting in is never mandated), a set-but-wrong path fails as the silent disablement it is, and the tracked hooks themselves must exist and stay executable in every checkout regardless of opt-in.
 
 ## Verification
 
@@ -321,45 +157,23 @@ Behavioral tests prove:
 
 - invocation from outside the repository root;
 - exact setup, full-test, focused-test, runtime, and gate mappings;
-- proof-estate inventory, ownership, surface drift, selection-union, widening,
-  unsupported-runner, and witness-receipt behavior when governed lanes are
-  present;
+- proof-estate inventory, ownership, surface drift, selection-union, widening, unsupported-runner, and witness-receipt behavior when governed lanes are present;
 - pinned runtime and locked/frozen toolchain invocation;
 - a real dependency-chain load/run probe before success;
-- authoritative override selection, invalid-override refusal, and no fallback
-  after an override or probe failure;
+- authoritative override selection, invalid-override refusal, and no fallback after an override or probe failure;
 - clear failure when prerequisites or any bundle member is absent;
 - exact child-status propagation;
 - strict argument handling and stable terminal output;
 - `bin/check test` delegation to `bin/test`.
-- complete durable logs and terminal run metadata for every completed full-gate
-  outcome, with log/storage failures explicit and never reusable;
-- exact candidate/environment receipt hits, with corruption, drift, dirty-tree,
-  non-`HEAD` push, and query-error paths all failing closed to a full-gate run.
+- complete durable logs and terminal run metadata for every completed full-gate outcome, with log/storage failures explicit and never reusable;
+- exact candidate/environment receipt hits, with corruption, drift, dirty-tree, non-`HEAD` push, and query-error paths all failing closed to a full-gate run.
 
-The behavioral suite is the coverage floor for every supported mode and
-override branch. A transfer must retain equivalent executable coverage after
-target adaptation; grepping wrapper source for expected command strings is not
-an adequate substitute.
+The behavioral suite is the coverage floor for every supported mode and override branch. A transfer must retain equivalent executable coverage after target adaptation; grepping wrapper source for expected command strings is not an adequate substitute.
 
-Caller-policy verification inventories dependency-bearing shell workflows,
-tracked hooks, generated commands, and active instructions. Repository code
-uses the repository runtime. External-platform configuration literals (for
-example, a cloud function's declared runtime) and language shebangs are not
-operational caller instructions and remain governed by their own platform
-contracts.
+Caller-policy verification inventories dependency-bearing shell workflows, tracked hooks, generated commands, and active instructions. Repository code uses the repository runtime. External-platform configuration literals (for example, a cloud function's declared runtime) and language shebangs are not operational caller instructions and remain governed by their own platform contracts.
 
-The policy gate runs the repository-owned caller inventory, harness-parity
-check, execution-dashboard validator, and proof-estate validator when present.
-These checkers and their behavioral tests are part of the atomic bundle: a
-transfer that adds a policy without its enforcement, or a checker without its
-callers and fixtures, is incomplete.
+The policy gate runs the repository-owned caller inventory, harness-parity check, execution-dashboard validator, and proof-estate validator when present. These checkers and their behavioral tests are part of the atomic bundle: a transfer that adds a policy without its enforcement, or a checker without its callers and fixtures, is incomplete.
 
-After changing any bundle member or caller, run `./bin/test` for focused
-wrapper coverage, run `./bin/check all`, and search for stale raw setup or test
-commands that bypass the repository interface.
+After changing any bundle member or caller, run `./bin/test` for focused wrapper coverage, run `./bin/check all`, and search for stale raw setup or test commands that bypass the repository interface.
 
-When a formatting gate needs a mechanical rewrite, invoke the formatter from
-the same working directory and configuration boundary as `bin/check` uses.
-Formatting the same paths from another directory can select different tool
-configuration and still leave the authoritative check red.
+When a formatting gate needs a mechanical rewrite, invoke the formatter from the same working directory and configuration boundary as `bin/check` uses. Formatting the same paths from another directory can select different tool configuration and still leave the authoritative check red.

@@ -1,6 +1,7 @@
 ---
 name: docs
 description: Build, review, maintain, or publish the project's Markdown/mdBook manual. Supports local browser review, existing Tailnet previews, manual GitHub Pages deployment, and explicitly controlled continuous deployment.
+last-reviewed: 2026-10-26
 ---
 
 # Project documentation
