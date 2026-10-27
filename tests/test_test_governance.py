@@ -688,6 +688,50 @@ def test_witness_refuses_anything_short_of_the_named_failure(tmp_path: Path) -> 
         assert not (root / "reports/witnesses.jsonl").exists(), reason
 
 
+def test_witness_expect_must_appear_in_a_declared_failure_line(tmp_path: Path) -> None:
+    """An echoed assertion message cannot witness a run that failed for another reason."""
+
+    def attempt(name: str, failure: str) -> Path:
+        root = _witness_repo(tmp_path / name)
+        (root / "tests/proof-estate.yaml").write_text(
+            json.dumps(
+                {"witness_ledger": "reports/witnesses.jsonl", "witness_failure_lines": "^E "}
+            )
+        )
+        (root / "check.sh").write_text(
+            "#!/bin/sh\n"
+            "grep -qx deny guard.txt || {\n"
+            "  echo '>       assert guard, \"GUARD OPEN\"'\n"
+            f"  echo '{failure}'\n"
+            "  exit 1\n"
+            "}\n"
+            "echo checked\n"
+        )
+        governance.witness_begin(root, **WITNESS)
+        (root / "guard.txt").write_text("allow\n")
+        governance.witness_finish(root)
+        return root
+
+    refused = False
+    try:
+        attempt("echoed", "E       ValueError: guard is not in list")
+    except governance.GovernanceError as exc:
+        refused = "outside the declared failure lines" in str(exc)
+    assert refused, "WITNESS ACCEPTED AN ECHOED MESSAGE"
+
+    root = attempt("failed", "E       AssertionError: GUARD OPEN")
+    assert len(governance.load_ledger(root / "reports/witnesses.jsonl")) == 1
+
+    bad = _witness_repo(tmp_path / "bad")
+    (bad / "tests/proof-estate.yaml").write_text(
+        json.dumps({"witness_ledger": "reports/witnesses.jsonl", "witness_failure_lines": "("})
+    )
+    governance.witness_begin(bad, **WITNESS)
+    (bad / "guard.txt").write_text("allow\n")
+    with pytest.raises(governance.GovernanceError, match="not a valid regular expression"):
+        governance.witness_finish(bad)
+
+
 def test_a_pending_witness_blocks_validation_until_it_is_aborted(tmp_path: Path) -> None:
     root = _witness_repo(tmp_path)
     governance.witness_begin(root, **WITNESS)

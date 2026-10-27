@@ -760,6 +760,10 @@ def validate(root: Path) -> dict[str, Any]:
             f" (unadmitted={missing[:3]}, shadow={shadow[:3]})"
         )
 
+    try:
+        witness_failure_lines(manifest)
+    except GovernanceError as exc:
+        errors.append(str(exc))
     witness_rel = manifest.get("witness_ledger")
     if not isinstance(witness_rel, str) or not witness_rel:
         errors.append("witness_ledger must be a repo-relative path")
@@ -1188,12 +1192,32 @@ def witness_begin(
     }
 
 
+def witness_failure_lines(manifest: dict[str, Any]) -> re.Pattern[str] | None:
+    """Return the declared pattern for lines that report a test failure, if any.
+
+    A test runner can echo the failing source, assertion message included, before
+    it reports the failure. Matching the expected text only inside declared failure
+    lines keeps an echoed message from witnessing a run that failed for another reason.
+    """
+    declared = manifest.get("witness_failure_lines")
+    if declared is None:
+        return None
+    if not isinstance(declared, str) or not declared.strip():
+        raise GovernanceError("witness_failure_lines must be a nonempty regular expression")
+    try:
+        return re.compile(declared)
+    except re.error as exc:
+        raise GovernanceError(f"witness_failure_lines is not a valid regular expression: {exc}")
+
+
 def witness_finish(root: Path) -> dict[str, Any]:
     """Require the planted defect to fail the command as named, restore, and record a receipt."""
     request = _load_pending(root)
-    ledger_rel = load_yaml(root / "tests/proof-estate.yaml").get("witness_ledger")
+    manifest = load_yaml(root / "tests/proof-estate.yaml")
+    ledger_rel = manifest.get("witness_ledger")
     if not isinstance(ledger_rel, str) or not ledger_rel:
         raise GovernanceError("witness_ledger must be a repo-relative path")
+    failure_lines = witness_failure_lines(manifest)
     planted = hashlib.sha256()
     changed = False
     for entry in request["paths"]:
@@ -1233,6 +1257,13 @@ def witness_finish(root: Path) -> dict[str, Any]:
         raise GovernanceError(
             "NOT WITNESSED: the command failed, but not with the expected text; "
             "nothing was recorded\n" + output.strip()
+        )
+    if failure_lines is not None and not any(
+        request["expect"] in line for line in output.splitlines() if failure_lines.search(line)
+    ):
+        raise GovernanceError(
+            "NOT WITNESSED: the expected text appears only outside the declared failure lines, "
+            "such as echoed source; nothing was recorded\n" + output.strip()
         )
     row = {
         "record_type": "red_witness",

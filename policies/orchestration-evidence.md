@@ -28,7 +28,15 @@ After the target phase or sub-phase is resolved and before its first implementat
 
 A just-in-time decomposition call remains in the parent-resolution pre-run and does not share evidence with the child run it creates.
 
-Required WIP, preflights, prompts, native event/report output, reviewed plans, frozen tools, test/qualification diagnostics, witness observations and resume packets must have retained bytes in private durable storage from creation. Use temporary storage only for disposable execution scratch, never the sole qualifying record. A private persistent sibling directory may serve an outside-checkout consumer probe; copy and verify its required output before publishing a pointer or removing scratch. Registered watchers default omitted native stdout/stderr captures into the durable run and refuse temporary prompt/output paths before consuming a launch. Ignored runtime evidence is not committed or deployed with sanitized reports. A checksum or pointer alone does not retain its preimage. Preserve failed and incomplete histories; do not clean them up merely because a successor exists.
+Everything a run needs as evidence is kept in private, durable storage from the moment it is created:
+
+- work in progress, preflight receipts and prompts;
+- native event and report output, and reviewed plans;
+- frozen tools;
+- test and qualification diagnostics, and witness observations;
+- resume packets.
+
+Temporary storage is only for disposable scratch and is never the only copy of anything that qualifies a run. A probe that must run outside the checkout may use a private persistent sibling directory; copy its required output into the run and verify it before publishing a pointer to it or deleting the scratch. Registered watchers write omitted native stdout and stderr captures into the durable run by default, and refuse temporary prompt or output paths before they spend a launch. Ignored runtime evidence is never committed, and is not deployed with sanitized reports. A checksum or pointer does not keep the bytes it names. Keep failed and incomplete histories; a successor run is not a reason to delete them.
 
 Initialize the run through `./bin/python bin/kickoff-evidence init` with the phase file, its cited briefs, applicable policies, `plan/INDEX.md`, `CLAUDE.md`, declared dependencies, the immediately preceding completed phase as authorities, and the fresh `bin/kickoff-config preflight --receipt` artifact for the resolved role topology. A missing, stale, malformed, or differently configured receipt refuses initialization and final validation.
 
@@ -219,7 +227,16 @@ A prospective close may additionally advance at most one existing not-started ph
 
 Primary continuations carry advice with `carry-advice --source-run <prior-run>` and record a fresh final-delta decision. Original reports remain joined to their original read-only dispatches; phase-wide launch counts do not reset. Primary acceptance captures the assessed bookkeeping snapshot, while declared-authority protection and post-gate non-mutation remain mandatory.
 
-Registration validates prospective run-local numbering before publishing a role handoff. Earlier carried advice can prove continuity; a phase-wide pass number alone cannot. For an immutable historical source that already executed with a local numbering gap, a separate fresh continuation may use `attest-advice-source --source-run <historical-run> --predecessor-run <earlier-run>` before ordinary carry. Repeat `--predecessor-run` when different roles have distinct original runs; each is validated independently and every missing operation/attempt needs a unique earlier launch. This append-only attestation revalidates both original pinned manifests, frozen preflights, registrations, accepted dispatches, closed role spans and exact earlier phase claims. It binds original evidence snapshots and the unchanged budget prefix; later budget appends remain subject to ordinary validation. A returned but un-ingested predecessor proves only its actual launch, never an accepted report. No report or local attempt is invented, renumbered or rewritten. Export, carry and acceptance revalidate attested originals; subsequent continuations inherit the same receipt. Preserve the failed source and all refusal history; the owning primary still records a fresh final-delta decision and runs normal gates.
+Registration checks a run's own attempt numbering before it hands work to a role. Carried advice from earlier runs can prove continuity; a phase-wide pass number alone cannot.
+
+One historical case needs more: a source run that already executed with a gap in its local numbering. A separate, fresh continuation may record an attestation for it with `attest-advice-source --source-run <historical-run> --predecessor-run <earlier-run>` before ordinary carry.
+
+- Repeat `--predecessor-run` when different roles came from different original runs. Each is validated on its own, and every missing operation or attempt must match a unique earlier launch.
+- The attestation is append-only. It revalidates both runs' original pinned manifests, frozen preflights, registrations, accepted dispatches, closed role spans and exact earlier phase claims, and binds those original evidence snapshots and the unchanged budget prefix. Later budget appends are validated as usual.
+- A predecessor that returned but was never ingested proves only that it launched, never that its report was accepted.
+- Nothing is invented, renumbered or rewritten: no report and no local attempt.
+
+Export, carry and acceptance revalidate the attested originals, and later continuations inherit the same receipt. Keep the failed source run and all its refusals. The owning primary still records a fresh final-delta decision and runs the normal gates.
 
 An attested continuation starts its own role numbering at 1 if any additional review is separately authorized; the receipt preserves historical provenance and does not assign local attempt numbers or authorize another pass.
 

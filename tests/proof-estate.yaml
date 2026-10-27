@@ -2,6 +2,7 @@ schema: agentic.proof_estate.v5
 baseline_report: reports/test-governance/starter-pre-reset-baseline.json
 audit_ledger: reports/test-governance/starter-reset.jsonl
 witness_ledger: reports/test-governance/starter-witnesses.jsonl
+witness_failure_lines: '^E\s'
 adoption:
   mode: complete
 hang_timeout_seconds: 1800

@@ -1,6 +1,6 @@
 ---
 title: "Standing Up a New Project From This Template"
-date: 2026-10-25
+date: 2026-10-27
 status: methodology
 scope: Procedure for using this repository as a master template to stand up a new project under the agentic coding methodology. Authoritative reference for the `stamp` skill.
 ---
@@ -9,14 +9,7 @@ scope: Procedure for using this repository as a master template to stand up a ne
 
 The documentation bundle includes `bin/docs`, its shared module and behavioral proofs, exact renderer/plugin/compiler pins, generated admonish CSS/license, and the docs skill/mirror. Each new project receives a product-specific Markdown/mdBook manual under `manual/`, a recipient-adapted `documentation.toml`, loopback preview and disabled continuous deployment. Preserve the third-party-only `docs/` catalog. Do not copy Starter's manual or publication identity; new Pages/OIDC/network grants remain explicit owner decisions. The recipient's full gate includes `bin/docs check`, and its proof estate retains direct publication-custody evidence.
 
-## Primary ownership and independent advice
-
-As of 2026-09-07, the primary use case is a configured SOTA instance that owns orchestration, planning, implementation and acceptance. A comparable or stronger model in another permitted provider's harness normally supplies independent plan and code advice; a single-provider environment uses fresh instances of the primary model. One comprehensive pass per stage is normal, a second needs recorded cause, and two is the default maximum; only the operator's single-use exception admits a third code review. Advisers report evidence and severity without veto; the primary decides corrections and records consequential dispositions. Objective requirements and both close gates remain binding.
-
-A constrained primary uses separate planner/coder roles and the established approval-gated reviewer/critic loops. Detailed references to mandatory reviewer approval or four-role delegation below describe that constrained product branch. Eligibility is maintained configuration, not a benchmark claim. Backend and handling restrictions prevail over preferred routing. Optional kickoff usage checks refuse a primary at >=95% of any applicable limit and substitute the primary for a secondary above 95% weekly; absent tooling does not prevent execution.
-
-All methodology work itself, including teach/learn knowledge transfer, is always one-shot by the invoking primary across harnesses and capability tiers, without delegated production or independent review. The primary owns adaptation, self-checks, required gates, commit and fast-forward push within authorized scope. This standing delivery grant does not expand scope or waive custody and human decisions. No product phase or repeated approval ceremony is needed for authorized methodology work.
-
+Primary ownership, independent advice and the one-shot route for methodology work are stated once, in [the methodology brief](methodology.md#primary-ownership-and-independent-advice).
 
 How to use this repository as a *master template* to bootstrap a new project that follows the same agentic coding methodology. This brief is the contract `stamp` implements; read it before customizing the skill or running the procedure by hand.
 

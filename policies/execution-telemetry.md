@@ -137,9 +137,15 @@ No tracked write follows step 6; step 7 changes no tracked content. A step-5 or 
 
 ## Cross-boot interruption observation
 
-`execution-telemetry interrupt --trace-id <old> --successor-trace-id <new> --custody-evidence <file>` records a private, append-only observation after independently verified custody. It requires matching open work/scope, a distinct current-boot successor, a provably changed boot and an attributable custody and candidate-lineage statement. It binds the old trace/span byte snapshot, old and observed boot identities, successor identity and retained custody bytes. Identical requests are idempotent; changed originals, lineage or successor conflict. It never writes old span bytes, terminal events or the finalized ledger. Completion, exit and duration of old open work remain unknown, not success or zero. Same-boot recovery and operator-park accounting are unchanged.
+`execution-telemetry interrupt --trace-id <old> --successor-trace-id <new> --custody-evidence <file>` records that a run was cut off by a reboot and that a successor has taken over. The record is private and append-only, and the command runs only after custody has been verified independently. It refuses unless:
 
-The JSON custody file has exactly `source`, `reference` and `candidate_lineage`, all nonempty strings. Each is the caller's stated claim. Verify through authorized evidence that the old run's processes have stopped and its resources are released before invoking; the record authenticates no user and probes no processes. Keep this private runtime record out of public timing projections. Consumers retain the original incomplete run and initialize fresh durable successor evidence through their owning session; observation alone is not acceptance or permission to reuse missing advice. Missing originals remain missing, with consumed review budgets preserved.
+- the old and successor traces cover the same open work and scope;
+- the successor is a distinct trace in the current boot, and the boot has provably changed;
+- an attributable custody and candidate-lineage statement is supplied.
+
+It records a byte snapshot of the old trace and spans, the old and current boot identities, the successor's identity and the custody bytes. Repeating an identical request is harmless; a request whose originals, lineage or successor differ is a conflict. It never writes the old spans, terminal events or the finalized ledger. The old open work's completion, exit and duration stay unknown, never success and never zero. Same-boot recovery and operator-park accounting are unchanged.
+
+The custody file has exactly `source`, `reference` and `candidate_lineage`, all nonempty strings, and each is the caller's own claim: the record authenticates no user and probes no processes. Verify through authorized evidence that the old run's processes have stopped and its resources are released before running the command. Keep the record out of public timing projections. The owning session keeps the original incomplete run and starts fresh durable evidence for the successor; the observation is not acceptance and does not permit reusing missing advice. Missing originals stay missing, and consumed review budgets stay consumed.
 
 
 ## Related policies

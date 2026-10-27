@@ -1,10 +1,12 @@
 ---
 slug: gleeful-whippet
 title: A witness's expected text can match the assertion's echoed source instead of its failure
-status: candidate
+status: codified
 scope: methodology
 proposed_surface: bin
 filed: 2026-10-26
+closed: 2026-10-27
+graduated_to: policies/test-suite-governance.md
 source: user
 occurrences:
   - date: 2026-10-26
@@ -16,3 +18,5 @@ The witness tool requires the failing output to contain the expected text. Pytes
 **Expect the exception-qualified failure line (`AssertionError: <message>`), not the bare message, and prefer a defect that leaves every earlier statement in the test working.** A tool-side remedy would match only pytest's `E ` failure lines, or reject a receipt whose output names a different exception type first; that is a `bin` change, not adopted here.
 
 Second instance this would catch: an expected text that is also a literal in a fixture or a log line the test prints before failing for an unrelated reason.
+
+**Graduated 2026-10-27 on the operator's instruction**, before a second occurrence, because the defect is in the instrument rather than in a practice: the witness tool now matches the expected text only inside declared failure lines, and this template declares pytest's `E ` lines.

@@ -124,7 +124,11 @@ Inventories families, expanded leaves, gates and hooks; validates preserved base
 `witness begin` runs the named command and requires it to pass, then journals the
 named files. Plant the defect in those files, and `witness finish` requires the
 same command to fail with the `--expect` text and the declared `--failure-exit` (default 1; completed failure codes 1–123), restores and verifies the original
-bytes, and appends the receipt. `witness abort` restores an interrupted run.
+bytes, and appends the receipt. When `tests/proof-estate.yaml` declares
+`witness_failure_lines`, the `--expect` text must appear on a line matching that
+pattern, so an echoed assertion message cannot stand in for the failure itself; this
+template declares pytest's `E ` lines, and an `--expect` of `AssertionError: <message>`
+names the failure precisely. `witness abort` restores an interrupted run.
 `validate` refuses while a witness is pending.
 
 ```bash

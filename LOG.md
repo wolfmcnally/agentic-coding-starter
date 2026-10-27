@@ -3090,3 +3090,27 @@ Proof changes: two modified proofs, one renamed keeper with five carried and one
 Left open: the advice-source attestation retires once recipients adopt it; five passages too dense for an operator, for a plain-register pass; rarely referenced policies are candidates only; the treatise skills table lacks `docs`; kickoff preflight omits `--primary-model`; the per-stage paragraph copied into ten files wants one home; methodology changes keep using operator-requested independent review under the general override; user action `mustard-alpaca` remains open. Departures from the approved plan: decision 3 reversed by the operator on new evidence; the plan-reviewer line kept; the extra copies, resume assertion, runner parameter and inventory mapping added.
 
 Lessons: filed `fluffy-pigeon` (price a removal by its tests' use of it before presenting it) and `gleeful-whippet` (a witness's expected text can match the echoed source rather than the failure). Graduated `effective-asp`; closed 29 aged lessons. The one full gate follows this record.
+
+## 2026-10-26 23:56 — METHODOLOGY SCOPE — sweep follow-ups: plain text, one home, witness failure lines
+
+Authorized outcome, on the operator's instruction to do the sweep's recommended targeted changes now: (1) rewrite in the plain register the densest operator-facing passages the sweep named, without changing what they require; (2) give the per-stage primary-ownership paragraph copied into nine briefs and the methodology skill one home, with the copies replaced by a pointer; (3) let a repository declare which output lines count as test failures, so a red witness's expected text must appear in one of them rather than in echoed source, and declare it for this template's pytest profile; (4) correct the treatise brief's skills table and its stale review-maximum claim in the canonical brief.
+
+Surfaces: the affected policies, briefs and methodology skill; root `CLAUDE.md` only for its dense invariant sentence; `lib/agentic_starter/test_governance.py`, its tests and proof ledgers, `tests/proof-estate.yaml`; this log. Exclusions: no change to what any rule requires; no treatise re-rendering; no change to existing witness receipts.
+
+## 2026-10-27 00:06 — METHODOLOGY — sweep follow-ups: plain text, one home, witness failure lines
+
+Implemented the four parts of the recorded scope.
+
+Witness failure lines: a repository may declare `witness_failure_lines` in its proof manifest, a regular expression for the lines its test runner uses to report a failure. When declared, `witness finish` requires the expected text on one of those lines, so an echoed assertion message can no longer witness a run that failed for another reason; `validate` and `finish` refuse an invalid pattern. This template declares pytest's `E ` lines; a project whose runner has no such marker leaves the key out and keeps the previous behavior. New proof `test_witness_expect_must_appear_in_a_declared_failure_line`, admitted with receipts 224–226. Two of its planted defects first sat in the witness tool's own matching code and so broke the instrument witnessing them; they were re-planted to affect only the test's fixture repositories. One expected text was corrected after the observed failure named a regex mismatch rather than the predicted message. Lesson `gleeful-whippet` graduated into `policies/test-suite-governance.md` on the operator's instruction, before a second occurrence, since the defect was in the instrument.
+
+One home: the three-paragraph primary-ownership section copied at the head of seven briefs is replaced there by a pointer to `briefs/methodology.md`, which keeps it. The methodology skill keeps its copy as the brief's declared standalone restatement, and the root README keeps its own public wording.
+
+Plain text: the evidence-retention duties and the historical advice-source attestation in `policies/orchestration-evidence.md`, the reboot-interruption contract in `policies/execution-telemetry.md`, and the review and candidate-identity invariants in root `CLAUDE.md` were rewritten as shorter sentences and lists. Every requirement they stated is kept; no test pins their text.
+
+Treatise: the canonical brief's skills table gains `docs`, its review-maximum sentence names the operator's single-use code-review exception, and a dated directive records both. The private rendering was not republished.
+
+Retire-what-the-old-rule-produced search: the witness description in `bin/README.md` now names the declared failure lines; no other surface describes expected-text matching, and the copied section's heading remains only at its home and in the skill.
+
+Primary self-check against the scope: no rule's requirement changed; existing witness receipts are untouched. Independent review: not applicable — primary one-shot methodology work. Lint, format, catalogs, lessons, proof governance and anonymization passed; the changed-path selection passed 110 tests with no warnings. The one bare full gate follows this record and qualifies the push.
+
+Lessons: graduated `gleeful-whippet`. A planted defect in the witness tool's own code also changes the tool doing the witnessing; the remedy, scoping such a defect to the fixture under test, is recorded here rather than filed, since the case arises only when the witness tool witnesses itself.

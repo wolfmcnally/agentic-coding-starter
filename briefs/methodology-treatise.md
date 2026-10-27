@@ -1,6 +1,6 @@
 ---
 title: "Wolf's Agentic Coding Starter Kit"
-date: 2026-09-05
+date: 2026-10-27
 status: implemented
 scope: Canonical primer on this repository for a general audience, from working engineers to readers who have never written code. Explains what the repository is for and how its parts work. Source of truth for every derivative rendering.
 
@@ -178,6 +178,15 @@ treatise:
         including verification, commit, and fast-forward push. The existing
         private rendering predates this revision and has not been republished.
 
+    - date: 2026-10-26
+      ruling: >-
+        "Do the recommended targeted changes now," following the full sweep
+        of 2026-10-26.
+      effect: >-
+        Added the docs skill to the skills table and corrected the review
+        maximum: a third code review now happens only under the operator's
+        single-use exception. The private rendering has not been republished.
+
   renderings:
     - format: artifact
       url: https://claude.ai/code/artifact/d1bf77fe-e6d5-46a3-8599-c5e00ff69de4
@@ -311,7 +320,7 @@ could be read on its own afterward.
 
 A capable primary agent plans the phase and writes its code. Keeping those jobs in one conversation preserves the reasoning behind the implementation. A separate agent examines the plan, and later examines the code. When both providers are available and permitted, that second opinion normally comes from the other provider. With one subscription, it comes from a fresh instance of the same model.
 
-The second opinion is advice. It describes evidence, severity, likely consequences, and suggested corrections. The primary decides what to adopt, decline, or defer, and records its reasons for consequential decisions. One review of each stage is normal. The primary may request a second for a recorded reason; there is no third. Corrections must still pass the tests, and a suggestion cannot excuse an unmet requirement.
+The second opinion is advice. It describes evidence, severity, likely consequences, and suggested corrections. The primary decides what to adopt, decline, or defer, and records its reasons for consequential decisions. One review of each stage is normal. The primary may request a second for a recorded reason. A third code review happens only when you authorize one, once. Corrections must still pass the tests, and a suggestion cannot excuse an unmet requirement.
 
 | Work | Responsible agent |
 |---|---|
@@ -406,6 +415,7 @@ a leading slash; in Codex, a dollar sign. The set is small on purpose.
 | `ask` | Puts a decision in front of you with real options. Only you can start it; no agent may. |
 | `refactor` | Cleans up code without changing what it does. Small local improvements are applied; larger ones are proposed to you. |
 | `mutate` | Plants small faults in a copy of your changed code and reports which ones the tests miss. Only you can start it, because it is slow. |
+| `docs` | Builds, reviews and maintains the project's manual, and publishes it only when you ask. |
 | `sweep-planning`, `sweep-coding` | Read months of past reviews to find why plans and code kept getting sent back, then propose fixes to the roles themselves. |
 
 `learn`, `teach`, and `sweep` are the machinery behind the evolving half of the

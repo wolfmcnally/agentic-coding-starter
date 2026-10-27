@@ -1,20 +1,13 @@
 ---
 title: "Agentic Coding Starter Template — Product Brief"
-date: 2026-08-25
+date: 2026-10-27
 status: implemented
 scope: Entry-point brief for this repository. Describes what the starter template is, who it's for, the two operating modes, and acceptance criteria.
 ---
 
 # Agentic Coding Starter Template — Product Brief
 
-## Primary ownership and independent advice
-
-As of 2026-09-07, the primary use case is a configured SOTA instance that owns orchestration, planning, implementation and acceptance. A comparable or stronger model in another permitted provider's harness normally supplies independent plan and code advice; a single-provider environment uses fresh instances of the primary model. One comprehensive pass per stage is normal, a second needs recorded cause, and two is the default maximum; only the operator's single-use exception admits a third code review. Advisers report evidence and severity without veto; the primary decides corrections and records consequential dispositions. Objective requirements and both close gates remain binding.
-
-A constrained primary uses separate planner/coder roles and the established approval-gated reviewer/critic loops. Detailed references to mandatory reviewer approval or four-role delegation below describe that constrained product branch. Eligibility is maintained configuration, not a benchmark claim. Backend and handling restrictions prevail over preferred routing. Optional kickoff usage checks refuse a primary at >=95% of any applicable limit and substitute the primary for a secondary above 95% weekly; absent tooling does not prevent execution.
-
-All methodology work itself, including teach/learn knowledge transfer, is always one-shot by the invoking primary across harnesses and capability tiers, without delegated production or independent review. The primary owns adaptation, self-checks, required gates, commit and fast-forward push within authorized scope. This standing delivery grant does not expand scope or waive custody and human decisions. No product phase or repeated approval ceremony is needed for authorized methodology work.
-
+Primary ownership, independent advice and the one-shot route for methodology work are stated once, in [the methodology brief](methodology.md#primary-ownership-and-independent-advice).
 
 A repository template for building software with AI coding agents under a structured planner → reviewer → coder → critic methodology. It is harness-agnostic: the same canonical files drive Claude Code, Codex CLI, and any other agent host that reads project-level instructions and agent definitions.
 
