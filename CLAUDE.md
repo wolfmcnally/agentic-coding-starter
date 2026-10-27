@@ -71,6 +71,7 @@ See also [universal skills](#universal-skills).
 - [Minimal methodology scaffold](briefs/mini-method.md)
 - [Reader-centered documentation](briefs/software-documentation.md)
 - [Refactoring method and sources](briefs/refactoring-methodology.md)
+- [Draft multi-operator collaboration](briefs/multi-operator-collaboration.md)
 
 ## Policies catalog
 

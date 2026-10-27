@@ -3058,3 +3058,17 @@ Limits: validation uses synthetic boot changes and fake native CLIs, not a live 
 
 Lessons:
 - Strengthened the existing durable-capture and assertion-specific-oracle requirements at their executable owners. Check actual expanded proof identities before recording attribution; preserve rejected own bookkeeping and rerun unchanged validation. No new rule graduation or unrelated lesson disposition.
+
+## 2026-10-26 20:31 — METHODOLOGY SCOPE — multi-operator collaboration brief
+
+Authorized outcome: write a draft methodology brief on several operators collaborating in one derived project — where the methodology assumes a single writer, why per-operator plan directories are the wrong split, conflict-free repository layout using git as the merge layer, collision-free phase identity with separate execution order, what still needs coordination or post-merge validation, and the open delivery question. Catalog it in `CLAUDE.md` and the stamp skill's methodology-brief inventory. Commit and fast-forward push on the operator's instruction.
+
+Surfaces: the new brief, `CLAUDE.md`, `.claude/skills/stamp/SKILL.md`, this activity log. Exclusions: no policy, plan, tooling or test changes; the brief is `draft` thinking and adopts no rule.
+
+## 2026-10-26 20:36 — METHODOLOGY — multi-operator collaboration brief
+
+Added `briefs/multi-operator-collaboration.md` (status `draft`): where the methodology assumes a single writer (one global next marker, positional phase numbering, end-of-file log appends, fast-forward delivery); why per-operator plan directories are the wrong split and workstream tracks under one index are the defensible one; conflict-freedom by layout with git as the merge layer — immutable per-event files with generated index and log views, prose kept on ordinary merge; permanent slug phase ids with fractional order keys and parent fields; leases for exclusive claims and post-merge invariant checks; the open delivery choice between branches with pull requests and narrow agent rebase authority. Cataloged in `CLAUDE.md` and the stamp skill's methodology-brief inventory. No policy, plan, tooling or test changed; nothing is adopted.
+
+Primary self-check: the brief links no policy or plan file, states constraints in its own words, and marks its literature sources as not retrieved this session. The add/add conflict claim was verified in a disposable repository. Catalogs, anonymization and log checks passed; the changed-path selection widened to the full suite because the unpushed predecessor touches telemetry tooling, and passed all 169 tests with no warnings. Independent review: not applicable — primary one-shot methodology work. The one bare full gate follows this bookkeeping and qualifies the push.
+
+Delivery: the operator instructed commit and push in this session, knowing `master` was one commit ahead of origin; the push therefore also publishes that predecessor, whose own entry recorded a local-only restriction now superseded by this instruction. Remaining human criteria: judgment of the brief's positions, and every open question it lists. Lessons: none.
