@@ -102,7 +102,7 @@ This template deliberately does *not*:
 
 - **Prescribe a language stack.** The example is Python because Python is broadly familiar, but the methodology is language-agnostic. The `stamp` skill asks about the primary language and adapts build gates.
 - **Prescribe a specific agent host.** Claude Code and Codex CLI are first-class. Adding a third is a documented procedure rather than a fork: each skill and role definition has exactly one canonical home, every other harness gets a thin pointer at it, and a parity check rejects a mirror that is missing, copied, or orphaned.
-- **Touch the destructive git surface.** The orchestrator commits and fast-forward-pushes work whose gates are all green, and stops there. Force-pushing, tags, rebases, resets, branch deletion, remote selection, and any history rewrite stay with the human, who owns the shape of the git history.
+- **Touch the destructive git surface.** The orchestrator commits and fast-forward-pushes work whose gates are all green, and retires scope-owned temporary resources only after verified integration, released ownership and preservation of required evidence. Routine nonforced removal of integrated temporary worktrees and merged temporary branches is completion work; useful incremental build outputs and caches may remain. Force-pushing, tags, rebases, resets, forced or otherwise unqualified branch deletion, remote selection, and any history rewrite stay with the human, who owns the shape of the git history.
 - **Manage secrets, deployments, or infrastructure.** Those belong in project-specific briefs and policies once a project graduates beyond the template.
 
 ## 6. Architectural invariants

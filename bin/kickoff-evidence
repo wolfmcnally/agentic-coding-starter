@@ -5492,6 +5492,135 @@ def command_status(arguments: argparse.Namespace) -> None:
     )
 
 
+def command_verify_completion(arguments: argparse.Namespace) -> int:
+    """Read back scope-owned resource dispositions; never execute cleanup."""
+    root = arguments.repository.resolve()
+    record_path = arguments.record.resolve()
+    require_persistent_directory(record_path.parent)
+    record = load_json(record_path)
+
+    def nonempty(value: Any) -> bool:
+        return isinstance(value, str) and bool(value.strip())
+
+    def evidence(reference: Any) -> None:
+        if not isinstance(reference, dict) or set(reference) != {"path", "sha256"}:
+            raise EvidenceError("completion evidence requires path and sha256")
+        path = Path(reference["path"])
+        if not path.is_absolute():
+            raise EvidenceError("completion evidence path must be absolute")
+        require_persistent_directory(path.resolve().parent)
+        if hashlib.sha256(path.read_bytes()).hexdigest() != reference["sha256"]:
+            raise EvidenceError("completion evidence digest mismatch")
+
+    def git(*args: str, absent_ok: bool = False) -> subprocess.CompletedProcess[str]:
+        result = subprocess.run(
+            ["git", "-C", str(root), *args], capture_output=True, text=True, check=False
+        )
+        if result.returncode and not (absent_ok and result.returncode == 1):
+            raise EvidenceError("completion Git readback failed: " + result.stderr.strip())
+        return result
+
+    if Path(git("rev-parse", "--show-toplevel").stdout.strip()).resolve() != root:
+        raise EvidenceError("completion repository must be its canonical root")
+    if (
+        set(record) != {"scope", "inventory_complete", "resources"}
+        or not nonempty(record["scope"])
+        or record["inventory_complete"] is not True
+        or not isinstance(record["resources"], list)
+    ):
+        raise EvidenceError("completion requires scope and complete resource inventory")
+    seen = set()
+    blocked = 0
+    for item in record["resources"]:
+        if not isinstance(item, dict) or set(item) != {
+            "kind",
+            "target",
+            "disposition",
+            "reason",
+            "required_evidence",
+            "retirement",
+        }:
+            raise EvidenceError("invalid completion resource fields")
+        kind, target, disposition = item["kind"], item["target"], item["disposition"]
+        if (
+            kind not in {"worktree", "branch", "generated-output"}
+            or disposition not in {"retired", "retained", "blocked"}
+            or not nonempty(target)
+            or not nonempty(item["reason"])
+            or not isinstance(item["required_evidence"], list)
+        ):
+            raise EvidenceError("invalid completion kind, disposition or current reason")
+        if kind == "branch":
+            git("check-ref-format", "refs/heads/" + target)
+            present = (
+                git(
+                    "show-ref", "--verify", "--quiet", "refs/heads/" + target, absent_ok=True
+                ).returncode
+                == 0
+            )
+        else:
+            path = Path(target)
+            if not path.is_absolute():
+                raise EvidenceError("completion target path must be absolute")
+            target = str(path.resolve())
+            present = os.path.lexists(path)
+            if kind == "worktree":
+                registered = git("worktree", "list", "--porcelain", "-z").stdout.split("\0")
+                present = present or any(
+                    line.startswith("worktree ") and str(Path(line[9:]).resolve()) == target
+                    for line in registered
+                )
+        if (kind, target) in seen:
+            raise EvidenceError("duplicate completion resource")
+        seen.add((kind, target))
+        for reference in item["required_evidence"]:
+            evidence(reference)
+        if disposition == "retired":
+            retirement = item["retirement"]
+            if not isinstance(retirement, dict) or set(retirement) != {
+                "integration",
+                "released_ownership",
+                "terminal",
+                "tip",
+                "integrated_into",
+            }:
+                raise EvidenceError(
+                    "retirement requires integration, custody and terminal evidence"
+                )
+            for key in ("integration", "released_ownership", "terminal"):
+                evidence(retirement[key])
+            if kind == "branch":
+                tip, integrated = retirement["tip"], retirement["integrated_into"]
+                if not all(
+                    isinstance(value, str) and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", value)
+                    for value in (tip, integrated)
+                ):
+                    raise EvidenceError("retired branch requires exact commit identities")
+                git("cat-file", "-e", tip + "^{commit}")
+                git("merge-base", "--is-ancestor", tip, integrated)
+            elif retirement["tip"] is not None or retirement["integrated_into"] is not None:
+                raise EvidenceError("nonbranch retirement must not claim branch identities")
+            if present:
+                raise EvidenceError("retired completion resource still exists or is registered")
+        elif item["retirement"] is not None:
+            raise EvidenceError("only retired resources carry retirement evidence")
+        elif disposition == "retained" and not present:
+            raise EvidenceError("retained completion resource is absent")
+        blocked += disposition == "blocked"
+    print(
+        json.dumps(
+            {
+                "record_sha256": hashlib.sha256(record_path.read_bytes()).hexdigest(),
+                "resources": len(seen),
+                "blocked": blocked,
+                "complete": blocked == 0,
+            },
+            sort_keys=True,
+        )
+    )
+    return 2 if blocked else 0
+
+
 def command_close(arguments: argparse.Namespace) -> int:
     """Materialize one truthful, idempotent accepted/parked/failed close."""
     run = validate_run_dir(arguments.run_dir)
@@ -6040,6 +6169,14 @@ def build_parser() -> argparse.ArgumentParser:
     status = subparsers.add_parser("status")
     add_run_dir(status)
     status.set_defaults(handler=command_status)
+
+    completion = subparsers.add_parser(
+        "verify-completion",
+        description="Verify post-delivery resource dispositions without deleting anything.",
+    )
+    completion.add_argument("--repository", type=Path, required=True)
+    completion.add_argument("--record", type=Path, required=True)
+    completion.set_defaults(handler=command_verify_completion)
 
     close = subparsers.add_parser("close")
     add_run_dir(close)

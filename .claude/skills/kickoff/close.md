@@ -228,6 +228,8 @@ Commit and push change no tracked content, so they legitimately follow the hando
 
 ### Step 14: Open the report and hand off
 
+Before reporting delivery completion, perform the resource disposition procedure in [human-in-the-loop.md](../../../policies/human-in-the-loop.md#delivery-resource-disposition). Inventory scope-created temporary worktrees, temporary branches and generated outputs, including none explicitly. Retire only after verified integration, released ownership, preserved required evidence and terminal commands; otherwise retain for a named current purpose or report an exact blocker. Useful incremental build directories, dependency caches and environments may remain. Use the live `bin/kickoff-evidence verify-completion` against the durable disposition record after actual readback; never alter closed pinned tools or accepted evidence. This applies to inter-phase and methodology delivery too and creates no new phase run. A blocked cleanup is reported separately from successful source delivery; it cannot be called completed cleanup. Preserve the record and command output outside the reviewable tree, so post-delivery readback changes no gate-qualified tracked bytes.
+
 Open the already generated phase page without modifying it. A browser-open failure is presentation-only and may be retried; it changes no artifact. Then report to the user.
 
 Report to the user, in this order:
@@ -239,6 +241,7 @@ Report to the user, in this order:
 - Which phase was completed and which is next (`⬅️`).
 - Files created/modified, grouped by surface.
 - Build and gate status.
+- Resource disposition: retired / retained with named current purposes / blocked with exact reasons; durable record and actual readback. Source delivery and cleanup completion are separate claims.
 - Candidate identity, finding convergence, implementation-gate identity, active command-manifest digest, venue-receipt identity, handoff-gate receipt, and any verified protocol recoveries.
 - Any material wall-clock opportunity used or surfaced, and how the unchanged guarantees were preserved. Omit marginal timing noise and no-leverage observations.
 - Any optional Observations the reviewers noted that the user may want to track.

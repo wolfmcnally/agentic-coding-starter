@@ -51,3 +51,9 @@ Passing checks proves the executable criteria that were actually run. It does no
 ## Close or park truthfully
 
 Record remaining work, evidence, lessons, and outcomes through the deterministic activity-log writer. Failed gates keep the phase open. Human-only actions belong in the action queue. A park says what blocks progress and what evidence or decision will unblock it.
+
+## Finish resource cleanup
+
+After integration, account for temporary worktrees, temporary branches and generated outputs created for the work. Retire them after ownership is released, commands have ended, and required evidence survives in its canonical durable home. Otherwise retain each for a named current purpose or report the exact blocker. Useful incremental build directories, dependency caches and environments may stay; cleanup should not force an unnecessary rebuild or create redundant archives.
+
+Routine cleanup uses nonforced commands on verified integrated, scope-owned resources. Active work, unique unmerged history, uncertain custody and required evidence are preserved. A dirty flag alone does not settle whether anything unique remains. Record actual outcomes privately, then use the live evidence manager's `verify-completion` command to check the disposition record and read back resource state. The repository’s human-in-the-loop policy defines its record format and permission boundaries. Source delivery and completed cleanup are separate claims; a queued cleanup request is neither execution nor completion.

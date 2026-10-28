@@ -352,6 +352,8 @@ behavioral coverage lives in `tests/test_kickoff_tree_id.py`.
 
 ### `kickoff-evidence` — run-scoped review and gate evidence
 
+`kickoff-evidence verify-completion --repository <root> --record <durable-json>` reads back scope-owned delivery resource dispositions without executing cleanup. See [delivery resource disposition](../policies/human-in-the-loop.md#delivery-resource-disposition) for the record contract and authority boundaries.
+
 Initializes and validates the authority, change, finding, packet, role-attempt,
 trace-binding, candidate-lineage, timing-summary, and gate records for one
 `kickoff` run. It extracts exact JSON evidence blocks from role artifacts,
