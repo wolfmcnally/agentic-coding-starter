@@ -54,10 +54,10 @@ The preflight validates the full upstream path needed by the phase: CLI presence
 
 For an initial implementation or delegated follow-up, run `./bin/kickoff-config show timeouts` and retain the first-event timeout, each role's hard deadline and idle watchdog, plus its Claude-only `claude_max_turns` circuit breaker from `kickoff.yaml`'s `role_timeouts` section, per [`policies/role-timeouts.md`](../../../policies/role-timeouts.md). A direct follow-up fix skips this step. The three clocks apply to **every invocation or resumed revision round**; the turn value applies only when the delegated venue is Claude, because Codex and native subagents expose no equivalent flag. The shipped seed values are below; when a project has deliberately recalibrated its config, the validated config output governs:
 
-- planner — 1,800 s hard / 600 s idle / 50 turns;
-- reviewer — 1,800 s hard / 600 s idle / 50 turns;
+- planner — 1,800 s hard / 600 s idle / 100 turns;
+- reviewer — 1,800 s hard / 600 s idle / 100 turns;
 - coder — 7,200 s hard / 1,200 s idle / 200 turns;
-- critic — 2,700 s hard / 600 s idle / 50 turns;
+- critic — 2,700 s hard / 600 s idle / 100 turns;
 - every role — first structured event within 120 s.
 
 For every external CLI call, including resumes and the one permitted max-turn rescue, invoke the production command through `./bin/kickoff-config watch` with `--role`, resolved `--venue`, `--model`, `--effort`, phase id, and named stdout/stderr/result artifacts. Pass Claude's extracted result path as `--result-file`; pass Codex's `--output-last-message` path as `--required-output-file`. The wrapper closes stdin, verifies routing flags, truncates result paths, streams progress, terminates the process group on first-event/idle/hard timeout, and appends local telemetry. It returns the child status, 124 on timeout, 65 on unrecoverable protocol failure, or 66 (`completed-unverified-protocol`) when a successful child left a fresh artifact but no complete terminal stream.

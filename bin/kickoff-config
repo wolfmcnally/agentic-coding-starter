@@ -47,6 +47,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -74,6 +75,7 @@ from agentic_starter.execution_telemetry import (  # noqa: E402
     closed_span,
     finish_span,
     require_persistent_directory,
+    retain_evidence,
     start_span,
     trace_context,
 )
@@ -203,14 +205,14 @@ SHIPPED_TIMEOUTS: dict[str, Any] = {
         "planner": {
             "hard_timeout_seconds": 1800,
             "idle_timeout_seconds": 600,
-            "claude_max_turns": 50,
+            "claude_max_turns": 100,
             "hard_floor_seconds": 1800,
             "idle_floor_seconds": 600,
         },
         "reviewer": {
             "hard_timeout_seconds": 1800,
             "idle_timeout_seconds": 600,
-            "claude_max_turns": 50,
+            "claude_max_turns": 100,
             "hard_floor_seconds": 1800,
             "idle_floor_seconds": 600,
         },
@@ -224,7 +226,7 @@ SHIPPED_TIMEOUTS: dict[str, Any] = {
         "critic": {
             "hard_timeout_seconds": 2700,
             "idle_timeout_seconds": 600,
-            "claude_max_turns": 50,
+            "claude_max_turns": 100,
             "hard_floor_seconds": 2700,
             "idle_floor_seconds": 600,
         },
@@ -1008,7 +1010,10 @@ def build_codex_command(
 
 
 def build_watch_command(
-    arguments: argparse.Namespace, document: MutableMapping[str, Any]
+    arguments: argparse.Namespace,
+    document: MutableMapping[str, Any],
+    *,
+    cap_turns: int | None = None,
 ) -> list[str]:
     """Generate the delegated invocation for one role dispatch."""
     prompt = Path(arguments.prompt_file).read_text(encoding="utf-8")
@@ -1055,7 +1060,9 @@ def build_watch_command(
             model_slug=CLAUDE_MODELS[model],
             effort=effort,
             role=arguments.role,
-            max_turns=document["role_timeouts"]["roles"][arguments.role]["claude_max_turns"],
+            max_turns=cap_turns
+            if cap_turns is not None
+            else document["role_timeouts"]["roles"][arguments.role]["claude_max_turns"],
             schema_kind=schema_kind,
             resume_session=arguments.resume_session,
         )
@@ -1971,6 +1978,305 @@ def validate_telemetry_registration(
     return registration
 
 
+def validate_cap_hit_assessment(
+    arguments: argparse.Namespace,
+    document: MutableMapping[str, Any],
+    registration: dict[str, Any] | None,
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Validate recorded primary judgment, not infer productivity or grant a pass."""
+    file = getattr(arguments, "cap_hit_assessment", None)
+    if file is None:
+        return None, None
+    if (
+        registration is None
+        or arguments.venue != "claude"
+        or arguments.role not in {"reviewer", "critic"}
+    ):
+        die("cap-hit continuation requires a registered Claude review")
+    try:
+        assessment_path = Path(file).resolve()
+        require_persistent_directory(assessment_path.parent)
+        raw = assessment_path.read_bytes()
+        assessment = json.loads(raw)
+        fields = {
+            "source_registration",
+            "source_stdout",
+            "session_id",
+            "classification",
+            "evidence",
+            "remaining_work",
+            "instruction",
+            "rationale",
+            "candidate_delta",
+            "source_candidate_id",
+            "target_candidate_id",
+            "max_turns",
+            "cause",
+            "clock_limits",
+        }
+        if not isinstance(assessment, dict) or set(assessment) != fields:
+            raise ValueError("unknown or missing assessment fields")
+        classification = assessment["classification"]
+        if classification not in {"productive-unfinished", "completed-missing-verdict"}:
+            raise ValueError(
+                "assessment holds: looping, scope-expansion or unknown needs diagnosis, not launch"
+            )
+        for key in ("remaining_work", "instruction", "rationale", "candidate_delta"):
+            if not isinstance(assessment[key], str) or not assessment[key].strip():
+                raise ValueError("missing assessment " + key)
+        if (
+            not isinstance(assessment["evidence"], list)
+            or not assessment["evidence"]
+            or any(
+                not isinstance(value, str) or not value.strip() for value in assessment["evidence"]
+            )
+        ):
+            raise ValueError("assessment requires cited partial-work evidence")
+        if (
+            arguments.resume_session != assessment["session_id"]
+            or str(uuid.UUID(assessment["session_id"])) != assessment["session_id"]
+        ):
+            raise ValueError("continuation must resume the exact observed native session")
+        base = document["role_timeouts"]["roles"][arguments.role]
+        cause_path = Path(str(arguments.telemetry_role_registration) + ".cause.json")
+        if (
+            not isinstance(assessment["cause"], str)
+            or not assessment["cause"].strip()
+            or json.loads(cause_path.read_text())["cause"] != assessment["cause"]
+        ):
+            raise ValueError("assessment cause differs from its current registration")
+        clocks = {
+            "first_event_timeout_seconds": arguments.first_event_timeout
+            if arguments.first_event_timeout is not None
+            else document["role_timeouts"]["first_event_timeout_seconds"],
+            "idle_timeout_seconds": arguments.idle_timeout
+            if arguments.idle_timeout is not None
+            else base["idle_timeout_seconds"],
+            "hard_timeout_seconds": arguments.hard_timeout
+            if arguments.hard_timeout is not None
+            else base["hard_timeout_seconds"],
+        }
+        if (
+            not isinstance(assessment["clock_limits"], dict)
+            or any(type(value) not in {int, float} for value in assessment["clock_limits"].values())
+            or assessment["clock_limits"] != clocks
+        ):
+            raise ValueError("assessment clock limits differ from actual invocation")
+        maximum = base["claude_max_turns"] * (2 if classification == "productive-unfinished" else 1)
+        if type(assessment["max_turns"]) is not int or not 1 <= assessment["max_turns"] <= maximum:
+            raise ValueError("assessed turn cap exceeds its finite continuation bound")
+        for option, configured in (
+            ("first_event_timeout", document["role_timeouts"]["first_event_timeout_seconds"]),
+            ("idle_timeout", base["idle_timeout_seconds"]),
+            ("hard_timeout", base["hard_timeout_seconds"]),
+        ):
+            override = getattr(arguments, option, None)
+            if override is not None and override > configured:
+                raise ValueError("cap-hit continuation cannot widen clock guards")
+        captured = {}
+
+        def read_reference(name: str) -> tuple[Path, bytes]:
+            reference = assessment[name]
+            if not isinstance(reference, dict) or set(reference) != {"path", "sha256"}:
+                raise ValueError("source reference requires exact path/hash")
+            path = Path(reference["path"])
+            if not path.is_absolute():
+                raise ValueError("source reference must be absolute")
+            require_persistent_directory(path.resolve().parent)
+            body = path.read_bytes()
+            if hashlib.sha256(body).hexdigest() != reference["sha256"]:
+                raise ValueError("source reference digest mismatch")
+            captured[name] = reference
+            return path.resolve(), body
+
+        source_path, source_bytes = read_reference("source_registration")
+        source = json.loads(source_bytes)
+        source_run = json.loads((source_path.parent / "run.json").read_text())
+        target_run = json.loads(
+            (Path(arguments.telemetry_role_registration).parent / "run.json").read_text()
+        )
+        if (
+            source_run["repository_root"] != str(REPO_ROOT.resolve())
+            or source_run["phase"] != target_run["phase"]
+        ):
+            raise ValueError("source review belongs to another repository/phase")
+        if any(
+            source[k] != registration[k]
+            for k in ("operation", "role", "harness", "model", "effort")
+        ):
+            raise ValueError("source review routing differs from continuation")
+        if (
+            source["reason"] == "rescue"
+            or registration["reason"] != "rescue"
+            or source == registration
+        ):
+            raise ValueError("only one fresh rescue registration may continue a cap-hit review")
+        if type(source["attempt"]) is not int or source["attempt"] < 1:
+            raise ValueError("source registration attempt is invalid")
+        if source["operation"] == "role.plan-review":
+            plan_id = json.loads(
+                (source_path.parent / f"advice-plan-{source['attempt']}.json").read_text()
+            )["plan_sha256"]
+            if not isinstance(plan_id, str) or not CANDIDATE_ID.fullmatch(plan_id):
+                raise ValueError("cap-hit source plan identity is invalid")
+            if (
+                json.loads(
+                    (
+                        Path(arguments.telemetry_role_registration).parent / "plan-change.json"
+                    ).read_text()
+                )["plan_sha256"]
+                != plan_id
+            ):
+                raise ValueError("cap-hit continuation must preserve the actual reviewed plan")
+            for directory in (
+                source_path.parent,
+                Path(arguments.telemetry_role_registration).parent,
+            ):
+                if (
+                    hashlib.sha256(
+                        (directory / "plans" / (plan_id + ".md")).read_bytes()
+                    ).hexdigest()
+                    != plan_id
+                ):
+                    raise ValueError("cap-hit reviewed plan bytes are missing or mutated")
+        if (
+            source["telemetry_trace_id"] != source_run["telemetry_trace_id"]
+            or source["telemetry_root_span_id"] != source_run["telemetry_root_span_id"]
+        ):
+            raise ValueError("source registration trace/root mismatch")
+        ledger = [
+            json.loads(line)
+            for line in (source_path.parent / "role-attempts.jsonl").read_text().splitlines()
+            if line.strip()
+        ]
+        if sum(item == source for item in ledger) != 1:
+            raise ValueError("source registration is not unique in its sibling ledger")
+        dispatches = [
+            json.loads(line)
+            for line in (source_path.parent / "role-dispatch.jsonl").read_text().splitlines()
+            if line.strip()
+        ]
+        matching = [
+            item
+            for item in dispatches
+            if (item["operation"], item["attempt"]) == (source["operation"], source["attempt"])
+        ]
+        if (
+            len(matching) != 2
+            or matching[0]["state"] != "opened"
+            or matching[1]["state"] != "accepted"
+        ):
+            raise ValueError("source requires its actual opened/terminal dispatched pair")
+        opened, terminal = matching
+        if (
+            opened["intelligence_span_id"] != terminal["intelligence_span_id"]
+            or not terminal["wait_span_id"]
+        ):
+            raise ValueError("source native dispatch span joins are incomplete")
+        span = closed_span(
+            engine_root=REPO_ROOT,
+            trace_id=source["telemetry_trace_id"],
+            span_id=terminal["intelligence_span_id"],
+        )
+        wait = closed_span(
+            engine_root=REPO_ROOT,
+            trace_id=source["telemetry_trace_id"],
+            span_id=terminal["wait_span_id"],
+        )
+        if (
+            wait["parent_span_id"] != terminal["intelligence_span_id"]
+            or wait["category"] != "wait"
+            or any(
+                wait.get(key) != span.get(key)
+                for key in ("operation", "attempt", "role", "harness", "model", "effort", "outcome")
+            )
+        ):
+            raise ValueError("source wait span does not join its actual review")
+        if (
+            span["outcome"] != "error"
+            or span.get("timeout_kind") is not None
+            or any(
+                span.get(k) != source[k]
+                for k in ("operation", "attempt", "role", "harness", "model", "effort")
+            )
+            or span["parent_span_id"] != source["telemetry_root_span_id"]
+        ):
+            raise ValueError("source must be a terminal failed review, not a clock timeout")
+        if not CANDIDATE_ID.fullmatch(
+            assessment["source_candidate_id"]
+        ) or not CANDIDATE_ID.fullmatch(assessment["target_candidate_id"]):
+            raise ValueError("assessment requires exact source and target candidates")
+        if (
+            opened["dispatch_candidate_id"] != assessment["source_candidate_id"]
+            or terminal["return_candidate_id"] != assessment["source_candidate_id"]
+        ):
+            raise ValueError("source candidate changed or differs from assessment")
+        _, stream_bytes = read_reference("source_stdout")
+        events = []
+        for line in stream_bytes.decode().splitlines():
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(event, dict):
+                events.append(event)
+        results = [event for event in events if event.get("type") == "result"]
+        sessions = {event["session_id"] for event in events if event.get("session_id")}
+        if (
+            len(results) != 1
+            or results[0].get("subtype") != "error_max_turns"
+            or results[0].get("is_error") is not True
+            or sessions != {assessment["session_id"]}
+        ):
+            raise ValueError(
+                "source stream must prove error_max_turns and the exact native session"
+            )
+        # Preserve invocation counts: the ordinary atomic start-advice below owns the next claim.
+        budget = advisory.budget_path(REPO_ROOT, target_run["phase"])
+        rows = advisory.validate_budget(REPO_ROOT, target_run["phase"], budget.read_text())
+        claims = [
+            row
+            for row in advisory.active_launches(rows)
+            if row["operation"] == registration["operation"]
+        ]
+        if (
+            len(claims) != 1
+            or claims[0]["run"] != str(source_path.parent)
+            or claims[0]["attempt"] != source["attempt"]
+        ):
+            raise ValueError(
+                "continuation needs its original consumed review and one ordinary pass remaining"
+            )
+        candidate, error = capture_dispatch_candidate(arguments)
+        if error or candidate != assessment["target_candidate_id"]:
+            raise ValueError("target candidate differs from cap-hit assessment")
+        prompt = Path(arguments.prompt_file).read_text()
+        if assessment["instruction"] not in prompt:
+            raise ValueError("continuation prompt omits the assessed bounded instruction")
+        payload = {
+            "assessment": assessment,
+            "assessment_bytes_sha256": hashlib.sha256(raw).hexdigest(),
+            "target_registration_sha256": advisory.digest(registration),
+            "source_span_sha256": advisory.digest(span),
+            "source_dispatches_sha256": advisory.digest(matching),
+            "retained_sources": captured,
+        }
+        digest = retain_evidence(
+            Path(arguments.telemetry_role_registration).parent,
+            json.dumps(payload, sort_keys=True).encode(),
+        )
+        return assessment, digest
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+        TelemetryError,
+        advisory.AdvisoryError,
+    ) as exc:
+        die("cap-hit continuation refused: " + str(exc))
+
+
 def capture_dispatch_candidate(
     arguments: argparse.Namespace,
 ) -> tuple[str | None, str | None]:
@@ -2110,10 +2416,13 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
             "KICKOFF_DELEGATION_DEPTH is set: this session is itself a delegated "
             "role and may not delegate again; run the role natively"
         )
-    command = build_watch_command(arguments, document)
+    registration = validate_telemetry_registration(arguments)
+    cap_assessment, cap_digest = validate_cap_hit_assessment(arguments, document, registration)
+    command = build_watch_command(
+        arguments, document, cap_turns=cap_assessment["max_turns"] if cap_assessment else None
+    )
     program_index = validate_watch_routing(arguments, command)
     command, child_environment = prepare_watched_command(arguments, command, program_index)
-    registration = validate_telemetry_registration(arguments)
     if registration is None and arguments.authority_mode == "primary":
         die("primary advice requires a registered evidence run")
     if registration is not None:
@@ -2221,13 +2530,16 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
     if candidate_error:
         telemetry_complete = False
         telemetry_errors.append(f"dispatch-open-candidate: {candidate_error}")
-    opening_error = record_dispatch_topology(
-        arguments,
-        state="opened",
-        intelligence_span_id=intelligence.span_id if intelligence else None,
-        wait_span_id=None,
-        dispatch_candidate=dispatch_candidate,
-    )
+    if cap_assessment and dispatch_candidate != cap_assessment["target_candidate_id"]:
+        opening_error = "target candidate changed after cap-hit assessment"
+    else:
+        opening_error = record_dispatch_topology(
+            arguments,
+            state="opened",
+            intelligence_span_id=intelligence.span_id if intelligence else None,
+            wait_span_id=None,
+            dispatch_candidate=dispatch_candidate,
+        )
     if opening_error:
         if stdout_file:
             stdout_file.close()
@@ -2624,6 +2936,10 @@ def watch(arguments: argparse.Namespace, document: MutableMapping[str, Any]) -> 
         "telemetry_complete": telemetry_complete,
         "telemetry_error": "; ".join(telemetry_errors) if telemetry_errors else None,
         "teardown_diagnostics": teardown_diagnostics,
+        "claude_max_turns": cap_assessment["max_turns"]
+        if cap_assessment
+        else (role_config["claude_max_turns"] if arguments.venue == "claude" else None),
+        "cap_hit_assessment_sha256": cap_digest,
     }
     if input_tokens is not None:
         diagnostic["input_tokens"] = input_tokens
@@ -2820,6 +3136,11 @@ def build_parser() -> argparse.ArgumentParser:
     watch_parser.add_argument("--first-event-timeout", type=float)
     watch_parser.add_argument("--idle-timeout", type=float)
     watch_parser.add_argument("--hard-timeout", type=float)
+    watch_parser.add_argument(
+        "--cap-hit-assessment",
+        type=Path,
+        help="durable primary assessment for one bounded same-session cap-hit continuation",
+    )
     watch_parser.add_argument(
         "--telemetry-role-registration",
         help="registration file supplying trace, root, operation and attempt",

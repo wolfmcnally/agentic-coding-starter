@@ -259,6 +259,8 @@ Behavioral coverage lives in `tests/test_check_hooks_installed.py`.
 
 ### `kickoff-config` — human-editable `kickoff` configuration and enforcement
 
+Registered Claude reviews may use `watch --cap-hit-assessment <durable-json>` for the single assessed same-session continuation after a native cap hit. The [cap-hit contract](../policies/role-timeouts.md#cap-hit-assessment-and-one-bounded-continuation) defines exact evidence/cause/candidate/clock fields and finite bounds. This retains the original failed invocation and spends the ordinary remaining review allowance; it does not launch automatically or reset budgets.
+
 Validates and safely edits repo-root `kickoff.yaml`, whose `role_models`,
 `role_timeouts`, `research_budgets`, and `run_budgets` sections hold separate
 model/effort fields, execution budgets, per-role originating-search budgets,

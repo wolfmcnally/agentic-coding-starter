@@ -88,13 +88,13 @@ role_timeouts:
     planner:
       hard_timeout_seconds: 1800
       idle_timeout_seconds: 600
-      claude_max_turns: 50
+      claude_max_turns: 100
       hard_floor_seconds: 1800
       idle_floor_seconds: 600
     reviewer:
       hard_timeout_seconds: 1800
       idle_timeout_seconds: 600
-      claude_max_turns: 50
+      claude_max_turns: 100
       hard_floor_seconds: 1800
       idle_floor_seconds: 600
     coder:
@@ -106,7 +106,7 @@ role_timeouts:
     critic:
       hard_timeout_seconds: 2700
       idle_timeout_seconds: 600
-      claude_max_turns: 50
+      claude_max_turns: 100
       hard_floor_seconds: 2700
       idle_floor_seconds: 600
 
