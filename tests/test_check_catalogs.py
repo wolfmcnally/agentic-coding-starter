@@ -398,6 +398,38 @@ def test_the_citation_rule_is_directional_not_symmetric(tmp_path: Path) -> None:
     result = run(root)
 
     assert result.returncode == 0, result.stdout + result.stderr
+    # The one operator-directed research-to-runbook handoff is navigation only.
+    write_tracked(root, "policies/multi-operator-migration.md", "# Migration runbook\n")
+    brief = write_tracked(
+        root,
+        "briefs/multi-operator-collaboration.md",
+        "# Research\n[Runbook](../policies/multi-operator-migration.md)\n",
+    )
+    instruction = root / "CLAUDE.md"
+    write_tracked(
+        root,
+        "CLAUDE.md",
+        instruction.read_text()
+        + "\n[Migration](policies/multi-operator-migration.md)\n"
+        + "[Research](briefs/multi-operator-collaboration.md)\n",
+    )
+    handed_off = run(root)
+    assert handed_off.returncode == 0, "RUNBOOK HANDOFF REFUSED: " + handed_off.stdout
+    brief.write_text("# Research\n[Other](../policies/example.md)\n")
+    wrong_target = run(root)
+    assert wrong_target.returncode == 1 and "citations" in wrong_target.stdout, (
+        "RUNBOOK HANDOFF ALLOWED WRONG TARGET"
+    )
+    brief.write_text("# Research\n[Runbook](../policies/multi-operator-migration.md)\n")
+    write_tracked(
+        root,
+        "briefs/design.md",
+        "# Design\n[Other source](../policies/multi-operator-migration.md)\n",
+    )
+    wrong_source = run(root)
+    assert wrong_source.returncode == 1 and "citations" in wrong_source.stdout, (
+        "RUNBOOK HANDOFF ALLOWED WRONG SOURCE"
+    )
     _assert_briefs_and_policies_may_cite_a_pinned_document(tmp_path / "cite-docs")
     _assert_a_pinned_document_never_links_outside_docs(tmp_path / "docs-outbound")
 

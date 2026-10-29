@@ -30,6 +30,10 @@ CATALOGED_DIRECTORIES = ("policies", "briefs")
 # predates the rule derived from it, so the citation runs one way only.
 CITATION_SOURCE_DIRECTORY = "briefs"
 CITATION_FORBIDDEN_DIRECTORIES = ("policies", "plan")
+# Operator-directed research-to-runbook navigation; no general evidence inversion.
+PROCEDURE_HANDOFFS = {
+    ("briefs/multi-operator-collaboration.md", "policies/multi-operator-migration.md"),
+}
 # policies/docs.md: pinned third-party material never references the project.
 # Every top-level entry under docs/ is linked from docs/README.md, and no file
 # under docs/ (other than that project-owned catalog) links outside docs/.
@@ -575,7 +579,7 @@ def check_fragment(source: Path, line_number: int, target: Path, fragment: str) 
 def check_citation_direction(
     source: Path, line_number: int, relative_target: Path, destination: str
 ) -> None:
-    """A brief never cites a policy or a plan file (policies/briefs-and-policies.md).
+    """Refuse downward citations except the one explicit procedural navigation edge.
 
     Direction is judged before the target's existence: citing a policy that does
     not exist inverts the dependency order just the same.
@@ -584,6 +588,8 @@ def check_citation_direction(
     if relative_source.parts[:1] != (CITATION_SOURCE_DIRECTORY,):
         return
     if not relative_target.parts or relative_target.parts[0] not in CITATION_FORBIDDEN_DIRECTORIES:
+        return
+    if (relative_source.as_posix(), relative_target.as_posix()) in PROCEDURE_HANDOFFS:
         return
     report(
         "citations",

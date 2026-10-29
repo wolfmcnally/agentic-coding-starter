@@ -96,6 +96,7 @@ Every applicable policy binds.
 - [Test governance](policies/test-suite-governance.md)
 - [Park/resume](policies/fail-closed-resume.md)
 - [Review lanes](policies/review-lanes.md)
+- [Multi-operator migration](policies/multi-operator-migration.md)
 - [Phase state](policies/phase-status.md)
 - [Ripple](policies/phase-ripple.md)
 - [Acceptance](policies/acceptance-empirical.md)
@@ -168,7 +169,7 @@ Rationale: [methodology](briefs/methodology.md#operating-invariants-and-vocabula
 - **Monotonic progress.** Hold authorized scope fixed; defer tangents once. Stop unsupported expansion. Dispatch authorized unblocked work or state the hold; inspect any command refusal before continuing.
 - **Evidence over proxies.** Name the authoritative property, proxy, innocent triggers and sign-inversion risk. Read cited identifiers at their definitions; grep is a lead. Recheck affected callers, fixtures, tests and independent inventories.
 - **Concrete uses; one home.** No speculative abstraction without a second present use. Consolidate at three copies; prefer fewer concepts. Use scripts for deterministic work and intelligence for contextual judgment.
-- **Authority direction.** Policies prevail; plans refine and outrank briefs. Fix ambiguity at its owner; briefs never cite policies or plans.
+- **Authority direction.** Policies prevail; plans refine and outrank briefs. Fix ambiguity at its owner; briefs never cite policies or plans as evidence. The documented migration-runbook handoff is navigation only.
 - **Coherent outcomes.** Multiple surfaces and absent children do not require splitting. Split only at consequential decisions, independently accepted prerequisites, deployment/migration/human seams or demonstrated coherence limits. Ordinary internals belong to the coder; consequential scope stays approved. Never merge completed phases.
 - **Empirical acceptance and product review.** Name the checks that could falsify each claim and the criteria only a human can judge. Find blockers broadly and report them together with their evidence; keep optional advice separate and finding identities stable across passes. Re-baseline review when authority, scope, risk or continuity changes. For a high-risk, large or cross-cutting correction, recommend an inserted phase, normally a sub-phase of the current one; if the operator instead rules it an inter-phase change without formal review, keep validation, tests, safety, permissions, scope and history intact. Formal reviews belong to phase work. Product primary mode uses advisory reviews: at most two passes per stage, the second for a recorded cause, plus the operator's single-use extra code review. Delegated mode keeps the role policy's limits on plan size, growth, stalls and ten cycles. Methodology work needs no independent review.
 - **Candidate-bound assurance.** Review binds to the product's identity; gates and delivery bind to the whole tree's identity, which a gate must not change. Checks of declared authority and of reviewed bookkeeping stay independent of both. A tracked path with an unknown classification is refused; an untracked, unignored path of unknown classification, and `candidate-partition.yaml` itself, count as active.

@@ -1052,3 +1052,23 @@ families:
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
+
+- id: multioperator-migration
+  kind: pytest
+  selectors:
+  - tests/test_multioperator.py
+  source_paths: &multioperator_paths
+  - bin/multioperator
+  - lib/agentic_starter/multioperator.py
+  - lib/agentic_starter/multioperator_transition.py
+  - tests/test_multioperator.py
+  - briefs/multi-operator-collaboration.md
+  covers: *multioperator_paths
+  contract: Proposed collaboration structures migrate only in isolated rehearsals and remain byte-faithful, predecessor-bound and independently maintainable without live adoption.
+  risk_class: migration-custody
+  oracle: Actual CLI operations against a faithful committed Starter copy and a bounded multi-phase fixture reconstruct history, preserve source state and reject false lifecycle, graph, ownership, evidence and projection claims.
+  admission: One committed-tree export and finite local filesystem/Git operations per scenario; no model, network, external lease service or live policy change.
+  nearest_overlap: Numbered-phase renumbering and current single-log proofs cannot own the deliberately different unadopted schema or cross-format preservation contract.
+  tier: changed
+  flake_rate: 0.0
+  replacement_lineage: []

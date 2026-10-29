@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Proposed-format tools; never switches the invoking repository to that format.
+set -euo pipefail
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export PYTHONPATH="$repo_root/lib${PYTHONPATH:+:$PYTHONPATH}"
+exec "$repo_root/bin/python" -m agentic_starter.multioperator "$@"

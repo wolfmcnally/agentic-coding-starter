@@ -10,7 +10,7 @@ description: >-
   /learn <donor-dir> [<desc>] in Claude Code or $learn <donor-dir> [<desc>]
   in Codex.
 argument-hint: "<donor-dir> [<desc>]"
-last-reviewed: 2026-10-07
+last-reviewed: 2026-10-29
 ---
 
 # Learn — Absorb patterns from another repo into this repo
@@ -29,6 +29,16 @@ Raw arguments: `$ARGUMENTS`
 - `<desc>` (optional) — narrows intent ("focus on the testing setup", "Unity specialization", "just policies"). When absent, do the broader assessment described in Stage 2 with **generality preference enabled**.
 
 If `<donor-dir>` is missing or not a readable directory, refuse with `Usage: /learn <donor-dir> [<desc>] (Claude Code) or $learn <donor-dir> [<desc>] (Codex)` and exit.
+
+## Multi-operator migration detection (future adopted template)
+
+For a requested structural migration, or when a donor/recipient declares `collaboration/manifest.json`, read [the migration and transfer boundary](../../../policies/multi-operator-migration.md#0-unified-migration-runbook) before applying the single-log/numbered-plan assumptions below. After the canonical template actually migrates, `teach <project>` from it and `learn <starter>` from the receiver are the migration entrypoints. This does not activate migration in the current untransitioned template.
+
+Use the qualified donor's `bin/multioperator transfer-preflight --entry learn --donor <donor-dir> --recipient .` for read-only route detection. Refuse unknown/partial layouts or unresolved rehearsals; a declaration is not proof of adoption, a grant, or transfer approval. Verify actual donor adoption/candidate and recipient ownership, preserved project/runtime/content and terminal active-work/native/review boundaries independently. Ordinary transfers from a pre-migration source keep their existing workflow; they do not silently become migrations.
+
+A migration is one concrete Stage3 plan under the existing Stage4 operator approval and Stage5 recipient-owner application boundary. Include explicit id/owner mapping, exact old-only retirement preimages, the complete new-tool/caller/fixture bundle, historical byte/evidence/budget preservation, isolated rehearsal and semantic acceptance/full gates. Keep the donor read-only, never install a compatibility alias, never reset review allowances and never hot-patch a frozen run. An adopted receiver records through its qualified structured-record writer; the existing `LOG.md` checks/writer below apply to a pre-migration receiver. Do not waive an old invariant until the receiving project's actual atomic policy/caller cutover replaces it. Report detection, rehearsal, adoption, runtime instruction loading and human acceptance as separate facts; no new migration is performed by this capability's presence.
+
+The migration target uses regular primary `AGENTS.md` without a top-level `CLAUDE.md` alias. Run the receiving host’s installed-Claude check: absent means no Claude gate; installed requires a successful parseable version at least 2.1.290. Preserve local/ancestor instruction files and document loading caveats; a version probe does not prove a live session loaded AGENTS. After actual qualified adoption, use the new constitution and structured writers rather than legacy filename/log preconditions; before adoption the existing transfer path remains unchanged. See the migration policy’s constitution section for the fixed-release evidence and precise boundary.
 
 ## Pre-flight checks
 
