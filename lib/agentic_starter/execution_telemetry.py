@@ -567,7 +567,7 @@ def discover_engine_root(start: Path | str | None = None) -> Path:
         cursor = cursor.parent
     for candidate in (cursor, *cursor.parents):
         if (
-            (candidate / "CLAUDE.md").exists()
+            (candidate / "AGENTS.md").exists()
             and ((candidate / "plan").is_dir() or (candidate / "projects").is_dir())
             and (candidate / "policies").is_dir()
         ):

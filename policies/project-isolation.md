@@ -43,7 +43,7 @@ Project *governance metadata* — the scaffolding that builds and supervises the
 - `docs/` — pinned third-party reference material the briefs and policies cite
 - `plan/` — phased execution plan
 - `LOG.md` — append-only activity log
-- `CLAUDE.md` / `AGENTS.md` — top-level agent guidance
+- `AGENTS.md` — regular primary top-level agent guidance
 - `.claude/` / `.codex/` — agent definitions, skills, harness mirrors
 - `README.md` — didactic top-level for human readers
 - `.gitignore` — editor/OS files and agentic harness runtime state only. The deliverable's language-specific build-artifact ignores live in `project/.gitignore`.
@@ -66,7 +66,7 @@ Concrete consequences:
 
 Cross-boundary references in the *other* direction (root referencing `project/`) are fine and expected:
 
-- `CLAUDE.md` says "the project lives under `project/`".
+- `AGENTS.md` says "the project lives under `project/`".
 - `plan/phase-1.md` says "modify `project/example/cli.py`".
 - Root `bin/setup`, `bin/test`, `bin/check`, and any runtime wrapper select `project/` and invoke its native toolchain.
 

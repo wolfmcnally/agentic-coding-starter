@@ -18,3 +18,5 @@ __pycache__/
 
 # Local-only anonymization denylist (private names must never be committed)
 bin/anonymization-denylist.local
+
+/.collaboration-views/

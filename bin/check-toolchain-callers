@@ -34,7 +34,7 @@ SCAN_ROOTS = (
     "infra",
     "web",
 )
-SCAN_FILES = ("CLAUDE.md",)
+SCAN_FILES = ("AGENTS.md",)
 EXCLUDED = {
     "bin/_python-toolchain",
     "bin/check-toolchain-callers",
@@ -77,7 +77,7 @@ def _allowed_external_literal(relative: str, line: str) -> bool:
         or "runtime executable" in line
         or "versioned `python3" in line
         or (
-            relative in {"CLAUDE.md", "policies/build-gates.md"}
+            relative in {"AGENTS.md", "policies/build-gates.md"}
             and line.lstrip().startswith("`python3")
         )
     ):

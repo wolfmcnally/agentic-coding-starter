@@ -69,33 +69,11 @@ The root `candidate-partition.yaml` supplies the active/bookkeeping boundary. Pr
 
 ## Append-only construction evidence
 
-`LOG.md` has one writer and two independent readers:
-
-- `bin/log-append` appends a complete block at true EOF;
-- `bin/check-log-prefix` proves the candidate starts with the exact committed
-  bytes; and
-- `bin/check-log-monotonic` proves effective chronology.
-
-Stable block digests authenticate relocation and later chronology corrections.
-A committed timestamp is never edited: a later correction record binds the
-target block digest, repeats its recorded anchor, and moves its effective anchor
-forward. Terminal END and PARK blocks carry a `Lessons:` witness.
+`log/entries/` holds immutable activity bodies and per-writer predecessor chains. `bin/multioperator append` publishes one new attributed body; `validate` verifies every body digest, sequence, predecessor and timezone-aware timestamp. Indexed validation also refuses committed history rewrites and verifies retained acceptance inputs against indexed tracked bytes. A later correction is a new attributed entry, never an edit or relocation of published history. Terminal END and PARK bodies retain their `Lessons:` witness.
 
 ## Bounded deterministic repair
 
-One novel bookkeeping failure may receive one repair when the complete result
-is mechanically derivable. The tool constructs and validates the replacement
-in memory, makes one atomic write, and verifies the exact bytes afterward.
-Implementation/product identity must remain unchanged.
-
-The admitted repairs are:
-
-- relocating one uncommitted log block by unique block identity; and
-- normalizing the final newline of `LOG.md`, `EXECUTION_LOG.jsonl`, or
-  `plan/INDEX.md`.
-
-An ambiguous target, contextual patch, recurring signature, second attempt,
-substantive change, or failed byte verification parks for the operator.
+The shared final-newline repair is limited to `EXECUTION_LOG.jsonl` under the declared bookkeeping contract. Phase discovery context and immutable activity entries are outside that repair set. Preserve original failed or incomplete evidence and use the owning supported append-only correction or interruption path; never normalize away qualifying history or infer success from missing bytes. An ambiguous target, substantive change or failed byte verification parks the affected action for the owner.
 
 ## Recipient-local adaptation
 

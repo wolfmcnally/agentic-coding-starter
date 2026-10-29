@@ -2,7 +2,7 @@ schema: agentic.proof_estate.v5
 baseline_report: reports/test-governance/starter-pre-reset-baseline.json
 audit_ledger: reports/test-governance/starter-reset.jsonl
 witness_ledger: reports/test-governance/starter-witnesses.jsonl
-witness_failure_lines: '^E\s'
+witness_failure_lines: ^E\s
 adoption:
   mode: complete
 hang_timeout_seconds: 1800
@@ -276,7 +276,9 @@ families:
   - .claude/skills/kickoff/**
   - .claude/agents/**
   - plan/**
-  - CLAUDE.md
+  - AGENTS.md
+  - lib/agentic_starter/multioperator.py
+  - tests/structured_fixtures.py
   covers: *id013
   contract: Every review and gate remains bound to the exact candidate and declared authority.
   risk_class: orchestration-custody
@@ -290,12 +292,12 @@ families:
   kind: pytest
   selectors:
   - tests/test_kickoff_control_plane.py
-  source_paths: &id-kickoff-control
+  source_paths: &id014
   - lib/agentic_starter/kickoff_runbook.py
   - lib/agentic_starter/candidate_boundaries.py
   - bin/kickoff-command-zero
   - tests/test_kickoff_control_plane.py
-  covers: *id-kickoff-control
+  covers: *id014
   contract: Expensive kickoff gates run only after an immutable manifest admits their exact command and cheap preflight succeeds.
   risk_class: orchestration-custody
   oracle: Synthetic manifests and commands prove exact admission, ordered preflight, and first-failure stopping.
@@ -309,21 +311,17 @@ families:
   kind: pytest
   selectors:
   - tests/test_log_control_plane.py
-  source_paths: &id-log-control
-  - lib/agentic_starter/log_blocks.py
-  - bin/check-log
-  - bin/check-log-prefix
-  - bin/check-log-monotonic
-  - bin/log-append
-  - bin/log-relocate
+  source_paths:
   - bin/normalize-final-newline
+  - lib/agentic_starter/candidate_boundaries.py
   - tests/test_log_control_plane.py
-  covers: *id-log-control
-  contract: Starter's activity log extends committed bytes, remains effectively chronological, and accepts only bounded authenticated repairs.
+  covers:
+  - bin/normalize-final-newline
+  contract: Shared final-newline normalization remains executable only for its closed bookkeeping set; active context refuses without mutation.
   risk_class: chronology-custody
-  oracle: A temporary repository exercises append, prefix refusal, chronology repair, identity preservation, and closed newline normalization.
+  oracle: Run actual normalizer on an execution ledger and an independently declared but inadmissible active path.
   admission: A post-reset retirement funds this direct executable oracle for append-only construction evidence.
-  nearest_overlap: Log policy prose described ownership but did not prove exact bytes or repair boundaries.
+  nearest_overlap: Immutable activity construction is owned by the multioperator family; this proof retains only the shared repair boundary.
   tier: changed
   flake_rate: 0.0
   replacement_lineage:
@@ -332,13 +330,13 @@ families:
   kind: pytest
   selectors:
   - tests/test_kickoff_tree_id.py
-  source_paths: &id014
+  source_paths: &id015
   - candidate-partition.yaml
   - bin/check-candidate-partition
   - lib/agentic_starter/candidate_boundaries.py
   - bin/kickoff-tree-id
   - tests/test_kickoff_tree_id.py
-  covers: *id014
+  covers: *id015
   contract: Candidate identity changes for every material live-tree change and fails on unsafe escapes.
   risk_class: candidate-custody
   oracle: Fixture worktrees produce stable identities and intentional mutations change them.
@@ -351,13 +349,13 @@ families:
   kind: pytest
   selectors:
   - tests/test_lessons.py
-  source_paths: &id015
+  source_paths: &id016
   - bin/lessons
   - policies/lessons.md
   - lessons/**
   - lessons-archived/**
   - tests/test_lessons.py
-  covers: *id015
+  covers: *id016
   contract: Process observations stay attributable and only human-ratified lessons graduate.
   risk_class: methodology-memory
   oracle: Valid ledgers round-trip and every malformed state fails with a specific error.
@@ -370,8 +368,8 @@ families:
   kind: pytest
   selectors:
   - tests/test_methodology_toolchain_contract.py
-  source_paths: &id016
-  - CLAUDE.md
+  source_paths: &id017
+  - AGENTS.md
   - README.md
   - briefs/**
   - policies/**
@@ -380,7 +378,7 @@ families:
   - .claude/agents/**
   - .agents/skills/**
   - tests/test_check_catalogs.py
-  covers: *id016
+  covers: *id017
   contract: Universal machinery travels with every independent contract member named.
   risk_class: methodology-propagation
   oracle: Cross-document assertions require each authority, tool, test, skill, and mirror together.
@@ -393,7 +391,7 @@ families:
   kind: pytest
   selectors:
   - tests/test_mirror_parity.py
-  source_paths: &id017
+  source_paths: &id018
   - bin/check-harness-parity
   - .claude/agents/**
   - .codex/agents/**
@@ -401,7 +399,7 @@ families:
   - .agents/skills/**
   - tests/test_mirror_parity.py
   - tests/test_check_catalogs.py
-  covers: *id017
+  covers: *id018
   contract: Supported harnesses expose one methodology without silent surface drift.
   risk_class: cross-harness
   oracle: Repository and fixture parity scans report missing, stray, or divergent peers.
@@ -414,14 +412,14 @@ families:
   kind: pytest
   selectors:
   - tests/test_new_name.py
-  source_paths: &id018
+  source_paths: &id019
   - bin/new-name
   - tests/test_new_name.py
   - lessons/**
   - lessons-archived/**
   - user-actions/**
   - user-actions-archived/**
-  covers: *id018
+  covers: *id019
   contract: New ledger slugs are valid and unique across live and archived namespaces.
   risk_class: ledger-identity
   oracle: Generated names satisfy shape and collision fixtures across all ledger roots.
@@ -430,31 +428,15 @@ families:
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
-- id: phase-renumbering
-  kind: pytest
-  selectors:
-  - tests/test_renumber_phases.py
-  source_paths: &id901
-  - bin/renumber-phases
-  - tests/test_renumber_phases.py
-  covers: *id901
-  contract: Inserting a phase renumbers every later not-started phase and its references, and never moves a started one.
-  risk_class: ledger-identity
-  oracle: The script run over a fixture plan with a completed phase, waiting phases, sub-phases, a graph and a dated note.
-  admission: Renumbering rewrites identifiers across files; a missed reference silently repoints a dependency.
-  nearest_overlap: The catalog checker validates the ledger a renumbering produces but performs no renumbering.
-  tier: changed
-  flake_rate: 0.0
-  replacement_lineage: []
 - id: pre-commit-contract
   kind: pytest
   selectors:
   - tests/test_pre_commit.py
-  source_paths: &id019
+  source_paths: &id020
   - .githooks/pre-commit
   - tests/test_pre_commit.py
   - bin/test-governance
-  covers: *id019
+  covers: *id020
   contract: Pre-commit runs parity, caller, and proof-estate structure checks without masking failure.
   risk_class: hook-custody
   oracle: Stub executables record exact order and a governance refusal reaches Git unchanged.
@@ -467,14 +449,14 @@ families:
   kind: pytest
   selectors:
   - tests/test_research_authority.py
-  source_paths: &id020
+  source_paths: &id021
   - policies/research-authority.md
   - kickoff.yaml
   - bin/kickoff-config
   - .claude/agents/**
   - .codex/agents/**
   - tests/test_research_authority.py
-  covers: *id020
+  covers: *id021
   contract: Research is allow-by-default for installed resources without assuming any one exists.
   risk_class: external-retrieval
   oracle: Generated commands and config mutations enforce the declared role authority matrix.
@@ -487,12 +469,12 @@ families:
   kind: pytest
   selectors:
   - tests/test_review_verdicts.py
-  source_paths: &id021
+  source_paths: &id022
   - bin/review-verdicts
   - tests/test_review_verdicts.py
   - .claude/skills/sweep-planning/**
   - .claude/skills/sweep-coding/**
-  covers: *id021
+  covers: *id022
   contract: Longitudinal sweeps receive genuine, scoped, nonduplicated review evidence.
   risk_class: review-telemetry
   oracle: Synthetic trace roots expose inclusion, exclusion, deduplication, and filtering behavior.
@@ -505,14 +487,14 @@ families:
   kind: pytest
   selectors:
   - tests/test_shell_syntax.py
-  source_paths: &id022
+  source_paths: &id023
   - bin/check-shell-syntax
   - bin/**
   - .githooks/**
   - .claude/hooks/**
   - .codex/hooks/**
   - tests/test_shell_syntax.py
-  covers: *id022
+  covers: *id023
   contract: A shell syntax error cannot enter the authoritative gate or hook surface.
   risk_class: executable-structure
   oracle: Shell candidates are parsed by their declared interpreter and syntax errors name the file.
@@ -525,7 +507,7 @@ families:
   kind: pytest
   selectors:
   - tests/test_test_governance.py
-  source_paths: &id023
+  source_paths: &id024
   - lib/agentic_starter/test_governance.py
   - lib/agentic_starter/test_runner.py
   - bin/test-governance
@@ -534,7 +516,7 @@ families:
   - reports/test-governance/**
   - policies/test-suite-governance.md
   - briefs/test-suite-value-governance.md
-  covers: *id023
+  covers: *id024
   contract: Fast feedback exists only when the live local estate and its witness receipts validate.
   risk_class: proof-governance
   oracle: Valid fixture estates pass and malformed ownership, runner, baseline, or evidence fails closed.
@@ -547,11 +529,11 @@ families:
   kind: pytest
   selectors:
   - tests/test_mutation.py
-  source_paths: &id900
+  source_paths: &id025
   - lib/agentic_starter/mutation.py
   - bin/mutate
   - tests/test_mutation.py
-  covers: *id900
+  covers: *id025
   contract: The mutation survey reports the faults tests miss, in a copy, and never reports a failed or unfinished survey as a clean one.
   risk_class: proof-governance
   oracle: The real mutation tool run over a small fixture repository with one weak and one strong proof.
@@ -564,7 +546,7 @@ families:
   kind: pytest
   selectors:
   - tests/test_toolchain_callers.py
-  source_paths: &id024
+  source_paths: &id026
   - bin/check-toolchain-callers
   - bin/**
   - .githooks/**
@@ -572,7 +554,7 @@ families:
   - policies/**
   - plan/**
   - tests/test_toolchain_callers.py
-  covers: *id024
+  covers: *id026
   contract: Dependency-bearing callers cannot silently use an ambient or versioned interpreter.
   risk_class: runtime-custody
   oracle: Synthetic caller text distinguishes executable bypasses from allowed descriptions.
@@ -585,7 +567,7 @@ families:
   kind: pytest
   selectors:
   - tests/test_toolchain_entrypoints.py
-  source_paths: &id025
+  source_paths: &id027
   - bin/_python-toolchain
   - bin/setup
   - bin/test
@@ -594,7 +576,7 @@ families:
   - project/.python-version
   - project/pyproject.toml
   - project/uv.lock
-  covers: *id025
+  covers: *id027
   contract: Every dependency-bearing command runs through the repository-selected locked runtime.
   risk_class: runtime-custody
   oracle: Stubbed uv calls expose exact cwd, project, runtime, and child arguments.
@@ -607,12 +589,12 @@ families:
   kind: pytest
   selectors:
   - tests/test_treatise.py
-  source_paths: &id026
+  source_paths: &id028
   - bin/treatise
   - policies/treatise.md
   - briefs/**
   - tests/test_treatise.py
-  covers: *id026
+  covers: *id028
   contract: Outward explanations derive from a validated canonical brief and dated editorial record.
   risk_class: publication-governance
   oracle: Fixture briefs distinguish valid, missing, malformed, stale, and orphaned editorial state.
@@ -942,17 +924,17 @@ families:
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
-- id: hook-githooks-pre-commit-bin-check-log-staged
+- id: hook-githooks-pre-commit-multioperator-staged
   kind: hook
   selectors:
-  - hook:.githooks/pre-commit:./bin/check-log --staged
+  - hook:.githooks/pre-commit:./bin/multioperator validate --root . --staged
   source_paths:
   - .githooks/pre-commit
   covers:
   - .githooks/pre-commit
-  contract: A staged historical log rewrite is refused before a commit can record it.
+  contract: Commit hook calls structured staged-byte validation, retaining immutable history and real acceptance inputs.
   risk_class: lifecycle-custody
-  oracle: The tracked pre-commit hook calls the staged-byte and chronology wrapper directly.
+  oracle: Tracked hook command and the executable hook-order proof detect omission; real record family tests reject indexed history and acceptance faults.
   admission: A post-reset retirement funds the new lifecycle wiring.
   nearest_overlap: The policy gate checks working bytes; this proof uniquely covers staged custody.
   tier: full
@@ -975,7 +957,6 @@ families:
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
-
 - id: gate-policy-candidate-partition
   kind: gate
   selectors:
@@ -993,7 +974,6 @@ families:
   flake_rate: 0.0
   replacement_lineage:
   - pytest:tests/test_kickoff_evidence.py::test_a_proven_disjoint_drift_is_accepted_and_recorded
-
 - id: hook-candidate-partition
   kind: hook
   selectors:
@@ -1015,14 +995,14 @@ families:
   kind: pytest
   selectors:
   - tests/test_documentation.py
-  source_paths: &documentation_paths
+  source_paths: &id029
   - bin/docs
   - lib/agentic_starter/documentation.py
   - tests/test_documentation.py
   - documentation.toml
   - manual/**
   - policies/software-documentation.md
-  covers: *documentation_paths
+  covers: *id029
   contract: Curated documentation and its deployment stay bound to public input and a validated release candidate.
   risk_class: publication-custody
   oracle: Violating source/output/release inputs refuse before publication; exact tools install locally and CI identity is checked.
@@ -1052,23 +1032,25 @@ families:
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
-
 - id: multioperator-migration
   kind: pytest
   selectors:
   - tests/test_multioperator.py
-  source_paths: &multioperator_paths
+  source_paths: &id030
   - bin/multioperator
   - lib/agentic_starter/multioperator.py
   - lib/agentic_starter/multioperator_transition.py
   - tests/test_multioperator.py
   - briefs/multi-operator-collaboration.md
-  covers: *multioperator_paths
-  contract: Proposed collaboration structures migrate only in isolated rehearsals and remain byte-faithful, predecessor-bound and independently maintainable without live adoption.
+  - policies/multi-operator-migration.md
+  - policies/phase-status.md
+  - tests/structured_fixtures.py
+  covers: *id030
+  contract: Committed-source transition retains exact history and retires obsolete tools; current maintenance binds immutable chains, coordinated ownership and actual acceptance without fabricating adoption.
   risk_class: migration-custody
-  oracle: Actual CLI operations against a faithful committed Starter copy and a bounded multi-phase fixture reconstruct history, preserve source state and reject false lifecycle, graph, ownership, evidence and projection claims.
+  oracle: Actual CLI conversion, new records, concurrent writes, staged byte checks and retained acceptance inputs reject falsified history, custody or completion.
   admission: One committed-tree export and finite local filesystem/Git operations per scenario; no model, network, external lease service or live policy change.
-  nearest_overlap: Numbered-phase renumbering and current single-log proofs cannot own the deliberately different unadopted schema or cross-format preservation contract.
+  nearest_overlap: Shared normalization and actual kickoff acceptance remain separately tested; this family owns conversion and record maintenance, not native instruction loading.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []

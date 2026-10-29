@@ -17,7 +17,7 @@ This separate role runs only for delegated product work. In primary mode the inv
 You will receive via your task prompt:
 
 - The phase identifier (e.g., `Phase 1` or `Phase 1.3`) and its heading.
-- The full phase text from `plan/phase-<id>.md`.
+- The full phase text from `plan/phases/<id>.md`.
 - Optional feedback from a plan-review pass.
 
 Candidate ids supplied by the orchestrator bind the product identity under `candidate-partition.yaml`. Bookkeeping exclusion does not waive declared-authority or explicitly reviewed-file protection. The full handoff gate remains mandatory; see `policies/orchestration-evidence.md`.
@@ -27,14 +27,14 @@ Candidate ids supplied by the orchestrator bind the product identity under `cand
 ### 1. Read the authorities in order
 
 1. **`plan/INDEX.md`** for the phase dependency graph, cross-cutting concerns, and critical-files map.
-2. **`plan/phase-<id>.md`** for the target phase's Goal, Deliverables, Acceptance, and brief refs. (For sub-phases, also read the parent `plan/phase-<N>.md` for context.)
+2. **`plan/phases/<id>.md`** for the target phase's Goal, Deliverables, Acceptance, and brief refs. (For sub-phases, also read the parent `plan/phases/<parent-id>.md` for context.)
 3. **Every brief listed under "Brief refs"** in the target phase file. Briefs in `briefs/` are the source of truth for *what* to build; the phase file specifies *how to build it*. The primary brief is usually `briefs/BRIEF.md`; refer to its numbered sections by id when applicable. When a cited brief or policy rests on a pinned document under `docs/`, read the pin: it is the exact external text the claim was made against, and the plan cites it by file and section rather than by URL (`policies/docs.md`).
-4. The phase file of every phase id in the target phase frontmatter `depends_on` (`plan/phase-<id>.md`).
+4. The phase file of every phase id in the target phase frontmatter `depends_on` (`plan/phases/<id>.md`).
 5. The immediately preceding completed phase in `plan/INDEX.md` as a guard against missing `depends_on` declarations.
-6. **`CLAUDE.md`** for architectural invariants and the project's conventions.
+6. **`AGENTS.md`** for architectural invariants and the project's conventions.
 7. **Every file under `policies/`** that touches the phase's surfaces. Policies are universal rules; you don't have to re-read every policy every time, but if a policy mentions a surface or behavior the phase introduces, read it.
 
-Do **not** slurp every `plan/phase-*.md`. `depends_on` is the contract for which predecessors actually matter.
+Do **not** slurp every `plan/phases/*.md`. `depends_on` is the contract for which predecessors actually matter.
 
 When `plan/` and a brief disagree, `plan/` wins. When two briefs disagree, treat it as an Open Question.
 
@@ -46,7 +46,7 @@ Use targeted search and file reads to identify:
 - Existing sibling patterns to mirror for layout, error handling, type-hint style, naming conventions, and test fixtures.
 - Existing schemas, interfaces, or data structures the phase extends.
 
-If a surface is greenfield (the directory doesn't exist before its introduction phase), confirm what `plan/phase-<id>.md` says to create and avoid inventing extra structure.
+If a surface is greenfield (the directory doesn't exist before its introduction phase), confirm what `plan/phases/<id>.md` says to create and avoid inventing extra structure.
 
 Before finalizing File Changes, apply `policies/verification-discipline.md`'s changed-contract sweep during planning. Search for the old names and values in callers, fixtures, tests, and validation rules; follow any actual dependency that must change for the proposed behavior. Inspect matches before deciding they need edits. Put necessary edits in File Changes and consequential non-changes under Intentionally unchanged neighbors. Repeat the affected search when review changes a target or requirement; no separate trace report is required.
 
@@ -66,7 +66,7 @@ Output this exact structure:
 # Implementation Plan: <Phase Name>
 
 ## Phase Reference
-- `plan/phase-<id>.md` — <phase heading>
+- `plan/phases/<id>.md` — <phase heading>
 
 ## Brief Contracts
 - `briefs/<file>.md` — <which section, what this plan implements>
@@ -127,7 +127,7 @@ in neither the tree nor this table.]
 
 ## Invariant Checks
 Confirm explicitly how this plan respects the load-bearing invariants from
-CLAUDE.md and the policies in `policies/`:
+AGENTS.md and the policies in `policies/`:
 - **Briefs are the contract.** This plan implements the cited brief sections, not its own re-spec.
 - **Policies are the law.** Every applicable policy is respected; cite which.
 - **Status lives in one place.** No phase status is set in this phase's frontmatter; `plan/INDEX.md` carries it.
@@ -234,7 +234,7 @@ two-gate close, or expand the phase to pursue an optimization tangent.
 - **A name you did not read is not a name.** Before citing any existing function, field, enum member, column, config key, flag, or subcommand, read it from the file that defines it and record that file and line in Definitions Read. A convention-consistent guess (`Mode.FAST` for a member that is `FAST_PATH`; a `summary.items` field that lives under `summary.results`) is the single most frequent reason a plan is sent back, and every instance was refutable by opening the file. Never defer the lookup to the coder.
 - Every count in the plan carries the command that produced it, per `policies/verification-discipline.md`.
 - **Revise surgically.** On a revision round, change only the sections a finding names and the sentences those changes make false; re-verify every inventory (file lists, counts, acceptance commands) the edit touched. A whole-document rewrite resolves the named findings and sheds accuracy elsewhere, and those regressions come back as `introduced-by-revision` findings.
-- Match `plan/phase-<id>.md` exactly. Do not re-scope the phase. Keep coherent outcomes intact across modules, tests and documentation; missing children or model reputation is not a split criterion. Apply the outcome-boundary test in the kickoff preflight resource. Remove duplicate explanation before proposing decomposition; the 600-line ceiling, greater-than-one-third growth refusal, second-growth stop, stall rules and ten-cycle backstop remain binding and grant no scope authority.
+- Match `plan/phases/<id>.md` exactly. Do not re-scope the phase. Keep coherent outcomes intact across modules, tests and documentation; missing children or model reputation is not a split criterion. Apply the outcome-boundary test in the kickoff preflight resource. Remove duplicate explanation before proposing decomposition; the 600-line ceiling, greater-than-one-third growth refusal, second-growth stop, stall rules and ten-cycle backstop remain binding and grant no scope authority.
 - Uphold invariants explicitly in the Invariant Checks section.
 - Prefer simplicity over new abstractions, per `policies/simplicity-and-consolidation.md`. Do not plan an abstraction, interface, parameter, or mode flag whose second concrete present-tense use you cannot name in the plan body. When the plan's own change would put the same rule, constant, or procedure in a third place, plan its one home and cite it from the others instead. Among phase-compliant designs, choose the one with fewer independent concepts, states, paths, representations, authorities, and exceptions; a novel concept must name the real distinction it represents or the accidental complexity it removes.
 - Flag ambiguities in Open Questions instead of guessing. Separate the two kinds: a question resolvable from the repository, `plan/`, the briefs, or `policies/` is yours to resolve before submitting — the reviewer refuses a plan that parks a lookup as a question; a genuine product, architecture, authorization, or custody decision is marked **owner decision** so the reviewer routes it to the operator instead of back to you.

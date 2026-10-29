@@ -1,102 +1,35 @@
-# Policy: Phase Status — One Source of Truth
+# Policy: Phase Identity, State and Selection
 
-Phase status lives in **`plan/INDEX.md`** and nowhere else. This is a hard rule, not a convention.
+## One authority for each fact
 
-## The status legend
+`plan/phases/<id>.md` defines a phase; `plan/events/<event-id>.json` records its lifecycle. The permanent id is a unique three-word lowercase slug. Frontmatter contains `id`, `title`, rational-string `order`, nullable `parent`, and lists `depends_on` and `informs`, plus declared review/evidence properties when applicable. References use ids, never paths or display positions. Definitions contain no `status` or `owner` field. `plan/INDEX.md` is handwritten discovery/context, not a second status ledger.
 
-```text
-⏳ Not Started
-⬅️ Next (at most one at a time; required only while idle and incomplete)
-🚧 In Progress
-✅ Completed
-```
+The current state is the unique folded event head: `not-started`, `next`, `in-progress` or `completed`. Each append names its exact predecessor and prior state, writer and reason. Starting work requires a named owner and an actual coordinated claim reference. A caller-written label records attribution; it grants no custody, authentication or access. A handoff changing an existing owner requires explicit release and new claim evidence. A fork is a conflict to resolve through the existing ownership procedure, never a choice for a renderer.
 
-## Where status lives
+Imported genesis records retain the original declared state and attribution limits; a historical completed marker is not newly accepted product evidence. Historical ids, review claims, failed or accepted packets and original tools remain exact. An identity change never resets a consumed allowance.
 
-- **`plan/INDEX.md`'s phase table.** The phase table is the *single source of truth*. Each row carries one status emoji in its rightmost column.
-- **Nowhere else.** Per-phase files (`plan/phase-*.md`) do *not* carry a `status` field in their frontmatter. Their frontmatter is `id`, `title`, `depends_on`, `informs`, and optionally `review_lane` and `evidence_lane` (phase properties, not statuses — see [`review-lanes.md`](review-lanes.md)) — no more.
+## Select and start work
 
-## Why one place
+Use `./bin/multioperator status --root .` for canonical heads and `./bin/multioperator render --root .` for disposable local views. Select next work with `./bin/multioperator select --root . --owner <operator>` or add `--phase <id>` for explicitly authorized work. Selection is read-only and refuses absent, completed, differently owned or dependency-blocked work. It does not acquire a lease. Verify the existing external coordination claim and safe command/native boundary before appending an `in-progress` event with `./bin/multioperator event --root . --file <event.json>`.
 
-Duplicating status across files invites drift. The orchestrator (`kickoff`) reads exactly one file to know what to do next; humans read exactly one file to know what the project's state is; reviewers read exactly one file to verify the orchestrator did the right thing.
+There is at most one `next` selection per owner; independent operators can select independent work. An unassigned imported selection may be picked explicitly after custody verification. Active work need not queue another phase. No global single-arrow convention or numeric renumbering survives this structure. A truthful park leaves the phase in progress and appends a PARK log entry; it neither completes the phase nor spends or restores review allowance.
 
-## Who flips the markers
+## Insert and order phases
 
-`kickoff` owns all status transitions:
+Create a new permanent id with `./bin/multioperator add --root . --document <phase.md> --writer <operator>`. The definition and its not-started genesis form one qualified Git change. Change an exact rational order key with `./bin/multioperator order --root . --phase <id> --value <rational>`. Ordering uses the rational key and permanent id as a deterministic tie-breaker. Dependency order and acyclic parent/dependency graphs are checked; changing presentation order does not rename history or rewrite existing references. Consequential scope and dependencies still require their normal operator ruling.
 
-- On phase entry: `⬅️` → `🚧` and append a START block to `LOG.md`.
-- On phase completion: `🚧` → `✅`, advance `⬅️` to the lowest-numbered `⏳` row whose dependencies are complete, and append an END block to `LOG.md`.
-- On phase pause: leave the row at `🚧` and append an END block to `LOG.md` documenting the pause reason. Do not advance `⬅️`; zero next rows is valid while work remains active.
+## Complete only accepted work
 
-Humans may flip markers manually only in two cases:
+Completion is a new immutable event, never an edit to an existing event or definition. The ordinary pinned evidence run captures the active phase definition and owner/claim event at initialization. Accepted close requires unchanged governing authority, real required advice and primary dispositions for its selected lane, actual candidate-bound gates, finalized telemetry and retained qualification bytes. Required evidence lives in ignored durable project storage. Neither a digest without bytes, arbitrary receipt JSON nor an imported completed genesis is new acceptance.
 
-- **Bootstrap.** When a brand-new `plan/INDEX.md` is created, the human assigns `⬅️` to Phase 1.
-- **Recovery.** When `kickoff` failed partway through and left the state inconsistent, the human corrects the table — and ideally adds a note to `LOG.md` explaining the recovery.
+Prepare `--ledger-after` as JSON with schema `agentic.phase-transition.v1`, `events` and nullable `parent_continuation`. Each prospective event has exactly `id`, `phase`, `previous`, `from`, `state`, `owner`, `writer`, `claim` and `reason`; it completes the current in-progress phase under its captured owner/claim. The proposal is graph analysis, not published approval. `bin/kickoff-evidence close` validates it against the accepted run, appends the actual terminal log once, seals the retained inputs and publishes completion with the real closure path/digest. Run the same close with `--verify-handoff` afterward. A failed or interrupted publication remains visible and supports exact idempotent retry; it is never permission to rewrite the earlier event or closure.
 
-## The phase-ledger state machine
+A parent completes only after all children are complete and it has its own independently accepted implementation run. `--parent-run` carries that acceptance and any real ancestor acceptance chain, without fabricating another review or aliasing the child's acceptance. A last-child close that leaves its parent active needs a truthful remaining-work reason; another actual incomplete child also supplies continuation. Parent acceptance alone can close the implementation without publishing phase completion until the children finish. Neither branch silently closes the parent or invents a successor.
 
-Every phase-table data row carries exactly one recognized status marker. The number of `⬅️` rows depends on lifecycle state:
+Historical completion validation verifies retained closure, log, qualification inputs, original budget prefix and captured owner/claim. Fresh completion additionally runs the receiving qualified acceptance validator against current candidate and original tools; it never executes a validator selected by the artifact. Missing or changed bytes refuse. Later unrelated phase activity does not invalidate a historical accepted product, while mutation of its retained acceptance still does.
 
-- **Idle and incomplete:** exactly one row is `⬅️`.
-- **Active:** zero or one row may be `⬅️`. Zero is normal after the executable row changes to `🚧`; one is normal when a decomposed parent remains `🚧` while its next child is queued.
-- **Complete:** zero rows are `⬅️` because no work remains to advance.
-- **Always invalid:** more than one `⬅️`, a phase-table row with no recognized status, or a row carrying multiple recognized statuses.
+## Validation and views
 
-The dependency graph may expose parallel opportunities, but the orchestrator queues at most one executable phase. If recovery finds two `⬅️` rows, the ledger is invalid; `kickoff` stops and the human corrects it rather than letting the orchestrator choose through ambiguity.
+`./bin/multioperator validate --root .` checks definitions, graph, event chains, owner/claim transitions, completion references and immutable log sequences. `./bin/check-catalogs` calls the same record validator and checks active links and phase narrative declarations. The opt-in staged hook invokes `./bin/multioperator validate --root . --staged` against indexed blobs, protecting previously committed immutable records. Do not install or change hook trust by inference from this policy.
 
-## Phases are named by id in `depends_on` and `informs`
-
-Each is a list of phase ids written as `id` is: `depends_on: ["3", "3.1"]`, or `[]` when there are none. An entry is never a file path or a link. A reader turns id N into `plan/phase-N.md`; the tools read the ids themselves. The ordering check and a renumbering can only follow an id, so a path is not a harmless variant: the check would read it as no dependency, and a renumbering would leave it naming whichever phase took the old number. The checker refuses any other value and `bin/renumber-phases` refuses to run over one. (Format settled 2026-10-09, after a derived project's path-form plan was found to pass the ordering check unread.)
-
-## Numbers follow the order of upcoming work
-
-Among phases that have not started, a phase's number says when it runs. A reader who sees Phase 5 and Phase 6 both waiting should be able to assume 5 comes first, and the next marker advances to the lowest-numbered waiting phase whose dependencies are complete. Doing a higher-numbered phase while a lower-numbered one is ready is running the plan out of sequence, and the remedy is to renumber, not to explain the order in a note. (Operator ruling, 2026-10-07.)
-
-So a phase inserted ahead of waiting work takes the number of the first phase it must precede, and that phase, every later waiting sibling, and all their sub-phases move up by one. The same holds one level down: a sub-phase inserted at 3.2 moves the waiting 3.2 to 3.3. A deterministic script does the whole move:
-
-```bash
-./bin/renumber-phases insert-before 5 --reason "<one sentence on why the phase is inserted>"
-```
-
-It renames the phase files, rewrites their `id`, `depends_on` and `informs` fields, the phase table, the dependency graph and every plan link, and adds a dated renumbering record to the ledger that says how to read the old numbers. The author then adds the new phase's file and row at the number that was opened. Renumbering by hand is how a `depends_on` gets left pointing at the wrong phase. The script refuses, writing nothing, when a `depends_on` or `informs` value is not a phase id, because it could not carry that value to the new number.
-
-What does not move:
-
-- **A phase that is in progress or completed keeps its number.** Logs, commits, reports and lessons already refer to it. The script refuses when a started phase would move, so an insertion goes after the last started phase at that level; work that must precede an in-progress phase is a sub-phase of it or a decision for the operator.
-- **An abandoned path keeps its numbers.** A phase that was retired or set aside is history; its number is not reclaimed, and closing the gap it leaves is not a reason to renumber.
-- **Dated history is never rewritten.** `LOG.md`, lessons, user actions and earlier ledger notes keep their wording. The renumbering record is the decoder ring, and the script lists the prose mentions it left alone so each can be read.
-- **The unstarted children of an in-progress parent are upcoming work** and do renumber among themselves.
-
-The checker enforces the two parts of this that can be read mechanically: phase-table rows run in ascending phase order, and no waiting phase depends on a waiting phase numbered after it. Whether an undeclared ordering exists between two waiting phases is a judgment the checker cannot make; declare the dependency, and the numbering follows.
-
-## Verification
-
-The deterministic catalog checker validates the lifecycle state and one-status-per-row invariant, rejects a `status:` field in any per-phase frontmatter, and rejects status-declaration lines in phase bodies. Narrative mentions of the status emojis in prose are fine — only a *declaration* (a frontmatter key or a `Status: ✅`-shaped line) creates a second source of truth, and quoted forms inside fenced blocks or inline code spans are exempt:
-
-```bash
-./bin/check-catalogs
-```
-
-When a child phase closes, the close operation additionally runs `./bin/check-catalogs --closing-phase <id>`. The child must already be `✅`, and its direct parent must either be `✅` too or remain `🚧` with another drafted, incomplete direct child. A close may not strand a decomposed parent whose ledger promises work but names no executable continuation.
-
-The same checker refuses a phase table whose rows are out of ascending phase order, a not-started phase whose `depends_on` names a not-started phase numbered after it, and a `depends_on` or `informs` value in any phase file that is not a phase id.
-
-The checker runs inside the authoritative full gate:
-
-```bash
-./bin/check all
-```
-
-## Prospective accepted closure
-
-Accepted evidence close may validate an external proposed ledger using `--ledger-after`. The live captured ledger remains unchanged through acceptance. Only the closing active phase's completion marker may change. A child still requires a completed parent or an active parent with another real drafted incomplete child. A simultaneous parent completion additionally requires `--parent-run` identifying separately accepted, current parent evidence from this repository. The successor child must be prepared before final review, not invented after acceptance.
-
-The close record binds both ledger digests and the accepted product. Apply the exact proposed ledger and run the same close command with `--verify-handoff` before any further ripple or arrow edits. This verification checks the actual ledger, product and child continuation; it does not certify delivery or replace the final full handoff gate. The ordinary catalog checker and standalone log writer retain their checks against the live ledger.
-
-A prospective close may additionally advance at most one existing not-started phase to next, selected in dependency order during close preparation. This exact marker transition is bound with the completion markers; it prevents a final-child close from creating an idle incomplete ledger without a next phase. A close that must *move* an existing marker binds one paired transition instead: exactly one ⬅️→⏳ alongside exactly one ⏳→⬅️, leaving at most one marker in the result. An unpaired unqueue refuses, because it would leave the ledger with no truthful continuation.
-
-## Where the next marker must sit after a child close
-
-A close asks where the marker *must be now*, never where it already sat. A phase started by name rather than by following the marker leaves the marker somewhere else for the whole phase, and a closing orchestrator that reasons from the ledger's current state records that it "stays where it was" — three times running, in a donor project, while the count-based ledger check passed each time because exactly one marker was present.
-
-So the rule is positional, not numeric: when a child closes and its parent stays 🚧, the ⬅️ marker must sit on a non-completed direct child of that parent, or on nothing, and it moves in the same edit as the status flip. `bin/check-catalogs --closing-phase` refuses a marker stranded elsewhere and names both where it sits and which children were available. A close that deliberately queues work outside the parent's subtree — the dependency-ordered successor is elsewhere — passes `--next-marker-reason` (to `bin/check-catalogs` directly, or through `bin/kickoff-evidence close`, which forwards it) and records that reason in the close block.
+`./bin/multioperator render --root . --check` verifies ignored `.collaboration-views/PLAN.md` and `.collaboration-views/LOG.md`. Regeneration is deterministic. These views are never edited or committed as authority. After accepted close, perform required ripple, lessons, sanitized reporting and one bare final full gate on the actual handoff tree. Delivery and human acceptance remain separate under [human-in-the-loop.md](human-in-the-loop.md).

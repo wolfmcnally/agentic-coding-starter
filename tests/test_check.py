@@ -43,8 +43,7 @@ def check_repo(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     (root / "project" / "pyproject.toml").write_text("[project]\nname='fixture'\n")
     (root / "project" / "uv.lock").write_text("version = 1\n")
     (root / "project" / ".python-version").write_text("3.11\n")
-    (root / "AGENTS.md").symlink_to("CLAUDE.md")
-    (root / "CLAUDE.md").write_text("# Fixture\n")
+    (root / "AGENTS.md").write_text("# Fixture\n")
 
     log_path = tmp_path / "calls.log"
     tool_dir = tmp_path / "tools"
@@ -149,14 +148,10 @@ esac
         ("check-hooks-installed", "hooksinstalled"),
         ("check-shell-syntax", "shellsyntax"),
         ("new-name", "newname"),
-        ("check-log", "log"),
+        ("multioperator", "log"),
         ("check-candidate-partition", "partition"),
         ("docs", "docs"),
-        ("check-log-prefix", "logprefix"),
-        ("check-log-monotonic", "logmonotonic"),
         ("kickoff-command-zero", "commandzero"),
-        ("log-append", "logappend"),
-        ("log-relocate", "logrelocate"),
         ("normalize-final-newline", "finalnewline"),
     ):
         _write_executable(
@@ -198,7 +193,7 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
         for line in Path(environment["CHECK_TEST_LOG"]).read_text().splitlines()
         if not line.startswith("receipt ")
     ]
-    assert calls == [
+    expected_calls = [
         (
             f"uv cwd={root} args=run --project {root / 'project'} --locked "
             f"--managed-python python -c {PROBE}"
@@ -211,10 +206,10 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
             "../bin/check-toolchain-callers ../bin/lessons ../bin/treatise "
             "../bin/check-catalogs "
             "../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name "
-            "../bin/renumber-phases "
+            ""
             "../bin/check-plan-concreteness ../bin/check-plan-delivery ../bin/review-verdicts "
-            "../bin/check-log-prefix ../bin/check-log-monotonic ../bin/kickoff-command-zero "
-            "../bin/log-append ../bin/log-relocate ../bin/normalize-final-newline "
+            "../bin/kickoff-command-zero "
+            "../bin/normalize-final-newline "
             "../bin/check-candidate-partition "
             "../tests"
         ),
@@ -226,10 +221,10 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
             "../bin/check-toolchain-callers ../bin/lessons ../bin/treatise "
             "../bin/check-catalogs "
             "../bin/check-hooks-installed ../bin/check-shell-syntax ../bin/new-name "
-            "../bin/renumber-phases "
+            ""
             "../bin/check-plan-concreteness ../bin/check-plan-delivery ../bin/review-verdicts "
-            "../bin/check-log-prefix ../bin/check-log-monotonic ../bin/kickoff-command-zero "
-            "../bin/log-append ../bin/log-relocate ../bin/normalize-final-newline "
+            "../bin/kickoff-command-zero "
+            "../bin/normalize-final-newline "
             "../bin/check-candidate-partition "
             "../tests"
         ),
@@ -259,6 +254,7 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
         f"governance cwd={root} args=timing",
         f"policy cwd={root}",
     ]
+    assert calls == expected_calls, "GATE OMITTED OR REORDERED REQUIRED COMMAND"
     assert "CHECK ALL PASS" in result.stdout
 
 

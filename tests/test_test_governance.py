@@ -462,11 +462,11 @@ def test_changed_selection_maps_documents_to_readers_and_widens_on_unmapped_code
         "lib/example.py": 'RULES = ROOT / "policies" / "read-by-code.md"\n',
         "lib/twin.py": "base\n",
         "tests/test_reader.py": 'assert "policies/read-by-test.md"\n',
-        "bin/tool": "cat CLAUDE.md\n",
+        "bin/tool": "cat AGENTS.md\n",
         "policies/read-by-code.md": "one\n",
         "policies/read-by-test.md": "one\n",
         "policies/read-by-nothing.md": "one\n",
-        "CLAUDE.md": "one\n",
+        "AGENTS.md": "one\n",
         "plan/phase-1.md": "one\n",
     }
     files["tests/proof-estate.yaml"] += family("reader", "lib/reader_only.py")
@@ -495,7 +495,7 @@ def test_changed_selection_maps_documents_to_readers_and_widens_on_unmapped_code
     # A document no family covers selects the families of the files that name it.
     assert selection("policies/read-by-code.md") == ({"vital", "mapped"}, None)
     assert selection("policies/read-by-test.md") == ({"vital", "reader"}, None)
-    assert selection("CLAUDE.md") == ({"vital", "tool"}, None)
+    assert selection("AGENTS.md") == ({"vital", "tool"}, None)
     assert selection("policies/read-by-nothing.md") == ({"vital"}, None)
     # A document several families cover selects all of them; ambiguously covered code widens.
     assert selection("plan/phase-1.md") == ({"vital", "plans", "phases"}, None)

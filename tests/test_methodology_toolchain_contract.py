@@ -35,7 +35,7 @@ INCREMENTAL_BRIEF = _normalized(REPO_ROOT / "briefs" / "incremental-orchestratio
 METHODOLOGY_BRIEF = _normalized(REPO_ROOT / "briefs" / "methodology.md")
 RULE_ONE_BRIEF = _normalized(REPO_ROOT / "briefs" / "rule-one-diagnostic-learning.md")
 BOOTSTRAP_BRIEF = _normalized(REPO_ROOT / "briefs" / "agentic-bootstrap.md")
-CLAUDE = _normalized(REPO_ROOT / "CLAUDE.md")
+CLAUDE = _normalized(REPO_ROOT / "AGENTS.md")
 KICKOFF = _normalized(REPO_ROOT / ".claude" / "skills" / "kickoff" / "SKILL.md")
 METHODOLOGY = _normalized(REPO_ROOT / ".claude" / "skills" / "methodology" / "SKILL.md")
 RULE_ONE = _normalized(REPO_ROOT / ".claude" / "skills" / "rule-one" / "SKILL.md")
@@ -159,8 +159,8 @@ def test_every_universal_skill_propagates_with_its_codex_mirror(tmp_path: Path) 
         tmp_path / "phase-entry",
         "preflight.md",
         (
-            "If none exists while a row is `🚧`, require an explicit phase id "
-            "to resume that active work.",
+            "An active phase must be named explicitly to resume; "
+            "selection never transfers ownership.",
             "A coherent change stays intact.",
             "An unresolved consequential decision goes to the operator before implementation; "
             "it is not a private choice delegated to the coder.",
@@ -425,10 +425,10 @@ def test_the_mechanical_copy_is_closed_over_links_and_fixtures() -> None:
 
     # Authored or generated in the destination, so a link to them resolves there.
     fresh = [
-        "CLAUDE.md",
         "AGENTS.md",
         "README.md",
-        "LOG.md",
+        "log/",
+        "collaboration/",
         "plan/",
         "project/",
         "briefs/BRIEF.md",

@@ -34,7 +34,7 @@ def test_manifest_preflight_and_runner_admission_fail_closed(tmp_path: Path) -> 
         root / "bin" / "check",
         f"test \"$1\" = format\nprintf '%s\\n' format >> {calls}\n",
     )
-    executable(root / "bin" / "check-log", f"printf '%s\\n' log >> {calls}\n")
+    executable(root / "bin" / "multioperator", f"printf '%s\\n' log >> {calls}\n")
     document = {
         "schema_version": 1,
         "commands": [

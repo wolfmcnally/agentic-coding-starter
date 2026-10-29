@@ -63,7 +63,7 @@ def engine(tmp_path: Path) -> Path:
     (root / "projects").mkdir(parents=True)
     (root / "policies").mkdir()
     (root / "portfolio").mkdir()
-    (root / "CLAUDE.md").write_text("# synthetic engine\n", encoding="utf-8")
+    (root / "AGENTS.md").write_text("# synthetic engine\n", encoding="utf-8")
     return root
 
 

@@ -187,17 +187,11 @@ format and log policy. It stops on the first failure.
 ./bin/kickoff-command-zero --run-dir "$RUN_DIR"
 ```
 
-### `check-log` and bounded log repair tools
 
-`check-log` composes the exact committed-prefix and effective-chronology
-validators. `log-append` is the true-EOF writer. `log-relocate` moves one
 uncommitted block only by unique content digest. `normalize-final-newline` is
 closed to the three admitted bookkeeping files.
 
 ```bash
-./bin/check-log
-./bin/check-log --staged
-./bin/log-relocate --block <sha256> --after <sha256> --dry-run
 ./bin/normalize-final-newline --path plan/INDEX.md --check
 ```
 
@@ -501,7 +495,7 @@ entry points.
 ### `check-catalogs` — document and phase-ledger fitness functions
 
 Verifies the durable-document catalogs stay closed under sync: every
-`policies/*.md` and `briefs/*.md` file is indexed in `CLAUDE.md` and every
+`policies/*.md` and `briefs/*.md` file is indexed in `AGENTS.md` and every
 indexed entry resolves to a file (no orphans either way). It also validates
 current-candidate repository-internal Markdown links — both tracked and
 nonignored untracked files, path *and* the
@@ -648,7 +642,6 @@ acceptable slug is found within the attempt budget.
 
 Behavioral coverage lives in `tests/test_new_name.py`.
 
-### `renumber-phases` — open a phase number for an inserted phase
 
 Phase numbers of work that has not started follow its order of execution. To
 insert a phase ahead of waiting work, this script moves the waiting phase at
@@ -661,15 +654,13 @@ not a phase id and so could not be carried to the new number. It rewrites no
 dated prose: it lists the mentions it left for a reader.
 
 ```bash
-./bin/renumber-phases insert-before 5 --reason "<why the phase is inserted>"
-./bin/renumber-phases insert-before 3.2
 ```
 
 Then add the new phase's file and its row at the number that was opened.
 Governed by [`policies/phase-status.md`](../policies/phase-status.md) § Numbers
 follow the order of upcoming work; `bin/check-catalogs` refuses a plan whose
 waiting phases are numbered out of their declared order. Behavioral coverage
-lives in `tests/test_renumber_phases.py`.
+lives in `tests/test_multioperator.py`.
 
 ### `check-anonymization.sh` — pre-publish leak guard *(starter-only)*
 
@@ -705,3 +696,5 @@ An attested continuation starts its own role numbering at 1 if any additional re
 `execution-telemetry interrupt --trace-id <old> --successor-trace-id <new> --custody-evidence <file>` records a separately checked cross-boot interruption/successor observation without closing or rewriting the old trace. See [clock and custody requirements](../policies/execution-telemetry.md#cross-boot-interruption-observation). It supplies no missing original review evidence or new review allowance.
 
 - `multioperator` — opt-in proposed-format transition rehearsal and maintenance (`rehearse`, `validate`, `add`, `order`, `event`, `append`, `render`). See [the migration runbook](../policies/multi-operator-migration.md#0-unified-migration-runbook). It never switches the invoking live project, grants ownership or runs Git rollback; rehearsal is not adoption.
+
+- `multioperator` — structured records and isolated migration rehearsal; current-format semantics require separate qualification.

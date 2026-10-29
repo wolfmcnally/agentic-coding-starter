@@ -1,3 +1,7 @@
+# Proposed plan discovery — REHEARSAL ONLY
+
+State lives in phases/ and events/; render produces disposable local views. The preserved context below still needs owner/caller cutover review.
+
 # Phased Execution Plan — Agentic Coding Starter Template
 
 Methodology work is primary one-shot with commit/push authority after required checks, including teach/learn, without delegated planning/coding or independent review. Product work defaults to eligible-primary planning/coding with bounded advisory review, preferring a permitted cross-provider adviser. Single-provider users get independent same-model instances; constrained primaries retain the delegated approval workflow. See `policies/review-lanes.md` and `policies/role-models.md`.
@@ -26,29 +30,6 @@ If you are working on a phase:
 5. Read the phase file of every phase id listed under `depends_on` in the frontmatter (`"3"` is `phase-3.md`).
 6. Do **not** slurp every `phase-*.md`. The frontmatter and brief refs are the contract for which predecessors and contracts actually matter.
 
-## Phase Dependency Graph
-
-```mermaid
-graph TD
-    P1[Phase 1<br/>Adopt the template for your project]
-```
-
-The adoption placeholder is this template's only phase. Improving the methodology this repository ships is not phase work and never enters `plan/` — it routes through direct implementation under [`../policies/review-lanes.md`](../policies/review-lanes.md). **Derived projects** stamped from this template via `stamp` enumerate every major phase the brief surfaces at bootstrap (each as a sketched `plan/phase-N.md` file at lower fidelity), per [`../briefs/methodology.md`](../briefs/methodology.md) §6 and [`../briefs/agentic-bootstrap.md`](../briefs/agentic-bootstrap.md) §8. Sub-phases stay JIT (drafted at parent open via `kickoff` Step 1a) and ripple at every phase close per [`../policies/phase-ripple.md`](../policies/phase-ripple.md).
-
-## Phase Table
-
-Status legend: ⏳ Not Started · ⬅️ Next (at most one) · 🚧 In Progress · ✅ Completed.
-
-| Phase                  | Title                                | Status |
-|------------------------|--------------------------------------|--------|
-| [Phase 1](phase-1.md)  | Adopt the template for your project  | ⬅️     |
-
-`kickoff` flips `⬅️` → `🚧` on start, `🚧` → `✅` on completion, and advances `⬅️` to the lowest-numbered `⏳` row whose dependencies are complete. Numbers of phases that have not started follow their order of execution; a phase inserted ahead of waiting work is given that work's number with `./bin/renumber-phases`. Status does not live in per-phase frontmatter.
-
-Every phase row carries exactly one recognized status. An idle incomplete
-project has exactly one `⬅️`; active work may have zero while its executable
-row is `🚧`; a complete project has zero; more than one is always invalid.
-
 ## Methodology work is not phase work
 
 Improving the methodology this template ships — its instructions, policies, briefs, skills, role definitions, orchestration code and their proofs — does not belong in `plan/`. It routes through primary one-shot implementation and the required checks, with commit/push authority and no independent review, per [`../policies/review-lanes.md`](../policies/review-lanes.md). `plan/` is for product work: the thing the template is being used to build. In this repository that surface is `project/`, and Phase 1 is the placeholder that hands it to you.
@@ -57,7 +38,7 @@ That methodology is this template's subject matter does not make it this templat
 
 ## Decomposition ledger (convention)
 
-As a plan grows, this file also records the *why* of its own shape, in prose near the phase table: when a sub-phase is inserted, note when it was drafted, at whose close, what it carved off, what invariant it must preserve, and why the numbering is what it is; when phases are renumbered or reordered, record the event and what it did (and did not) change in the dependency structure; and precede a large phase table with a short critical-path narrative — ordering rationale, parallelism opportunities, and any ratified reversals with their dates. Insertion and renumbering are governed by [`../policies/phase-status.md`](../policies/phase-status.md) § Numbers follow the order of upcoming work and done with [`../bin/renumber-phases`](../bin/renumber-phases), which writes the renumbering record here; what a closing sub-phase must update downstream is governed by [`../policies/phase-ripple.md`](../policies/phase-ripple.md). This ledger is where the rationale survives. Retirement record, 2026-09-05 (operator-directed): phases 2, 3 and 4 were removed. Drafted 2026-09-04 to implement the [Astra-era development workflow](../briefs/astra-era-development.md), all three carried methodology work — routing configuration, kickoff and root instructions, canonical role definitions, policies and their proofs — and none touched `project/`. They were phase-shaped because "methodology is this template's product" was mistaken for "methodology is phase work". The route was corrected in policy on 2026-09-05, one day after the phases were drafted, but the rows survived the correction and Phase 3 still held `🚧`; this record closes that gap. The three rows ended differently and the record should not flatten them. Phase 2 closed with an END block and its work is delivered. Phase 3's implementation is delivered and was closed under the direct-implementation route, not under the phase workflow its own PARK record was written for. Phase 4 never started; its qualification and evaluation batches are prepared, unrun and separately priced, and they are listed under "What remains explicitly pending" in the [Astra-era development workflow](../briefs/astra-era-development.md) brief, which is now their home. `LOG.md` is append-only and unedited — no completed work was reverted and no completed phase was merged. In notes dated before 2026-09-05, "Phase 2", "Phase 3" and "Phase 4" refer to those retired methodology rows, not to any product phase a reader will find in this table.
+As a plan grows, this file also records the *why* of its own shape, in prose near the phase table: when a sub-phase is inserted, note when it was drafted, at whose close, what it carved off, what invariant it must preserve, and why the numbering is what it is; when phases are renumbered or reordered, record the event and what it did (and did not) change in the dependency structure; and precede a large phase table with a short critical-path narrative — ordering rationale, parallelism opportunities, and any ratified reversals with their dates. Insertion and renumbering are governed by [`../policies/phase-status.md`](../policies/phase-status.md) § Numbers follow the order of upcoming work and done with [``](), which writes the renumbering record here; what a closing sub-phase must update downstream is governed by [`../policies/phase-ripple.md`](../policies/phase-ripple.md). This ledger is where the rationale survives. Retirement record, 2026-09-05 (operator-directed): phases 2, 3 and 4 were removed. Drafted 2026-09-04 to implement the [Astra-era development workflow](../briefs/astra-era-development.md), all three carried methodology work — routing configuration, kickoff and root instructions, canonical role definitions, policies and their proofs — and none touched `project/`. They were phase-shaped because "methodology is this template's product" was mistaken for "methodology is phase work". The route was corrected in policy on 2026-09-05, one day after the phases were drafted, but the rows survived the correction and Phase 3 still held `🚧`; this record closes that gap. The three rows ended differently and the record should not flatten them. Phase 2 closed with an END block and its work is delivered. Phase 3's implementation is delivered and was closed under the direct-implementation route, not under the phase workflow its own PARK record was written for. Phase 4 never started; its qualification and evaluation batches are prepared, unrun and separately priced, and they are listed under "What remains explicitly pending" in the [Astra-era development workflow](../briefs/astra-era-development.md) brief, which is now their home. `LOG.md` is append-only and unedited — no completed work was reverted and no completed phase was merged. In notes dated before 2026-09-05, "Phase 2", "Phase 3" and "Phase 4" refer to those retired methodology rows, not to any product phase a reader will find in this table.
 
 A mature plan's ledger converges on a small vocabulary of **typed, dated, operator-attributed notes** (observed across ~30 phases in a donor project); use these forms rather than inventing new ones:
 
@@ -71,7 +52,7 @@ Large dependency graphs may annotate nodes beyond bare edges: `· GATE` (a phase
 
 ## Cross-Cutting Concerns (apply to every phase)
 
-These are the universals the template ships with. A project derived from this template inherits them and may add more. The canonical statements live in [`../CLAUDE.md`](../CLAUDE.md) §"Architectural invariants"; this list is a phase-work-flavored restatement for quick reference, not a second authority.
+These are the universals the template ships with. A project derived from this template inherits them and may add more. The canonical statements live in [`../CLAUDE.md`](../AGENTS.md) §"Architectural invariants"; this list is a phase-work-flavored restatement for quick reference, not a second authority.
 
 - **Briefs are the contract.** Every phase points at one or more files under `briefs/` for the canonical design. Phase files specify *how to build* the brief's design; they do not re-specify it. If a brief is ambiguous or wrong, fix the brief — don't work around it.
 - **Policies are the law.** Every phase honors every file under `policies/`. A policy violation blocks acceptance.
@@ -124,9 +105,9 @@ Shipped files are linked. A file a future phase will create may also appear, as 
 | Methodology                          | [`../briefs/methodology.md`](../briefs/methodology.md)    |
 | Incremental orchestration            | [`../briefs/incremental-orchestration.md`](../briefs/incremental-orchestration.md), [`../policies/orchestration-evidence.md`](../policies/orchestration-evidence.md) |
 | Bootstrap a new project              | [`../briefs/agentic-bootstrap.md`](../briefs/agentic-bootstrap.md) |
-| Top-level agent guidance             | [`../CLAUDE.md`](../CLAUDE.md)                            |
+| Top-level agent guidance             | [`../CLAUDE.md`](../AGENTS.md)                            |
 | Pinned third-party documentation     | [`../docs/README.md`](../docs/README.md), [`../policies/docs.md`](../policies/docs.md), [`../bin/check-catalogs`](../bin/check-catalogs) |
-| Activity log                         | [`../LOG.md`](../LOG.md)                                  |
+| Activity log                         | [`../LOG.md`](../log/README.md)                                  |
 | Lessons and maintenance flywheel     | [`../briefs/harness-self-improvement.md`](../briefs/harness-self-improvement.md), [`../policies/lessons.md`](../policies/lessons.md), [`../bin/lessons`](../bin/lessons), [`../bin/check-catalogs`](../bin/check-catalogs), [`../.claude/skills/sweep/SKILL.md`](../.claude/skills/sweep/SKILL.md) |
 | Toolchain contract                  | [`../bin/setup`](../bin/setup), [`../bin/test`](../bin/test), [`../bin/check`](../bin/check), [`../bin/check-receipt`](../bin/check-receipt), [`../bin/mutate`](../bin/mutate), [`../bin/python`](../bin/python), [`../policies/build-gates.md`](../policies/build-gates.md) |
 | Proof-estate reset and governance   | [`../briefs/test-suite-value-governance.md`](../briefs/test-suite-value-governance.md), [`../policies/test-suite-governance.md`](../policies/test-suite-governance.md), [`../tests/proof-estate.yaml`](../tests/proof-estate.yaml), [`../bin/test-governance`](../bin/test-governance), [`../reports/test-governance/starter-reset-summary.json`](../reports/test-governance/starter-reset-summary.json) |

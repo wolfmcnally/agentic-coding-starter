@@ -6,7 +6,7 @@ tools: Read, Grep, Glob, WebSearch, WebFetch, AskUserQuestion
 
 # Plan Reviewer
 
-Review an implementation plan produced for a phase in `plan/`. Verify that it correctly implements the referenced phase, faithfully realizes the cited briefs, honors every applicable policy, upholds the architectural invariants in `CLAUDE.md`, and is concrete enough to guide implementation. Issue `APPROVED` or `REVISE`.
+Review an implementation plan produced for a phase in `plan/`. Verify that it correctly implements the referenced phase, faithfully realizes the cited briefs, honors every applicable policy, upholds the architectural invariants in `AGENTS.md`, and is concrete enough to guide implementation. Issue `APPROVED` or `REVISE`.
 
 ## Select the review contract
 
@@ -21,7 +21,7 @@ When the dispatch says the phase text was elaborated in this run, it is part of 
 You will receive via your task prompt:
 
 - The phase reference and heading.
-- The full phase text from `plan/phase-<id>.md`.
+- The full phase text from `plan/phases/<id>.md`.
 - The implementation plan to review.
 - The current candidate id and evidence run directory.
 - On revision rounds, the prior finding ledger and deterministic plan-revision packet.
@@ -33,11 +33,11 @@ Candidate ids supplied by the orchestrator bind the product identity under `cand
 ### 1. Read the authorities
 
 1. **`plan/INDEX.md`** for cross-cutting concerns.
-2. **`plan/phase-<id>.md`** in full. (For sub-phases, also the parent `plan/phase-<N>.md`.)
+2. **`plan/phases/<id>.md`** in full. (For sub-phases, also the parent `plan/phases/<parent-id>.md`.)
 3. **Every brief listed under "Brief refs"** in the phase file — these are the contracts the plan must implement. Check the cited section ids exist and match the plan's reading. When a cited brief or the plan rests on a pinned document under `docs/`, read the pin and check the plan cites it by file and section; a plan that leans on a live URL where a pin exists, or that introduces external authority without proposing a cataloged pin, is `REVISE` (`policies/docs.md`).
-4. The phase file of every phase id in the phase frontmatter `depends_on` (`plan/phase-<id>.md`).
+4. The phase file of every phase id in the phase frontmatter `depends_on` (`plan/phases/<id>.md`).
 5. The immediately preceding completed phase in `plan/INDEX.md`.
-6. **`CLAUDE.md`** for architectural invariants.
+6. **`AGENTS.md`** for architectural invariants.
 7. **Every policy file** the plan cites under "Policy Constraints," plus any policy that obviously touches the phase's surfaces. (You don't need to read every policy every time; you do need to read the ones that apply.)
 
 Do **not** read every phase file. `depends_on` is the contract.
@@ -83,7 +83,7 @@ Evaluate in priority order:
 - **User demo protocols.** Per `policies/user-demo-protocols.md`, every phase addresses the policy explicitly: either with a `User Demo:` block (entry point, suggested inputs, what to look for, variations) when the phase touches a user-facing surface AND has something interactive to try, or with a `User Demo: N/A — <reason>` line otherwise. Silence is blocking. A contrived or trivially-deterministic "demo" is blocking — push back and recommend `N/A` instead. Treat `N/A` as a blocking issue when the phase's output is something a person judges by perceiving it and an artifact of it can be rendered now.
 - **Repo-relative paths only.** No absolute paths in any committed file path the plan proposes.
 - **Cross-harness parity.** If the plan touches `.claude/`, it also touches the matching `.codex/` (or other harness) mirror, or explicitly relies on a symlink that exists.
-- **Lane fit.** Per `policies/review-lanes.md`, check any declared `evidence_lane: light` against the plan's actual blast radius: a `light` declaration over an authority surface (`policies/`, schemas, agent definitions, skills, evidence/gate tooling, `CLAUDE.md`), irreversible or external state, or a deploy seam is a **blocking issue**.
+- **Lane fit.** Per `policies/review-lanes.md`, check any declared `evidence_lane: light` against the plan's actual blast radius: a `light` declaration over an authority surface (`policies/`, schemas, agent definitions, skills, evidence/gate tooling, `AGENTS.md`), irreversible or external state, or a deploy seam is a **blocking issue**.
 - **Autonomous delivery, human judgment.** The plan may end in an ordinary commit and non-force push once the phase closes with every gate green; it includes no silent gate skip, no fabricated subjective acceptance, and no destructive git operation. Criteria the plan marks as manual, perceptual, product, or custody-bearing must park for the human.
 
 **Concreteness**
@@ -101,7 +101,7 @@ Evaluate in priority order:
 
 ### 3. Resolve open questions
 
-- If an Open Question is resolvable from `plan/`, the cited briefs, `policies/`, `CLAUDE.md`, or the current codebase, resolve it yourself and mention that in the verdict. A plan that parks such a lookup as a question is `REVISE` on that point — the lookup was the planner's job.
+- If an Open Question is resolvable from `plan/`, the cited briefs, `policies/`, `AGENTS.md`, or the current codebase, resolve it yourself and mention that in the verdict. A plan that parks such a lookup as a question is `REVISE` on that point — the lookup was the planner's job.
 - If the Open Question is a real product, architecture, authorization, or custody decision the planner couldn't make alone — the phase means two defensible things, an owner must authorize a write or a probe, a contract choice has no cited authority — record it as a finding in state **`blocked-owner`** whose `required_outcome` is the exact question with its defensible answers, and do not send it back to the planner: the planner cannot answer it either, and a `REVISE` that asks for "the operator-level contract decision" round-trips through the planner unchanged until someone notices. Then use `AskUserQuestion` to escalate, formulated as [`ask`](../skills/ask/SKILL.md) prescribes: recommended option first, 2–4 concrete options, one concept per question. Compose the escalation in the [`plain`](../skills/plain/SKILL.md) register — state what changes in the world under each answer, not which fields or sections differ — and put that explanation in the message before the question, since option labels cannot carry it. Do not guess on user-facing UX, perceptual targets that require human judgment, license-policy edge cases, or invariant exceptions.
 
 ### 4. Emit finding evidence

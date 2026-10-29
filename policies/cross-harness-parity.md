@@ -10,7 +10,7 @@ Every cross-harness capability has **one canonical source** and **N harness-spec
 
 | Surface | Canonical source | Harness mirrors |
 |---|---|---|
-| Project instructions | `CLAUDE.md` | `AGENTS.md` → symlink to `CLAUDE.md` |
+| Project instructions | regular `AGENTS.md` | the same regular `AGENTS.md`, no alias |
 | Skills | `.claude/skills/<name>/` (skill directory) | `.agents/skills/<name>` → **directory** symlink to `../../.claude/skills/<name>` |
 | Agent roles | `.claude/agents/<role>.md` | `.codex/agents/<role>.toml` (thin wrapper TOML — symlink not possible because formats differ) |
 | Static context (briefs, policies, plan) | The files themselves | (none — both harnesses read the same files directly) |
@@ -23,7 +23,7 @@ Surface choice is dictated by harness mechanics, and **the canonical form for ea
 
 The default is symlink. Drop to wrapper only when the symlink would feed the mirror's parser a file format it cannot read.
 
-This shape follows the harnesses' discovery contracts: Claude Code reads `CLAUDE.md`, `.claude/skills/`, and `.claude/agents/`; Codex reads `AGENTS.md`, `.codex/agents/` (agent definitions), and `.agents/skills/` (native project-skill discovery, per [developers.openai.com/codex/skills](https://developers.openai.com/codex/skills)). Repo-level Codex skills are invoked with `$name` (or selected through `/skills`), not `/name`. Deprecated custom prompts live only under the user's `~/.codex/prompts/` and are not a repo-level mirror surface.
+This shape follows the harnesses' discovery contracts: Claude Code reads `AGENTS.md`, `.claude/skills/`, and `.claude/agents/`; Codex reads `AGENTS.md`, `.codex/agents/` (agent definitions), and `.agents/skills/` (native project-skill discovery, per [developers.openai.com/codex/skills](https://developers.openai.com/codex/skills)). Repo-level Codex skills are invoked with `$name` (or selected through `/skills`), not `/name`. Deprecated custom prompts live only under the user's `~/.codex/prompts/` and are not a repo-level mirror surface.
 
 ## Skill invocation syntax
 
@@ -37,13 +37,13 @@ Committed documentation must use the bare skill name in harness-neutral prose (f
 ## Rules
 
 1. **Edit canonical files only.**
-   - Top-level instruction changes go in `CLAUDE.md`.
+   - Top-level instruction changes go in `AGENTS.md`.
    - Skill changes go in `.claude/skills/<name>/SKILL.md` and its canonical adjacent resources.
    - Agent role body changes go in `.claude/agents/<role>.md`.
    - Never edit `AGENTS.md`, the contents of any `.agents/skills/<name>/` (those files live in the canonical `.claude/skills/<name>/` and are reached through a directory symlink), or any `.codex/agents/<role>.toml` body directly without making the corresponding canonical change in the same commit.
 
 2. **Keep compatibility paths as symlinks where possible.**
-   - `AGENTS.md` is a symlink to `CLAUDE.md`. Verify with `readlink AGENTS.md`.
+   - `AGENTS.md` is a regular primary constitution and top-level `CLAUDE.md` is absent, including a dangling symlink. Verify actual file types, the installed-Claude version gate and instruction-loading evidence separately.
    - If a harness can follow symlinks for skill directories, prefer that to maintaining a separate mirror.
 
 3. **Codex agent wrappers mirror Claude Code agent definitions.**
@@ -66,7 +66,7 @@ Committed documentation must use the bare skill name in harness-neutral prose (f
 
 ## Instruction delivery
 
-`CLAUDE.md` must not exceed 20480 UTF-8 bytes and `.claude/skills/kickoff/SKILL.md` must not exceed 10240 UTF-8 bytes. The ceilings were raised from 16384 and 8192 on 2026-09-05 by operator decision, after the root file reached 8 bytes of headroom while every new brief or policy requires a catalog row in it; the budget constrains sprawl and must never be met by deleting an obligation. The root ceiling also spends a documented external budget: [`../briefs/session-context-compaction.md`](../briefs/session-context-compaction.md) records a 32 KiB default combined project-instruction budget of which this repository's root file is only one contribution, so the retired 16384 was half of it and 20480 is 62.5%, leaving 12288 bytes for every other instruction source in the chain — including the operator's own machine-wide and nested files, which this repository cannot see or bound. That arithmetic was put to the operator on 2026-09-05 with the raise already applied, and they ratified 20480 knowing it; the entry ceiling is unaffected, since skill bodies are progressively disclosed and sit outside that budget. Any further raise re-opens this question rather than inheriting the answer. Preserve the root hard-rule clauses and restriction/waiver paragraph, essential invariants, complete concise brief/policy/skill/role catalogs, reading order and toolchain/delivery boundaries. Its four zone markers occur exactly once in order: `PROJECT_CONTEXT_START`, `PROJECT_CONTEXT_END`, `METHODOLOGY_CONTRACT_START`, `METHODOLOGY_CONTRACT_END`, each in an HTML comment. Remove repetition before moving extended explanations to existing canonical owners; a byte ceiling never authorizes deleting an obligation.
+`AGENTS.md` must not exceed 20480 UTF-8 bytes and `.claude/skills/kickoff/SKILL.md` must not exceed 10240 UTF-8 bytes. The ceilings were raised from 16384 and 8192 on 2026-09-05 by operator decision, after the root file reached 8 bytes of headroom while every new brief or policy requires a catalog row in it; the budget constrains sprawl and must never be met by deleting an obligation. The root ceiling also spends a documented external budget: [`../briefs/session-context-compaction.md`](../briefs/session-context-compaction.md) records a 32 KiB default combined project-instruction budget of which this repository's root file is only one contribution, so the retired 16384 was half of it and 20480 is 62.5%, leaving 12288 bytes for every other instruction source in the chain — including the operator's own machine-wide and nested files, which this repository cannot see or bound. That arithmetic was put to the operator on 2026-09-05 with the raise already applied, and they ratified 20480 knowing it; the entry ceiling is unaffected, since skill bodies are progressively disclosed and sit outside that budget. Any further raise re-opens this question rather than inheriting the answer. Preserve the root hard-rule clauses and restriction/waiver paragraph, essential invariants, complete concise brief/policy/skill/role catalogs, reading order and toolchain/delivery boundaries. Its four zone markers occur exactly once in order: `PROJECT_CONTEXT_START`, `PROJECT_CONTEXT_END`, `METHODOLOGY_CONTRACT_START`, `METHODOLOGY_CONTRACT_END`, each in an HTML comment. Remove repetition before moving extended explanations to existing canonical owners; a byte ceiling never authorizes deleting an obligation.
 
 The kickoff entry directly links all seven adjacent resources and explicitly orders reading each before executing its branch:
 
@@ -109,7 +109,7 @@ When this template adopts a third harness (e.g., aider, OpenHands, Cursor, Conti
 
 When you discover drift between a canonical file and a mirror:
 
-1. Identify which file is canonical. (Hint: `.claude/` for agent definitions; the repo root `CLAUDE.md` for top-level instructions.)
+1. Identify which file is canonical. (Hint: `.claude/` for agent definitions; the repo root `AGENTS.md` for top-level instructions.)
 2. Apply the fix at the canonical level.
 3. Re-generate (or hand-update) each mirror to match.
 4. Commit the repair with a message that names the surface that was out of parity and what the fix was.

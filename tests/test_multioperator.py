@@ -64,7 +64,23 @@ def convert(tmp_path: Path, source: Path, phases: dict[str, str], **extra: objec
         if (source / "bin" / name).is_file()
     }
     write_json(
-        mapping, {"writer": "migration-author", "phases": phases, "retirements": recipe, **extra}
+        mapping,
+        {
+            "writer": "migration-author",
+            "phases": phases,
+            "retirements": recipe,
+            "tool_replacements": {
+                name: hashlib.sha256((source / name).read_bytes()).hexdigest()
+                for name in (
+                    "bin/multioperator",
+                    "lib/agentic_starter/multioperator.py",
+                    "lib/agentic_starter/multioperator_transition.py",
+                )
+                if (source / name).exists()
+                and (source / name).read_bytes() != (ROOT / name).read_bytes()
+            },
+            **extra,
+        },
     )
     output = tmp_path / "converted"
     result(run("rehearse", "--source", source, "--output", output, "--mapping", mapping))
@@ -74,15 +90,40 @@ def convert(tmp_path: Path, source: Path, phases: dict[str, str], **extra: objec
 def test_actual_starter_rehearsal_preserves_source_and_history(tmp_path: Path) -> None:
     """Use the real committed corpus, including its large historical log and symlinks."""
     source = tmp_path / "faithful-starter"
+    # Old-format input comes from our Git provenance; it is not a live fallback.
+    manifest = ROOT / "collaboration/manifest.json"
+    commit = json.loads(manifest.read_text())["source_commit"] if manifest.exists() else "HEAD"
+    archive = subprocess.check_output(["git", "archive", commit], cwd=ROOT)
+    source.mkdir()
+    import io
+    import tarfile
+
+    with tarfile.open(fileobj=io.BytesIO(archive)) as files:
+        files.extractall(source, filter="data")
+    subprocess.run(["git", "init", "-q", "-b", "master", str(source)], check=True)
     subprocess.run(
-        ["git", "clone", "--quiet", "--no-hardlinks", str(ROOT), str(source)],
+        ["git", "config", "user.email", "fixture@example.invalid"],
+        cwd=source,
         check=True,
-        capture_output=True,
+    )
+    subprocess.run(["git", "config", "user.name", "Fixture"], cwd=source, check=True)
+    paths = (
+        subprocess.check_output(
+            ["git", "ls-files", "--others", "--exclude-standard", "-z"], cwd=source
+        )
+        .decode()
+        .split("\0")
+    )
+    subprocess.run(["git", "add", "--", *[p for p in paths if p]], cwd=source, check=True)
+    subprocess.run(
+        ["git", "commit", "-q", "-m", "Faithful pre-transition fixture"],
+        cwd=source,
+        check=True,
     )
     source_plan = snapshot(source / "plan")
     live_log = (source / "LOG.md").read_bytes()
     status = subprocess.check_output(["git", "status", "--porcelain"], cwd=source)
-    original = subprocess.check_output(["git", "show", "HEAD:LOG.md"], cwd=ROOT)
+    original = subprocess.check_output(["git", "show", commit + ":LOG.md"], cwd=ROOT)
     output = convert(tmp_path, source, {"1": "starter-template-adoption"})
     wrong_recipe = json.loads((tmp_path / "mapping.json").read_text())
     wrong_recipe["retirements"]["bin/log-append"] = "0" * 64
@@ -90,13 +131,40 @@ def test_actual_starter_rehearsal_preserves_source_and_history(tmp_path: Path) -
     write_json(recipe_file, wrong_recipe)
     wrong_destination = tmp_path / "wrong-preimage"
     wrong = run(
-        "rehearse", "--source", source, "--output", wrong_destination, "--mapping", recipe_file
+        "rehearse",
+        "--source",
+        source,
+        "--output",
+        wrong_destination,
+        "--mapping",
+        recipe_file,
     )
     assert (
         wrong.returncode == 2
         and "preimage mismatch" in wrong.stderr
         and not wrong_destination.exists()
     ), "MIGRATION RETIREMENT PREIMAGE NOT HELD"
+    update_recipe = json.loads((tmp_path / "mapping.json").read_text())
+    assert update_recipe["tool_replacements"]
+    wrong_update = json.loads(json.dumps(update_recipe))
+    wrong_update["tool_replacements"][next(iter(wrong_update["tool_replacements"]))] = "0" * 64
+    update_file = tmp_path / "wrong-tool-preimage.json"
+    write_json(update_file, wrong_update)
+    update_destination = tmp_path / "wrong-tool-replacement"
+    refused_update = run(
+        "rehearse",
+        "--source",
+        source,
+        "--output",
+        update_destination,
+        "--mapping",
+        update_file,
+    )
+    assert (
+        refused_update.returncode == 2
+        and "replacement preimage required" in refused_update.stderr
+        and not update_destination.exists()
+    ), "MIGRATION TOOL REPLACEMENT IGNORED RECIPIENT PREIMAGE"
     assert (output / ".collaboration-views/LOG.md").read_bytes() == original, (
         "MIGRATION HISTORICAL BYTES LOST"
     )
@@ -194,6 +262,24 @@ def test_actual_starter_rehearsal_preserves_source_and_history(tmp_path: Path) -
     assert parity_test.returncode == 0, (
         "MIGRATION TARGET PARITY FIXTURE LOST: " + parity_test.stdout + parity_test.stderr
     )
+    target_lint = subprocess.run(
+        [str(output / "bin/check"), "lint"],
+        cwd=output,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "UV_OFFLINE": "1"},
+        timeout=90,
+    )
+    assert target_lint.returncode == 0, (
+        "MIGRATION RETIREMENT BROKE LINT CALLER: " + target_lint.stdout + target_lint.stderr
+    )
+    migration_policy = (output / "policies/multi-operator-migration.md").read_text()
+    assert "no top-level `CLAUDE.md` file or symlink" in migration_policy, (
+        "MIGRATION CONFUSED PRIMARY CONSTITUTION WITH RETIRED ALIAS"
+    )
+    assert "project or ancestor `CLAUDE.md`" in migration_policy, (
+        "MIGRATION REWROTE NATIVE PRECEDENCE FACT"
+    )
     # No hook is installed: this calls the real replacement staged validator directly.
     for args in [
         ("init", "-b", "master"),
@@ -216,7 +302,9 @@ def test_actual_starter_rehearsal_preserves_source_and_history(tmp_path: Path) -
     wrong_event["reason"] = "forged rewrite"
     frozen_event.write_text(json.dumps(wrong_event))
     subprocess.run(
-        ["git", "-C", str(output), "add", str(frozen_event)], check=True, capture_output=True
+        ["git", "-C", str(output), "add", str(frozen_event)],
+        check=True,
+        capture_output=True,
     )
     staged = run("validate", "--root", output, "--staged")
     assert staged.returncode == 2 and "immutable record rewrite" in staged.stderr, (
@@ -224,9 +312,47 @@ def test_actual_starter_rehearsal_preserves_source_and_history(tmp_path: Path) -
     )
     frozen_event.write_bytes(original_event)
     subprocess.run(
-        ["git", "-C", str(output), "add", str(frozen_event)], check=True, capture_output=True
+        ["git", "-C", str(output), "add", str(frozen_event)],
+        check=True,
+        capture_output=True,
     )
     result(run("validate", "--root", output, "--staged"))
+    fresh_document = tmp_path / "fresh.md"
+    fresh_document.write_text(
+        "---\n"
+        + yaml.safe_dump(
+            {
+                "id": "fresh-work-package",
+                "title": "Fresh",
+                "order": "100",
+                "parent": None,
+                "depends_on": [],
+                "informs": [],
+            }
+        )
+        + "---\n# Fresh\n"
+    )
+    result(run("add", "--root", output, "--document", fresh_document, "--writer", "fixture"))
+    fresh = next(
+        p
+        for p in (output / "plan/events").glob("*.json")
+        if json.loads(p.read_text())["phase"] == "fresh-work-package"
+    )
+    fresh_bytes = fresh.read_bytes()
+    subprocess.run(["git", "-C", str(output), "add", "plan"], check=True, capture_output=True)
+    result(run("validate", "--root", output, "--staged"))
+    forged = json.loads(fresh_bytes)
+    forged["state"] = "completed"
+    fresh.write_text(json.dumps(forged))
+    subprocess.run(["git", "-C", str(output), "add", str(fresh)], check=True, capture_output=True)
+    fresh.write_bytes(fresh_bytes)
+    rejected = run("validate", "--root", output, "--staged")
+    assert rejected.returncode == 2 and "new completed genesis" in rejected.stderr, (
+        "MIGRATION UNPROVED COMPLETED GENESIS ADMITTED: " + rejected.stderr
+    )
+    subprocess.run(["git", "-C", str(output), "add", str(fresh)], check=True, capture_output=True)
+    result(run("validate", "--root", output, "--staged"))
+    result(run("render", "--root", output))
     manifest = json.loads((output / "collaboration/manifest.json").read_text())
     assert manifest["adopted"] is False, "MIGRATION REHEARSAL CLAIMED ADOPTION"
     assert json.loads((output / "collaboration/adoption-blockers.json").read_text())["remaining"], (
@@ -242,7 +368,13 @@ def test_actual_starter_rehearsal_preserves_source_and_history(tmp_path: Path) -
     result(run("render", "--root", output, "--check"))
     before = snapshot(output)
     collision = run(
-        "rehearse", "--source", source, "--output", output, "--mapping", tmp_path / "mapping.json"
+        "rehearse",
+        "--source",
+        source,
+        "--output",
+        output,
+        "--mapping",
+        tmp_path / "mapping.json",
     )
     assert collision.returncode == 2 and "must be absent" in collision.stderr, (
         "MIGRATION OVERWROTE EXISTING DESTINATION"
@@ -295,14 +427,21 @@ def source(tmp_path: Path) -> Path:
     return repo
 
 
-MAPPING = {"1": "parent-work-package", "1.1": "first-work-package", "1.2": "second-work-package"}
+MAPPING = {
+    "1": "parent-work-package",
+    "1.1": "first-work-package",
+    "1.2": "second-work-package",
+}
 
 
 def checkpoint() -> dict[str, object]:
     return {
         "owners": {"1": "operator-a"},
         "active_checkpoints": {
-            "1": {"terminal": True, "evidence": "retained checkpoint; original run stays closed"}
+            "1": {
+                "terminal": True,
+                "evidence": "retained checkpoint; original run stays closed",
+            }
         },
     }
 
@@ -374,6 +513,87 @@ def test_transition_and_maintenance_refuse_false_state(tmp_path: Path, source: P
     )
     (output / "plan/events" / (fork["id"] + ".json")).unlink()
     result(run("validate", "--root", output))
+    selected = run(
+        "select",
+        "--root",
+        output,
+        "--owner",
+        "operator-b",
+        "--phase",
+        "second-work-package",
+    )
+    result(selected)
+    assert json.loads(selected.stdout)["phase"] == "second-work-package", (
+        "SELECTION LOST EXACT PHASE"
+    )
+    wrong_owner = run(
+        "select",
+        "--root",
+        output,
+        "--owner",
+        "operator-c",
+        "--phase",
+        "second-work-package",
+    )
+    assert wrong_owner.returncode == 2 and "another operator" in wrong_owner.stderr, (
+        "SELECTION BORROWED OWNER CUSTODY"
+    )
+    automatic = run("select", "--root", output, "--owner", "operator-b")
+    assert automatic.returncode == 2 and "no unique next" in automatic.stderr, (
+        "SELECTION FABRICATED NEXT WORK"
+    )
+    from concurrent.futures import ThreadPoolExecutor
+
+    proposals = []
+    for index in range(2):
+        proposal = {
+            **event,
+            "id": uuid.uuid4().hex,
+            "previous": event["id"],
+            "from": "in-progress",
+            "reason": "Bounded concurrent fixture successor " + str(index),
+        }
+        target = tmp_path / ("successor-" + str(index) + ".json")
+        write_json(target, proposal)
+        proposals.append(target)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        attempts = list(
+            pool.map(lambda path: run("event", "--root", output, "--file", path), proposals)
+        )
+    assert sorted(item.returncode for item in attempts) == [0, 2], (
+        "CONCURRENT PHASE SUCCESSORS BOTH PUBLISHED"
+    )
+    result(run("validate", "--root", output))
+    winner = json.loads(run("status", "--root", output).stdout)["heads"]["second-work-package"]
+    event = winner
+    # Actual distinct bodies at a common fixture time expose duplicate sequence allocation.
+    bodies = []
+    for index in range(2):
+        target = tmp_path / ("parallel-" + str(index) + ".md")
+        target.write_text("## Concurrent fixture\nBody " + str(index) + "\n")
+        bodies.append(target)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        appends = list(
+            pool.map(
+                lambda path: run(
+                    "append",
+                    "--root",
+                    output,
+                    "--writer",
+                    "concurrent-fixture",
+                    "--body",
+                    path,
+                    "--at",
+                    "2026-01-01T00:00:00Z",
+                ),
+                bodies,
+            )
+        )
+    assert all(item.returncode == 0 for item in appends), (
+        "CONCURRENT LOG APPEND REFUSED VALID INPUT"
+    )
+    validated = run("validate", "--root", output)
+    assert validated.returncode == 0, "CONCURRENT LOG SEQUENCE FORKED"
     accepted_bytes = output / "qualification.json"
     accepted_bytes.write_text("Synthetic retained fixture; not native acceptance")
     completion = {
@@ -400,20 +620,15 @@ def test_transition_and_maintenance_refuse_false_state(tmp_path: Path, source: P
         "sha256": hashlib.sha256(accepted_bytes.read_bytes()).hexdigest(),
     }
     write_json(file, completion)
-    result(run("event", "--root", output, "--file", file))
+    false_close = run("event", "--root", output, "--file", file)
+    assert false_close.returncode == 2, "MAINTENANCE ARBITRARY ACCEPTANCE ADMITTED"
+    assert not (output / "plan/events" / (completion["id"] + ".json")).exists()
     assert (
         json.loads(run("validate", "--root", output).stdout)["heads"]["second-work-package"][
             "state"
         ]
-        == "completed"
-    ), "MAINTENANCE VALID COMPLETION LOST"
-    retained = accepted_bytes.read_bytes()
-    accepted_bytes.unlink()
-    missing = run("validate", "--root", output)
-    assert missing.returncode == 2 and "acceptance artifact" in missing.stderr, (
-        "MAINTENANCE MISSING ACCEPTANCE PASSED"
+        == "in-progress"
     )
-    accepted_bytes.write_bytes(retained)
     parent_path = output / "plan/phases/parent-work-package.md"
     parent_original = parent_path.read_bytes()
     _, metadata, parent_body = parent_path.read_text().split("---\n", 2)
@@ -449,7 +664,15 @@ def test_transition_and_maintenance_refuse_false_state(tmp_path: Path, source: P
     )
     assert snapshot(output) == before_order_refusal, "MAINTENANCE ORDER REFUSAL WROTE RECORDS"
     donor_state = (output / "collaboration/manifest.json").read_bytes()
-    held = run("transfer-preflight", "--entry", "teach", "--donor", output, "--recipient", source)
+    held = run(
+        "transfer-preflight",
+        "--entry",
+        "teach",
+        "--donor",
+        output,
+        "--recipient",
+        source,
+    )
     assert held.returncode == 2 and "has not migrated" in held.stderr, (
         "MIGRATION REHEARSAL DONOR ACCEPTED"
     )
@@ -458,7 +681,13 @@ def test_transition_and_maintenance_refuse_false_state(tmp_path: Path, source: P
     (output / "collaboration/manifest.json").write_text(json.dumps(state))
     for entry in ("teach", "learn"):
         classified = run(
-            "transfer-preflight", "--entry", entry, "--donor", output, "--recipient", source
+            "transfer-preflight",
+            "--entry",
+            entry,
+            "--donor",
+            output,
+            "--recipient",
+            source,
         )
         result(classified)
         route = json.loads(classified.stdout)
@@ -470,7 +699,13 @@ def test_transition_and_maintenance_refuse_false_state(tmp_path: Path, source: P
     receiver = tmp_path / "adopted-receiver"
     shutil.copytree(output, receiver, symlinks=True)
     maintenance = run(
-        "transfer-preflight", "--entry", "teach", "--donor", output, "--recipient", receiver
+        "transfer-preflight",
+        "--entry",
+        "teach",
+        "--donor",
+        output,
+        "--recipient",
+        receiver,
     )
     result(maintenance)
     assert json.loads(maintenance.stdout)["route"] == "maintenance", "MIGRATION ADOPTED ROUTE WRONG"
@@ -479,7 +714,13 @@ def test_transition_and_maintenance_refuse_false_state(tmp_path: Path, source: P
     receiver_state["adopted"] = False
     receiver_marker.write_text(json.dumps(receiver_state))
     pending = run(
-        "transfer-preflight", "--entry", "learn", "--donor", output, "--recipient", receiver
+        "transfer-preflight",
+        "--entry",
+        "learn",
+        "--donor",
+        output,
+        "--recipient",
+        receiver,
     )
     assert pending.returncode == 2 and "unresolved rehearsal" in pending.stderr, (
         "MIGRATION PENDING RECEIVER ACCEPTED"
@@ -487,7 +728,13 @@ def test_transition_and_maintenance_refuse_false_state(tmp_path: Path, source: P
     marker = output / "collaboration/manifest.json"
     marker.write_text("{}")
     invalid = run(
-        "transfer-preflight", "--entry", "teach", "--donor", output, "--recipient", source
+        "transfer-preflight",
+        "--entry",
+        "teach",
+        "--donor",
+        output,
+        "--recipient",
+        source,
     )
     assert invalid.returncode == 2 and "malformed" in invalid.stderr, (
         "MIGRATION UNKNOWN DECLARATION DEFAULTED OK"
@@ -496,7 +743,13 @@ def test_transition_and_maintenance_refuse_false_state(tmp_path: Path, source: P
     receiver_state["adopted"] = True
     receiver_marker.write_text(json.dumps(receiver_state))
     not_migrated = run(
-        "transfer-preflight", "--entry", "learn", "--donor", source, "--recipient", receiver
+        "transfer-preflight",
+        "--entry",
+        "learn",
+        "--donor",
+        source,
+        "--recipient",
+        receiver,
     )
     assert not_migrated.returncode == 2 and "has not migrated" in not_migrated.stderr, (
         "MIGRATION LEGACY DONOR ACCEPTED"
@@ -542,9 +795,12 @@ def test_transition_and_maintenance_refuse_false_state(tmp_path: Path, source: P
     )
     result(run("render", "--root", output))
     projected = (output / ".collaboration-views/LOG.md").read_bytes()
-    assert projected == (source / "LOG.md").read_bytes() + body.read_bytes(), (
-        "MAINTENANCE LOG PROJECTION WRONG"
-    )
+    prefix = (source / "LOG.md").read_bytes()
+    first_body, second_body = [path.read_bytes() for path in bodies]
+    assert projected in (
+        prefix + first_body + second_body + body.read_bytes(),
+        prefix + second_body + first_body + body.read_bytes(),
+    ), "MAINTENANCE LOG PROJECTION WRONG"
     result(run("render", "--root", output, "--check"))
     entry = next(
         p for p in (output / "log/entries").glob("*.md") if b'"operator-b"' in p.read_bytes()

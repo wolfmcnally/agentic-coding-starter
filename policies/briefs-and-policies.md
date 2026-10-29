@@ -45,14 +45,14 @@ If the answer is "all three," the content is in three different shapes and proba
 
 ## Catalogs
 
-`CLAUDE.md` carries:
+`AGENTS.md` carries:
 
 - **Briefs catalog** — every file in `briefs/`.
 - **Policies catalog** — every file in `policies/`.
 
 Both catalogs must list every file in their respective directories, and every file in those directories must be in its catalog. Orphans on either side cause agents to read past content or miss it entirely.
 
-`docs/` is cataloged in `docs/README.md` rather than in `CLAUDE.md`: a pinned document is reached through the brief or policy that cites it, and `CLAUDE.md` is read every turn. The same no-orphans rule applies there ([`docs.md`](docs.md)).
+`docs/` is cataloged in `docs/README.md` rather than in `AGENTS.md`: a pinned document is reached through the brief or policy that cites it, and `AGENTS.md` is read every turn. The same no-orphans rule applies there ([`docs.md`](docs.md)).
 
 ## Authority
 

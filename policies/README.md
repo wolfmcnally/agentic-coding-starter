@@ -27,7 +27,7 @@ Don't add a policy for:
 - Research, surveys, or methodology investigations. Those are briefs — a brief *informs* a policy; the policy is the rule extracted from it.
 - Logs of what happened. Those are commits and `LOG.md`.
 - Active execution queues. Live queues are directories at the repo root (`user-actions/`, `lessons/`), not policy bodies. A policy may *govern* a queue's format and lifecycle; the queue itself does not live under `policies/`.
-- Identity / framing material that every agent needs every turn. That stays in `CLAUDE.md`.
+- Identity / framing material that every agent needs every turn. That stays in `AGENTS.md`.
 
 ## How a policy evolves
 
@@ -45,14 +45,14 @@ Don't add a policy for:
 
 ## Catalog
 
-The catalog of policies in this repo is in [`../CLAUDE.md`](../CLAUDE.md) under "Policies catalog." Keep that catalog and the files in this directory in sync — no orphans either way.
+The catalog of policies in this repo is in [`../CLAUDE.md`](../AGENTS.md) under "Policies catalog." Keep that catalog and the files in this directory in sync — no orphans either way.
 
 ## Authority and precedence
 
 When two rules conflict:
 
 1. The human's global instructions override everything in this repo.
-2. The repo's `CLAUDE.md` (Hard rules and architectural invariants) overrides individual policy files.
+2. The repo's `AGENTS.md` (Hard rules and architectural invariants) overrides individual policy files.
 3. Policy files override briefs (briefs inform, policies bind) and plan files (a plan that proposes work violating a policy must change — the plan, not the policy).
 4. `plan/` files override briefs (the plan is the refinement — it knows what the brief did not; update the brief to record the refinement).
 5. A more-specific policy overrides a more-general one.

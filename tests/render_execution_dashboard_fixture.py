@@ -28,7 +28,7 @@ def main() -> int:
     engine.mkdir(parents=True, exist_ok=True)
     (engine / "plan").mkdir(exist_ok=True)
     (engine / "policies").mkdir(exist_ok=True)
-    (engine / "CLAUDE.md").write_text("# Visual fixture\n", encoding="utf-8")
+    (engine / "AGENTS.md").write_text("# Visual fixture\n", encoding="utf-8")
     bundle = telemetry.validate_ledger(FIXTURE)[0]
     (engine / "EXECUTION_LOG.jsonl").write_text(
         json.dumps(bundle, sort_keys=True, separators=(",", ":")) + "\n",

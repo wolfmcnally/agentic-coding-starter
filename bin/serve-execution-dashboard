@@ -12,7 +12,7 @@ if [[ $# -ne 0 ]]; then
 fi
 
 # The occupancy probe is a seam so tests can be deterministic. Port 18080 is a
-# SHARED reserved port (CLAUDE.md reserves it for ad-hoc rendered-book/static
+# SHARED reserved port (AGENTS.md reserves it for ad-hoc rendered-book/static
 # HTML serving, and phase plans put fixture servers there), so a test that
 # probes the live host fails whenever a developer is legitimately using it —
 # observed in Phase 26.9.2, where the acceptance battery's fixture server made

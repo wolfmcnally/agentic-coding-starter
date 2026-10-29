@@ -19,14 +19,14 @@ The result is a workflow where each phase is incremental and testable. Objective
 
 ## Catalog
 
-See [`CLAUDE.md` — Project briefs](../CLAUDE.md#project-briefs) and [`CLAUDE.md` — Methodology briefs](../CLAUDE.md#methodology-briefs) for the index of sibling briefs.
+See [`AGENTS.md` — Project briefs](../AGENTS.md#project-briefs) and [`AGENTS.md` — Methodology briefs](../AGENTS.md#methodology-briefs) for the index of sibling briefs.
 
 ---
 
 ## 1. What the template provides
 
 - **A methodology.** An eleven-step pipeline from vague idea to shipped code. Authoritative source: [`methodology.md`](methodology.md).
-- **A `kickoff` skill.** A phase orchestrator that delegates to four specialist agents and writes `LOG.md`. Invoke it as `/kickoff` in Claude Code or `$kickoff` in Codex. Authoritative source: `.claude/skills/kickoff/SKILL.md`.
+- **A `kickoff` skill.** A phase orchestrator that delegates to four specialist agents and appends immutable activity entries. Invoke it as `/kickoff` in Claude Code or `$kickoff` in Codex. Authoritative source: `.claude/skills/kickoff/SKILL.md`.
 - **Candidate-bound orchestration evidence.** Complete first reviews,
   deterministic revision packets, stable finding identities, focused
   convergence checks, a changed-path implementation-candidate gate against the
@@ -50,7 +50,7 @@ See [`CLAUDE.md` — Project briefs](../CLAUDE.md#project-briefs) and [`CLAUDE.m
 - **A `briefs/` library.** Durable design decisions and methodology notes.
 - **A `policies/` library.** The non-negotiable rules every phase respects.
 - **A `docs/` library.** Third-party documentation the project depends on, pinned verbatim with source and dates so briefs and policies cite exact text and every role can read it offline. Cataloged in `docs/README.md`; never references the project.
-- **A `LOG.md`.** Append-only activity log, owned by `kickoff`.
+- **Structured activity records.** Immutable `log/entries/` bodies with per-writer sequences and predecessors; `kickoff` owns phase entries.
 - **A minimal example project.** A tiny Python package under `project/example/` so build gates have a real target to lint and test against from the first session. The deliverable lives under `project/`, self-contained enough that nothing inside it references anything above it, which is what makes it submodule-ready once the project is real.
 
 ## 2. Two operating modes
@@ -111,7 +111,7 @@ These are the rules the template assumes about itself. A project derived from th
 
 - **Briefs are the contract.** Every phase points at one or more briefs. Phase files specify *how*; briefs specify *what*. Fix ambiguous briefs at the source.
 - **Policies are the law.** Every phase honors every policy. A policy violation blocks acceptance.
-- **Status lives in one place.** `plan/INDEX.md`'s phase table is the single source of truth for phase status.
+- **Status lives in one place.** `plan/events/` folds to each permanent phase’s unique current state and owner; definitions and reading views do not duplicate that authority.
 - **Acceptance is empirical.** Verifiable shell commands and named manual checks — not "the code compiles."
 - **Assurance is candidate-bound.** Review, finding, and gate evidence names
   the exact complete working-tree candidate it describes; a changed candidate
@@ -124,7 +124,7 @@ These are the rules the template assumes about itself. A project derived from th
 
 The template is acceptable when:
 
-- A user clones this repo, replaces the template brief and placeholder Phase 1 with a real project, and invokes `/kickoff` in Claude Code or `$kickoff` in Codex. The orchestrator picks up that real Phase 1, walks through plan → plan-review → code → code-review → build → log, and produces a START/END pair in `LOG.md` with a non-empty Files changed section.
+- A user clones this repo, replaces the template brief and placeholder Phase 1 with a real project, and invokes `/kickoff` in Claude Code or `$kickoff` in Codex. The orchestrator picks up that real Phase 1, walks through plan → plan-review → code → code-review → build → log, and produces immutable START/END entries in `log/entries/` with a non-empty Files changed section.
 - A user invokes `/stamp ~/some-new-dir "build a small CLI that fetches the time from an NTP server"` in Claude Code or `$stamp ~/some-new-dir "build a small CLI that fetches the time from an NTP server"` in Codex — and ends up with a populated new directory that itself satisfies the bullet above, with project-specific naming everywhere references appear.
 - The example Python project exists, and the atomic repository-owned
   `./bin/setup`, `./bin/test`, `./bin/check`, `./bin/check-receipt`, and
@@ -145,10 +145,8 @@ The template is acceptable when:
 - The lessons ledger, phase-close harvest, and user-gated `sweep` workflow ship
   as one portable contract; `bin/lessons validate` and `bin/check-catalogs`
   pass in this repo and in a freshly stamped project.
-- `AGENTS.md` is a symlink to `CLAUDE.md` (verifiable with `readlink AGENTS.md`).
-- Every `plan/INDEX.md` phase row carries exactly one recognized status. An
-  idle incomplete project has exactly one `⬅️`; active and complete projects
-  may have none; more than one is always invalid.
+- `AGENTS.md` is the regular primary constitution, with no top-level CLAUDE file or alias. Installed Claude meets the verified minimum; actual loading is reported separately.
+- Every phase has one permanent id and one unambiguous event chain. The owner’s next selection is unique; concurrent successors are conflicts, never silently chosen. Completion requires real retained acceptance and custody.
 
 ## 8. Out of scope
 

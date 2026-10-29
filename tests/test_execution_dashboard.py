@@ -83,7 +83,7 @@ def write_ledger(engine: Path, bundles: list[dict[str, Any]]) -> None:
     engine.mkdir()
     (engine / "projects").mkdir()
     (engine / "policies").mkdir()
-    (engine / "CLAUDE.md").write_text("# fixture\n", encoding="utf-8")
+    (engine / "AGENTS.md").write_text("# fixture\n", encoding="utf-8")
     (engine / "EXECUTION_LOG.jsonl").write_text(
         "".join(
             json.dumps(bundle, sort_keys=True, separators=(",", ":")) + "\n" for bundle in bundles

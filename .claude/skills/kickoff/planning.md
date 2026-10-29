@@ -18,7 +18,7 @@ Read this resource before executing its branch. Enter through [SKILL.md](SKILL.m
 **Native venue** (planner unpinned, per Step 0a): delegate the planning stage to the `phase-planner` subagent (Claude Code) / the `phase-planner` agent (Codex), enforcing the planner budget from Step 0c. Pass it:
 
 - The phase identifier (e.g., `Phase 1.3`) and heading.
-- The full phase text from `plan/phase-<id>.md` (copy/paste, do not summarize).
+- The full phase text from `plan/phases/<id>.md` (copy/paste, do not summarize).
 - The evidence run directory and current candidate id.
 - Nothing about the agent's own procedure — the role definition already covers the reading protocol and output format.
 
@@ -37,7 +37,7 @@ On every revision, preserve the exact earlier reviewed plan artifacts and add ea
 **Native venue** (per Step 0a): delegate the review stage to the `plan-reviewer` agent. Pass it:
 
 - The phase reference and heading.
-- The full phase text from `plan/phase-<id>.md`.
+- The full phase text from `plan/phases/<id>.md`.
 - The full plan text from Step 3.
 - The plan hash, current candidate id, and evidence run directory.
 - On revision rounds, the prior finding ledger and generated plan-revision packet.

@@ -29,7 +29,7 @@ This file is two things: the `sweep-planning` skill, and the **review-loop
 sweep lifecycle** that its sibling `sweep-coding` follows by citation rather
 than by copy (one procedure, two invocations — `policies/simplicity-and-consolidation.md`).
 The lifecycle sections (§Plan mode first, §Stage 0, §Stage 1, §Stage 4,
-§Stage 5, §The `LOG.md` entry) are parameterized by **kind**:
+§Stage 5, §The `log/entries/` entry) are parameterized by **kind**:
 
 | kind | invocation | loop swept | finding ids | personas corrected | extra sensors | LOG heading |
 |---|---|---|---|---|---|---|
@@ -117,12 +117,12 @@ side owns it, what changes, what it costs the operator. No finding ids, file
 paths, or finding-schema vocabulary above that fold. Everything below it —
 coverage, category table, attributions with evidence, write set — is as
 technical as the evidence requires. The same rule binds the first paragraph
-of the `LOG.md` entry.
+of the `log/entries/` entry.
 
 ## Stage 0 — Read the last sweep
 
 Before harvesting, find the most recent `## <ts> — <LOG heading for this
-kind>` entry in `LOG.md` (in template mode, also in each swept project's `LOG.md`
+kind>` entry in `log/entries/` (in template mode, also in each swept project's `log/entries/`
 where one exists — a derived project's own sweep is evidence too). It fixes
 three things:
 
@@ -198,7 +198,7 @@ which the first run derived, and extend it only when an item fits none:
 | **Cites what it never read** | wrong signature, nonexistent field/enum/column, a payload the shipped validator refuses, a regex narrower than the live data | planner named by convention instead of opening the file |
 | **Underspecified or self-contradictory design** | totals with no reconciliation rule, a case rule stated two ways, a state unreachable by construction, a step bound to no command | planner stopped at the description |
 | **Acceptance that cannot run** | `<placeholder>` in a command, a flag the script does not define, a candidate id pinned before implementation, a test proxy that cannot fail, a demo that mutates a fixture | planner wrote acceptance as prose |
-| **Scope, authority, inventory** | reassigning a parent deliverable as settled, asserting an approval nobody recorded, an inventory (`CLAUDE.md`, a manifest, a floor) not updated | planner did not sweep the inventories the change makes required |
+| **Scope, authority, inventory** | reassigning a parent deliverable as settled, asserting an approval nobody recorded, an inventory (`AGENTS.md`, a manifest, a floor) not updated | planner did not sweep the inventories the change makes required |
 | **Owner decision** | "obtain the operator-level contract decision", an authorization for a write or probe | neither role can answer it |
 | **Verification-discipline nit** | a relayed number, an unattributed negative control, a missing producing command | low severity; rarely drives a round |
 
@@ -251,7 +251,7 @@ Every category gets one of three attributions, with the evidence for it:
    state). The fix is in `kickoff`, `bin/kickoff-evidence`, or a policy.
 
 Record the longitudinal view with the numbers: approval rate by week, rounds
-per phase where `LOG.md` END blocks state them, and how the category mix moved
+per phase where `log/entries/` END blocks state them, and how the category mix moved
 across the window. A rising approval rate with unchanged rounds per phase
 means the reviewer got easier, not that the planner got better; say which.
 
@@ -286,7 +286,7 @@ surface, the exact change, and the finding ids that motivate it.
 - **Settled decisions** — every judgment call the user resolved in
   conversation, verbatim.
 - **Proposed LOG.md entry** — the block below under this kind's LOG heading,
-  filled in. It is an authorized `LOG.md` entry kind (the entry-kind table in
+  filled in. It is an authorized `log/entries/` entry kind (the entry-kind table in
   [`policies/log-discipline.md`](../../../policies/log-discipline.md)); write
   it, do not re-decide whether a sweep earns one.
 
@@ -308,10 +308,10 @@ resulting file set, and push; park on anything unexpected or on unresolved
 shared-file ownership.
 
 In derived-project mode, Stage 5 writes `lessons/` entries via `bin/new-name`
-slugs and `./bin/lessons validate`, and nothing else — plus the `LOG.md`
+slugs and `./bin/lessons validate`, and nothing else — plus the `log/entries/`
 entry, in both modes.
 
-### The `LOG.md` entry
+### The `log/entries/` entry
 
 Append it last, after the write set has landed and the gate is green, so it
 records what was actually done. It is what the next run's Stage 0 reads, so

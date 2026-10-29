@@ -39,7 +39,6 @@ def prepare(destination: Path, pack: dict, skill: Path | None = None) -> None:
     write_files(destination, pack["files"])
     for name in pack["executable"]:
         (destination / name).chmod(0o755)
-    (destination / "AGENTS.md").symlink_to("CLAUDE.md")
     if skill is not None:
         shutil.copytree(skill, destination / ".claude" / "skills" / skill.name)
         mirror = destination / ".agents" / "skills"

@@ -107,7 +107,7 @@ For a quick experiment, give `stamp` a destination and a one-line description:
 
 ### Start minimal (upgrade later)
 
-Some projects — a small tool, a research folder, a knowledge base — do not need the whole methodology yet. The [mini-method brief](briefs/mini-method.md) carries a complete minimal `CLAUDE.md` in one fenced block: copy it into a new directory and the first agent to read it idempotently sets up a git repository, a `.gitignore`, and `briefs/`, `policies/`, `docs/`, and `bin/` directories with their catalogs. Or ask an agent in this repository to do it:
+Some projects — a small tool, a research folder, a knowledge base — do not need the whole methodology yet. The [mini-method brief](briefs/mini-method.md) carries a complete minimal `AGENTS.md` in one fenced block: copy it into a new directory and the first agent to read it idempotently sets up a git repository, a `.gitignore`, and `briefs/`, `policies/`, `docs/`, and `bin/` directories with their catalogs. Or ask an agent in this repository to do it:
 
 ```text
 Set up ~/path/to/my-notes with mini-method
@@ -155,7 +155,7 @@ These are the other commands most users will reach for:
 
 `learn`, `teach`, and `sweep` present their judgments and wait for approval before changing the affected repository. You normally do not invoke Rule One yourself. When work fails or an assumption is corrected, the agent diagnoses what happened and saves any reusable lesson.
 
-The [project guidance](CLAUDE.md#project-specific-skills) lists the full skill set.
+The [project guidance](AGENTS.md#project-specific-skills) lists the full skill set.
 
 ## Essential repository map
 
@@ -164,12 +164,12 @@ The [project guidance](CLAUDE.md#project-specific-skills) lists the full skill s
 | `briefs/` | Product intent, design thinking, research, and methodology. |
 | `policies/` | Decisions and rules that every phase must obey. |
 | `docs/` | Third-party documentation the project depends on, pinned verbatim and cataloged with its source and dates. |
-| `plan/` | The phase roadmap, dependencies, acceptance criteria, and current status. |
+| `plan/` | Permanent phase definitions and append-only state/owner events, with handwritten discovery context. |
 | `project/` | The example deliverable in this repository; a stamped project adapts this to its real software. |
 | `.claude/skills/` | Canonical skill definitions used by the supported harnesses. |
 | `bin/` | Repeatable setup, test, validation, and methodology commands. |
-| `LOG.md` | Append-only record of phase starts, parks, and closes. |
-| `CLAUDE.md` and `AGENTS.md` | Complete instructions and catalogs for coding agents. |
+| `log/entries/` | Immutable activity entries; render an ignored local reading view with `bin/multioperator render`. |
+| `AGENTS.md` | Regular primary constitution and complete catalogs for coding agents; no top-level CLAUDE alias. |
 
 ## Full documentation
 
@@ -178,8 +178,8 @@ The [project guidance](CLAUDE.md#project-specific-skills) lists the full skill s
 - [The product brief](briefs/BRIEF.md) defines what this Starter Kit provides, who it is for, and its acceptance criteria.
 - [The methodology](briefs/methodology.md) gives the complete eleven-step process and operating doctrine.
 - [The bootstrap brief](briefs/agentic-bootstrap.md) documents how `stamp` creates and adapts a project.
-- [The mini-method brief](briefs/mini-method.md) carries the minimal `CLAUDE.md` for projects that do not need the whole methodology.
-- [The project guidance](CLAUDE.md) contains the complete brief and policy catalogs, project conventions, and agent instructions.
+- [The mini-method brief](briefs/mini-method.md) carries the minimal `AGENTS.md` for projects that do not need the whole methodology.
+- [The project guidance](AGENTS.md) contains the complete brief and policy catalogs, project conventions, and agent instructions.
 - [The script reference](bin/README.md) documents every deterministic command.
 - [The phased plan](plan/INDEX.md) shows the current state of this repository.
 - [The EACP pattern map](briefs/eacp-pattern-map.md) connects the repository's structures to patterns in the Encyclopedia of Agentic Coding Patterns.

@@ -63,7 +63,7 @@ When the repository carries the universal proof-estate bundle, `--vital` selects
 - `test` — delegates to `./bin/test`;
 - `policy` — deterministic repository-policy checks that are not language lint or tests.
 
-The universal policy lane includes `policy-log`, which runs the composed exact committed-prefix and effective-chronology validator. The staged pre-commit hook runs the same wrapper against the staged blob. Neither substitutes for the full gate.
+The universal policy lane includes `policy-log`, which runs the structured phase/event/log validator. The staged pre-commit hook runs the same wrapper against the indexed record inventory, preserving committed immutable bytes. Neither substitutes for the full gate.
 
 A repository with governed proof lanes also exposes `vital` and `changed <ref>` modes that delegate to the matching `bin/test` selection; `changed` is the local-commit and implementation-candidate gate. Neither writes or satisfies a full-gate receipt.
 

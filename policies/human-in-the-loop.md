@@ -36,7 +36,7 @@ Every acceptance criterion is one of two kinds, and the kind decides who closes 
 - **Never claims subjective acceptance.** It surfaces manual criteria and demo protocols verbatim; it does not say "I listened and it sounds great" — it cannot.
 - **Never adds work the plan doesn't authorize.** Drift is contained to the plan that was actually approved. Anything extra is reported as a Note.
 - **Never silently reopens closed phases.** A `✅` phase keeps its status and historical blocks. For high-risk or large/cross-cutting corrections, recommend an inserted phase, normally a current-phase sub-phase, under [`review-lanes.md`](review-lanes.md). Honor the operator's ruling: a chosen phase/sub-phase has its own formal planning/reviews and START/END records; a chosen inter-phase implementation has no formal review and appends an `END (correction)` record. New consequential scope needs explicit authorization; route choice never waives validation/tests, safety/permissions or original history.
-- **Never modifies `policies/` or top-level `CLAUDE.md` without explicit instruction.** Those are the rules of the road; the orchestrator and the four canonical agents serve them, they do not amend them.
+- **Never modifies `policies/` or top-level `AGENTS.md` without explicit instruction.** Those are the rules of the road; the orchestrator and the four canonical agents serve them, they do not amend them.
 
 ## What parks delivery
 

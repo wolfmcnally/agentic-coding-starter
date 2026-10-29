@@ -10,7 +10,7 @@ One-shot means one primary owns assessment, planning where useful, adaptation, i
 
 The primary has standing commit and fast-forward-push authority in each repository affected by authorized methodology work or transfer, after the checks the change could break pass and one full gate qualifies the push (`build-gates.md` § Targeted tests for local commits). No separate commit/push approval is required. Stage attributable paths only, inspect staged changes, verify delivery, and respect explicit operator restrictions. This grants no remote selection, destructive git operation, history rewrite, unrelated scope, or human acceptance. Existing staging, hook-refusal, divergence, and custody rules remain binding.
 
-Before implementation, record the authorized outcome, surfaces and exclusions once through `bin/log-append` as `METHODOLOGY SCOPE`. Do not rewrite it to match the result. The primary self-checks the complete change against that record and applicable requirements. Before each local commit run the checks the change could break (`./bin/test --changed-from '@{upstream}'`, plus format, lint and any check the changed surface owns). After all tracked bookkeeping, run one bare `./bin/check all` on the exact tree about to be pushed; no tracked write follows its success.
+Before implementation, record the authorized outcome, surfaces and exclusions once through `bin/multioperator append --root . --writer <operator> --body <body.md> --at <observed-UTC>` as `METHODOLOGY SCOPE`. Do not rewrite it to match the result. The primary self-checks the complete change against that record and applicable requirements. Before each local commit run the checks the change could break (`./bin/test --changed-from '@{upstream}'`, plus format, lint and any check the changed surface owns). After all tracked bookkeeping, run one bare `./bin/check all` on the exact tree about to be pushed; no tracked write follows its success.
 
 **Retire what the old rule produced.** Ratifying a rule fixes what happens next, not what the previous rule already produced, and those leftovers still look authoritative. Before closing a change that adopts, corrects or retires a rule, search for the statements, tools and artifacts written under the old rule, by the concept as well as by the words that changed, and update, retire or keep each with a stated reason. Treat anything that still carries an active marker, such as a status arrow, an open ledger row, a pending queue entry or an accepted tool option, as a live instruction to do the old thing. Record the search and its dispositions in the close; a correction that leaves live artifacts of the old rule behind has not taken effect.
 
@@ -110,7 +110,7 @@ evidence_lane: light   # how much ceremony binds them; absent or `full` = full
 
 **Eligibility for `light` — fail-closed triggers.** A phase is ineligible when any deliverable touches:
 
-- **authority surfaces** — `policies/`, schemas, agent definitions, skills, the evidence/gate tooling, `CLAUDE.md`;
+- **authority surfaces** — `policies/`, schemas, agent definitions, skills, the evidence/gate tooling, `AGENTS.md`;
 - **irreversible or external state** — deploys, cloud resources, data migrations, published URLs;
 - **deploy seams** — anything a deploy pipeline consumes.
 
@@ -179,5 +179,5 @@ Whenever the work under review asserts an **isolation, containment, or firewall 
 
 - [`four-canonical-agents.md`](four-canonical-agents.md) — the roles, tool stances, verdict headers, and cycle caps are unchanged. `light` skips one initial *invocation* of `plan-reviewer`; `one-shot` skips the initial invocations of `phase-planner` and `plan-reviewer`; formal reviews apply to phase work; an operator-selected inter-phase correction invokes none, without changing the canonical roles.
 - [`role-models.md`](role-models.md) — lane and venue are orthogonal. In the light and one-shot lanes, the initial code critique (the only initial review that runs) still executes in the resolved venue with a separate review context. Cross-vendor selection is explicit; its incremental value is not presumed from the lane. The one-shot implementer resolves through the `coder` pin; there is no separate config role.
-- [`phase-status.md`](phase-status.md) — `review_lane` and `evidence_lane` are phase properties, not statuses. They live in per-phase frontmatter; status still lives only in `plan/INDEX.md`.
+- [`phase-status.md`](phase-status.md) — `review_lane` and `evidence_lane` are phase properties, not statuses. They live in per-phase frontmatter; status and current owner fold only from `plan/events/`. `plan/INDEX.md` remains discovery context.
 - [`human-in-the-loop.md`](human-in-the-loop.md) — the human may request a concrete correction after a phase closes without reopening its historical status; new scope requires the operator's explicit route/scope ruling, with an inserted sub-phase normally recommended.

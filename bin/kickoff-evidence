@@ -1,6 +1,7 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.11"
+# dependencies = ["PyYAML==6.0.3"]
 # ///
 """Create and validate run-scoped evidence for incremental kickoff review."""
 
@@ -38,7 +39,7 @@ from agentic_starter import (  # noqa: E402
     advisory,
     candidate_boundaries,
     kickoff_runbook,
-    log_blocks,
+    multioperator,
 )
 from agentic_starter.execution_telemetry import (  # noqa: E402
     TelemetryError,
@@ -288,41 +289,6 @@ def append_jsonl(path: Path, value: Any) -> None:
         handle.write("\n")
         handle.flush()
         os.fsync(handle.fileno())
-
-
-def append_text_once(path: Path, payload: str) -> None:
-    """Append one exact closure block once, under an inter-process lock."""
-    if not payload or payload.startswith("\n") or not payload.endswith("\n"):
-        raise EvidenceError(
-            "closure log block must be nonempty, begin at its H2 header, and end in one newline"
-        )
-    path.parent.mkdir(parents=True, exist_ok=True)
-    descriptor = os.open(path, os.O_RDWR | os.O_CREAT, 0o666)
-    try:
-        fcntl.flock(descriptor, fcntl.LOCK_EX)
-        size = os.lseek(descriptor, 0, os.SEEK_END)
-        os.lseek(descriptor, 0, os.SEEK_SET)
-        existing = os.read(descriptor, size).decode("utf-8")
-        occurrences = existing.count(payload)
-        if occurrences > 1:
-            raise EvidenceError("closure log block already appears more than once")
-        if occurrences == 1:
-            return
-        if existing and not existing.endswith("\n"):
-            raise EvidenceError("refusing append to a non-newline-terminated log")
-        separator = "\n" if existing and not existing.endswith("\n\n") else ""
-        candidate = existing + separator + payload
-        errors = log_blocks.chronology_errors(log_blocks.parse(candidate))
-        if errors:
-            raise EvidenceError(f"closure log chronology invalid: {errors[0]}")
-        os.lseek(descriptor, 0, os.SEEK_END)
-        addition = (separator + payload).encode("utf-8")
-        written = os.write(descriptor, addition)
-        if written != len(addition):
-            raise EvidenceError("short closure log append")
-        os.fsync(descriptor)
-    finally:
-        os.close(descriptor)
 
 
 def load_json(path: Path) -> Any:
@@ -653,10 +619,8 @@ def validate_historical_run_metadata(run_dir: Path) -> dict[str, Any]:
     return run
 
 
-def install_tool_bundle(run_dir: Path) -> dict[str, Any]:
-    """Pin the mechanics that must remain readable after the live tree changes."""
-    bundle = run_dir / "tools"
-    sources = {
+def tool_sources() -> dict[str, Path]:
+    return {
         "kickoff-evidence": SCRIPT_PATH,
         "kickoff-tree-id": REPO_ROOT / "bin" / "kickoff-tree-id",
         "execution-telemetry": REPO_ROOT / "bin" / "execution-telemetry",
@@ -683,8 +647,17 @@ def install_tool_bundle(run_dir: Path) -> dict[str, Any]:
         ),
         "lib/agentic_starter/workflow.py": REPO_ROOT / "lib/agentic_starter/workflow.py",
         "lib/agentic_starter/advisory.py": REPO_ROOT / "lib/agentic_starter/advisory.py",
+        "lib/agentic_starter/multioperator.py": REPO_ROOT / "lib/agentic_starter/multioperator.py",
+        "lib/agentic_starter/multioperator_transition.py": REPO_ROOT
+        / "lib/agentic_starter/multioperator_transition.py",
         "kickoff-command-zero": REPO_ROOT / "bin" / "kickoff-command-zero",
     }
+
+
+def install_tool_bundle(run_dir: Path) -> dict[str, Any]:
+    """Pin the mechanics that must remain readable after the live tree changes."""
+    bundle = run_dir / "tools"
+    sources = tool_sources()
     manifest: list[dict[str, str]] = []
     for relative, source in sources.items():
         if not source.is_file():
@@ -945,6 +918,21 @@ def command_init(arguments: argparse.Namespace) -> None:
     ]
     if not authorities:
         raise EvidenceError("at least one --authority is required")
+    declaration = root / "collaboration/manifest.json"
+    if declaration.exists():
+        if not run_dir.is_relative_to(root):
+            raise EvidenceError(
+                "managed phase qualification must use durable ignored project storage"
+            )
+        custody = multioperator.phase_custody(root, arguments.phase)
+        for path, locator in [
+            ("plan/events/" + custody["id"] + ".json", "phase-custody"),
+            ("plan/phases/" + arguments.phase + ".md", "phase-definition"),
+        ]:
+            authorities.append(
+                parse_authority_spec(path + "::" + locator, root, len(authorities) + 1)
+            )
+
     created_at = now()
     resolution = load_json(arguments.preflight_receipt)["workflow"]
     validate_kickoff_context(
@@ -5066,7 +5054,10 @@ def command_packet(arguments: argparse.Namespace) -> None:
 
 
 def command_validate(arguments: argparse.Namespace) -> None:
-    run = validate_run_dir(arguments.run_dir)
+    _validate_loaded_evidence(arguments, validate_run_dir(arguments.run_dir))
+
+
+def _validate_loaded_evidence(arguments: argparse.Namespace, run: dict[str, Any]) -> None:
     root = Path(run["repository_root"])
     acceptance = arguments.level == "acceptance"
     authority = load_json(arguments.run_dir / "authority.json")
@@ -5375,89 +5366,6 @@ def _append_failure_once(path: Path, record: dict[str, Any]) -> None:
     append_jsonl(path, record)
 
 
-def _validate_phase_close(
-    root: Path,
-    phase: str,
-    ledger: Path | None = None,
-    next_marker_reason: str | None = None,
-) -> None:
-    checker = root / "bin" / "check-catalogs"
-    process = subprocess.run(
-        [
-            str(checker),
-            "--closing-phase",
-            phase,
-            *(["--ledger-file", str(ledger)] if ledger else []),
-            *(["--next-marker-reason", next_marker_reason] if next_marker_reason else []),
-        ],
-        cwd=root,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if process.returncode != 0:
-        detail = (process.stdout + process.stderr).strip()
-        raise EvidenceError(f"phase ledger refuses close: {detail}")
-
-
-def _close_transition(
-    root: Path, phase: str, ledger: Path | None, parents: list[str] | None = None
-) -> dict[str, Any] | None:
-    """Bind an exact status-only transition without changing reviewed authority."""
-    if ledger is None:
-        return None
-    before = (root / "plan/INDEX.md").read_bytes()
-    after = ledger.read_bytes()
-    original = before.decode("utf-8").splitlines(keepends=True)
-    proposed = after.decode("utf-8").splitlines(keepends=True)
-    if len(original) != len(proposed):
-        raise EvidenceError("close transition may change only the closing phase status")
-    changes = []
-    next_changes = 0
-    unqueue_changes = 0
-    allowed = {phase, *(parents or [])}
-    for old, new in zip(original, proposed, strict=True):
-        if old == new:
-            continue
-        is_phase_row = bool(
-            old.lstrip().startswith("|") and re.search(r"\bPhase\s+\d+(?:\.\d+)*", old)
-        )
-        if is_phase_row and old.count("⏳") == 1 and new == old.replace("⏳", "⬅️"):
-            next_changes += 1
-            if next_changes > 1:
-                raise EvidenceError("close transition may queue at most one next phase")
-            continue
-        if is_phase_row and old.count("⬅️") == 1 and new == old.replace("⬅️", "⏳"):
-            unqueue_changes += 1
-            if unqueue_changes > 1:
-                raise EvidenceError("close transition may unqueue at most one next phase")
-            continue
-        if (
-            not old.lstrip().startswith("|")
-            or not any(re.search(rf"\bPhase\s+{re.escape(item)}(?![\d.])", old) for item in allowed)
-            or old.count("🚧") != 1
-            or new != old.replace("🚧", "✅")
-        ):
-            raise EvidenceError("close transition may change only the closing phase status")
-        changes.extend(
-            item for item in allowed if re.search(rf"\bPhase\s+{re.escape(item)}(?![\d.])", old)
-        )
-    if set(changes) != allowed or len(changes) != len(allowed):
-        raise EvidenceError(
-            "close transition requires exactly the authorized active phase completions"
-        )
-    if unqueue_changes and not next_changes:
-        raise EvidenceError(
-            "close transition may unqueue a next phase only when it queues another; "
-            "an unpaired unqueue would leave the ledger with no truthful continuation"
-        )
-    return {
-        "before_sha256": hashlib.sha256(before).hexdigest(),
-        "after_sha256": hashlib.sha256(after).hexdigest(),
-        "completed_phases": sorted(allowed),
-    }
-
-
 def command_status(arguments: argparse.Namespace) -> None:
     run = validate_run_dir(arguments.run_dir)
     closure_path = arguments.run_dir / "closure.json"
@@ -5621,225 +5529,252 @@ def command_verify_completion(arguments: argparse.Namespace) -> int:
     return 2 if blocked else 0
 
 
+def _captured_phase_custody(root: Path, run_dir: Path, run: dict[str, Any]) -> dict[str, Any]:
+    rows = [
+        row
+        for row in load_json(run_dir / "authority.json")["authorities"]
+        if row.get("locator") == "phase-custody"
+    ]
+    if len(rows) != 1:
+        raise EvidenceError("phase close requires an init-time captured canonical phase claim")
+    row = rows[0]
+    source = multioperator.safe(root, row["path"])
+    if hashlib.sha256(source.read_bytes()).hexdigest() != row["content_sha256"]:
+        raise EvidenceError("captured phase custody changed")
+    value = load_json(source)
+    if (
+        value.get("phase") != run["phase"]
+        or value.get("state") != "in-progress"
+        or not value.get("owner")
+        or not value.get("claim")
+    ):
+        raise EvidenceError("run has no active canonical phase owner/claim")
+    return value
+
+
+def _verify_accepted_closure(root: Path, run_dir: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+    run = validate_historical_run_metadata(run_dir)
+    closure = load_json(run_dir / "closure.json")
+    request = {
+        k: v for k, v in closure.items() if k not in {"closure_id", "status", "completed_at"}
+    }
+    if (
+        closure.get("closure_id") != _closure_digest(request)
+        or closure.get("status") != "complete"
+        or closure.get("outcome") != "accepted"
+        or closure.get("phase") != run["phase"]
+        or Path(run["repository_root"]) != root
+    ):
+        raise EvidenceError("phase acceptance is not a genuine matching accepted closure")
+    multioperator.verify_qualification_snapshot(root, closure.get("qualification"))
+    custody = _captured_phase_custody(root, run_dir, run)
+    if closure.get("phase_custody") != custody:
+        raise EvidenceError("accepted phase differs from captured custody")
+    return run, closure
+
+
+def command_audit_phase_acceptance(arguments: argparse.Namespace) -> None:
+    """Read-only receiving-code verification; never launches artifact-supplied code."""
+    metadata = load_json(arguments.run_dir / "run.json")
+    root = Path(metadata["repository_root"])
+    run, closure = _verify_accepted_closure(root, arguments.run_dir)
+    manifest = load_json(arguments.run_dir / "tools/manifest.json")
+    trusted = tool_sources()
+    for item in manifest["files"]:
+        relative = item["path"]
+        if relative == "kickoff.yaml":
+            continue
+        source = trusted.get(relative)
+        if source is None or hashlib.sha256(source.read_bytes()).hexdigest() != item["sha256"]:
+            raise EvidenceError(
+                "fresh phase admission requires the receiving qualified tool code: " + relative
+            )
+    if product_manifest(root)["candidate_id"] != closure["product_candidate_id"]:
+        raise EvidenceError("phase completion candidate differs from accepted implementation")
+    _validate_loaded_evidence(
+        argparse.Namespace(
+            run_dir=arguments.run_dir, level="acceptance", required_final_command=None
+        ),
+        run,
+    )
+    finalized_trace(engine_root=root, trace_id=run["telemetry_trace_id"])
+    print("PHASE ACCEPTANCE VALID")
+
+
+def _validate_phase_close(
+    root: Path, phase: str, ledger: Path | None = None, next_marker_reason: str | None = None
+) -> None:
+    state = multioperator.validate(root)
+    if phase not in state["heads"]:
+        raise EvidenceError("closing phase is absent from canonical records")
+    if ledger is None and state["heads"][phase]["state"] != "completed":
+        raise EvidenceError("closing phase has no accepted completion event")
+
+
+def _close_transition(
+    root: Path, phase: str, ledger: Path | None, parents: list[str] | None = None
+) -> dict[str, Any] | None:
+    return (
+        multioperator.completion_plan(root, phase, load_json(ledger), parents) if ledger else None
+    )
+
+
 def command_close(arguments: argparse.Namespace) -> int:
-    """Materialize one truthful, idempotent accepted/parked/failed close."""
+    """Close once; accepted implementation and phase-event publication are separate facts."""
     run = validate_run_dir(arguments.run_dir)
     root = Path(run["repository_root"])
+    custody = _captured_phase_custody(root, arguments.run_dir, run)
+    closure_path = arguments.run_dir / "closure.json"
     if arguments.verify_handoff:
-        closure = load_json(arguments.run_dir / "closure.json")
-        bound_request = {
-            key: value
-            for key, value in closure.items()
-            if key not in {"closure_id", "status", "completed_at"}
-        }
-        if closure.get("closure_id") != _closure_digest(bound_request):
-            raise EvidenceError("closure identity does not match its accepted request")
+        _, closure = _verify_accepted_closure(root, arguments.run_dir)
         transition = closure.get("ledger_transition")
-        if (
-            closure.get("outcome") != "accepted"
-            or closure.get("status") != "complete"
-            or not transition
-        ):
+        if not transition:
             raise EvidenceError("no accepted prospective close to verify")
-        if product_manifest(root)["candidate_id"] != closure.get("product_candidate_id"):
+        if product_manifest(root)["candidate_id"] != closure["product_candidate_id"]:
             raise EvidenceError("handoff product differs from accepted candidate")
-        actual = hashlib.sha256((root / "plan/INDEX.md").read_bytes()).hexdigest()
-        if actual != transition["after_sha256"]:
-            raise EvidenceError("handoff ledger differs from accepted transition")
-        _validate_phase_close(root, run["phase"], None, arguments.next_marker_reason)
-        print("close ledger verified; full handoff gate remains required")
+        if (
+            multioperator.phase_heads_digest(root, transition["completed_phases"])
+            != transition["after_sha256"]
+        ):
+            raise EvidenceError("handoff phase events differ from accepted transition")
+        _validate_phase_close(root, run["phase"])
+        print("close phase events verified; full handoff gate remains required")
         return 0
     outcome = arguments.outcome
-    reason_code = arguments.reason_code.strip()
-    if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", reason_code):
+    reason = arguments.reason_code.strip()
+    if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", reason):
         raise EvidenceError("reason-code must be lowercase kebab-case")
-    log_block = arguments.log_block.read_text(encoding="utf-8")
-    # The handoff gate's log check refuses a terminal block without this line;
-    # refuse it here, while the block is still a file and nothing is appended.
-    for header in log_blocks.terminal_blocks_missing_lessons(log_blocks.parse(log_block).blocks):
-        raise EvidenceError(f"terminal log block lacks its `Lessons:` witness line: {header}")
-    failure_record: dict[str, Any] | None = None
+    body = arguments.log_block.read_bytes()
+    multioperator.terminal_body(body)
+    failure = None
     if outcome == "accepted":
         if arguments.failure_record is not None:
             raise EvidenceError("accepted close cannot carry a failure record")
     else:
         if arguments.failure_record is None:
             raise EvidenceError("parked and failed closes require --failure-record")
-        failure_record = _validate_failure_record(
+        failure = _validate_failure_record(
             load_json(arguments.failure_record), run=run, outcome=outcome
         )
-    request = {
-        "schema_version": SCHEMA_VERSION,
-        "phase": run["phase"],
-        "trace_id": run["telemetry_trace_id"],
-        "outcome": outcome,
-        "reason_code": reason_code,
-        "log_sha256": hashlib.sha256(log_block.encode()).hexdigest(),
-        "failure_sha256": _closure_digest(failure_record) if failure_record else None,
-    }
-    if outcome != "accepted" and (
-        arguments.ledger_after is not None or arguments.parent_run is not None
-    ):
-        raise EvidenceError("only accepted close may carry a ledger transition")
+        if arguments.ledger_after is not None or arguments.parent_run is not None:
+            raise EvidenceError("only accepted close may carry a phase transition")
+    definitions, _ = multioperator.records(root)
+    accepted_ancestors = {}
     parents = None
-    if arguments.parent_run is not None:
-        parent_tool = arguments.parent_run / "tools/kickoff-evidence"
-        inspected = subprocess.run(
-            [
-                sys.executable,
-                str(parent_tool),
-                "status",
-                "--run-dir",
-                str(arguments.parent_run),
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=60,
-        )
-        if inspected.returncode:
-            raise EvidenceError("parent evidence validation failed: " + inspected.stderr.strip())
-        parent_run = load_json(arguments.parent_run / "run.json")
-        parent = run["phase"].rsplit(".", 1)[0]
-        if (
-            "." not in run["phase"]
-            or parent_run["phase"] != parent
-            or Path(parent_run["repository_root"]) != root
-        ):
+    if arguments.parent_run:
+        parent_run, parent_close = _verify_accepted_closure(root, arguments.parent_run)
+        parent = definitions[run["phase"]].get("parent")
+        if parent is None or parent_run["phase"] != parent:
             raise EvidenceError(
-                "parent acceptance must belong to this phase's parent and repository"
+                "parent acceptance must belong to this phase's declared parent and repository"
             )
-        parent_close = load_json(arguments.parent_run / "closure.json")
-        parent_request = {
-            key: value
-            for key, value in parent_close.items()
-            if key not in {"closure_id", "status", "completed_at"}
-        }
-        if (
-            parent_close.get("closure_id") != _closure_digest(parent_request)
-            or parent_close.get("phase") != parent
-        ):
-            raise EvidenceError("parent closure identity does not match its accepted request")
-        if parent_close.get("status") != "complete" or parent_close.get("outcome") != "accepted":
-            raise EvidenceError("parent implementation is not independently accepted")
-        if arguments.ledger_after is None:
-            raise EvidenceError("parent acceptance requires a prospective ledger")
-        parents = parent_close.get("ledger_transition", {}).get("completed_phases", [parent])
-        if (
-            not isinstance(parents, list)
-            or parent not in parents
-            or any(
-                not isinstance(item, str) or not run["phase"].startswith(item + ".")
-                for item in parents
-            )
-        ):
-            raise EvidenceError("parent transition has invalid ancestor completions")
-        prior_transition = parent_close.get("ledger_transition")
-        if (
-            prior_transition
-            and not (arguments.run_dir / "closure.json").exists()
-            and prior_transition["before_sha256"]
-            != hashlib.sha256((root / "plan/INDEX.md").read_bytes()).hexdigest()
-        ):
-            raise EvidenceError("parent transition was accepted against a different ledger")
-        request["parent_closure_id"] = parent_close["closure_id"]
-    if arguments.ledger_after is not None:
-        previous_path = arguments.run_dir / "closure.json"
-        if previous_path.exists():
-            previous = load_json(previous_path)
-            transition = previous.get("ledger_transition")
-            if (
-                not transition
-                or hashlib.sha256(arguments.ledger_after.read_bytes()).hexdigest()
-                != transition["after_sha256"]
-            ):
-                raise EvidenceError("close transition conflicts with recorded close")
-        else:
-            transition = _close_transition(root, run["phase"], arguments.ledger_after, parents)
-        request["ledger_transition"] = transition
-        request["product_candidate_id"] = product_manifest(root)["candidate_id"]
-    closure_id = _closure_digest(request)
-    closure_path = arguments.run_dir / "closure.json"
-    lock_path = arguments.run_dir / "closure.lock"
-    with lock_path.open("a+b") as lock:
-        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
-        existing = load_json(closure_path) if closure_path.exists() else None
-        if existing is not None and existing.get("closure_id") != closure_id:
-            raise EvidenceError("closure request conflicts with the recorded close")
-        if existing is not None and existing.get("status") == "complete":
-            if transition := existing.get("ledger_transition"):
-                actual = hashlib.sha256((root / "plan/INDEX.md").read_bytes()).hexdigest()
-                if actual not in {
-                    transition["before_sha256"],
-                    transition["after_sha256"],
-                }:
-                    raise EvidenceError("repeated close ledger differs from recorded transition")
-            print("closure complete")
-            return 0
-        if outcome in {"parked", "failed"}:
-            try:
-                finalized_trace(engine_root=root, trace_id=run["telemetry_trace_id"])
-            except TelemetryError:
-                recover_trace(engine_root=root, trace_id=run["telemetry_trace_id"])
-            assert failure_record is not None
-            _append_failure_once(root / ".kickoff" / "failure-signatures.jsonl", failure_record)
-            append_text_once(root / "LOG.md", log_block)
-        else:
-            command_validate(
-                argparse.Namespace(
-                    run_dir=arguments.run_dir,
-                    level="acceptance",
-                    required_final_command=arguments.required_final_command,
-                )
-            )
-            try:
-                finalized_trace(engine_root=root, trace_id=run["telemetry_trace_id"])
-            except TelemetryError as exc:
-                raise EvidenceError(f"accepted trace is not durably finalized: {exc}") from exc
-            if arguments.parent_run is not None:
-                checked_parent = subprocess.run(
-                    [
-                        sys.executable,
-                        str(parent_tool),
-                        "validate",
-                        "--run-dir",
-                        str(arguments.parent_run),
-                        "--level",
-                        "acceptance",
-                        *(
-                            [
-                                "--required-final-command",
-                                arguments.required_final_command,
-                            ]
-                            if arguments.required_final_command
-                            else []
-                        ),
-                    ],
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                    timeout=60,
-                )
-                if checked_parent.returncode:
-                    raise EvidenceError(
-                        "parent acceptance failed: " + checked_parent.stderr.strip()
-                    )
-                finalized_trace(engine_root=root, trace_id=parent_run["telemetry_trace_id"])
-            _validate_phase_close(
-                root, run["phase"], arguments.ledger_after, arguments.next_marker_reason
-            )
-            append_text_once(root / "LOG.md", log_block)
-        atomic_json(
-            closure_path,
-            {
-                **request,
-                "closure_id": closure_id,
-                "status": "complete",
-                "completed_at": now(),
+        accepted_ancestors = {
+            **parent_close.get("ancestor_acceptance", {}),
+            parent: {
+                "path": (arguments.parent_run / "closure.json").relative_to(root).as_posix(),
+                "sha256": hashlib.sha256(
+                    (arguments.parent_run / "closure.json").read_bytes()
+                ).hexdigest(),
             },
+        }
+        parents = list(accepted_ancestors)
+        expected = parent
+        for ancestor in parents:
+            if ancestor not in definitions:
+                raise EvidenceError("accepted ancestor is absent")
+        while expected is not None:
+            if expected in parents:
+                expected = definitions[expected].get("parent")
+            else:
+                break
+        if any(
+            ancestor != parent and ancestor not in _ancestors(definitions, parent)
+            for ancestor in parents
+        ):
+            raise EvidenceError("independently accepted ancestor is outside this parent chain")
+    lock_path = arguments.run_dir / "closure.lock"
+    with lock_path.open("a+b") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        existing = load_json(closure_path) if closure_path.exists() else None
+        transition = None
+        if arguments.ledger_after:
+            proposed = load_json(arguments.ledger_after)
+            if existing:
+                transition = existing.get("ledger_transition")
+                if not transition or proposed != transition["proposal"]:
+                    raise EvidenceError("close transition conflicts with recorded close")
+            else:
+                transition = _close_transition(root, run["phase"], arguments.ledger_after, parents)
+        request = {
+            "schema_version": SCHEMA_VERSION,
+            "phase": run["phase"],
+            "trace_id": run["telemetry_trace_id"],
+            "outcome": outcome,
+            "reason_code": reason,
+            "log_sha256": hashlib.sha256(body).hexdigest(),
+            "failure_sha256": _closure_digest(failure) if failure else None,
+            "phase_custody": custody,
+            "product_candidate_id": product_manifest(root)["candidate_id"],
+            "ancestor_acceptance": accepted_ancestors,
+        }
+        if transition:
+            request["ledger_transition"] = transition
+        if existing:
+            request["qualification"] = existing["qualification"]
+        else:
+            if outcome == "accepted":
+                command_validate(
+                    argparse.Namespace(
+                        run_dir=arguments.run_dir,
+                        level="acceptance",
+                        required_final_command=arguments.required_final_command,
+                    )
+                )
+                finalized_trace(engine_root=root, trace_id=run["telemetry_trace_id"])
+                if multioperator.phase_custody(root, run["phase"])["id"] != custody["id"]:
+                    raise EvidenceError("phase custody changed since init")
+            else:
+                try:
+                    finalized_trace(engine_root=root, trace_id=run["telemetry_trace_id"])
+                except TelemetryError:
+                    recover_trace(engine_root=root, trace_id=run["telemetry_trace_id"])
+            request["qualification"] = multioperator.snapshot_acceptance(root, arguments.run_dir)
+        identifier = _closure_digest(request)
+        if existing and existing.get("closure_id") != identifier:
+            raise EvidenceError("closure request conflicts with recorded close")
+        if existing:
+            multioperator.verify_qualification_snapshot(root, existing["qualification"])
+        if not existing:
+            if failure is not None:
+                _append_failure_once(root / ".kickoff/failure-signatures.jsonl", failure)
+            multioperator.append(root, custody["owner"], body, now(), idempotency_key=identifier)
+            atomic_json(
+                closure_path,
+                {**request, "closure_id": identifier, "status": "complete", "completed_at": now()},
+            )
+        if transition:
+            multioperator.apply_completion(
+                root, transition, arguments.run_dir, arguments.parent_run
+            )
+        else:
+            multioperator.render(root)
+    print(
+        "closure complete"
+        + (
+            "; phase completion events applied"
+            if transition
+            else "; no phase state change requested"
         )
-    print("closure complete")
+    )
     return 0
+
+
+def _ancestors(definitions: dict[str, Any], phase: str) -> list[str]:
+    result = []
+    while definitions[phase].get("parent") is not None:
+        phase = definitions[phase]["parent"]
+        result.append(phase)
+    return result
 
 
 def add_run_dir(parser: argparse.ArgumentParser) -> None:
@@ -6194,6 +6129,10 @@ def build_parser() -> argparse.ArgumentParser:
     close.add_argument("--required-final-command")
     close.set_defaults(handler=command_close)
 
+    phase_audit = subparsers.add_parser("audit-phase-acceptance")
+    add_run_dir(phase_audit)
+    phase_audit.set_defaults(handler=command_audit_phase_acceptance)
+
     validate = subparsers.add_parser("validate")
     add_run_dir(validate)
     validate.add_argument("--level", choices=("integrity", "acceptance"), default="integrity")
@@ -6215,6 +6154,7 @@ def main() -> int:
         AttributeError,
         EvidenceError,
         TelemetryError,
+        multioperator.Refusal,
         KeyError,
         OSError,
         TypeError,

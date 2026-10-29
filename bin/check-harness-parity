@@ -53,14 +53,12 @@ def frontmatter(path: Path) -> dict[str, str]:
 
 
 def check_instructions() -> None:
-    link = ROOT / "AGENTS.md"
-    if not link.is_symlink():
-        report("instructions", "AGENTS.md", "must be a symlink")
-        return
-    if os.readlink(link) != "CLAUDE.md":
-        report("instructions", "AGENTS.md", "must target CLAUDE.md")
-    if not link.resolve().is_file():
-        report("instructions", "AGENTS.md", "target does not resolve")
+    primary = ROOT / "AGENTS.md"
+    if primary.is_symlink() or not primary.is_file():
+        report("instructions", "AGENTS.md", "must be a regular primary file")
+    old = ROOT / "CLAUDE.md"
+    if old.exists() or old.is_symlink():
+        report("instructions", "CLAUDE.md", "legacy constitution remains")
 
 
 def check_skills() -> None:

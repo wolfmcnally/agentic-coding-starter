@@ -1,0 +1,286 @@
+{
+  "audit": {
+    "historical_text_exempt": [
+      "docs",
+      "lessons",
+      "lessons-archived",
+      "log",
+      "reports",
+      "user-actions-archived"
+    ],
+    "intentional_selectors": [
+      "lib/agentic_starter/multioperator.py",
+      "lib/agentic_starter/multioperator_transition.py",
+      "tests/test_multioperator.py"
+    ],
+    "obsolete_absent": true,
+    "retired_reference_tokens_absent": true
+  },
+  "changes": [
+    {
+      "action": "retired",
+      "path": "bin/renumber-phases",
+      "pre_sha256": "3e339d2d19cc71e206e04f8db28ca8a6d2dab89753408f725c492b3e250b8ca5"
+    },
+    {
+      "action": "retired",
+      "path": "bin/log-append",
+      "pre_sha256": "497c9ef09113fd61bfb4f58ad0ce5492dcab193aed79ef3cd5b7c94286f6b009"
+    },
+    {
+      "action": "retired",
+      "path": "bin/log-relocate",
+      "pre_sha256": "8ebb9d66755d70798c3be60297a6d65ffbca6d7162dce8e0cb0f32afb88afbce"
+    },
+    {
+      "action": "retired",
+      "path": "bin/check-log",
+      "pre_sha256": "395d543fc87143d0d1f77f67af122d56053dca4b497290b31c9ba5abbb99cd26"
+    },
+    {
+      "action": "retired",
+      "path": "bin/check-log-prefix",
+      "pre_sha256": "bdbf04dff9cd1b20f661b382b0468b5d2fb4c7efa2120856f71a4d2cc7a4a2be"
+    },
+    {
+      "action": "retired",
+      "path": "bin/check-log-monotonic",
+      "pre_sha256": "0c9e842c5e4a818dc797b5fae96d49ee71c6233136b4ee5b30497352d4897d0d"
+    },
+    {
+      "action": "retired",
+      "path": "tests/test_renumber_phases.py",
+      "pre_sha256": "65fd80c892a2fd4fadaee03dca480c1c522b1ed90fc65c3d45cbb699ea65f5fb"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "CLAUDE.md",
+      "post_sha256": "51d94da78c2293c041cbf74e0cf7797a45901d06cf66f8f13965e7a725020e2c",
+      "pre_sha256": "3e5b5b8f8dba39978d77bbd04024fd23aeb0c2bc16f41b0a36d281a22d4eefad"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "bin/check-catalogs",
+      "post_sha256": "38b35eb50a09b66347b9a8922fbb0bb5bfb7f182c2e9a275838f3c59ef1033a4",
+      "pre_sha256": "0135ea8520d2d0540323ea2c3e5a6c6119503a0fe3efaae7e41dfa24fa65e184"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "bin/README.md",
+      "post_sha256": "84cc667f2bf277a2ea3358c380ba3eb8b67c2b0d2a151fc20cc3eae6d27b8543",
+      "pre_sha256": "f37c38dc36380d3937f0dcbadd2e5de379e8938226bbdfbe517184f09c153d31"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "bin/check",
+      "post_sha256": "3ddcda296915f1ab389eb93f54b9db96632ab6a1b5d20044b02703c45e0e4b1b",
+      "pre_sha256": "681b278dfce6d11cc084e9720c1543a2e2d9bf5404992763356fe878fd7ae426"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "plan/INDEX.md",
+      "post_sha256": "9589c7e971f4cb142ceae35a1803ac67aa67e5d51ef59dd5b7b22053bca6204e",
+      "pre_sha256": "e7b85bc51572fc88e256d893c44cc6bfbe9d9845d68aa82f5cd46cd2e7ae2e0c"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "tests/test_log_control_plane.py",
+      "post_sha256": "8ced6308a0a2635e7ac35300a06418f3d3dcae5f62b52a85ebca9fedd9942f6e",
+      "pre_sha256": "6661ff5d41d22427b4cfa54aeb48b4c49b2fc8fb40dad8ac2160a2ba2dfee654"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "tests/test_kickoff_tree_id.py",
+      "post_sha256": "7c3fa14fd7b56fdbf71c0ce8af8d7505193a466bc8ce4a57f7c32c25f143b56a",
+      "pre_sha256": "7446409b45f6c02e14cf108fa041fd7709fce328dbd2b9f33694573256a5c274"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "tests/test_check_catalogs.py",
+      "post_sha256": "48c160c73c2cda15f024e0405c5e07d333e4c9e0997f7294c701cd6930d74e36",
+      "pre_sha256": "32c9b393457a70ab7d75a0eac81cfbf3dd73992c879a089d337091e9fbfee6f4"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "tests/proof-estate.yaml",
+      "post_sha256": "0feecebc9c884ee37fc8db02f19f6de080b2eb6fc51d06232c36e5f167c34798",
+      "pre_sha256": "cf02422c8259e50e5eec5871d5564468ca9ff63852a85bde6d61f3d6af294977"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "tests/test_check.py",
+      "post_sha256": "23953fd850de306e36274a2a500ef6034d16bb23f7a83a34e69e95b06bf331df",
+      "pre_sha256": "4e60ecd18f5bb7d73f946e9145ac63bcc177d2d3daec2f9eb201af041eff727f"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "tests/test_pre_commit.py",
+      "post_sha256": "679281ee52be396c74645404ff52b81b66b88282e525fd9b75e2e91321a924f8",
+      "pre_sha256": "3100be7f6b003eeb5e7bb09c106358d9df3fbf88b77e30ec4692319c1d1284f8"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "tests/test_kickoff_control_plane.py",
+      "post_sha256": "7c2330bb28080c07c80695d4151f9da05394f64e2c866e2162f6d55fcd27f15e",
+      "pre_sha256": "c1ea1cb01f4bd859695010f1583626ba44dd1a52e33eccb1169890ceed6fe107"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": ".claude/skills/kickoff/preflight.md",
+      "post_sha256": "f71237d06cfe9bf9d2cc113a5248721a2210f1c8c303df827ad09b9dee350d7a",
+      "pre_sha256": "90ec829198c327657e2841b5bab6b7affad62e598ae28922dad9a726d0e45b48"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": ".claude/skills/kickoff/close.md",
+      "post_sha256": "f70477e720ef9cc0e6223c83b3fc592229e509b3e363ca550246f6aa22de4fa5",
+      "pre_sha256": "a65ccf899c8dcfcbc68c6cb39550dcdc0e01c84d44377b232f1ea335373c0d5b"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": ".claude/skills/kickoff/recovery.md",
+      "post_sha256": "7577f7c9d7ef3e1e38acd28311c6fd8067e421408d01c7ca7be6d83b502d58c7",
+      "pre_sha256": "42a6134daf9a5ec1d553ac35983e32930abe115fc692485331828b948c25c5d6"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": ".claude/skills/learn/SKILL.md",
+      "post_sha256": "cadcfd58b07e66910a6fa017e30de1db0ef469c1c65f95e0364c7031a931043b",
+      "pre_sha256": "74c6fc947abd0b77b4ced5bc3bd77c754039383596dd1c2ccbae6268f45af89c"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": ".claude/skills/stamp/SKILL.md",
+      "post_sha256": "705d70744962c50b1425b0d3f4be8619c5b9b143ceb125cd54ed974b7945a7cb",
+      "pre_sha256": "98e51bee5e0c139f4fefb68563697f87a7fff90a76b46d9bc92939fb236dc88d"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": ".claude/skills/teach/SKILL.md",
+      "post_sha256": "b17cd96c2f3a91ddb906cfb02c9a0c3f2e67c3a6bad59c767702553f04dc0417",
+      "pre_sha256": "52c68fffb158115bd6b7ce6be5a614423752999bfb8a29f102a51cc5d89e210a"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "policies/review-lanes.md",
+      "post_sha256": "ce4f6f560d5b6d333df72da9e154a0d65e7e2eb7688bac3858600065dd702453",
+      "pre_sha256": "5fe447581182f262ed53761e48cbbae8ba035c0c3cdd3f1bde92262a53ae4652"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "policies/phase-status.md",
+      "post_sha256": "a7b9c3deb1e544e0ba95ba0a2bdef4c25f4b40f63300aaf86115e2f159f43de6",
+      "pre_sha256": "7fd17db7d7ea45a14d35c8d0a4c52c7ff29f9e58b1ddfcbf9be05fa8111e4488"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "policies/orchestration-control-plane.md",
+      "post_sha256": "5ffc4bc0ce705d6ff9d6c79f752256167bb5f1acb715d13197e321d7e0056c1d",
+      "pre_sha256": "a8571ea6b8218ce387120158da800b50fb59648797f73cd1a4208e5183dab852"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "policies/log-discipline.md",
+      "post_sha256": "1daa1dcda067caa3ec8497c17a0e18f9d894af8118dc0bc9e422f576c2e23078",
+      "pre_sha256": "ce0aadd60a4976087c6922f8547c68d3134792ecd1db3501ce89ef689411e40e"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "briefs/agentic-bootstrap.md",
+      "post_sha256": "9749c68ab7556a4264fe068c4e16b80ace0d522330d5a6b0593eceebffbfad57",
+      "pre_sha256": "f9e67cf8315bd038aac870f4ff35cb881674987459a1003b6ac52688a15175e1"
+    },
+    {
+      "action": "caller/reference-cleanup",
+      "path": "briefs/deterministic-orchestration-control-plane.md",
+      "post_sha256": "7bbe6413606bbd12ba7cd5b6784aa793684708fc1eed29c5084982d992ff720c",
+      "pre_sha256": "5bb5fcc951eeca4a4397bc34d1c146fbc85c097174988b7a5d9333b5b7967f20"
+    },
+    {
+      "action": "rewrite-shared-normalization-proof",
+      "path": "tests/test_log_control_plane.py"
+    }
+  ],
+  "constitution": {
+    "original_sha256": "51d94da78c2293c041cbf74e0cf7797a45901d06cf66f8f13965e7a725020e2c",
+    "primary_sha256": "b25e03c892fcc54038fffda7f33ec58fa369413d925638511b7c9d021f95d159",
+    "rewritten_paths": [
+      "README.md",
+      "AGENTS.md",
+      "bin/check-catalogs",
+      "bin/README.md",
+      "bin/serve-execution-dashboard",
+      "bin/check-toolchain-callers",
+      "bin/check-harness-parity",
+      "tests/test_methodology_toolchain_contract.py",
+      "tests/test_check_catalogs.py",
+      "tests/proof-estate.yaml",
+      "tests/test_execution_telemetry.py",
+      "tests/test_kickoff_evidence.py",
+      "tests/test_test_governance.py",
+      "tests/test_execution_dashboard.py",
+      "tests/test_mirror_parity.py",
+      "tests/test_check.py",
+      "tests/render_execution_dashboard_fixture.py",
+      "tests/fixtures/refactor_evaluation/exercise.py",
+      ".claude/agents/code-critic.md",
+      ".claude/agents/phase-coder.md",
+      ".claude/agents/phase-planner.md",
+      ".claude/agents/plan-reviewer.md",
+      ".claude/skills/kickoff/preflight.md",
+      ".claude/skills/kickoff/close.md",
+      ".claude/skills/kickoff/SKILL.md",
+      ".claude/skills/learn/SKILL.md",
+      ".claude/skills/sweep-planning/SKILL.md",
+      ".claude/skills/stamp/SKILL.md",
+      ".claude/skills/teach/SKILL.md",
+      "policies/multi-operator-migration.md",
+      "policies/cross-harness-parity.md",
+      "policies/project-isolation.md",
+      "policies/review-lanes.md",
+      "policies/repo-relative-paths.md",
+      "policies/briefs-and-policies.md",
+      "policies/README.md",
+      "policies/lessons.md",
+      "policies/simplicity-and-consolidation.md",
+      "policies/briefs.md",
+      "policies/docs.md",
+      "policies/human-in-the-loop.md",
+      "policies/orchestration-evidence.md",
+      "lib/agentic_starter/documentation.py",
+      "lib/agentic_starter/execution_telemetry.py",
+      "briefs/agentic-bootstrap.md",
+      "briefs/methodology.md",
+      "briefs/harness-self-improvement.md",
+      "briefs/cross-agent-invocation.md",
+      "briefs/eacp-pattern-map.md",
+      "briefs/mini-method.md",
+      "briefs/BRIEF.md"
+    ]
+  },
+  "inventory": {
+    "obsolete": {
+      "bin/check-log": "395d543fc87143d0d1f77f67af122d56053dca4b497290b31c9ba5abbb99cd26",
+      "bin/check-log-monotonic": "0c9e842c5e4a818dc797b5fae96d49ee71c6233136b4ee5b30497352d4897d0d",
+      "bin/check-log-prefix": "bdbf04dff9cd1b20f661b382b0468b5d2fb4c7efa2120856f71a4d2cc7a4a2be",
+      "bin/log-append": "497c9ef09113fd61bfb4f58ad0ce5492dcab193aed79ef3cd5b7c94286f6b009",
+      "bin/log-relocate": "8ebb9d66755d70798c3be60297a6d65ffbca6d7162dce8e0cb0f32afb88afbce",
+      "bin/renumber-phases": "3e339d2d19cc71e206e04f8db28ca8a6d2dab89753408f725c492b3e250b8ca5"
+    },
+    "shared": {
+      ".githooks/pre-commit": "Preserve actual-index immutable-record validation.",
+      "bin/check": "Aggregate gate: replace removed executable and log callers.",
+      "bin/check-catalogs": "Catalogs/links: new phase semantics need live-cutover qualification.",
+      "bin/kickoff-command-zero": "Command admission: use structured-record validation.",
+      "bin/kickoff-evidence": "Advice/acceptance: new-schema semantics still need qualification.",
+      "bin/normalize-final-newline": "Execution/index normalization; remove flat-log repair.",
+      "lib/agentic_starter/log_blocks.py": "Historical body and terminal Lessons parsing."
+    }
+  },
+  "shared_semantic_adoption_pending": [
+    "candidate/close/phase capture and current actor adapters",
+    "complete new-schema catalog/skill semantics",
+    "recipient proof retirement/admission and full gate"
+  ],
+  "source_proof_judgments_transferred": false
+}

@@ -69,7 +69,7 @@ The file is `plan/phases/amber-river-heron.md`. Ownership has one home in phase 
 
 **Children** get their own slug and a `parent:` field. A counter scoped to the parent would still collide when two people add children to the same phase.
 
-Identity becomes permanent and order becomes freely editable — the inverse of the current arrangement, where order is fixed by the name and the name changes on reorder.
+Identity becomes permanent and order becomes freely editable — the inverse of the pre-migration arrangement, where order is fixed by the name and the name changes on reorder.
 
 ## 5. What conflict-free layout does not provide
 
@@ -90,7 +90,7 @@ Fast-forward push to one default branch serializes every operator behind every o
 
 The isolated implementation separates stable phase identity from order, reconstructs historical log bytes without assigning invented authorship, and represents concurrent ownership successors as conflicts rather than silently choosing a winner. Its maintenance commands exercise the proposed new records. The rehearsal supports these structural claims; it is not evidence that live execution, acceptance, session loading or multi-operator delivery has been adopted. Active consumed review history still has identity-continuity consequences, and existing shared workflow callers need a coherent eventual cutover.
 
-The single authoritative [migration runbook](../policies/multi-operator-migration.md#0-unified-migration-runbook) owns preflight, conversion, retirement, constitutional requirements, Teach/Learn entrypoints, acceptance and Git rollback. This operator-directed procedural handoff is navigation to the adopted operational rule, not evidence for the research above. No procedure is duplicated here. Live Starter retains its current operational layout.
+The single authoritative [migration runbook](../policies/multi-operator-migration.md#0-unified-migration-runbook) owns preflight, conversion, retirement, constitutional requirements, Teach/Learn entrypoints, acceptance and Git rollback. This operator-directed procedural handoff is navigation to the adopted operational rule, not evidence for the research above. No procedure is duplicated here. Actual adoption and session-loading evidence belong to the receiving owner’s scoped delivery record, separately from these research claims.
 
 ## Sources
 

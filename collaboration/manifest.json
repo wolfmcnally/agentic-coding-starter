@@ -1,0 +1,14 @@
+{
+  "active_imports": [],
+  "adopted": true,
+  "format": "starter.multioperator.v1",
+  "migration_tool_sha256": "d307062e65a357057e59c1cbc59fc76c7a8ff8210de6b4da572206ea52119092",
+  "original_log_bytes": 427241,
+  "original_log_sha256": "005d27ff1ab787c1fb47ac1d088d5f976bf4b4945a4ec53a9f648d3fff8ebe04",
+  "phase_mapping": {
+    "1": "starter-template-adoption"
+  },
+  "source_archive_sha256": "5a7b42afefc3094c5777430a399b9d014bbd104058f4076bb9cd0fb6ed7ec288",
+  "source_commit": "e3bea78a2e600da74795bfc7d0fd8bff8b4638ed",
+  "writer": "starter-maintainer"
+}

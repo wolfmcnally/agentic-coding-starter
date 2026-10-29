@@ -2,11 +2,11 @@
 
 Authority mode follows [four-canonical-agents.md](four-canonical-agents.md). Product primary mode uses independent advice and primary acceptance; delegated product mode retains approval verdicts and bounded revision loops. References below to reviewer assent or mandatory re-review govern delegated work only. Required objective gates and truthful evidence apply in both modes. All methodology work, including teach/learn, follows [review-lanes.md](review-lanes.md): one-shot by the primary, no delegated production or review, and commit/fast-forward-push authority after required checks.
 
-`LOG.md` is the **append-only** record of what has been done to this repository. It is written by the writers named in the table below, never by hand. Do not hand-edit historical entries.
+`log/entries/` is the **append-only** record of what has been done to this repository. It is written by the writers named in the table below, never by hand. Do not hand-edit historical entries.
 
-## What `LOG.md` is
+## What `log/entries/` is
 
-`LOG.md` carries two kinds of entry, and every entry belongs to exactly one named writer.
+`log/entries/` carries two kinds of entry, and every entry belongs to exactly one named writer.
 
 **Phase entries**, written by `kickoff`:
 
@@ -22,19 +22,19 @@ Authority mode follows [four-canonical-agents.md](four-canonical-agents.md). Pro
 | `SWEEP (<focus>)` | `sweep` | A maintenance pass over the rule surfaces: what was retired, graduated, and left open. |
 | `SWEEP-CODING (<kind>)` | `sweep-coding` | The same longitudinal pass over the coder ↔ critic loop: harvested code-review verdicts and coder failure analyses, reason categories, attributions, corrections. Reads its latest entry the same way. |
 | `SWEEP-PLANNING (<kind>)` | `sweep-planning` | A longitudinal pass over harvested review verdicts: window, coverage, reason categories with counts, attributions, and the corrections applied or filed. The next run reads the latest entry to set its window and compute deltas. |
-| `METHODOLOGY SCOPE` / `METHODOLOGY` | the agent invoking the direct-implementation route ([review-lanes.md](review-lanes.md) § Methodology improvements) | The paired records of one direct methodology change: the scope block written before the work — approved outcome, surfaces in scope, explicit exclusions — and the terminal block written at close, carrying changed paths, independent verdict and resolutions, reviewed candidate, gate results and remaining human criteria. |
+| `METHODOLOGY SCOPE` / `METHODOLOGY` | the agent invoking the direct-implementation route ([review-lanes.md](review-lanes.md) § Methodology improvements) | The paired records of one direct methodology change: the scope block written before the work — approved outcome, surfaces in scope, explicit exclusions — and the terminal block written at close, carrying changed paths, primary self-checks, candidate, gate results and remaining human criteria. |
 
 The `Only finalized evidence may claim exact timing` rule and the START/END formats below govern phase entries. A repository-operation entry has no fixed schema beyond a `## <YYYY-MM-DD HH:MM> — <HEADING>` line and the same append-only, no-back-dating, no-fabrication rules; each owning writer defines its own body.
 
-A writer that is not in that table does not write to `LOG.md`. Adding a row is a policy amendment, not a skill author's decision — the point of the table is that a reader can tell, from this file alone, whether an entry had authority to exist. The `METHODOLOGY` row is the one non-skill writer, added by operator amendment on 2026-09-05 because the direct-implementation route is a route rather than a skill and its close still owes a terminal record. That route's first close, written the same day under an `END —` heading before this row existed, is authorized by this amendment and is not rewritten; append-only means the heading it carries stands.
+A writer that is not in that table does not write to `log/entries/`. Adding a row is a policy amendment, not a skill author's decision — the point of the table is that a reader can tell, from this file alone, whether an entry had authority to exist. The `METHODOLOGY` row is the one non-skill writer, added by operator amendment on 2026-09-05 because the direct-implementation route is a route rather than a skill and its close still owes a terminal record. That route's first close, written the same day under an `END —` heading before this row existed, is authorized by this amendment and is not rewritten; append-only means the heading it carries stands.
 
-## What `LOG.md` is not
+## What `log/entries/` is not
 
-- A status indicator. Status lives in `plan/INDEX.md` ([`phase-status.md`](phase-status.md)).
+- A status indicator. Status is folded from `plan/events/` ([`phase-status.md`](phase-status.md)).
 - A planning document. Plans live in `plan/` and per-session conversational planning context.
 - A commit message. `kickoff` writes a separate factual commit message when it delivers the phase ([`human-in-the-loop.md`](human-in-the-loop.md)). The END block records the standing delivery policy or an explicit user restriction *before* the handoff gate; the actual delivery outcome happens afterward, is reported to the user, and is never written back into tracked state.
 - A general-purpose changelog. (A `CHANGELOG.md` is a different artifact, owned by humans for end-user audiences.)
-- An action queue for the human. The live set of items only the user can resolve lives in [`../user-actions/`](../user-actions/) (one file per action; closed in `../user-actions-archived/`), governed by [`user-actions.md`](user-actions.md). `LOG.md` records what happened; `user-actions/` records what's pending on the human.
+- An action queue for the human. The live set of items only the user can resolve lives in [`../user-actions/`](../user-actions/) (one file per action; closed in `../user-actions-archived/`), governed by [`user-actions.md`](user-actions.md). `log/entries/` records what happened; `user-actions/` records what's pending on the human.
 
 ## START block format
 
@@ -104,7 +104,7 @@ The `Lessons:` field is part of every truthful END or PARK contract because the 
 
 The `Acceptance:` field is likewise mandatory, and both halves are written even when one is `None`. It is the per-phase record of the boundary in [`human-in-the-loop.md`](human-in-the-loop.md): what the orchestrator closed on its own evidence, and what is waiting on the user's judgment. Writing only the objective half would let "delivered" read as "accepted"; writing only the parked half would hide what the gate actually proved. The `Delivery:` field records the policy in force *before* the handoff gate — never a predicted outcome.
 
-When a phase pauses (not completes), the END block uses the same format but adds a `Pause reason:` line and leaves the phase row in `plan/INDEX.md` at `🚧`.
+When a phase pauses (not completes), the END block uses the same format but adds a `Pause reason:` line and leaves the canonical event head in progress.
 
 ## Follow-up correction format
 
@@ -140,14 +140,14 @@ This block records the approved inter-phase scope and route; it does not reopen 
 
 ## Rules
 
-1. **Append-only by exact bytes.** New blocks enter through `bin/log-append` at true EOF. The working and staged candidates must begin with the exact committed bytes; a semantically equivalent rewrite is still a violation. A committed mistake gets a later correction block. An uncommitted block may be relocated only by one unique content digest through `bin/log-relocate`, which preserves the committed prefix and every block identity.
-2. **Named writers only; humans read.** Only the writers named in the table above append to `LOG.md`, each writing only its own entry kind: the skills listed there, plus the direct-implementation route's `METHODOLOGY SCOPE` and `METHODOLOGY` blocks, which are the one non-skill writer. Humans don't write to it directly. The exceptions are bootstrapping (creating the initial `# Activity Log` header) and recovery (when a writer failed partway and left an inconsistent state).
-3. **Timestamps are real.** Use the orchestrator's actual wall-clock time when the block was written. Do not back-date.
-4. **The END block is a contract.** When the orchestrator writes an END block claiming the phase is done, the human is entitled to expect that every claim in the block is true. Fabricated evidence is the most dangerous failure mode this policy guards against; the orchestrator must never claim a build gate passed when it didn't, never claim a manual check was performed by the orchestrator, never embellish the file list.
-5. **The handoff gate closes the current block.** The active uncommitted END and other close writes remain contingent until a bare `./bin/check all` passes against the actual handoff tree. No tracked write follows that pass. A failure reopens and corrects the current uncommitted close; committed historical blocks remain append-only.
-6. **Chronology corrections move effective time, never bytes.** A later exact `LOG CHRONOLOGY CORRECTION` block binds one earlier block digest, repeats its recorded anchor, and supplies a strictly later effective anchor no later than the correction record. Duplicate, missing, ambiguous, or backward corrections refuse.
-7. **One bounded mechanical repair.** A novel bookkeeping failure may receive one in-memory-validated atomic repair under `policies/orchestration-control-plane.md`. A second attempt, ambiguity, substantive change, recurring signature, or failed byte verification parks.
-8. **A diagnosed hook failure may correct the uncommitted block.** A hook that rejects the commit may name a defect in the block the orchestrator just wrote, and the remedy is a correction rather than another appended block. Under [`human-in-the-loop.md`](human-in-the-loop.md) § Correcting a diagnosed hook refusal, retain the rejected bytes, verify the committed prefix before and after the smallest targeted correction, and run `bin/check-log-prefix --staged --require-terminal-lessons` against the newly staged content before renewing the required gates. This narrow exception never authorizes changing committed bytes, moving a block outside `bin/log-relocate`, or rewriting another writer's work.
+1. **Immutable entries by exact bytes.** Use `./bin/multioperator append --root . --writer <operator> --body <body.md> --at <observed-UTC>`; a fresh entry records its writer, sequence, exact predecessor and body digest. Writers produce only the entry kinds authorized above. A log envelope is attribution, not a grant. Never patch, relocate, delete or rewrite a published entry; a correction is another record. The staged validator checks committed entry immutability.
+2. **Named writers only; humans read.** The table names authorized operation kinds; the envelope names the actual current operator. A migration import has explicit unknown historical authorship and exact original byte offsets, never fabricated attribution. New entries use a real current writer, not `unattributed-import`.
+3. **Timestamps are real.** Read the current clock before writing; the envelope stores timezone-aware UTC. Per-writer time cannot regress. Cross-writer presentation order is not exact causal timing. Imported old clock disagreements remain exact old bytes.
+4. **The END block is a contract.** Report actual checks, failed commands, warnings, remaining human criteria and evidence honestly. Never claim manual observation or acceptance on another person's behalf. Exact timing comes only from finalized measured evidence.
+5. **The handoff gate closes the candidate.** Terminal entries and all tracked close writes precede the bare `./bin/check all`. No tracked write follows a successful final gate. If a gate fails, retain the failed entry/evidence and append a truthful correction after fixing the attributable defect; never rewrite the earlier record to conceal the failure.
+6. **Corrections preserve originals.** A new correction can identify the earlier entry and its digest and explain a wrong recorded time or outcome. It never changes that earlier envelope, effective history or consumed accounting. No flat-file chronology relocation or permanent old-format reader remains.
+7. **Bounded repair keeps custody and history.** Follow [orchestration-control-plane.md](orchestration-control-plane.md) and the actual owner authority. Ambiguity, unknown ownership or a substantive scope change is reported; mechanical success does not grant the next action.
+8. **A diagnosed hook refusal is work to finish safely.** Preserve rejected originals, correct the attributable unpublished input, publish an explicit later correction when a record already exists, and rerun `./bin/multioperator validate --root . --staged` plus every affected candidate gate. Never bypass a hook, mutate committed history or edit another writer's record.
 
 9. **Read the clock, then write the record.** Capture a measured field, look at the value, and write the record from what you read. Never compose a timestamped block and the command that reads the clock in one breath: the value written is then an estimate, and in an append-only log a wrong one costs a correction block — which can carry its own wrong timestamp and cost a second. This generalizes past timestamps to any field that is *measured* rather than chosen. *(Graduated from `vengeful-shoebill`, 3 occurrences — `lessons-archived/vengeful-shoebill.md`.)*
 
@@ -158,8 +158,6 @@ Two reasons:
 - **Audit trail.** When the human asks "when did we decide to do X?", the log is the source of truth. Edited history loses the answer.
 - **Restart robustness.** When `kickoff` is re-run after a crashed session, it reads the most recent unmatched START block to know what to resume. Editing blocks invalidates the heuristic.
 
-## Length
+## Discovery and retention
 
-`LOG.md` grows monotonically over the project's life. That is expected and fine. The file is for grep, not for browsing.
-
-If a project's log grows so large that it slows down agent reads, split it: archive entries from year N into `LOG-<year>.md` and keep `LOG.md` for year N+1. Reference the archive from `LOG.md`'s header.
+Entries remain in their canonical durable home. `./bin/multioperator render --root .` creates ignored `.collaboration-views/LOG.md` for reading; it is reproducible and never authoritative. Filter named entry metadata or search bodies instead of loading the entire history. Required unique evidence and immutable historical records are retained under the normal durability and delivery-resource policies; neither age nor a generated view authorizes purging them.

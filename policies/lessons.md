@@ -17,15 +17,15 @@ The **filename is the slug** (a two-word code-name): `sandbox-phantom.md`. There
 
 ## What `lessons/` is
 
-- The repo's structured memory of "what we keep re-learning," parallel to `LOG.md` (history) and `user-actions/` (human-only follow-ups).
-- The input queue for rule-making: a lesson that recurs graduates — with the human's explicit approval — into a policy, brief, skill, agent definition, `bin/` script, test, or `CLAUDE.md` invariant.
+- The repo's structured memory of "what we keep re-learning," parallel to `log/entries/` (history) and `user-actions/` (human-only follow-ups).
+- The input queue for rule-making: a lesson that recurs graduates — with the human's explicit approval — into a policy, brief, skill, agent definition, `bin/` script, test, or `AGENTS.md` invariant.
 - In a derived project, the `scope: methodology` subset is the standing export surface the starter harvests via the `learn` skill.
 
 ## What `lessons/` is not
 
 - Not a bug tracker or work backlog. Work an agent can do goes in `plan/`; human-only actions go in `user-actions/`.
 - Not a rule surface. A candidate lesson binds nothing; only graduation makes it binding, and only the human graduates.
-- Not agent-side memory. Per [`CLAUDE.md`](../CLAUDE.md)'s "Rules, not memory" invariant, the ledger is a committed repo surface visible to every operator and harness — never a local memory store.
+- Not agent-side memory. Per [`AGENTS.md`](../AGENTS.md)'s "Rules, not memory" invariant, the ledger is a committed repo surface visible to every operator and harness — never a local memory store.
 
 ## Format
 
@@ -122,7 +122,7 @@ Membership is a judgment recorded in the sweep or the policy that names the fami
 
 - **Any agent** may file a candidate lesson or append an occurrence: `kickoff`'s harvest step at every truthful phase close or park, `sweep` during a maintenance pass, a `user-actions` disposition, `learn`/`teach` during a transfer, or the user directly. A parked run is evidence, not a reason to discard its observations.
 - **`learn` keeps two inputs distinct.** Donor-ledger lessons are harvested as direct rule proposals or destination-ledger candidates. New methodology defects exposed while adapting the approved bundle are filed separately in the destination ledger with `source: learn` and `scope: methodology`; the donor remains read-only. The aggregate LOG entry reports both counts.
-- **Only the human** graduates, and only the human edits `policies/`, `briefs/`, `CLAUDE.md`, skills, or agent definitions *because of* a lesson. Filing and occurrence-appending are the only ledger writes an agent performs autonomously.
+- **Only the human** graduates, and only the human edits `policies/`, `briefs/`, `AGENTS.md`, skills, or agent definitions *because of* a lesson. Filing and occurrence-appending are the only ledger writes an agent performs autonomously.
 
 ## Anonymization on the upstream path
 

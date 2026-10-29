@@ -44,7 +44,7 @@ def repository(tmp_path: Path) -> Path:
         "active:\n"
         '  - "/candidate-partition.yaml"\n'
         '  - "/.gitignore"\n'
-        '  - "/CLAUDE.md"\n'
+        '  - "/AGENTS.md"\n'
         '  - "/phase.md"\n'
         '  - "/policy.md"\n'
         '  - "/code.py"\n'
@@ -56,16 +56,16 @@ def repository(tmp_path: Path) -> Path:
         '  - "/lib/**"\n'
         '  - "/plan/**"\n'
         "bookkeeping:\n"
-        '  - "/LOG*.md"\n'
+        '  - "/plan/events/**"\n'
+        '  - "/log/entries/**"\n'
         '  - "/EXECUTION_LOG.jsonl"\n'
-        '  - "/plan/INDEX.md"\n'
         '  - "/lessons/**"\n'
         '  - "/lessons-archived/**"\n'
         '  - "/user-actions/**"\n'
         '  - "/user-actions-archived/**"\n'
     )
 
-    (root / "LOG.md").write_text("# Log\n")
+    (root / "EXECUTION_LOG.jsonl").write_text("# Log\n")
     (root / "tracked.txt").write_text("tracked\n")
     (root / "script").write_text("#!/bin/sh\n")
     subprocess.run(["git", "add", "."], cwd=root, check=True)
@@ -107,7 +107,7 @@ def test_identity_is_cwd_independent_and_manifest_is_ordered(
 
     product_before = run("--root", str(repository), "--product", "--json")
     assert product_before.returncode == 0, product_before.stderr
-    (repository / "LOG.md").write_text("# Log\n\nappend\n")
+    (repository / "EXECUTION_LOG.jsonl").write_text("# Log\n\nappend\n")
     assert candidate_id(repository) != untracked
     product_after = run("--root", str(repository), "--product", "--json")
     assert product_after.returncode == 0, product_after.stderr
@@ -136,8 +136,14 @@ def _assert_partition_boundary(root: Path) -> None:
     original = declaration.read_bytes()
     parsed = parse_partition(original)
     assert list(parsed.active) == yaml.safe_load(original)["active"]
-    assert parsed.classify("plan/phase-1.md") == "active"
-    assert parsed.classify("plan/INDEX.md") == "bookkeeping"
+    assert parsed.classify("plan/phases/first-work-package.md") == "active"
+    assert parsed.classify("plan/INDEX.md") == "active", "PARTITION MISCLASSIFIED ACTIVE CONTEXT"
+    assert parsed.classify("plan/events/example.json") == "bookkeeping", (
+        "PARTITION MISCLASSIFIED PHASE EVENTS"
+    )
+    assert parsed.classify("log/entries/example.md") == "bookkeeping", (
+        "PARTITION MISCLASSIFIED IMMUTABLE LOGS"
+    )
     assert parsed.classify("nested/LOG.md") is None
     assert parsed.classify("lessons/deeper/note.md") == "bookkeeping"
     for body in (
@@ -148,7 +154,7 @@ def _assert_partition_boundary(root: Path) -> None:
         original.replace(b'"/code.py"', b'"/../escape"'),
         original.replace(b'"/code.py"', b"true"),
         original + b'  - "/candidate-*.yaml"\n',
-        original.replace(b'"/code.py"', b'"/CLAUDE.md"'),
+        original.replace(b'"/code.py"', b'"/AGENTS.md"'),
     ):
         with pytest.raises(BoundaryError):
             parse_partition(body)
@@ -189,7 +195,7 @@ def _assert_partition_boundary(root: Path) -> None:
     for name in (
         "check-harness-parity",
         "check-toolchain-callers",
-        "check-log",
+        "multioperator",
         "test-governance",
     ):
         stub = root / "bin" / name

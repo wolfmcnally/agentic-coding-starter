@@ -1,15 +1,15 @@
 ---
-title: Mini-method — a minimal CLAUDE.md for small projects
+title: Mini-method — a minimal AGENTS.md for small projects
 date: 2026-10-09
 status: methodology
-scope: A verbatim, copy-pasteable CLAUDE.md that idempotently provisions the smallest useful project shape — git repo, .gitignore, briefs/, policies/, docs/, bin/ — and graduates to the full methodology through teach.
+scope: A verbatim, copy-pasteable AGENTS.md that idempotently provisions the smallest useful project shape — git repo, .gitignore, briefs/, policies/, docs/, bin/ — and graduates to the full methodology through teach.
 ---
 
-# Mini-method — a minimal CLAUDE.md for small projects
+# Mini-method — a minimal AGENTS.md for small projects
 
 ## Purpose
 
-The full methodology is proportionate to phased, gate-proved software: it earns its ceremony on projects with a plan ledger, four review roles, candidate-bound evidence, and an authoritative build gate. A notebook of experiments, a small tool, a research folder, or a knowledge base needs none of that machinery — but it still benefits from the *shape*: a git repository, an ignore file, one place for thinking, one for rules, one for pinned third-party material, one for deterministic scripts, and a single instruction file that tells any agent how the directory is organized and how to behave. Mini-method is that subset, packaged as one `CLAUDE.md` an agent can execute.
+The full methodology is proportionate to phased, gate-proved software: it earns its ceremony on projects with a plan ledger, four review roles, candidate-bound evidence, and an authoritative build gate. A notebook of experiments, a small tool, a research folder, or a knowledge base needs none of that machinery — but it still benefits from the *shape*: a git repository, an ignore file, one place for thinking, one for rules, one for pinned third-party material, one for deterministic scripts, and a single instruction file that tells any agent how the directory is organized and how to behave. Mini-method is that subset, packaged as one `AGENTS.md` an agent can execute.
 
 This is not the light review lane. The light lane is a review-depth setting *inside* the full methodology; mini-method is a smaller method — no `plan/`, no `LOG.md`, no roles, no gates — for projects that have not yet earned them.
 
@@ -19,14 +19,14 @@ This is not the light review lane. The light lane is a review-depth setting *ins
 |---|---|---|
 | git repository | `git init -b master`; no remote is ever created | Unchanged; delivery machinery starts using the remote the operator configures |
 | `.gitignore` | Editor, OS, and harness runtime state | Extended with the full method's runtime entries (`.kickoff/` and friends) |
-| `CLAUDE.md` | The whole method: layout, setup protocol, rule set | Replaced by the two-zone form; the Project paragraph carries into Project Context |
-| `briefs/` | Durable thinking, indexed by `briefs/README.md` | Carries over unchanged; the catalog moves into `CLAUDE.md` |
-| `policies/` | Binding rules, indexed by `policies/README.md` | Carries over unchanged; the catalog moves into `CLAUDE.md`; the universal policy set is added |
+| `AGENTS.md` | The whole method: layout, setup protocol, rule set | Replaced by the two-zone form; the Project paragraph carries into Project Context |
+| `briefs/` | Durable thinking, indexed by `briefs/README.md` | Carries over unchanged; the catalog moves into `AGENTS.md` |
+| `policies/` | Binding rules, indexed by `policies/README.md` | Carries over unchanged; the catalog moves into `AGENTS.md`; the universal policy set is added |
 | `docs/` | Pinned third-party material, cataloged in `docs/README.md` | Carries over unchanged — the full method keeps the same catalog file |
 | `bin/` | Deterministic scripts, indexed by `bin/README.md` | Carries over unchanged; the toolchain contract and checkers are added |
 | — | Absent by design: `plan/`, `LOG.md`, ledgers, roles, skills, gates | Added by `teach` |
 
-The catalogs live in per-directory `README.md` files, not in `CLAUDE.md`, so the fenced block below is verbatim for every project and never needs editing as the project grows: the project's own content accumulates in the directories and their READMEs, and the one file that came from this brief stays byte-identical to its source.
+The catalogs live in per-directory `README.md` files, not in `AGENTS.md`, so the fenced block below is verbatim for every project and never needs editing as the project grows: the project's own content accumulates in the directories and their READMEs, and the one file that came from this brief stays byte-identical to its source.
 
 ## Two ways to use it
 
@@ -36,12 +36,12 @@ The catalogs live in per-directory `README.md` files, not in `CLAUDE.md`, so the
 
 There is deliberately no `bin/` script for this. The protocol has to work for a stranger who copied the block and has no access to this repository, so the block itself must remain the complete implementation — a parallel script would be a second home for the same procedure and the two would drift (`policies/simplicity-and-consolidation.md`'s one-home rule, applied to a procedure).
 
-## The CLAUDE.md
+## The AGENTS.md
 
 The block is the artifact; the prose around it is commentary. Corrections land in the block first, and the sections after it are updated to match.
 
 ````markdown
-# CLAUDE.md
+# AGENTS.md
 
 Guidance for coding agents working in this repository. This project uses the **mini-method**: a minimal layout and a short rule set. It can be upgraded to the full agentic-coding methodology later; see "Graduating" at the end.
 
@@ -89,13 +89,13 @@ When this project needs phased work, review gates, and an activity log, it is ti
 
 ## Graduating
 
-The trailing HTML comment in the block is the marker the `teach` skill recognizes: a target whose `CLAUDE.md` carries it is classified as a *mini-method graduation* rather than a divergent or partially stamped project. The four directories transfer as they stand; the `briefs/README.md` and `policies/README.md` catalogs fold into the new `CLAUDE.md`'s catalogs, while `docs/README.md` and `bin/README.md` remain the catalog files the full methodology also uses; the mini `CLAUDE.md` is replaced wholesale by the two-zone form, with its Project paragraph carried into the Project Context zone; and the absence of `plan/`, `LOG.md`, ledgers, roles, and gates is absent-by-design, not drift.
+The trailing HTML comment in the block is the marker the `teach` skill recognizes: a target whose `AGENTS.md` carries it is classified as a *mini-method graduation* rather than a divergent or partially stamped project. The four directories transfer as they stand; the `briefs/README.md` and `policies/README.md` catalogs fold into the new `AGENTS.md`'s catalogs, while `docs/README.md` and `bin/README.md` remain the catalog files the full methodology also uses; the mini `AGENTS.md` is replaced wholesale by the two-zone form, with its Project paragraph carried into the Project Context zone; and the absence of `plan/`, `LOG.md`, ledgers, roles, and gates is absent-by-design, not drift.
 
 Two preconditions belong to the operator: the working tree must be clean (the `teach` preflight refuses otherwise), and any `README.md` the operator wrote is preserved — the upgrade adds surfaces, it does not rewrite prose. And one non-path to note: `stamp` will *refuse* a mini-method directory, because its destination gate tolerates only seed briefs; `teach` is the upgrade path.
 
 ## Design notes
 
-- **Per-directory catalogs.** The block must be verbatim for every project or it stops being copy-pasteable and starts being a template with holes. Moving the catalogs into the directory READMEs is what makes that possible: the one file sourced from this brief never changes, and everything project-specific accumulates beside it. Graduation reverses this for `briefs/` and `policies/` because the full method's catalogs live in `CLAUDE.md`.
+- **Per-directory catalogs.** The block must be verbatim for every project or it stops being copy-pasteable and starts being a template with holes. Moving the catalogs into the directory READMEs is what makes that possible: the one file sourced from this brief never changes, and everything project-specific accumulates beside it. Graduation reverses this for `briefs/` and `policies/` because the full method's catalogs live in `AGENTS.md`.
 - **Commit, never push.** Setup ends in one atomic, visible commit of exactly what it created, so the scaffold has a clean provenance line in history. Remotes, pushes, and hosting are the operator's: "no remote unless it already has one" means `git init` only — never creating a hosted repository on the operator's behalf.
 - **`master`.** The default branch is `master`, matching every repository in this methodology's lineage.
 - **No `plan/`, no `LOG.md`.** A small project's history is its commit log, and its next action fits in the operator's head. The moment those stop being true — work needs phases, or "what happened while I was away" needs an answer better than `git log` — is precisely the graduation signal, so the surfaces arrive with the machinery that writes them.

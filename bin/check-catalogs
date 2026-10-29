@@ -1,6 +1,7 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.11"
+# dependencies = ["PyYAML==6.0.3"]
 # ///
 """Fail closed when durable-document catalogs, links, or citations drift.
 
@@ -14,13 +15,19 @@ file under `docs/` links outside `docs/`.
 from __future__ import annotations
 
 import argparse
+import json
+import posixpath
 import re
 import subprocess
+import sys
 from collections.abc import Iterable
 from pathlib import Path
 from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "lib"))
+from agentic_starter import multioperator  # noqa: E402
+
 DRIFT: list[str] = []
 ANCHOR_CACHE: dict[Path, frozenset[str] | None] = {}
 
@@ -39,12 +46,6 @@ PROCEDURE_HANDOFFS = {
 # under docs/ (other than that project-owned catalog) links outside docs/.
 DOCS_DIRECTORY = "docs"
 DOCS_CATALOG = "README.md"
-PHASE_STATUSES = ("⏳", "⬅️", "🚧", "✅")
-NEXT_MARKER = "⬅️"
-PHASE_LINK_KEYS = ("depends_on", "informs")
-PHASE_ID_PATTERN = re.compile(r"\d+(?:\.\d+)*")
-IN_PROGRESS_MARKER = "🚧"
-NOT_STARTED_MARKER = "⏳"
 FENCE_PATTERN = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 # An inline code span is quotation, not prose: a link inside backticks is a
 # quoted edit target, not a live link, so it is exempt the same way fenced
@@ -61,7 +62,6 @@ HEADING_LINK_PATTERN = re.compile(r"!?\[(?P<label>[^\]\n]*)\]\([^)\n]*\)")
 HEADING_MARKUP_PATTERN = re.compile(r"[`*]")
 ANCHOR_DISALLOWED_PATTERN = re.compile(r"[^\w\- ]")
 PLACEHOLDER_PATTERN = re.compile(r"<[^>]+>|\{[^}]+\}")
-FRONTMATTER_STATUS_PATTERN = re.compile(r"^status\s*:", re.IGNORECASE)
 STATUS_DECLARATION_PATTERN = re.compile(
     r"^ {0,3}\*{0,2}status\*{0,2}\s*:\s*(⏳|⬅️|🚧|✅|not started|next|in progress|completed)",
     re.IGNORECASE,
@@ -77,9 +77,9 @@ def check_catalog(directory: str, instructions: str) -> None:
     on_disk = {item.name for item in base.glob("*.md")}
     referenced = set(re.findall(rf"{directory}/([A-Za-z0-9._-]+\.md)", instructions))
     for name in sorted(on_disk - referenced):
-        report(directory, f"{directory}/{name}", "file is not indexed in CLAUDE.md")
+        report(directory, f"{directory}/{name}", "file is not indexed in AGENTS.md")
     for name in sorted(referenced - on_disk):
-        report(directory, f"{directory}/{name}", "CLAUDE.md references a missing file")
+        report(directory, f"{directory}/{name}", "AGENTS.md references a missing file")
 
 
 def check_instruction_delivery(instructions: str) -> None:
@@ -92,7 +92,7 @@ def check_instruction_delivery(instructions: str) -> None:
         report("instructions", entry_relative, f"required entry is unreadable: {exc}")
         entry_text = ""
     for relative, text, ceiling in (
-        ("CLAUDE.md", instructions, 20480),
+        ("AGENTS.md", instructions, 20480),
         (entry_relative, entry_text, 10240),
     ):
         size = len(text.encode("utf-8"))
@@ -109,11 +109,11 @@ def check_instruction_delivery(instructions: str) -> None:
         )
     ]
     if any(instructions.count(marker) != 1 for marker in markers):
-        report("instructions", "CLAUDE.md", "zone markers must each occur exactly once")
+        report("instructions", "AGENTS.md", "zone markers must each occur exactly once")
     elif [instructions.index(marker) for marker in markers] != sorted(
         instructions.index(marker) for marker in markers
     ):
-        report("instructions", "CLAUDE.md", "zone markers must occur in declared order")
+        report("instructions", "AGENTS.md", "zone markers must occur in declared order")
 
     # Only rows of the declared table can discharge a resource's loading duty.
     # A navigation link, quoted example, or instruction elsewhere cannot do so.
@@ -178,220 +178,6 @@ def check_instruction_delivery(instructions: str) -> None:
             )
 
 
-def phase_rows(lines: list[str]) -> list[str]:
-    in_phase_table = False
-    table_started = False
-    raw_rows: list[str] = []
-    for line in lines:
-        if line.strip().casefold() == "## phase table":
-            in_phase_table = True
-            continue
-        if in_phase_table and line.startswith("## "):
-            break
-        if not in_phase_table:
-            continue
-        if line.lstrip().startswith("|"):
-            table_started = True
-            raw_rows.append(line)
-        elif table_started and line.strip():
-            break
-
-    rows: list[str] = []
-    for row in raw_rows:
-        cells = [cell.strip() for cell in row.strip().strip("|").split("|")]
-        if not cells or cells[0].casefold() == "phase":
-            continue
-        if all(re.fullmatch(r":?-{3,}:?", cell) for cell in cells):
-            continue
-        rows.append(row)
-    return rows
-
-
-def check_phase_ledger(ledger: Path | None = None) -> None:
-    index = ledger or ROOT / "plan" / "INDEX.md"
-    try:
-        lines = index.read_text(encoding="utf-8").splitlines()
-    except OSError as exc:
-        report("plan", "plan/INDEX.md", str(exc))
-        return
-
-    rows = phase_rows(lines)
-    if not rows:
-        report("plan", "plan/INDEX.md", "phase table has no data rows")
-        return
-
-    row_markers: list[str | None] = []
-    for position, row in enumerate(rows, start=1):
-        markers = [marker for marker in PHASE_STATUSES if marker in row]
-        if len(markers) != 1:
-            report(
-                "plan",
-                "plan/INDEX.md",
-                f"phase row {position} must carry exactly one status marker; found {len(markers)}",
-            )
-            row_markers.append(None)
-        else:
-            row_markers.append(markers[0])
-
-    next_count = row_markers.count(NEXT_MARKER)
-    in_progress_count = row_markers.count(IN_PROGRESS_MARKER)
-    not_started_count = row_markers.count(NOT_STARTED_MARKER)
-    if next_count > 1:
-        report(
-            "plan",
-            "plan/INDEX.md",
-            f"phase table may carry at most one {NEXT_MARKER} marker; found {next_count}",
-        )
-    elif next_count == 0 and in_progress_count == 0 and not_started_count > 0:
-        report(
-            "plan",
-            "plan/INDEX.md",
-            f"idle incomplete phase table must carry exactly one {NEXT_MARKER} marker; found 0",
-        )
-
-    check_phase_numbering(rows, row_markers)
-
-
-def phase_key(phase: str) -> tuple[int, ...]:
-    return tuple(int(part) for part in phase.split("."))
-
-
-def phase_link_entries(block: list[tuple[int, str]]) -> list[tuple[int, str, str]]:
-    """Every `depends_on` and `informs` value in a phase file's frontmatter, as
-    (line number, key, value), inline or as a block list.
-
-    Values come back as written, less their quotes, so that one which is not a
-    phase id is refused instead of being skipped.
-    """
-    found: list[tuple[int, str, str]] = []
-    current = None
-    for line_number, line in block:
-        named = re.match(r"^([A-Za-z_][\w-]*)\s*:(.*)$", line)
-        if named:
-            current, line = named.group(1), named.group(2)
-        if current not in PHASE_LINK_KEYS:
-            continue
-        value = re.sub(r"^-(\s+|$)", "", re.sub(r"(^|\s)#.*$", "", line).strip())
-        for piece in value.strip("[]").split(","):
-            entry = piece.strip().strip("\"'")
-            if entry:
-                found.append((line_number, current, entry))
-    return found
-
-
-def phase_dependencies(phase_file: Path) -> list[str]:
-    """The phase ids a phase file's `depends_on` names."""
-    try:
-        block = frontmatter_lines(phase_file.read_text(encoding="utf-8"))
-    except OSError:
-        return []
-    return [
-        entry
-        for _, name, entry in phase_link_entries(block)
-        if name == "depends_on" and PHASE_ID_PATTERN.fullmatch(entry)
-    ]
-
-
-def check_phase_numbering(rows: list[str], row_markers: list[str | None]) -> None:
-    """Numbers of phases that have not started follow their order of execution
-    (policies/phase-status.md). Started and completed phases keep the numbers they have."""
-    upcoming = {NEXT_MARKER, NOT_STARTED_MARKER}
-    ordered: list[tuple[str, str | None]] = []
-    for row, marker in zip(rows, row_markers, strict=True):
-        match = re.search(r"\bPhase\s+([0-9]+(?:\.[0-9]+)*)\b", row)
-        if match:
-            ordered.append((match.group(1), marker))
-    for (earlier, _), (later, _) in zip(ordered, ordered[1:], strict=False):
-        if phase_key(later) <= phase_key(earlier):
-            report(
-                "plan",
-                "plan/INDEX.md",
-                f"phase table rows must run in ascending phase order; Phase {later} follows "
-                f"Phase {earlier}",
-            )
-    status = dict(ordered)
-    for phase, marker in ordered:
-        if marker not in upcoming:
-            continue
-        for dependency in phase_dependencies(ROOT / "plan" / f"phase-{phase}.md"):
-            if status.get(dependency) in upcoming and phase_key(dependency) > phase_key(phase):
-                report(
-                    "plan",
-                    f"plan/phase-{phase}.md",
-                    f"not-started Phase {phase} depends on not-started Phase {dependency}, which "
-                    "is numbered after it; renumber upcoming phases into execution order with "
-                    "./bin/renumber-phases",
-                )
-
-
-def check_closing_phase(
-    phase: str, ledger: Path | None = None, next_marker_reason: str | None = None
-) -> None:
-    """A completed child cannot leave its parent with no truthful continuation."""
-    if "." not in phase:
-        return
-    index = ledger or ROOT / "plan" / "INDEX.md"
-    try:
-        rows = phase_rows(index.read_text(encoding="utf-8").splitlines())
-    except OSError as exc:
-        report("plan-close", "plan/INDEX.md", str(exc))
-        return
-    entries: dict[str, tuple[str | None, str]] = {}
-    for row in rows:
-        match = re.search(r"\bPhase\s+([0-9]+(?:\.[0-9]+)*)\b", row)
-        if match:
-            markers = [marker for marker in PHASE_STATUSES if marker in row]
-            entries[match.group(1)] = (markers[0] if len(markers) == 1 else None, row)
-    current = entries.get(phase)
-    if current is None or current[0] != "✅":
-        report(
-            "plan-close",
-            "plan/INDEX.md",
-            f"closing child Phase {phase} must exist and be marked ✅",
-        )
-        return
-    parent = phase.rsplit(".", 1)[0]
-    parent_entry = entries.get(parent)
-    if parent_entry is None:
-        report("plan-close", "plan/INDEX.md", f"Phase {phase} has no parent Phase {parent}")
-        return
-    if parent_entry[0] == "✅":
-        return
-    siblings = [
-        child
-        for child, (marker, _) in entries.items()
-        if child != phase
-        and child.rsplit(".", 1)[0] == parent
-        and marker in {"⏳", "⬅️", "🚧"}
-        and (ROOT / "plan" / f"phase-{child}.md").is_file()
-    ]
-    if parent_entry[0] != "🚧" or not siblings:
-        report(
-            "plan-close",
-            "plan/INDEX.md",
-            f"closing child Phase {phase} must close parent Phase {parent} or leave it 🚧 "
-            "with another drafted incomplete direct child",
-        )
-        return
-    if next_marker_reason:
-        return
-    queued = [child for child, (marker, _) in entries.items() if marker == NEXT_MARKER]
-    if len(queued) != 1:
-        return
-    target = queued[0]
-    if target == parent or target.startswith(f"{parent}."):
-        return
-    report(
-        "plan-close",
-        "plan/INDEX.md",
-        f"closing child Phase {phase} leaves parent Phase {parent} 🚧 with drafted "
-        f"incomplete {', '.join(f'Phase {child}' for child in sorted(siblings))}, but "
-        f"the {NEXT_MARKER} marker "
-        f"sits on Phase {target}; move it to a non-completed child of Phase {parent} in "
-        "the same edit, or pass --next-marker-reason to record why the queue is elsewhere",
-    )
-
-
 def frontmatter_lines(text: str) -> list[tuple[int, str]]:
     lines = text.splitlines()
     if not lines or lines[0].strip() != "---":
@@ -404,53 +190,40 @@ def frontmatter_lines(text: str) -> list[tuple[int, str]]:
     return []
 
 
+def check_phase_ledger(ledger: Path | None = None) -> None:
+    try:
+        multioperator.validate(ROOT)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        report("plan", "plan/events", str(exc))
+
+
 def check_phase_files() -> None:
-    """Status lives only in plan/INDEX.md's phase table (policies/phase-status.md).
-
-    Narrative mentions of the status emojis in prose are fine; the failure mode
-    is a *declaration* — a frontmatter `status:` key or a `Status: ✅`-shaped
-    line — which creates a second source of truth.
-
-    `depends_on` and `informs` name phases by id (same policy). Any other value,
-    a file path above all, is one the ordering check and a renumbering cannot
-    read, so it is refused here.
-    """
-    for phase_file in sorted((ROOT / "plan").glob("phase-*.md")):
-        relative = phase_file.relative_to(ROOT).as_posix()
-        try:
-            text = phase_file.read_text(encoding="utf-8")
-        except OSError as exc:
-            report("plan", relative, str(exc))
-            continue
-        frontmatter = frontmatter_lines(text)
-        for line_number, line in frontmatter:
-            if FRONTMATTER_STATUS_PATTERN.match(line):
+    for path in sorted((ROOT / "plan/phases").glob("*.md")):
+        text = path.read_text()
+        metadata_lines = {number for number, _ in frontmatter_lines(text)}
+        for number, line in markdown_prose_lines(text):
+            if number not in metadata_lines and STATUS_DECLARATION_PATTERN.match(
+                CODE_SPAN_PATTERN.sub("", line)
+            ):
                 report(
                     "plan",
-                    relative,
-                    f"line {line_number}: frontmatter must not carry a status field",
+                    path.relative_to(ROOT).as_posix(),
+                    f"line {number}: phase state belongs only in predecessor-bound events",
                 )
-        for line_number, name, entry in phase_link_entries(frontmatter):
-            if PHASE_ID_PATTERN.fullmatch(entry):
-                continue
-            path_form = re.search(r"phase-(\d+(?:\.\d+)*)\.md$", entry)
-            wanted = f'"{path_form.group(1)}"' if path_form else "its number"
-            report(
-                "plan",
-                relative,
-                f"line {line_number}: `{name}` names '{entry}', which is not a phase id; "
-                f"name the phase by its id, {wanted}, never by path",
-            )
-        frontmatter_numbers = {line_number for line_number, _ in frontmatter}
-        for line_number, line in markdown_prose_lines(text):
-            if line_number in frontmatter_numbers:
-                continue
-            if STATUS_DECLARATION_PATTERN.match(CODE_SPAN_PATTERN.sub("", line)):
-                report(
-                    "plan",
-                    relative,
-                    f"line {line_number}: status declaration outside plan/INDEX.md's phase table",
-                )
+
+
+def check_closing_phase(
+    phase: str, ledger: Path | None = None, next_marker_reason: str | None = None
+) -> None:
+    try:
+        if ledger is None:
+            state = multioperator.validate(ROOT)
+            if state["heads"][phase]["state"] != "completed":
+                raise ValueError("closing phase has no accepted completion event")
+        else:
+            multioperator.completion_plan(ROOT, phase, json.loads(ledger.read_text()))
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        report("plan-close", "plan/events", str(exc))
 
 
 def candidate_markdown_files() -> list[Path]:
@@ -520,6 +293,26 @@ def heading_slug(text: str) -> str:
     return ANCHOR_DISALLOWED_PATTERN.sub("", rendered.strip().lower()).replace(" ", "-")
 
 
+def anchors_from_text(text: str) -> frozenset[str]:
+    frontmatter_numbers = {line_number for line_number, _ in frontmatter_lines(text)}
+    seen: dict[str, int] = {}
+    collected: set[str] = set()
+    for line_number, line in markdown_prose_lines(text):
+        if line_number in frontmatter_numbers:
+            continue
+        match = ATX_HEADING_PATTERN.match(line)
+        if match is None:
+            continue
+        slug = heading_slug(match.group("text"))
+        if not slug:
+            continue
+        # Repeated heading text disambiguates as slug, slug-1, slug-2…
+        occurrence = seen.get(slug, 0)
+        seen[slug] = occurrence + 1
+        collected.add(slug if occurrence == 0 else f"{slug}-{occurrence}")
+    return frozenset(collected)
+
+
 def document_anchors(path: Path) -> frozenset[str] | None:
     """Anchors a Markdown document defines, or None when they cannot be derived.
 
@@ -538,23 +331,7 @@ def document_anchors(path: Path) -> frozenset[str] | None:
         except OSError:
             anchors = None
         else:
-            frontmatter_numbers = {line_number for line_number, _ in frontmatter_lines(text)}
-            seen: dict[str, int] = {}
-            collected: set[str] = set()
-            for line_number, line in markdown_prose_lines(text):
-                if line_number in frontmatter_numbers:
-                    continue
-                match = ATX_HEADING_PATTERN.match(line)
-                if match is None:
-                    continue
-                slug = heading_slug(match.group("text"))
-                if not slug:
-                    continue
-                # Repeated heading text disambiguates as slug, slug-1, slug-2…
-                occurrence = seen.get(slug, 0)
-                seen[slug] = occurrence + 1
-                collected.add(slug if occurrence == 0 else f"{slug}-{occurrence}")
-            anchors = frozenset(collected)
+            anchors = anchors_from_text(text)
 
     ANCHOR_CACHE[key] = anchors
     return anchors
@@ -691,6 +468,99 @@ def check_docs_catalog() -> None:
             )
 
 
+def verify_historical_commit(commit: str) -> None:
+    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", commit):
+        raise ValueError("invalid historical source identity")
+    result = subprocess.run(
+        ["git", "-C", str(ROOT), "merge-base", "--is-ancestor", commit, "HEAD"], capture_output=True
+    )
+    if result.returncode:
+        raise ValueError("historical source is not a verified repository ancestor")
+
+
+def historical_context(source: Path) -> tuple[str, str] | None:
+    relative = source.relative_to(ROOT)
+    if relative.parts[:2] == ("log", "entries"):
+        metadata, body = multioperator.read_log(source.read_bytes())
+        if "source_offset" not in metadata:
+            return None
+        manifest = json.loads((ROOT / "collaboration/manifest.json").read_text())
+        commit = manifest["source_commit"]
+        verify_historical_commit(commit)
+        original = subprocess.run(
+            ["git", "-C", str(ROOT), "show", commit + ":LOG.md"], capture_output=True
+        )
+        if original.returncode:
+            raise ValueError("declared historical log bytes are unavailable")
+        offset = metadata["source_offset"]
+        if (
+            type(offset) is not int
+            or offset < 0
+            or original.stdout[offset : offset + len(body)] != body
+        ):
+            raise ValueError("imported log differs from the declared Git source bytes")
+        return commit, "LOG.md"
+    if relative.parts[0] not in {"lessons-archived", "user-actions-archived"}:
+        return None
+    manifest = json.loads((ROOT / "collaboration/manifest.json").read_text())
+    commit = manifest["source_commit"]
+    verify_historical_commit(commit)
+    listed = subprocess.run(
+        ["git", "-C", str(ROOT), "ls-tree", "--name-only", commit, "--", relative.as_posix()],
+        capture_output=True,
+    )
+    if listed.returncode:
+        raise ValueError("cannot query declared historical source tree")
+    if not listed.stdout.strip():
+        return None  # A new archive path has no imported-source declaration.
+    archived = subprocess.run(
+        ["git", "-C", str(ROOT), "show", commit + ":" + relative.as_posix()], capture_output=True
+    )
+    if archived.returncode:
+        raise ValueError("declared historical bytes are unavailable")
+    return (commit, relative.as_posix()) if archived.stdout == source.read_bytes() else None
+
+
+def check_historical_link(
+    source: Path, number: int, destination: str, context: tuple[str, str]
+) -> None:
+    commit, original = context
+    target, marker, fragment = destination.partition("#")
+    target = target.split("?", 1)[0]
+    relative = (
+        posixpath.normpath(posixpath.join(posixpath.dirname(original), target))
+        if target
+        else original
+    )
+    if target.startswith("/"):
+        relative = target.lstrip("/")
+    if relative == ".." or relative.startswith("../"):
+        report(
+            "links",
+            source.relative_to(ROOT).as_posix(),
+            f"line {number}: historical link escapes repository",
+        )
+        return
+    checked = subprocess.run(
+        ["git", "-C", str(ROOT), "show", commit + ":" + relative], capture_output=True
+    )
+    if checked.returncode:
+        report(
+            "links",
+            source.relative_to(ROOT).as_posix(),
+            f"line {number}: missing historical target {relative}",
+        )
+        return
+    if marker and fragment and relative.lower().endswith(".md"):
+        anchors = anchors_from_text(checked.stdout.decode())
+        if fragment not in anchors:
+            report(
+                "links",
+                source.relative_to(ROOT).as_posix(),
+                f"line {number}: missing historical anchor #{fragment} in {relative}",
+            )
+
+
 def check_link(source: Path, line_number: int, destination: str) -> None:
     if (
         not destination
@@ -700,6 +570,18 @@ def check_link(source: Path, line_number: int, destination: str) -> None:
     ):
         return
 
+    try:
+        context = historical_context(source)
+        if context is not None:
+            check_historical_link(source, line_number, destination, context)
+            return
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        report(
+            "links",
+            source.relative_to(ROOT).as_posix(),
+            f"line {line_number}: historical provenance refused: {exc}",
+        )
+        return
     file_part, has_fragment, fragment = destination.partition("#")
     fragment = fragment.strip()
     file_destination = file_part.split("?", 1)[0]
@@ -767,9 +649,9 @@ def main() -> int:
     )
     arguments = parser.parse_args()
     try:
-        instructions = (ROOT / "CLAUDE.md").read_bytes().decode("utf-8")
+        instructions = (ROOT / "AGENTS.md").read_bytes().decode("utf-8")
     except (OSError, UnicodeError) as exc:
-        report("instructions", "CLAUDE.md", str(exc))
+        report("instructions", "AGENTS.md", str(exc))
         instructions = ""
     check_instruction_delivery(instructions)
     if instructions:

@@ -32,7 +32,7 @@ The skill adapts the project instructions, runtime and checks, skill mirrors, in
 
 ## Inspect the result
 
-Open the new project in your harness. Read its entry-point brief, `plan/INDEX.md`, and the first phase file. Check the inferred name, language, surfaces, dependencies, and acceptance criteria. Correct assumptions before implementation begins.
+Open the new project in your harness. Read its regular primary `AGENTS.md`, entry-point brief, `plan/INDEX.md` discovery context, and first permanent phase definition/events. Check the inferred name, language, surfaces, dependencies, and acceptance criteria. Correct assumptions before implementation begins.
 
 Run `kickoff` in the new project. In Claude Code:
 

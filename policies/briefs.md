@@ -46,7 +46,7 @@ Don't write a brief for ephemeral state, single-session decisions, or anything t
 ## Status lifecycle
 
 - `draft` — still being shaped; numbers and conclusions tentative.
-- `methodology` — defines an approach the project defers to. This is a *lifecycle* value like the other three, and **not** a portability marker: a brief earns it by stating an approach the project defers to, whether or not that brief travels to another repo, and a methodology brief later realized in code correctly moves on to `implemented`. **Portability is decided by the `CLAUDE.md` catalog, not by `status`** — the Project briefs / Methodology briefs split there is what `stamp` copies from and what a cross-repo `learn` or `teach` pass reads. Do not infer either fact from the other.
+- `methodology` — defines an approach the project defers to. This is a *lifecycle* value like the other three, and **not** a portability marker: a brief earns it by stating an approach the project defers to, whether or not that brief travels to another repo, and a methodology brief later realized in code correctly moves on to `implemented`. **Portability is decided by the `AGENTS.md` catalog, not by `status`** — the Project briefs / Methodology briefs split there is what `stamp` copies from and what a cross-repo `learn` or `teach` pass reads. Do not infer either fact from the other.
 - `implemented` — the position has been realized in code or operational practice.
 - `historical` — superseded by a later brief or by changed reality; kept for the audit trail.
 

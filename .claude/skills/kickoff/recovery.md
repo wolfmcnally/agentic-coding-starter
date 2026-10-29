@@ -43,7 +43,7 @@ $TELEMETRY_TOOL park-close --phase "$PHASE_ID" --park-id <park-id>
 
 Repeated open/close calls are idempotent for the same identity; a conflicting, missing, or multiply-open park fails closed. `phase-summary` reports each interval and its union total. Same-boot intervals use exact monotonic time; cross-boot intervals use visibly non-exact UTC calendar duration. Never turn an open, malformed, or unknowable interval into zero.
 
-When the run must terminate in a truthful PARK rather than merely keep the turn open, harvest the available sensor feed immediately using Step 9c's file-or-recur rules, validate the ledger, and append a PARK block through `bin/log-append`. The block names the reason, preserved evidence, resume condition, and a literal `Lessons:` section. Do not postpone a failed attempt's learning until a future END.
+When the run must terminate in a truthful PARK rather than merely keep the turn open, harvest the available sensor feed immediately using Step 9c's file-or-recur rules, validate the ledger, and append a PARK block through `bin/multioperator`. The block names the reason, preserved evidence, resume condition, and a literal `Lessons:` section. Do not postpone a failed attempt's learning until a future END.
 
 ## Native execution limits
 

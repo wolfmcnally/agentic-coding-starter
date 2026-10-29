@@ -21,8 +21,8 @@ Command zero runs before expensive acceptance and stops on the first refusal:
 1. validate the active manifest, venue receipt, and stage topology;
 2. execute each manifest-declared side-effect-free selector dry-run;
 3. run format validation;
-4. prove `LOG.md` extends committed bytes exactly; and
-5. prove effective log chronology.
+4. validate the canonical phase/event/log graph and retained acceptance bytes; and
+5. preserve immutable history and per-writer predecessor/time integrity.
 
 Selector checks must be non-mutating and must enumerate against the authoritative local inventory rather than a hand-maintained approximation.
 
@@ -43,11 +43,9 @@ Review and implementation evidence bind product identity. Full-tree before/after
 
 ## Log construction and custody
 
-`LOG.md` is written only by `bin/log-append` or an explicitly admitted bounded repair tool. The candidate and staged blobs must begin with the exact committed bytes. Semantic validity never excuses a byte rewrite.
+New activity entries are written through `multioperator append` under the named current operator, with immutable body, digest, sequence, predecessor and observed UTC. Published entries and phase events are never rewritten or relocated. A later correction is another explicit entry. Historical imports preserve exact bodies and unknown authorship; Git is their original-format provenance.
 
-A later chronology correction may change only the effective anchor. It binds one unique earlier block by content digest, repeats its recorded anchor, moves strictly forward, and is itself no later than the correction record. Existing blocks are never edited.
-
-Every newly appended END or PARK block contains a literal `Lessons:` line. `bin/check-log` is the one composed gate used by `bin/check`, command zero, and the staged pre-commit hook.
+Every END or PARK body retains a literal `Lessons:` witness. `bin/multioperator validate --root .` is the working-record gate used by `bin/check` and command zero. The staged hook uses the same validator with `--staged` against the actual indexed record inventory. See [phase-status.md](phase-status.md) and [log-discipline.md](log-discipline.md).
 
 ## One bounded repair
 
@@ -60,7 +58,7 @@ After the first novel bookkeeping failure, one deterministic repair is allowed o
 - post-write bytes exactly equal the validated bytes; and
 - the repair and proof are recorded.
 
-Relocation requires unique authenticated block identities and may touch only an uncommitted suffix. Final-newline repair is closed to `LOG.md`, `EXECUTION_LOG.jsonl`, and `plan/INDEX.md`.
+Flat-log relocation is retired. Final-newline normalization is closed to `EXECUTION_LOG.jsonl`; it cannot rewrite immutable activity entries, phase events or active plan context. A rejected unpublished body may be corrected before publication; a published record needs an append-only correction, never an in-place repair.
 
 Ambiguity, contextual patching, a recurring signature, a second attempt, a substantive edit, an identity change, or failed verification parks for the operator. The orchestrator never widens the repair set to avoid a park.
 

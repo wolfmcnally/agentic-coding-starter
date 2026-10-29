@@ -17,14 +17,14 @@ The **filename is the slug** (the two-word code-name): `warping-butterfly.md`. T
 
 ## What `user-actions/` is
 
-- The interrupt-driven queue of human-only follow-ups, parallel to `LOG.md` (history) and `plan/INDEX.md` (phase ledger).
+- The interrupt-driven queue of human-only follow-ups, parallel to `log/entries/` (history) and `plan/INDEX.md` (phase ledger).
 - A live, mutable directory: files get added as agents hit human-only walls; files get moved to `user-actions-archived/` as resolutions land; archived files are the permanent audit trail of what was asked, when, and how it resolved.
 - The set a session can glob to know "what is the human blocking right now."
 
 ## What `user-actions/` is not
 
 - Not a status indicator. Phase status lives in `plan/INDEX.md` per [`phase-status.md`](phase-status.md).
-- Not a history log. Append-only narrative lives in `LOG.md` per [`log-discipline.md`](log-discipline.md).
+- Not a history log. Append-only narrative lives in `log/entries/` per [`log-discipline.md`](log-discipline.md).
 - Not a plan. Plans live in `plan/` per [`briefs-and-policies.md`](briefs-and-policies.md).
 - Not a backlog of agent work. Anything an agent can do itself goes into the plan or gets done; only items requiring the human's hands belong here.
 
@@ -102,7 +102,7 @@ Every agentic session — `kickoff` invocation, a hand-driven skill, an ad-hoc e
 
 ## Relationship to other artifacts
 
-- `LOG.md` records *what happened* in past phases (append-only). `user-actions/` records *what's pending on the human right now* (live).
+- `log/entries/` records *what happened* in past phases (append-only). `user-actions/` records *what's pending on the human right now* (live).
 - `plan/INDEX.md` records *which phase is next* (ledger). `user-actions/` records interrupts and asks that cut across phases.
 - A new policy goes under `policies/`. A new brief goes under `briefs/`. A new human-only action item goes here as a file. A recurring process learning goes to `lessons/` per [`lessons.md`](lessons.md).
 

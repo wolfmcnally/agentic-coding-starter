@@ -60,11 +60,11 @@ This skill runs the **review-loop sweep lifecycle** defined in
 - **§Where the corrections land** — template mode edits `phase-coder.md`,
   `code-critic.md`, `kickoff` Steps 5–6, `bin/`, `policies/`; derived-project
   mode files `lessons/` entries.
-- **§Stage 0** — read the latest `SWEEP-CODING (code)` entry in `LOG.md`.
+- **§Stage 0** — read the latest `SWEEP-CODING (code)` entry in `log/entries/`.
 - **§Stage 1** — harvest with the flag this kind needs (below).
 - **§Stage 2 / §Stage 3** — the procedure verbatim, with the taxonomy and the
   attribution shapes from this file.
-- **§Stage 4 / §Stage 5 / §The `LOG.md` entry** — verbatim, heading
+- **§Stage 4 / §Stage 5 / §The `log/entries/` entry** — verbatim, heading
   `SWEEP-CODING (code)`.
 
 What follows is only what differs.
@@ -87,7 +87,7 @@ Read, in addition to the coverage and finding records the lifecycle names:
 - **Revision regressions** — `introduced-by-revision` and
   `newly-exposed-by-resolution` counts; each is a round the fix itself cost.
 - **Rounds and routes** — code-review rounds and follow-up routes from each
-  swept project's `LOG.md` END blocks; the projects' `lessons/` titles that
+  swept project's `log/entries/` END blocks; the projects' `lessons/` titles that
   mention the critic, the coder, tests, or proxies.
 - **Gate status** — where the coder's Change Evidence carries `gate_status`,
   how often `not-run` appeared and what the reason was; where it does not yet,

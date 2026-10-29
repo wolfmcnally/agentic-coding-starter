@@ -404,7 +404,7 @@ def verify(url: str, chapters: list[str]) -> None:
     for name in (
         ".env",
         "LOG.md",
-        "CLAUDE.md",
+        "AGENTS.md",
         "secrets/credentials.json",
         ".codex/config.toml",
     ):

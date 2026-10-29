@@ -31,7 +31,7 @@ def hook_repo(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     for executable in (
         "check-harness-parity",
         "check-toolchain-callers",
-        "check-log",
+        "multioperator",
         "check-candidate-partition",
         "test-governance",
     ):
@@ -61,15 +61,16 @@ def test_pre_commit_runs_structural_governance_after_existing_checks(
     result = _run(root, environment)
 
     assert result.returncode == 0, result.stderr
-    assert Path(environment["PRE_COMMIT_LOG"]).read_text().splitlines() == [
+    observed_calls = Path(environment["PRE_COMMIT_LOG"]).read_text().splitlines()
+    assert observed_calls == [
         "check-harness-parity",
         "check-toolchain-callers",
-        "check-log",
+        "multioperator",
         "check-candidate-partition",
         "test-governance",
-    ]
+    ], "HOOK OMITTED STRUCTURED RECORD VALIDATION"
     Path(environment["PRE_COMMIT_LOG"]).write_text("")
-    environment["PRE_COMMIT_FAIL"] = "check-log"
+    environment["PRE_COMMIT_FAIL"] = "multioperator"
 
     result = _run(root, environment)
 
@@ -77,7 +78,7 @@ def test_pre_commit_runs_structural_governance_after_existing_checks(
     assert Path(environment["PRE_COMMIT_LOG"]).read_text().splitlines() == [
         "check-harness-parity",
         "check-toolchain-callers",
-        "check-log",
+        "multioperator",
     ]
     Path(environment["PRE_COMMIT_LOG"]).write_text("")
     environment["PRE_COMMIT_FAIL"] = "test-governance"

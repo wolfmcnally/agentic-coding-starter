@@ -50,7 +50,7 @@ The removal is deliberately mundane: inline the unused path, collapse the hierar
 
 When the same rule, constant, contract, procedure, or explanation reaches a **third** site, stop and give it one home; the other sites cite it. Two occurrences are a coincidence worth noting. Three are a structure worth building, and by then the count is also past Rule 1's bar — consolidation is not an exception to the simplicity rule, it is the same evidence pointing the other way.
 
-Route the consolidated home by kind, per the *Rules, not memory* invariant in `CLAUDE.md`: a universal rule to `policies/` or `CLAUDE.md`, a scoped detail to the surface's own instruction file, a per-action workflow to the owning skill, a tunable to the policy holding its tunables, a pinned decision to a brief.
+Route the consolidated home by kind, per the *Rules, not memory* invariant in `AGENTS.md`: a universal rule to `policies/` or `AGENTS.md`, a scoped detail to the surface's own instruction file, a per-action workflow to the owning skill, a tunable to the policy holding its tunables, a pinned decision to a brief.
 
 This binds prose exactly as it binds code. In this repo the rule surfaces **are** the deliverable, so a policy restated across three skills is the same defect as a constant hard-coded in three modules, and it is corrected the same way. The mirror-vs-copy contract in [`cross-harness-parity.md`](cross-harness-parity.md) is Rule 2 applied to one specific surface; this is the general form.
 

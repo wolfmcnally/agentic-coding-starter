@@ -6,7 +6,7 @@ Every path embedded in a committed file is **repo-relative**. Absolute paths (`/
 
 - Source code that names file paths.
 - Configuration files (`pyproject.toml`, `package.json`, `tsconfig.json`, etc.).
-- Markdown documents (briefs, policies, plan files, README, CLAUDE.md, LOG.md, etc.).
+- Markdown documents (briefs, policies, plan files, README, AGENTS.md, LOG.md, etc.).
 - Sample data, fixtures, test inputs.
 - Test scripts and shell scripts checked into the repo.
 
@@ -48,7 +48,7 @@ That script exists because the starter is public, so it is starter-only and does
 
 A project may declare a documented scratch root (e.g., `/tmp/<project-name>/auditions/`) for ephemeral artifacts. References to that root in committed files are allowed *only* when:
 
-- The scratch root is documented in `CLAUDE.md`'s conventions section.
+- The scratch root is documented in `AGENTS.md`'s conventions section.
 - Nothing under the scratch root is ever committed.
 - The path is conventional (not user-specific): `/tmp/<project-name>/...` is acceptable; `/Users/<name>/scratch/...` is not.
 

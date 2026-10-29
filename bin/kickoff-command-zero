@@ -70,7 +70,7 @@ def main() -> int:
         for index, row in enumerate(manifest["preflight_commands"], 1):
             run_checked(list(row["argv"]), root, f"manifest selector dry-run {index}")
         run_checked(["./bin/check", "format"], root, "format")
-        run_checked(["./bin/check-log"], root, "log policy")
+        run_checked(["./bin/multioperator", "validate", "--root", "."], root, "record policy")
         print("COMMAND ZERO PASS")
         return 0
     except (CommandZeroError, KeyError, OSError, TypeError, ValueError) as exc:

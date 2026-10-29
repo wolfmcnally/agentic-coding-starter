@@ -32,8 +32,7 @@ def test_repository_is_in_parity(tmp_path: Path) -> None:
         shutil.copytree(ROOT / directory, tmp_path / directory, symlinks=True)
     (tmp_path / "bin").mkdir()
     shutil.copy2(CHECKER, tmp_path / "bin/check-harness-parity")
-    shutil.copy2(ROOT / "CLAUDE.md", tmp_path / "CLAUDE.md")
-    (tmp_path / "AGENTS.md").symlink_to("CLAUDE.md")
+    shutil.copy2(ROOT / "AGENTS.md", tmp_path / "AGENTS.md")
     copied = run(tmp_path)
     assert copied.returncode == 0, copied.stdout + copied.stderr
     _assert_resource_bytes(tmp_path)

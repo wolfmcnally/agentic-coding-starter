@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import hashlib
 import json
+import posixpath
 import re
 from pathlib import Path
 from typing import Any
@@ -104,20 +105,22 @@ def audit(root: Path) -> dict[str, Any]:
     }
 
 
-def remove_function(text: str, name: str) -> str:
-    lines = text.splitlines(keepends=True)
-    found = [
-        node
-        for node in ast.parse(text).body
-        if isinstance(node, ast.FunctionDef) and node.name == name
-    ]
-    if not found:
-        return text
-    if len(found) != 1:
-        raise ValueError("ambiguous target-only test cleanup")
-    node = found[0]
-    start = min([node.lineno, *[decorator.lineno for decorator in node.decorator_list]]) - 1
-    return "".join(lines[:start] + lines[node.end_lineno :])
+def constitution_links(text: str, relative: str) -> str:
+    """Rewrite current relative root-constitution links, never historical bodies."""
+
+    def replace(match: re.Match[str]) -> str:
+        target, marker, fragment = match[1].partition("#")
+        if re.match(r"[A-Za-z][A-Za-z0-9+.-]*:", target) or target.startswith("//"):
+            return match[0]
+        resolved = posixpath.normpath(posixpath.join(posixpath.dirname(relative), target))
+        if target.startswith("/"):
+            resolved = target.lstrip("/")
+        if resolved != "CLAUDE.md":
+            return match[0]
+        rewritten = posixpath.relpath("AGENTS.md", posixpath.dirname(relative) or ".")
+        return "](" + rewritten + (marker + fragment if marker else "") + ")"
+
+    return re.sub(r"\]\(([^)\s]+)\)", replace, text)
 
 
 def promote_constitution(root: Path) -> dict[str, Any]:
@@ -142,13 +145,32 @@ def promote_constitution(root: Path) -> dict[str, Any]:
             continue
         text = path.read_text()
         before = text
+        text = constitution_links(text, relative)
         # Only exact top-level references; vendor/global/local instruction names stay literal.
-        text = re.sub(r"(?<![A-Za-z0-9_./-])CLAUDE\.md(?![A-Za-z0-9_-])", "AGENTS.md", text)
+        # These two documents discuss the old filename as transition input and
+        # native precedence, not only as an active project constitution pointer.
+        if relative not in {
+            "policies/multi-operator-migration.md",
+            "briefs/multi-operator-collaboration.md",
+        }:
+            text = re.sub(r"(?<![A-Za-z0-9_./-])CLAUDE\.md(?![A-Za-z0-9_-])", "AGENTS.md", text)
         if relative == "tests/test_mirror_parity.py":
             alias = '    (tmp_path / "AGENTS.md").symlink_to("AGENTS.md")\n'
             if alias not in text:
                 raise ValueError("recipient instruction-parity fixture differs; adapt its recipe")
             text = text.replace(alias, "")
+        for fixture, alias in {
+            "tests/test_check.py": '    (root / "AGENTS.md").symlink_to("AGENTS.md")\n',
+            "tests/fixtures/refactor_evaluation/exercise.py": (
+                '    (destination / "AGENTS.md").symlink_to("AGENTS.md")\n'
+            ),
+        }.items():
+            if relative == fixture:
+                if alias not in text:
+                    raise ValueError(
+                        "recipient constitutional fixture differs; adapt its recipe: " + relative
+                    )
+                text = text.replace(alias, "")
         if relative == "AGENTS.md":
             text = text.replace(
                 "`AGENTS.md` points here.", "`AGENTS.md` is the regular primary constitution."
@@ -180,7 +202,9 @@ def promote_constitution(root: Path) -> dict[str, Any]:
     }
 
 
-def retire(root: Path, approved: dict[str, str], package: Path) -> dict[str, Any]:
+def retire(
+    root: Path, approved: dict[str, str], package: Path, tool_replacements: dict[str, str]
+) -> dict[str, Any]:
     observed = inventory(root)
     if observed["obsolete"] != approved:
         raise ValueError(
@@ -205,6 +229,7 @@ def retire(root: Path, approved: dict[str, str], package: Path) -> dict[str, Any
         )
         old_test.unlink()
     # Install only this qualified capability, never donor judgments or project runtime values.
+    used_replacements = set()
     for relative in (
         "bin/multioperator",
         "lib/agentic_starter/multioperator.py",
@@ -212,10 +237,17 @@ def retire(root: Path, approved: dict[str, str], package: Path) -> dict[str, Any
     ):
         source, target = package / relative, root / relative
         if target.exists() and target.read_bytes() != source.read_bytes():
-            raise ValueError("recipient-owned migration tool differs: " + relative)
+            if tool_replacements.get(relative) != sha(target.read_bytes()):
+                raise ValueError(
+                    "recipient-owned migration tool differs; exact replacement preimage required: "
+                    + relative
+                )
+            used_replacements.add(relative)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(source.read_bytes())
         target.chmod(source.stat().st_mode & 0o777)
+    if used_replacements != set(tool_replacements):
+        raise ValueError("unused or mismatched migration tool replacement recipe")
     replacements = {
         "bin/kickoff-command-zero": [
             (
@@ -239,7 +271,12 @@ def retire(root: Path, approved: dict[str, str], package: Path) -> dict[str, Any
                 "run_gate policy-log ./bin/multioperator validate --root .",
             ),
         ],
-        "bin/normalize-final-newline": [('Path("LOG.md"), ', "")],
+        "bin/normalize-final-newline": [
+            (
+                'ALLOWED = {Path("LOG.md"), Path("EXECUTION_LOG.jsonl"), Path("plan/INDEX.md")}',
+                'ALLOWED = {Path("EXECUTION_LOG.jsonl")}',
+            )
+        ],
     }
     for relative, rules in replacements.items():
         path = root / relative
@@ -254,7 +291,7 @@ def retire(root: Path, approved: dict[str, str], package: Path) -> dict[str, Any
             text = text.replace(before, after)
         path.write_text(text)
     # Remove obsolete Python-tool operands from lint/format and corresponding fixture argv.
-    operands = "|".join(map(re.escape, RETIRED_TOOLS))
+    operands = "|".join(map(re.escape, sorted(RETIRED_TOOLS, key=len, reverse=True)))
     for path in active_files(root):
         relative = path.relative_to(root).as_posix()
         if relative in INTENTIONAL:
@@ -297,7 +334,7 @@ def retire(root: Path, approved: dict[str, str], package: Path) -> dict[str, Any
     # The old test is one mixed scenario; preserve its still-shared normalization boundary.
     normalizer = root / "tests/test_log_control_plane.py"
     if normalizer.exists():
-        normalizer.write_text(NORMALIZER_TEST)
+        normalizer.write_text((package / "tests/test_log_control_plane.py").read_text())
         changes.append(
             {
                 "path": "tests/test_log_control_plane.py",
@@ -307,11 +344,7 @@ def retire(root: Path, approved: dict[str, str], package: Path) -> dict[str, Any
     target_test = root / "tests/test_multioperator.py"
     source_test = package / "tests/test_multioperator.py"
     target_test.parent.mkdir(parents=True, exist_ok=True)
-    target_test.write_text(
-        remove_function(
-            source_test.read_text(), "test_actual_starter_rehearsal_preserves_source_and_history"
-        )
-    )
+    target_test.write_text(source_test.read_text())
     constitution = promote_constitution(root)
     result = audit(root)
     return {
@@ -326,28 +359,3 @@ def retire(root: Path, approved: dict[str, str], package: Path) -> dict[str, Any
         ],
         "source_proof_judgments_transferred": False,
     }
-
-
-NORMALIZER_TEST = """from pathlib import Path
-import subprocess
-
-ROOT = Path(__file__).resolve().parents[1]
-
-
-def test_shared_normalization_survives_record_migration(tmp_path):
-    root = tmp_path / "repo"
-    (root / "plan").mkdir(parents=True)
-    (root / "plan/INDEX.md").write_text("index\\n\\n")
-    (root / "candidate-partition.yaml").write_text(
-        "schema: agentic.candidate-partition.v1\\nactive:\\n"
-        "  - {quote}/candidate-partition.yaml{quote}\\n"
-        "bookkeeping:\\n  - {quote}/plan/INDEX.md{quote}\\n")
-    subprocess.run(["git", "init", "-b", "master", str(root)], check=True, capture_output=True)
-    normalizer = ROOT / "bin/normalize-final-newline"
-    passed = subprocess.run(
-        [str(normalizer), "--root", str(root), "--path", "plan/INDEX.md"], capture_output=True)
-    assert passed.returncode == 0 and (root / "plan/INDEX.md").read_bytes() == b"index\\n"
-    denied = subprocess.run(
-        [str(normalizer), "--root", str(root), "--path", "LOG.md"], capture_output=True)
-    assert denied.returncode == 2
-""".replace("{quote}", chr(92) + chr(34))

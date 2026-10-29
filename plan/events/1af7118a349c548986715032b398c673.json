@@ -1,0 +1,11 @@
+{
+  "from": null,
+  "id": "1af7118a349c548986715032b398c673",
+  "owner": null,
+  "phase": "starter-template-adoption",
+  "previous": null,
+  "reason": "Imported source state, not a new acceptance or lease",
+  "source_phase": "1",
+  "state": "next",
+  "writer": "starter-maintainer"
+}

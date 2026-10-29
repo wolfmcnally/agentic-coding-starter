@@ -1,12 +1,13 @@
-"""Opt-in isolated migration and maintenance of proposed collaboration records.
+"""Committed-source transition and current collaboration-record maintenance.
 
-This module is not wired into current kickoff or its live policies. It does not
-allocate leases, authenticate writers, or turn a rehearsal into adoption.
+Records do not allocate leases or authenticate writers. Adoption still requires
+receiving ownership, actual adapter qualification and session-loading evidence.
 """
 
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import io
 import json
@@ -136,16 +137,23 @@ def split_log(data: bytes) -> list[bytes]:
 
 
 def records(root: Path) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
-    require(load(safe(root, "collaboration/manifest.json"))["format"] == FORMAT, "wrong format")
+    require(
+        load(safe(root, "collaboration/manifest.json"))["format"] == FORMAT,
+        "wrong format",
+    )
     phases = {}
     for path in sorted(safe(root, "plan/phases").glob("*.md")):
         require(not path.is_symlink(), "symlink phase refused")
         meta, _ = frontmatter(path.read_bytes())
         identifier = meta["id"]
         require(bool(SLUG.fullmatch(identifier)), "invalid permanent phase id")
-        require(path.name == identifier + ".md" and identifier not in phases, "duplicate phase id")
         require(
-            "status" not in meta and "owner" not in meta, "phase metadata duplicates event state"
+            path.name == identifier + ".md" and identifier not in phases,
+            "duplicate phase id",
+        )
+        require(
+            "status" not in meta and "owner" not in meta,
+            "phase metadata duplicates event state",
         )
         try:
             Fraction(meta["order"])
@@ -170,7 +178,10 @@ def fold(phases: dict[str, dict[str, Any]], events: list[dict[str, Any]]) -> dic
             "unknown informed phase",
         )
         deps = phase["depends_on"]
-        require(isinstance(deps, list) and all(d in phases for d in deps), "unknown dependency")
+        require(
+            isinstance(deps, list) and all(d in phases for d in deps),
+            "unknown dependency",
+        )
         parent = phase.get("parent")
         require(parent is None or parent in phases, "unknown parent")
         require(parent != identifier and identifier not in deps, "self cycle")
@@ -189,10 +200,14 @@ def fold(phases: dict[str, dict[str, Any]], events: list[dict[str, Any]]) -> dic
             require(bool(re.fullmatch(r"[0-9a-f]{32}", event["id"])), "invalid event id")
             require(event["state"] in STATES.values(), "unknown phase state")
             require(
-                bool(event.get("writer")) and bool(event.get("reason")), "missing event attribution"
+                bool(event.get("writer")) and bool(event.get("reason")),
+                "missing event attribution",
             )
             previous = event["previous"]
-            require(previous not in seen_previous, "competing phase heads; coordinate ownership")
+            require(
+                previous not in seen_previous,
+                "competing phase heads; coordinate ownership",
+            )
             seen_previous.add(previous)
             if previous is None:
                 require(event["from"] is None, "invalid genesis")
@@ -206,7 +221,10 @@ def fold(phases: dict[str, dict[str, Any]], events: list[dict[str, Any]]) -> dic
                     "in-progress": {"in-progress", "completed"},
                     "completed": set(),
                 }
-                require(event["state"] in allowed[old["state"]], "invalid lifecycle transition")
+                require(
+                    event["state"] in allowed[old["state"]],
+                    "invalid lifecycle transition",
+                )
                 if event["state"] == "in-progress":
                     require(
                         bool(event.get("owner")) and bool(event.get("claim")),
@@ -252,7 +270,10 @@ def fold(phases: dict[str, dict[str, Any]], events: list[dict[str, Any]]) -> dic
             )
         for event in [e for e in events if e["phase"] == identifier]:
             if event["previous"] is not None and event["state"] == "completed":
-                require(bool(event.get("acceptance")), "completion lacks acceptance reference")
+                require(
+                    bool(event.get("acceptance")),
+                    "completion lacks acceptance reference",
+                )
         if heads[identifier]["state"] == "completed":
             require(
                 all(
@@ -303,7 +324,10 @@ def logs(root: Path) -> list[tuple[dict[str, Any], bytes]]:
             )
             if index > 1:
                 require(item["at"] >= group[index - 2]["at"], "writer clock moved backward")
-    return sorted(entries, key=lambda pair: (pair[0]["at"], pair[0]["writer"], pair[0]["sequence"]))
+    return sorted(
+        entries,
+        key=lambda pair: (pair[0]["at"], pair[0]["writer"], pair[0]["sequence"]),
+    )
 
 
 def verify_acceptance_bytes(root: Path, event: dict[str, Any]) -> None:
@@ -315,12 +339,16 @@ def verify_acceptance_bytes(root: Path, event: dict[str, Any]) -> None:
         isinstance(reference, dict) and set(reference) == {"path", "sha256"},
         "completion requires retained acceptance bytes",
     )
-    require(not Path(reference["path"]).is_absolute(), "acceptance reference must be repo-relative")
+    require(
+        not Path(reference["path"]).is_absolute(),
+        "acceptance reference must be repo-relative",
+    )
     artifact = safe(root, reference["path"])
     require(
         artifact.is_file() and digest(artifact.read_bytes()) == reference["sha256"],
         "acceptance artifact missing or mutated",
     )
+    inspect_phase_acceptance(root, event)
 
 
 def validate(root: Path) -> dict[str, Any]:
@@ -385,10 +413,16 @@ def render(root: Path, check: bool = False) -> None:
         key=lambda pair: pair[0]["source_offset"],
     )
     bodies = imports + [pair for pair in entries if "source_offset" not in pair[0]]
-    for name, data in [("PLAN.md", table.encode()), ("LOG.md", b"".join(b for _, b in bodies))]:
+    for name, data in [
+        ("PLAN.md", table.encode()),
+        ("LOG.md", b"".join(b for _, b in bodies)),
+    ]:
         path = safe(root, ".collaboration-views/" + name)
         if check:
-            require(path.is_file() and path.read_bytes() == data, "stale generated projection")
+            require(
+                path.is_file() and path.read_bytes() == data,
+                "stale generated projection",
+            )
         else:
             path.parent.mkdir(exist_ok=True)
             with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as handle:
@@ -424,6 +458,20 @@ def rewrite_links(text: str, path: Path, mapping: dict[str, str]) -> str:
     return re.sub(r"\]\(([^\s)]+)\)", replace, text)
 
 
+def source_phase_states(index: str) -> dict[str, str]:
+    """Decode only the explicitly committed transition source, never current state."""
+    rows = {}
+    section = index.split("## Phase Table", 1)
+    require(len(section) == 2, "missing phase table")
+    for line in section[1].split("\n## ", 1)[0].splitlines():
+        match = PHASE_ROW.search(line)
+        if match:
+            marks = [m for m in STATES if m in line]
+            require(len(marks) == 1 and match[1] not in rows, "ambiguous phase status")
+            rows[match[1]] = STATES[marks[0]]
+    return rows
+
+
 def rehearse(source: Path, output: Path, mapping_path: Path) -> None:
     source, output = source.resolve(), output.absolute()
     require(not output.exists() and not output.is_symlink(), "output must be absent")
@@ -457,31 +505,28 @@ def rehearse(source: Path, output: Path, mapping_path: Path) -> None:
                     path.chmod(member.mode)
                 else:
                     raise Refusal("unsupported archive entry")
-        require(not (root / "collaboration").exists(), "source already has collaboration records")
+        require(
+            not (root / "collaboration").exists(),
+            "source already has collaboration records",
+        )
         plan = root / "plan"
         index = (plan / "INDEX.md").read_text()
-        rows = {}
-        section = index.split("## Phase Table", 1)
-        require(len(section) == 2, "missing phase table")
-        for line in section[1].split("\n## ", 1)[0].splitlines():
-            match = PHASE_ROW.search(line)
-            if match:
-                marks = [m for m in STATES if m in line]
-                require(len(marks) == 1 and match[1] not in rows, "ambiguous phase status")
-                rows[match[1]] = STATES[marks[0]]
+        rows = source_phase_states(index)
         mapping = config["phases"]
         require(
             set(mapping) == set(rows) and len(set(mapping.values())) == len(mapping),
             "mapping must cover every phase exactly once",
         )
         require(
-            all(SLUG.fullmatch(value) for value in mapping.values()), "invalid permanent phase id"
+            all(SLUG.fullmatch(value) for value in mapping.values()),
+            "invalid permanent phase id",
         )
         phase_files = sorted(plan.glob("phase-*.md"))
         require({p.stem[6:] for p in phase_files} == set(rows), "phase files/table disagree")
         writer = config["writer"]
         require(
-            isinstance(writer, str) and bool(writer.strip()), "explicit migration writer required"
+            isinstance(writer, str) and bool(writer.strip()),
+            "explicit migration writer required",
         )
         new_phases, events = {}, []
         order = sorted(rows, key=lambda p: tuple(map(int, p.split("."))))
@@ -635,7 +680,10 @@ def rehearse(source: Path, output: Path, mapping_path: Path) -> None:
         with ignore.open("a") as handle:
             handle.write("\n/.collaboration-views/\n")
         retirement = transition.retire(
-            root, config.get("retirements", {}), Path(__file__).resolve().parents[2]
+            root,
+            config.get("retirements", {}),
+            Path(__file__).resolve().parents[2],
+            config.get("tool_replacements", {}),
         )
         publish(root / "collaboration/retirement.json", encode(retirement))
         publish(
@@ -660,32 +708,361 @@ def rehearse(source: Path, output: Path, mapping_path: Path) -> None:
         root.rename(output)
 
 
-def event(root: Path, data: dict[str, Any]) -> None:
-    phases, prior = records(root)
-    fold(phases, [*prior, data])
-    verify_acceptance_bytes(root, data)
-    publish(safe(root, "plan/events/" + data["id"] + ".json"), encode(data))
+def phase_custody(root: Path, phase: str) -> dict[str, Any]:
+    phases, events = records(root)
+    require(phase in phases, "phase is absent from the canonical definition inventory")
+    head = fold(phases, events)[phase]
+    require(
+        head["state"] == "in-progress" and bool(head.get("owner")) and bool(head.get("claim")),
+        "phase work requires an active owner and recorded claim",
+    )
+    return head
 
 
-def append(root: Path, writer: str, body: bytes, at: str) -> None:
-    validate(root)
-    terminal_body(body)
-    require(bool(writer.strip()) and writer != "unattributed-import", "invalid current log writer")
-    instant = datetime.fromisoformat(at.replace("Z", "+00:00"))
-    require(instant.tzinfo is not None, "log timestamp needs timezone")
-    at = instant.astimezone(UTC).isoformat()
-    group = [m for m, _ in logs(root) if m["writer"] == writer]
-    require(not group or at >= group[-1]["at"], "writer clock moved backward")
-    identifier = uuid.uuid4().hex
-    meta = {
-        "id": identifier,
-        "writer": writer,
-        "sequence": len(group) + 1,
-        "previous": group[-1]["id"] if group else None,
-        "at": at,
-        "body_sha256": digest(body),
+def phase_heads_digest(root: Path, phases: list[str]) -> str:
+    definitions, events = records(root)
+    heads = fold(definitions, events)
+    require(all(p in heads for p in phases), "transition names absent phase")
+    return digest(encode({p: heads[p]["id"] for p in sorted(phases)}))
+
+
+def completion_plan(
+    root: Path, phase: str, proposed: dict[str, Any], parents: list[str] | None = None
+) -> dict[str, Any]:
+    require(
+        isinstance(proposed, dict)
+        and set(proposed) == {"schema", "events", "parent_continuation"}
+        and proposed["schema"] == "agentic.phase-transition.v1",
+        "invalid prospective phase transition",
+    )
+    definitions, prior = records(root)
+    heads = fold(definitions, prior)
+    require(phase in definitions, "closing phase is absent")
+    items = proposed["events"]
+    require(isinstance(items, list) and bool(items), "transition has no proposed events")
+    allowed = {phase, *(parents or [])}
+    expected_fields = {
+        "id",
+        "phase",
+        "previous",
+        "from",
+        "state",
+        "owner",
+        "writer",
+        "claim",
+        "reason",
     }
-    publish(safe(root, "log/entries/" + identifier + ".md"), log_record(meta, body))
+    require(
+        all(isinstance(e, dict) and set(e) == expected_fields for e in items),
+        "prospective events must contain exactly the transition fields, not fabricated acceptance",
+    )
+    require(
+        len({e["phase"] for e in items}) == len(items) and {e["phase"] for e in items} == allowed,
+        "transition must complete exactly the accepted phase and authorized ancestors",
+    )
+    for item in items:
+        current = heads[item["phase"]]
+        require(
+            item["previous"] == current["id"]
+            and item["from"] == "in-progress"
+            and current["state"] == "in-progress"
+            and item["state"] == "completed",
+            "transition is stale or does not complete active work",
+        )
+        require(
+            item["owner"] == current["owner"]
+            and item["claim"] == current.get("claim")
+            and bool(item["writer"])
+            and bool(item["reason"]),
+            "completion changed owner or claim",
+        )
+    # This copy is only prospective graph analysis; it is never published as evidence.
+    planned = [{**e, "acceptance": {"pending_validation": True}} for e in items]
+    after = fold(definitions, [*prior, *planned])
+    parent = definitions[phase].get("parent")
+    reason = proposed["parent_continuation"]
+    require(
+        reason is None or (isinstance(reason, str) and bool(reason.strip())),
+        "invalid parent continuation",
+    )
+    if parent and after[parent]["state"] != "completed":
+        remaining = [
+            p
+            for p, meta in definitions.items()
+            if meta.get("parent") == parent and after[p]["state"] != "completed"
+        ]
+        require(
+            bool(remaining) or bool(reason),
+            "last child requires independent parent completion or truthful remaining-work reason",
+        )
+    keys = sorted(allowed)
+    return {
+        "before_sha256": digest(encode({p: heads[p]["id"] for p in keys})),
+        "after_sha256": digest(encode({p: after[p]["id"] for p in keys})),
+        "completed_phases": keys,
+        "proposal": proposed,
+    }
+
+
+def snapshot_acceptance(root: Path, run_dir: Path) -> dict[str, Any]:
+    require(
+        run_dir.resolve().is_relative_to(root.resolve()),
+        "phase qualification must be in durable project storage",
+    )
+    files = {}
+    for path in sorted(run_dir.rglob("*")):
+        relative = path.relative_to(run_dir)
+        if (
+            "__pycache__" in relative.parts
+            or path.name in {"closure.json", "closure.lock"}
+            or path.name.endswith(".lock")
+        ):
+            continue
+        require(not path.is_symlink(), "qualification snapshots refuse symlinks")
+        if path.is_file():
+            files[path.relative_to(root).as_posix()] = digest(path.read_bytes())
+    require(
+        all(
+            (run_dir / required).relative_to(root).as_posix() in files
+            for required in (
+                "run.json",
+                "authority.json",
+                "tools/manifest.json",
+                "gates.jsonl",
+                "findings.json",
+            )
+        ),
+        "phase acceptance has incomplete run inputs",
+    )
+    run = load(run_dir / "run.json")
+    from agentic_starter import advisory
+
+    budget = advisory.budget_path(root, run["phase"])
+    prefix = None
+    if budget.exists():
+        data = budget.read_bytes()
+        prefix = {
+            "path": budget.relative_to(root).as_posix(),
+            "bytes": len(data),
+            "sha256": digest(data),
+        }
+    ledger = safe(root, "EXECUTION_LOG.jsonl")
+    require(ledger.is_file(), "phase acceptance has no retained execution ledger")
+    execution_bytes = ledger.read_bytes()
+    execution_prefix = {
+        "path": "EXECUTION_LOG.jsonl",
+        "bytes": len(execution_bytes),
+        "sha256": digest(execution_bytes),
+    }
+    return {
+        "schema": "agentic.phase-qualification.v1",
+        "files": files,
+        "budget_prefix": prefix,
+        "execution_prefix": execution_prefix,
+    }
+
+
+def verify_qualification_snapshot(root: Path, value: dict[str, Any]) -> None:
+    require(
+        isinstance(value, dict)
+        and set(value) == {"schema", "files", "budget_prefix", "execution_prefix"}
+        and value["schema"] == "agentic.phase-qualification.v1"
+        and isinstance(value["files"], dict)
+        and bool(value["files"]),
+        "invalid phase qualification snapshot",
+    )
+    for relative, expected in value["files"].items():
+        path = safe(root, relative)
+        require(
+            path.is_file() and not path.is_symlink() and digest(path.read_bytes()) == expected,
+            "accepted phase input is missing or mutated: " + relative,
+        )
+
+    for key in ("execution_prefix", "budget_prefix"):
+        prefix = value[key]
+        if prefix is None:
+            require(key == "budget_prefix", "missing retained execution prefix")
+            continue
+        require(
+            isinstance(prefix, dict)
+            and set(prefix) == {"path", "bytes", "sha256"}
+            and type(prefix["bytes"]) is int
+            and prefix["bytes"] >= 0,
+            "invalid accepted ledger prefix",
+        )
+        if key == "execution_prefix":
+            require(prefix["path"] == "EXECUTION_LOG.jsonl", "wrong execution ledger prefix")
+        path = safe(root, prefix["path"])
+        require(
+            path.is_file()
+            and len(path.read_bytes()) >= prefix["bytes"]
+            and digest(path.read_bytes()[: prefix["bytes"]]) == prefix["sha256"],
+            "accepted " + key + " is missing or changed",
+        )
+
+
+def inspect_phase_acceptance(root: Path, event: dict[str, Any], *, fresh: bool = False) -> None:
+    reference = event["acceptance"]
+    closure_path = safe(root, reference["path"])
+    closure = load(closure_path)
+    require(
+        closure.get("status") == "complete"
+        and closure.get("outcome") == "accepted"
+        and closure.get("phase") == event["phase"],
+        "artifact is not this phase's accepted close",
+    )
+    bound = {k: v for k, v in closure.items() if k not in {"closure_id", "status", "completed_at"}}
+    require(
+        closure.get("closure_id")
+        == digest(json.dumps(bound, sort_keys=True, separators=(",", ":")).encode()),
+        "accepted closure identity mismatch",
+    )
+    custody = closure.get("phase_custody", {})
+    require(
+        custody.get("id") == event["previous"]
+        and custody.get("owner") == event["owner"]
+        and custody.get("claim") == event.get("claim"),
+        "completion does not match accepted phase custody",
+    )
+    verify_qualification_snapshot(root, closure.get("qualification"))
+    log_id = uuid.uuid5(
+        uuid.NAMESPACE_URL, "log:" + custody["owner"] + ":" + closure["closure_id"]
+    ).hex
+    log_path = safe(root, "log/entries/" + log_id + ".md")
+    require(log_path.is_file(), "accepted closure log entry is missing")
+    log_metadata, log_body = read_log(log_path.read_bytes())
+    require(
+        log_metadata["writer"] == custody["owner"]
+        and digest(log_body) == closure.get("log_sha256"),
+        "accepted closure log bytes or writer differ",
+    )
+    if fresh:
+        package = Path(__file__).resolve().parents[2]
+        executable = package / "bin/kickoff-evidence"
+        if not executable.is_file():
+            executable = package / "kickoff-evidence"
+        require(executable.is_file(), "trusted phase acceptance validator NOT-FOUND")
+        checked = subprocess.run(
+            [
+                sys.executable,
+                str(executable),
+                "audit-phase-acceptance",
+                "--run-dir",
+                str(closure_path.parent),
+            ],
+            cwd=root,
+            capture_output=True,
+            text=True,
+        )
+        require(
+            checked.returncode == 0,
+            "phase acceptance audit refused: " + (checked.stdout + checked.stderr).strip(),
+        )
+
+
+def apply_completion(
+    root: Path,
+    transition: dict[str, Any],
+    run_dir: Path,
+    parent_run: Path | None = None,
+) -> None:
+    closures = {load(run_dir / "run.json")["phase"]: run_dir / "closure.json"}
+    if parent_run:
+        parent_closure = load(parent_run / "closure.json")
+        closures[parent_closure["phase"]] = parent_run / "closure.json"
+        for value in parent_closure.get("ancestor_acceptance", {}).values():
+            path = safe(root, value["path"])
+            require(
+                digest(path.read_bytes()) == value["sha256"],
+                "ancestor acceptance changed",
+            )
+            closures[load(path)["phase"]] = path
+    # Children are admitted before parents, retaining the actual independent acceptance per phase.
+    definitions, _ = records(root)
+    pending = list(transition["proposal"]["events"])
+    while pending:
+        ready = [
+            e
+            for e in pending
+            if not any(definitions[c["phase"]].get("parent") == e["phase"] for c in pending)
+        ]
+        require(bool(ready), "completion ancestor cycle")
+        for proposal in ready:
+            path = safe(root, "plan/events/" + proposal["id"] + ".json")
+            acceptance = closures.get(proposal["phase"])
+            require(acceptance is not None, "missing independently accepted ancestor")
+            reference = {
+                "path": acceptance.relative_to(root).as_posix(),
+                "sha256": digest(acceptance.read_bytes()),
+            }
+            item = {**proposal, "acceptance": reference}
+            if path.exists():
+                require(
+                    load(path) == item,
+                    "replayed completion differs from accepted event",
+                )
+            else:
+                event(root, item)
+            pending.remove(proposal)
+    render(root)
+
+
+def event(root: Path, data: dict[str, Any]) -> None:
+    lock = safe(root, ".kickoff/multioperator/phase-writes.lock")
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    with lock.open("a+b") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        phases, prior = records(root)
+        fold(phases, [*prior, data])
+        verify_acceptance_bytes(root, data)
+        if data["state"] == "completed" and data["previous"] is not None:
+            inspect_phase_acceptance(root, data, fresh=True)
+        publish(safe(root, "plan/events/" + data["id"] + ".json"), encode(data))
+
+
+def append(
+    root: Path, writer: str, body: bytes, at: str, *, idempotency_key: str | None = None
+) -> str:
+    require(
+        bool(writer.strip()) and writer != "unattributed-import",
+        "invalid current log writer",
+    )
+    lock = safe(root, ".kickoff/multioperator/log-" + digest(writer.encode()) + ".lock")
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    with lock.open("a+b") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        validate(root)
+        terminal_body(body)
+        identifier = (
+            uuid.uuid5(uuid.NAMESPACE_URL, "log:" + writer + ":" + idempotency_key).hex
+            if idempotency_key
+            else uuid.uuid4().hex
+        )
+        path = safe(root, "log/entries/" + identifier + ".md")
+        if path.exists():
+            metadata, previous_body = read_log(path.read_bytes())
+            require(
+                idempotency_key is not None
+                and metadata["writer"] == writer
+                and previous_body == body,
+                "idempotent log request differs from the original",
+            )
+            return identifier
+        instant = datetime.fromisoformat(at.replace("Z", "+00:00"))
+        require(instant.tzinfo is not None, "log timestamp needs timezone")
+        at = instant.astimezone(UTC).isoformat()
+        group = [m for m, _ in logs(root) if m["writer"] == writer]
+        require(not group or at >= group[-1]["at"], "writer clock moved backward")
+        metadata = {
+            "id": identifier,
+            "writer": writer,
+            "sequence": len(group) + 1,
+            "previous": group[-1]["id"] if group else None,
+            "at": at,
+            "body_sha256": digest(body),
+        }
+        publish(path, log_record(metadata, body))
+        return identifier
 
 
 def add_phase(root: Path, document: Path, writer: str) -> None:
@@ -694,9 +1071,13 @@ def add_phase(root: Path, document: Path, writer: str) -> None:
     metadata, body = frontmatter(document.read_bytes())
     identifier = metadata["id"]
     require(
-        identifier not in phases and bool(SLUG.fullmatch(identifier)), "phase id collision/invalid"
+        identifier not in phases and bool(SLUG.fullmatch(identifier)),
+        "phase id collision/invalid",
     )
-    require("owner" not in metadata and "status" not in metadata, "phase duplicates event state")
+    require(
+        "owner" not in metadata and "status" not in metadata,
+        "phase duplicates event state",
+    )
     genesis = {
         "id": uuid.uuid4().hex,
         "phase": identifier,
@@ -749,7 +1130,8 @@ def claude_compatibility() -> dict[str, Any]:
     )
     require(completed.returncode == 0, "installed Claude version query failed")
     match = re.fullmatch(
-        r"(?:Claude Code\s+)?v?(\d+)\.(\d+)\.(\d+)(?:\s+\(Claude Code\))?", completed.stdout.strip()
+        r"(?:Claude Code\s+)?v?(\d+)\.(\d+)\.(\d+)(?:\s+\(Claude Code\))?",
+        completed.stdout.strip(),
     )
     require(match is not None, "installed Claude version is unknown/unparseable")
     version = tuple(map(int, match.groups()))
@@ -786,7 +1168,10 @@ def constitution_caveats(root: Path) -> list[str]:
 
 def git_read(root: Path, *arguments: str) -> bytes:
     result = subprocess.run(["git", "-C", str(root), *arguments], capture_output=True, check=False)
-    require(result.returncode == 0, "Git read failed: " + result.stderr.decode(errors="replace"))
+    require(
+        result.returncode == 0,
+        "Git read failed: " + result.stderr.decode(errors="replace"),
+    )
     return result.stdout
 
 
@@ -795,6 +1180,7 @@ def validate_staged(root: Path) -> dict[str, Any]:
     git_read(root, "rev-parse", "--is-inside-work-tree")
     prefixes = (
         "AGENTS.md",
+        "EXECUTION_LOG.jsonl",
         "CLAUDE.md",
         "plan/phases",
         "plan/events",
@@ -808,7 +1194,10 @@ def validate_staged(root: Path) -> dict[str, Any]:
             continue
         fields, path_bytes = row.split(b"\t", 1)
         mode, object_id, stage = fields.decode().split()
-        require(stage == "0" and mode in {"100644", "100755"}, "unmerged/symlink record in index")
+        require(
+            stage == "0" and mode in {"100644", "100755"},
+            "unmerged/symlink record in index",
+        )
         indexed[path_bytes.decode()] = git_read(root, "cat-file", "blob", object_id)
     head_query = subprocess.run(
         ["git", "-C", str(root), "rev-parse", "--verify", "HEAD"], capture_output=True
@@ -821,16 +1210,23 @@ def validate_staged(root: Path) -> dict[str, Any]:
         head = None
     else:
         head = head_query.stdout.decode().strip()
+    prior_paths: set[str] = set()
     if head:
         previous = git_read(root, "ls-tree", "-rz", "--name-only", head, "--", *prefixes)
         for raw_path in previous.split(b"\0"):
             if not raw_path:
                 continue
             relative = raw_path.decode()
+            prior_paths.add(relative)
             if relative == "CLAUDE.md":
                 continue
             require(relative in indexed, "staged record/phase deletion refused")
-            if relative != "AGENTS.md" and not relative.startswith("plan/phases/"):
+            if relative == "EXECUTION_LOG.jsonl":
+                require(
+                    indexed[relative].startswith(git_read(root, "show", head + ":" + relative)),
+                    "staged execution history rewrite refused",
+                )
+            elif relative != "AGENTS.md" and not relative.startswith("plan/phases/"):
                 require(
                     indexed[relative] == git_read(root, "show", head + ":" + relative),
                     "staged immutable record rewrite refused",
@@ -842,6 +1238,44 @@ def validate_staged(root: Path) -> dict[str, Any]:
         for relative in indexed:
             if relative.startswith("plan/events/"):
                 record = load(staging / relative)
+                if (
+                    relative not in prior_paths
+                    and record.get("previous") is None
+                    and record.get("state") == "completed"
+                ):
+                    manifest = load(staging / "collaboration/manifest.json")
+                    source = manifest.get("source_commit", "")
+                    old = record.get("source_phase")
+                    require(
+                        bool(re.fullmatch(r"[0-9a-f]{40}", source))
+                        and manifest.get("phase_mapping", {}).get(old) == record["phase"]
+                        and record["id"]
+                        == uuid.uuid5(uuid.NAMESPACE_URL, source + ":phase:" + str(old)).hex,
+                        "new completed genesis lacks verified historical import",
+                    )
+                    ancestry = subprocess.run(
+                        [
+                            "git",
+                            "-C",
+                            str(root),
+                            "merge-base",
+                            "--is-ancestor",
+                            source,
+                            "HEAD",
+                        ],
+                        capture_output=True,
+                    )
+                    require(
+                        ancestry.returncode == 0,
+                        "import source is not a retained ancestor",
+                    )
+                    imported = source_phase_states(
+                        git_read(root, "show", source + ":plan/INDEX.md").decode()
+                    )
+                    require(
+                        imported.get(old) == "completed",
+                        "completed genesis differs from committed historical state",
+                    )
                 if record.get("previous") is not None and record.get("state") == "completed":
                     reference = record["acceptance"]
                     require(
@@ -856,6 +1290,32 @@ def validate_staged(root: Path) -> dict[str, Any]:
                     destination = safe(staging, reference["path"])
                     if not destination.exists():
                         publish(destination, artifact.read_bytes())
+                    closure = load(artifact)
+                    qualification = closure.get("qualification")
+                    verify_qualification_snapshot(root, qualification)
+                    retained = list(qualification["files"])
+                    for key in ("execution_prefix", "budget_prefix"):
+                        if qualification[key] is not None:
+                            retained.append(qualification[key]["path"])
+                    for retained_relative in retained:
+                        retained_source = safe(root, retained_relative)
+                        if retained_relative in indexed:
+                            data = indexed[retained_relative]
+                        else:
+                            require(
+                                retained_relative.startswith(".kickoff/"),
+                                "tracked qualification input absent from index: "
+                                + retained_relative,
+                            )
+                            data = retained_source.read_bytes()
+                        target = safe(staging, retained_relative)
+                        if target.exists():
+                            require(
+                                target.read_bytes() == data,
+                                "staged qualification bytes disagree: " + retained_relative,
+                            )
+                        else:
+                            publish(target, data)
         state = validate(staging)
     require(
         git_read(root, "ls-files", "--stage", "-z", "--", *prefixes) == raw_index,
@@ -899,11 +1359,18 @@ def layout(root: Path) -> str:
 
 def transfer_preflight(donor: Path, recipient: Path, entry: str) -> dict[str, Any]:
     """Read-only route detection. Declared adoption is not verified authority."""
-    require(donor.resolve() != recipient.resolve(), "donor and recipient are the same checkout")
-    donor_state, recipient_state = layout(donor), layout(recipient)
-    require(donor_state == "declared-adopted", "donor has not migrated; rehearsal is not adoption")
     require(
-        recipient_state != "rehearsal", "recipient has an unresolved rehearsal/partial transition"
+        donor.resolve() != recipient.resolve(),
+        "donor and recipient are the same checkout",
+    )
+    donor_state, recipient_state = layout(donor), layout(recipient)
+    require(
+        donor_state == "declared-adopted",
+        "donor has not migrated; rehearsal is not adoption",
+    )
+    require(
+        recipient_state != "rehearsal",
+        "recipient has an unresolved rehearsal/partial transition",
     )
     return {
         "compatibility": claude_compatibility() if recipient_state == "pre-migration" else None,
@@ -922,6 +1389,47 @@ def transfer_preflight(donor: Path, recipient: Path, entry: str) -> dict[str, An
     }
 
 
+def select_phase(root: Path, owner: str, phase: str | None = None) -> dict[str, Any]:
+    """Select current canonical work without acquiring or pretending to acquire custody."""
+    require(bool(owner.strip()), "selection requires a named current operator")
+    state = validate(root)
+    definitions, _ = records(root)
+    heads = state["heads"]
+    if phase is None:
+        choices = [
+            name
+            for name, head in heads.items()
+            if head["state"] == "next" and head.get("owner") == owner
+        ]
+        if not choices:
+            choices = [
+                name
+                for name, head in heads.items()
+                if head["state"] == "next" and head.get("owner") is None
+            ]
+        require(
+            len(choices) == 1,
+            "no unique next selection; name the authorized phase explicitly",
+        )
+        phase = choices[0]
+    require(phase in definitions, "selected phase does not exist")
+    head = heads[phase]
+    require(head["state"] != "completed", "selected phase is already completed")
+    require(head.get("owner") in {None, owner}, "selected phase belongs to another operator")
+    require(
+        all(heads[d]["state"] == "completed" for d in definitions[phase]["depends_on"]),
+        "selected phase has incomplete dependencies",
+    )
+    return {
+        "phase": phase,
+        "definition": "plan/phases/" + phase + ".md",
+        "head": head,
+        "parent": definitions[phase].get("parent"),
+        "mutation_authorized": False,
+        "required": "Verify external claim/custody before appending an in-progress event",
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -931,6 +1439,12 @@ def main() -> int:
     transfer.add_argument("--donor", type=Path, required=True)
     transfer.add_argument("--recipient", type=Path, required=True)
     transfer.add_argument("--entry", choices=("teach", "learn"), required=True)
+    selection = commands.add_parser("select")
+    selection.add_argument("--root", type=Path, required=True)
+    selection.add_argument("--owner", required=True)
+    selection.add_argument("--phase")
+    status = commands.add_parser("status")
+    status.add_argument("--root", type=Path, required=True)
     audit_parser = commands.add_parser("audit-retirement")
     audit_parser.add_argument("--root", type=Path, required=True)
     migration = commands.add_parser("rehearse")
@@ -960,9 +1474,14 @@ def main() -> int:
         if args.command == "transfer-preflight":
             print(
                 json.dumps(
-                    transfer_preflight(args.donor, args.recipient, args.entry), sort_keys=True
+                    transfer_preflight(args.donor, args.recipient, args.entry),
+                    sort_keys=True,
                 )
             )
+        elif args.command == "select":
+            print(json.dumps(select_phase(args.root, args.owner, args.phase), sort_keys=True))
+        elif args.command == "status":
+            print(json.dumps(validate(args.root), sort_keys=True))
         elif args.command == "audit-retirement":
             print(json.dumps(transition.audit(args.root), sort_keys=True))
         elif args.command == "inventory":

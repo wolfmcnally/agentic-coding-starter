@@ -1,0 +1,38 @@
+{
+  "adapters": {
+    "acceptance": "captured custody, real retained acceptance, parent chains, immutable log and original execution/review-ledger prefixes",
+    "bootstrap_transfer": "regular primary constitution, new project records and Teach/Learn migration detection/receiving-owner preflight",
+    "gates_hooks": "current tracked aggregate and pre-commit caller; no global or installed hook change",
+    "index": "real staged records and execution bytes, immutable history, verified completed import only",
+    "phase_selection": "canonical definitions/events; explicit owner and active resume",
+    "proof_estate": "recipient-local append-only retirement/admission/modification; original ledgers preserved"
+  },
+  "claude_minimum": "2.1.290",
+  "constitution_sha256": "aee00defbbc8d55bc25154c5b04f3199bed4c3082cfc632473ec1f8674ed6062",
+  "conversion_reports": "adoption-blockers.json, constitution.json and retirement.json retain original conversion-time observations; this record describes current resolution.",
+  "delivery": "LOCAL ONLY. No push or public publication authorized.",
+  "format_installed": true,
+  "history": {
+    "budget_directory": "NOT-FOUND at preflight and immediately before source copy; no consumed review joined across an id change.",
+    "original_log_bytes": 427241,
+    "original_log_sha256": "005d27ff1ab787c1fb47ac1d088d5f976bf4b4945a4ec53a9f648d3fff8ebe04",
+    "uncommitted_scope": "Exact owned pre-cutover body retained as a new attributed entry; not relabeled as imported committed history."
+  },
+  "manual_visual_inspection": "NOT-EXERCISED; browser file URL refused; automated curated build checks pass.",
+  "native_instruction_loading": "NOT-OBSERVED; current session manually read exact migrated AGENTS, which is not automatic Claude startup proof.",
+  "observed_at": "2026-10-29T07:06:33.026737+00:00",
+  "observed_installed_claude": "2.1.312",
+  "qualification": {
+    "fresh_causal_controls": 32,
+    "isolated_changed_selection": "169 PASS, selection widened to full",
+    "isolated_full_gate": "169 PASS and all policies; current root qualification remains separately required",
+    "root_full_gate": "PENDING; exact terminal result belongs in the durable private delivery receipt, not a retrospective edit to this record."
+  },
+  "remaining_observations": [
+    "Actual automatic Claude instruction-loading evidence under an authorized supported route.",
+    "Rendered manual visual inspection was refused by browser protocol policy."
+  ],
+  "schema": "starter.multioperator.adoption.v1",
+  "scope": "Canonical project only; no recipient migration, remote delivery, permission or identity change.",
+  "source_commit": "e3bea78a2e600da74795bfc7d0fd8bff8b4638ed"
+}

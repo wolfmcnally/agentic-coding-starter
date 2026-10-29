@@ -4,18 +4,18 @@ Use a phase to deliver one coherent outcome with explicit acceptance criteria. A
 
 ## Select and load the work
 
-`plan/INDEX.md` is the sole status ledger. Its markers mean: ⏳ not started, ⬅️ next, 🚧 in progress, and ✅ completed. `kickoff` owns transitions. To resume active work, name that phase explicitly.
+`plan/phases/` defines permanent three-word phase ids, scope and dependencies. `plan/events/` holds immutable lifecycle and ownership records; each phase has one current head. The reading index is context only. Select the next work for the current owner, and name an active phase explicitly to resume it. Selection does not transfer custody.
 
 Invoke `kickoff` with no argument to select the next phase, or name a phase. In Claude Code:
 
 ```text
-/kickoff phase 2
+/kickoff phase first-product-slice
 ```
 
 In Codex:
 
 ```text
-$kickoff phase 2
+$kickoff phase first-product-slice
 ```
 
 The agent reads the index, target and parent when needed, cited briefs and pinned references, dependencies, preceding completed phase, applicable policies, and the execution resource for the current stage.
@@ -50,7 +50,7 @@ Passing checks proves the executable criteria that were actually run. It does no
 
 ## Close or park truthfully
 
-Record remaining work, evidence, lessons, and outcomes through the deterministic activity-log writer. Failed gates keep the phase open. Human-only actions belong in the action queue. A park says what blocks progress and what evidence or decision will unblock it.
+Record remaining work, evidence, lessons, and outcomes in immutable activity entries. Accepted phase completion binds the real retained evidence, captured owner/claim and exact event predecessor; parent completion requires its own accepted close. Failed gates keep the phase open. Human-only actions belong in the action queue. A park says what blocks progress and what evidence or decision will unblock it.
 
 ## Finish resource cleanup
 

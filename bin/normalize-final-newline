@@ -20,7 +20,7 @@ sys.path.insert(0, str(ROOT / "lib"))
 
 from agentic_starter.candidate_boundaries import load_partition  # noqa: E402
 
-ALLOWED = {Path("LOG.md"), Path("EXECUTION_LOG.jsonl"), Path("plan/INDEX.md")}
+ALLOWED = {Path("EXECUTION_LOG.jsonl")}
 
 
 def digest(value: bytes) -> str:
