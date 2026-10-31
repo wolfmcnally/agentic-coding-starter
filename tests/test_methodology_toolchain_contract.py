@@ -249,6 +249,9 @@ def _exercise_transfer_recipes(tmp_path: Path) -> None:
         assert "docs/README.md" in surfaces
         assert "shared software-documentation baseline" in surfaces
         assert "briefs/astra-era-development.md" in exclusions
+        assert "tests/test_starter_migration_history.py" in exclusions, (
+            f"{name}: history proof not excluded"
+        )
         excluded_briefs = set(re.findall(r"briefs/([\w.-]+\.md)", exclusions))
         destination = tmp_path / name
         for skill in sorted((REPO_ROOT / ".claude/skills").iterdir()):
@@ -687,3 +690,152 @@ def test_leak_scan_reads_new_files_before_they_are_staged(tmp_path: Path) -> Non
     assert rejected.returncode == 1, rejected.stdout + rejected.stderr
     assert "new.md" in rejected.stdout
     assert "ignored.md" not in rejected.stdout
+
+
+def _cargo_output_recipe() -> str:
+    text = (REPO_ROOT / ".claude/skills/stamp/SKILL.md").read_text()
+    return (
+        text.split("<!-- cargo-output-recipe -->", 1)[1].split("```bash\n", 1)[1].split("```", 1)[0]
+    )
+
+
+def test_rust_profile_owns_output_across_checkouts(tmp_path: Path) -> None:
+    """Exercise the actual stamp recipe, not a separately maintained imitation."""
+    import tomllib
+
+    recipe = _cargo_output_recipe()
+    cargo = shutil.which("cargo")
+    assert cargo is not None, "RUST PROFILE QUALIFICATION NEEDS EXISTING CARGO"
+    pin = tomllib.loads((REPO_ROOT / "documentation.toml").read_text())["tools"]["rust"]
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    sentinel = shared / "preexisting-artifact"
+    sentinel.write_bytes(b"Preserve unrelated incremental bytes\x00")
+    original = sentinel.read_bytes()
+    roots = []
+    for name, answer in (("good-copy", 42), ("bad-copy", 0)):
+        root = tmp_path / name
+        project = root / "project"
+        (project / "src").mkdir(parents=True)
+        (project / "Cargo.toml").write_text(
+            '[package]\nname = "output-probe"\nversion = "0.0.0"\nedition = "2021"\n'
+        )
+        (project / "Cargo.lock").write_text(
+            'version = 4\n\n[[package]]\nname = "output-probe"\nversion = "0.0.0"\n'
+        )
+        (project / "rust-toolchain.toml").write_text(f'[toolchain]\nchannel = "{pin}"\n')
+        (project / "src/lib.rs").write_text(
+            f"pub fn answer() -> u8 {{ {answer} }}\n"
+            "#[test] fn verdict_probe() { assert_eq!(answer(), 42); }\n"
+        )
+        roots.append(root)
+
+    def invoke(
+        root: Path, ambient: str | None, *, build: bool = False
+    ) -> subprocess.CompletedProcess[str]:
+        env = dict(os.environ)
+        env.update(RUSTUP_AUTO_INSTALL="0", RUSTUP_TOOLCHAIN=pin, CARGO_NET_OFFLINE="true")
+        env.pop("CARGO_TARGET_DIR", None)
+        if ambient is not None:
+            env["CARGO_TARGET_DIR"] = ambient
+        command = recipe + '\nrepo_root="$1"\nrust_project_root="$1/project"\n'
+        command += (
+            'cargo_output_init\ncargo_output_init\nprintf "TARGET=%s\\n" "$CARGO_TARGET_DIR"\n'
+        )
+        if build:
+            command += (
+                'cd "$rust_project_root"\n"$2" --version\n'
+                'exec "$2" test --locked --offline --quiet\n'
+            )
+        return subprocess.run(
+            ["/bin/bash", "-eu", "-o", "pipefail", "-c", command, "fixture", str(root), cargo],
+            cwd=tmp_path,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+
+    def target(result: subprocess.CompletedProcess[str]) -> Path:
+        assert result.stdout.startswith("TARGET="), result.stderr
+        return Path(result.stdout.splitlines()[0].removeprefix("TARGET="))
+
+    default = invoke(roots[0], None)
+    assert default.returncode == 0 and target(default) == roots[0] / "project/target", (
+        "CARGO OUTPUT DEFAULT LOST: " + default.stderr
+    )
+    first, second = (invoke(root, str(shared)) for root in roots)
+    assert first.returncode == second.returncode == 0
+    selected = target(first)
+    assert selected != shared and selected != target(second), "CARGO OUTPUT ISOLATION LOST"
+    assert selected.is_relative_to(shared), "CARGO OUTPUT ESCAPED AMBIENT BASE"
+    assert target(invoke(roots[0], str(selected))) == selected, "CARGO OUTPUT REENTRY NESTED"
+    alias = tmp_path / "alias"
+    alias.symlink_to(roots[0], target_is_directory=True)
+    assert target(invoke(alias, str(shared))) == selected, "CARGO OUTPUT SYMLINK IDENTITY DRIFT"
+    relative = invoke(roots[0], "../../shared")
+    assert target(relative).resolve() == selected.resolve(), "CARGO OUTPUT RELATIVE BASE DRIFT"
+    # Both contamination directions, same crate identity; no global/shared clean is used.
+    for index in (0, 1, 1, 0):
+        observed = invoke(roots[index], str(shared), build=True)
+        assert target(observed) != shared, "CARGO OUTPUT ISOLATION LOST"
+        assert observed.returncode == (0 if index == 0 else 101), (
+            "CARGO OUTPUT VERDICT CONTAMINATED: " + observed.stdout + observed.stderr
+        )
+        assert f"cargo {pin} " in observed.stdout, "CARGO OUTPUT TOOLCHAIN DRIFT"
+        assert "warning:" not in observed.stdout + observed.stderr, (
+            "CARGO OUTPUT UNREVIEWED WARNING: " + observed.stdout + observed.stderr
+        )
+    assert sentinel.read_bytes() == original, "CARGO OUTPUT MUTATED SHARED ARTIFACT"
+    assert not (shared / "debug").exists(), "CARGO OUTPUT USED UNSCOPED SHARED BUILD"
+
+
+def test_travelling_migration_proofs_run_without_donor_history(tmp_path: Path) -> None:
+    """A real fresh zero-history root runs the whole portable module, not collection."""
+    import json
+    import sys
+
+    from structured_fixtures import create_records
+
+    surfaces, exclusions = _stamp_copy_rule()
+    local = "tests/test_starter_migration_history.py"
+    assert _specificity(local, exclusions) >= _specificity(local, surfaces), (
+        "STAMP COPIES DONOR HISTORY PROOF"
+    )
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+    for directory in ("bin", "tests", "policies"):
+        (fresh / directory).mkdir()
+    for relative in (
+        "bin/multioperator",
+        "bin/check-harness-parity",
+        "bin/normalize-final-newline",
+        "tests/test_multioperator.py",
+        "tests/test_log_control_plane.py",
+        "policies/multi-operator-migration.md",
+    ):
+        shutil.copy2(REPO_ROOT / relative, fresh / relative)
+    shutil.copytree(REPO_ROOT / "lib", fresh / "lib", ignore=shutil.ignore_patterns("__pycache__"))
+    interpreter = fresh / "bin/python"
+    interpreter.write_text("#!/bin/sh\nexec " + repr(sys.executable) + ' "$@"\n')
+    interpreter.chmod(0o755)
+    create_records(fresh, {"fresh-work-package": {"state": "next"}})
+    manifest = fresh / "collaboration/manifest.json"
+    original = manifest.read_bytes()
+    assert "source_commit" not in json.loads(original)
+    assert not (fresh / local).exists()
+    module = (fresh / "tests/test_multioperator.py").read_text()
+    assert "test_starter_migration_history" not in module, "PORTABLE PROOF IMPORTS LOCAL HISTORY"
+    env = {**os.environ, "UV_OFFLINE": "1", "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"}
+    child = subprocess.run(
+        [sys.executable, "-m", "pytest", "tests/test_multioperator.py", "-q"],
+        cwd=fresh,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=180,
+    )
+    assert child.returncode == 0 and "3 passed" in child.stdout, (
+        "FRESH SCAFFOLD MIGRATION PROOFS FAILED: " + child.stdout + child.stderr
+    )
+    assert manifest.read_bytes() == original, "PORTABLE PROOFS FABRICATED DONOR PROVENANCE"

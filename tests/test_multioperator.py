@@ -1,4 +1,4 @@
-"""The proposed migration is exercised through its actual CLI, never live adoption."""
+"""Portable synthetic migration and current-record contracts; no donor history required."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import uuid
 from pathlib import Path
 
@@ -87,44 +88,13 @@ def convert(tmp_path: Path, source: Path, phases: dict[str, str], **extra: objec
     return output
 
 
-def test_actual_starter_rehearsal_preserves_source_and_history(tmp_path: Path) -> None:
-    """Use the real committed corpus, including its large historical log and symlinks."""
-    source = tmp_path / "faithful-starter"
-    # Old-format input comes from our Git provenance; it is not a live fallback.
-    manifest = ROOT / "collaboration/manifest.json"
-    commit = json.loads(manifest.read_text())["source_commit"] if manifest.exists() else "HEAD"
-    archive = subprocess.check_output(["git", "archive", commit], cwd=ROOT)
-    source.mkdir()
-    import io
-    import tarfile
-
-    with tarfile.open(fileobj=io.BytesIO(archive)) as files:
-        files.extractall(source, filter="data")
-    subprocess.run(["git", "init", "-q", "-b", "master", str(source)], check=True)
-    subprocess.run(
-        ["git", "config", "user.email", "fixture@example.invalid"],
-        cwd=source,
-        check=True,
-    )
-    subprocess.run(["git", "config", "user.name", "Fixture"], cwd=source, check=True)
-    paths = (
-        subprocess.check_output(
-            ["git", "ls-files", "--others", "--exclude-standard", "-z"], cwd=source
-        )
-        .decode()
-        .split("\0")
-    )
-    subprocess.run(["git", "add", "--", *[p for p in paths if p]], cwd=source, check=True)
-    subprocess.run(
-        ["git", "commit", "-q", "-m", "Faithful pre-transition fixture"],
-        cwd=source,
-        check=True,
-    )
+def assert_rehearsal_contract(tmp_path: Path, source: Path, mapping: dict[str, str]) -> None:
+    """One receiving contract, exercised against synthetic and real historical input."""
     source_plan = snapshot(source / "plan")
     live_log = (source / "LOG.md").read_bytes()
     status = subprocess.check_output(["git", "status", "--porcelain"], cwd=source)
-    original = subprocess.check_output(["git", "show", commit + ":LOG.md"], cwd=ROOT)
-    output = convert(tmp_path, source, {"1": "starter-template-adoption"})
+    original = live_log
+    output = convert(tmp_path, source, mapping)
     wrong_recipe = json.loads((tmp_path / "mapping.json").read_text())
     wrong_recipe["retirements"]["bin/log-append"] = "0" * 64
     recipe_file = tmp_path / "wrong-recipe.json"
@@ -171,7 +141,7 @@ def test_actual_starter_rehearsal_preserves_source_and_history(tmp_path: Path) -
     assert not (output / "LOG.md").exists() and not (output / "plan/phase-1.md").exists(), (
         "MIGRATION KEPT DUAL AUTHORITIES"
     )
-    assert (output / "plan/phases/starter-template-adoption.md").is_file(), "MIGRATION PHASE LOST"
+    assert (output / ("plan/phases/" + mapping["1"] + ".md")).is_file(), "MIGRATION PHASE LOST"
     assert (output / "AGENTS.md").is_file() and not (output / "AGENTS.md").is_symlink(), (
         "MIGRATION PRIMARY CONSTITUTION LOST"
     )
@@ -380,6 +350,151 @@ def test_actual_starter_rehearsal_preserves_source_and_history(tmp_path: Path) -
         "MIGRATION OVERWROTE EXISTING DESTINATION"
     )
     assert snapshot(output) == before, "MIGRATION REFUSAL WROTE DESTINATION"
+
+
+def test_portable_rehearsal_preserves_source_and_guards(tmp_path: Path) -> None:
+    source = tmp_path / "portable-source"
+    for directory in (
+        "plan",
+        "bin",
+        "tests",
+        "project",
+        "policies",
+        ".claude/skills/probe",
+        ".claude/agents",
+        ".agents/skills",
+        ".codex/agents",
+    ):
+        (source / directory).mkdir(parents=True, exist_ok=True)
+    (source / "plan/INDEX.md").write_text(
+        "# Plan\n\n## Phase Table\n| Phase | Status |\n|---|---|\n| [Phase 1](phase-1.md) | ⬅️ |\n"
+    )
+    (source / "plan/phase-1.md").write_text(
+        '---\nid: "1"\ntitle: Synthetic\ndepends_on: []\ninforms: []\n---\n# Synthetic\n'
+    )
+    (source / "CLAUDE.md").write_text(
+        "# Constitution\n## Hard rules\nPreserve this rule.\n<!-- PROJECT_CONTEXT_START -->\n"
+    )
+    (source / "AGENTS.md").symlink_to("CLAUDE.md")
+    (source / "LOG.md").write_text("# Exact synthetic history\n")
+    (source / "README.md").write_text("[Plan](plan/phase-1.md)\n")
+    shutil.copytree(
+        ROOT / "lib/agentic_starter",
+        source / "lib/agentic_starter",
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
+    for name in ("multioperator", "check-harness-parity", "normalize-final-newline"):
+        shutil.copy2(ROOT / "bin" / name, source / "bin" / name)
+    # A genuine differing, approved input tool exercises exact replacement preimages.
+    migration_tool = source / "bin/multioperator"
+    migration_tool.write_text(migration_tool.read_text() + "\n# Synthetic prior revision\n")
+    normalizer = source / "bin/normalize-final-newline"
+    normalizer.write_text(
+        normalizer.read_text().replace(
+            'ALLOWED = {Path("EXECUTION_LOG.jsonl")}',
+            'ALLOWED = {Path("LOG.md"), Path("EXECUTION_LOG.jsonl"), Path("plan/INDEX.md")}',
+        )
+    )
+    for name in (
+        "renumber-phases",
+        "log-append",
+        "log-relocate",
+        "check-log",
+        "check-log-prefix",
+        "check-log-monotonic",
+    ):
+        path = source / "bin" / name
+        path.write_text("#!/bin/sh\nexit 0\n")
+        path.chmod(0o755)
+    (source / "tests/test_renumber_phases.py").write_text("# Synthetic retired contract\n")
+    (source / "tests/test_log_control_plane.py").write_text(
+        "# Converted to the retained shared normalizer proof\n"
+    )
+    for name, command in (("python", '"$@"'), ("test", '-m pytest "$@"')):
+        path = source / "bin" / name
+        path.write_text("#!/bin/sh\nexec " + repr(sys.executable) + " " + command + "\n")
+        path.chmod(0o755)
+    check = source / "bin/check"
+    check.write_text(
+        '#!/bin/sh\nset -eu\ntest "$1" = lint\n# test-governance check-l'
+        "og check-log-prefix check-log-monotonic kickoff-command-zero"
+        "\n# log-append log-relocate normalize-final-newline\n# run_gat"
+        "e policy-log ./bin/check-log\nexec "
+        + repr(sys.executable)
+        + " -m ruff check --config project/pyproject.toml lib tests bin"
+        "/check-harness-parity bin/normalize-final-newline ../bin/che"
+        "ck-log ../bin/check-log-prefix ../bin/check-log-monotonic\n"
+    )
+    check.chmod(0o755)
+    (source / "project/pyproject.toml").write_text(
+        '[tool.ruff]\nline-length = 100\ntarget-version = "py311"\n[tool'
+        '.ruff.lint]\nselect = ["E", "F", "I"]\n'
+    )
+    (source / ".claude/skills/probe/SKILL.md").write_text("# Probe\n")
+    (source / ".agents/skills/probe").symlink_to("../../.claude/skills/probe")
+    (source / ".claude/agents/phase-coder.md").write_text(
+        "---\nname: phase-coder\ndescription: Fixture role\n---\n# Coder\n"
+    )
+    (source / ".codex/agents/phase-coder.toml").write_text(
+        'name = "phase-coder"\ndescription = "Fixture role"\ndeveloper_'
+        'instructions = "Read .claude/agents/phase-coder.md in this r'
+        'epo and follow it."\n'
+    )
+    (source / "tests/test_mirror_parity.py").write_text("""import subprocess
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_converted_checker_and_fixture(tmp_path: Path) -> None:
+    (tmp_path / "CLAUDE.md").write_text("Rule")
+    (tmp_path / "AGENTS.md").symlink_to("CLAUDE.md")
+    checker = ROOT / "bin/check-harness-parity"
+    assert subprocess.run([str(checker)], capture_output=True).returncode == 0
+    mirror = ROOT / ".agents/skills/probe"
+    mirror.unlink()
+    mirror.write_text("Not a mirror")
+    try:
+        assert subprocess.run([str(checker)], capture_output=True).returncode == 1
+    finally:
+        mirror.unlink()
+        mirror.symlink_to("../../.claude/skills/probe")
+""")
+    shutil.copy2(
+        ROOT / "policies/multi-operator-migration.md",
+        source / "policies/multi-operator-migration.md",
+    )
+    for args in (
+        ("init", "-q", "-b", "master"),
+        (
+            "add",
+            "AGENTS.md",
+            "CLAUDE.md",
+            "LOG.md",
+            "README.md",
+            "plan",
+            "bin",
+            "lib",
+            "tests",
+            "project",
+            "policies",
+            ".claude",
+            ".agents",
+            ".codex",
+        ),
+        (
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.test",
+            "commit",
+            "-q",
+            "-m",
+            "Synthetic pre-transition input",
+        ),
+    ):
+        subprocess.run(["git", *args], cwd=source, check=True, capture_output=True)
+    assert_rehearsal_contract(tmp_path, source, {"1": "portable-work-package"})
 
 
 @pytest.fixture

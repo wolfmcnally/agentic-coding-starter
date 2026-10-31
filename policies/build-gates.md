@@ -91,7 +91,7 @@ The interface is universal; implementations are language-specific:
   <resolved-path>` plus the matching managed/system preference, with the same
   selection applied to synchronization, probing, and execution;
 - Node: the package manager selected by the committed lockfile, with immutable/frozen dependency setup and package scripts behind the wrappers;
-- Rust: the pinned toolchain when applicable and Cargo commands with `--locked`;
+- Rust: the pinned toolchain when applicable and Cargo commands with `--locked`; every probe/build/test/lint/format command uses stable per-physical-checkout output. An ambient `CARGO_TARGET_DIR` chooses a base, not shared final artifacts. Preserve useful incremental output and pre-existing shared bytes; do not clear a cache as a substitute for isolation. Qualify two same-package copies in both good/bad orders, plus cwd/symlink/reentry behavior;
 - Go: the declared Go version and module reads with `-mod=readonly`;
 - other ecosystems: their equivalent version selection and lock-preserving modes.
 

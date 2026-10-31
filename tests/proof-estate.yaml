@@ -1036,11 +1036,13 @@ families:
   kind: pytest
   selectors:
   - tests/test_multioperator.py
+  - tests/test_starter_migration_history.py
   source_paths: &id030
   - bin/multioperator
   - lib/agentic_starter/multioperator.py
   - lib/agentic_starter/multioperator_transition.py
   - tests/test_multioperator.py
+  - tests/test_starter_migration_history.py
   - briefs/multi-operator-collaboration.md
   - policies/multi-operator-migration.md
   - policies/phase-status.md

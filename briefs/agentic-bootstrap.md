@@ -103,7 +103,7 @@ A project derived from this template contains the following **portable structure
     treatise               # Validate treatise editorial records
     check-catalogs         # Catalog, link, anchor, citation, ledger checks
     new-name               # Collision-checked ledger slug generator
-    multioperator        # Open a phase number by renumbering the not-started phases after it
+    multioperator          # Permanent phase records, migration rehearsal and maintenance
 
   lib/
     agentic_starter/       # Shared deterministic library the bin/ scripts import
@@ -336,7 +336,7 @@ These files encode the methodology itself, not any particular product. Copy them
 - `tests/test_lessons.py` and `tests/test_check_catalogs.py` (universal behavioral coverage for those managers)
 - `bin/execution-telemetry`, `bin/check-execution-dashboards`, and `bin/serve-execution-dashboard`, together with `lib/agentic_starter/` (the shared deterministic library the first two import) and `reports/execution/` with its `index.html`, `index-data.js`, and vendored offline `assets/`. The new project's archive starts empty — no dated phase directory travels, and the copied index's `phases` and `dates` lists are emptied — which the checker reports as `EXECUTION DASHBOARDS PASS (0 phases)`
 - `tests/test_execution_telemetry.py`, `tests/test_execution_dashboard.py`, `tests/render_execution_dashboard_fixture.py`, and `tests/fixtures/` (universal behavioral coverage for telemetry and offline report rendering)
-- `bin/check-harness-parity`, `bin/check-toolchain-callers`, `bin/check-shell-syntax`, `bin/new-name`, `bin/multioperator` (which opens a phase number for an inserted phase by renumbering the not-started phases after it, covered by `tests/test_multioperator.py`), `bin/check-plan-concreteness` (which `kickoff` runs over every plan artifact before plan review, covered by `tests/test_check_plan_concreteness.py`), `bin/check-plan-delivery` (which `kickoff` runs before every code review, covered by `tests/test_check_plan_delivery.py`; both share `lib/agentic_starter/plan_artifact.py`), `bin/review-verdicts` (the `sweep-planning` / `sweep-coding` trace harvester, covered by `tests/test_review_verdicts.py`), and `bin/treatise` (the universal deterministic checkers and the ledger-slug generator), with `tests/test_mirror_parity.py`, `tests/test_toolchain_callers.py`, `tests/test_shell_syntax.py`, `tests/test_new_name.py`, and `tests/test_treatise.py`
+- `bin/check-harness-parity`, `bin/check-toolchain-callers`, `bin/check-shell-syntax`, `bin/new-name`, `bin/multioperator` (permanent phase and immutable activity records, with portable synthetic contracts in `tests/test_multioperator.py`; the template’s real-history proof remains local in `tests/test_starter_migration_history.py`), `bin/check-plan-concreteness` (which `kickoff` runs over every plan artifact before plan review, covered by `tests/test_check_plan_concreteness.py`), `bin/check-plan-delivery` (which `kickoff` runs before every code review, covered by `tests/test_check_plan_delivery.py`; both share `lib/agentic_starter/plan_artifact.py`), `bin/review-verdicts` (the `sweep-planning` / `sweep-coding` trace harvester, covered by `tests/test_review_verdicts.py`), and `bin/treatise` (the universal deterministic checkers and the ledger-slug generator), with `tests/test_mirror_parity.py`, `tests/test_toolchain_callers.py`, `tests/test_shell_syntax.py`, `tests/test_new_name.py`, and `tests/test_treatise.py`
 - `tests/test_research_authority.py` (universal coverage for the per-role search/retrieval boundary)
 - `.gitattributes` (line-ending normalization that keeps cross-harness mirrors byte-identical across platforms)
 - `briefs/methodology.md`
@@ -378,6 +378,7 @@ These files have a stable shape and a project-specific body. Mirror the shape; w
 - The starter template's `example/` Python package and `tests/test_cli.py` — replace with the new project's surface, in whatever language(s) the project uses.
 - `policies/anonymize-log-references.md`, `bin/check-anonymization.sh`, and `bin/anonymization-denylist.local.example` — starter-only: the rule exists because *this* template is public, not because of any methodology principle. Also drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`, delete the `### check-anonymization.sh` entry from `bin/README.md`, remove its call from `bin/check`, and delete the "External / private-repo references" bullet from the copied `.claude/agents/code-critic.md`, which names both.
 - `tests/test_methodology_toolchain_contract.py` — asserts on the `stamp` skill and the anonymization policy, neither of which the new project has.
+- `tests/test_starter_migration_history.py` — verifies this template’s retained committed corpus and source history. Keep the portable synthetic migration and refusal contracts in `tests/test_multioperator.py`; run them in the new project without donor history.
 - Starter's `tests/proof-estate.yaml` and every file under `reports/test-governance/` except its `README.md` — these are local inventory, reset, witness receipts and dated history, not methodology content.
 - `tests/fixtures/astra_evaluation/` — the evaluation pack behind `briefs/astra-era-development.md`, which stays behind with it.
 - Every dated directory under `reports/execution/`, and the root `EXECUTION_LOG.jsonl` — this repository's own execution history. A new project that kept them would present another repository's phases as its own.
@@ -493,6 +494,9 @@ In this exact order (each feeds the next):
 3. **One primary constitution.** `AGENTS.md` is regular, not a symlink; no top-level `CLAUDE.md` file or alias is created. Installed Claude must meet the verified 2.1.290 minimum; absence is ungated. Version and actual instruction loading are distinct observations, and unrelated ancestor/local instructions are preserved.
 
 4. **Structured activity records.** Create empty `log/entries/` and a fresh-project `collaboration/manifest.json` using format `starter.multioperator.v1`, `adopted: true`, zero original log bytes and the SHA256 of empty bytes. Do not copy template history or claim a completed migration for a fresh project. Each later writer appends its own immutable body, sequence and predecessor; the readable log is an ignored projection.
+
+The fresh-project manifest deliberately has no migration `source_commit`. Transfer all generic migration, custody and refusal proofs through `tests/test_multioperator.py`; never copy `tests/test_starter_migration_history.py` or invent provenance to satisfy a donor-local test. Fresh-scaffold qualification executes the travelling tests, not only collection.
+
 
 5. **`README.md`** — didactic top-level for human readers. Apply the front-door contract in section 2b with project-specific content. If the seed carried a README, keep the user's text and add only the missing orientation, getting-started, essential-map, and documentation-guide material. The README is the human's entry point; AGENTS.md is the agent's.
 
@@ -840,3 +844,8 @@ The last item is the operational test. Until it passes, the bootstrap is not don
 The candidate boundary transfers atomically: `candidate-partition.yaml`, `bin/check-candidate-partition`, `lib/agentic_starter/candidate_boundaries.py`, candidate/evidence managers, the staged hook, gate inventory, and their behavioral fixtures. Generate the recipient's explicit active inventory and retain only its approved bookkeeping exclusions; never copy the donor's path judgments. The declaration remains active, unclassified tracked files refuse, unclassified nonignored untracked files remain included, and complete-tree delivery receipts remain mandatory. Verify the staged checker by actually tripping it in an isolated fixture. The tiny supported YAML subset and pattern syntax are defined in `policies/orchestration-evidence.md`.
 
 Workflow runtime transfer includes `lib/agentic_starter/workflow.py` and `lib/agentic_starter/advisory.py` with the configuration, evidence tools and behavioral fixtures. Recipient model/backend restrictions remain recipient-owned.
+
+
+### Compiled-output ownership at bootstrap
+
+For Rust, locked dependencies alone do not bind output to a checkout. The generated helper resolves the physical checkout and project, uses local project output by default, and namespaces an ambient target base per checkout. All Cargo probes and gates reuse the same selected output; reentry, outside-cwd invocation and symlink aliases do not create another identity. Retain incremental output and shared cache bytes. Two controlled good/bad copies under one base must retain their own verdicts in both orders; the test must catch removal of isolation. This is output ownership, not a general compiler-environment audit.

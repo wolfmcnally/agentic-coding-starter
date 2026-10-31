@@ -227,6 +227,7 @@ The direction matters. An allowlist of files to copy goes stale silently: every 
 | `policies/anonymize-log-references.md` | starter-only: the rule exists because *this* template is public, not because of any methodology principle |
 | `bin/check-anonymization.sh` and `bin/anonymization-denylist.local.example` | that policy's enforcement (also drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`) |
 | `tests/test_methodology_toolchain_contract.py` | asserts on `stamp` and the anonymization policy, neither of which the destination has |
+| `tests/test_starter_migration_history.py` | requires this template’s retained committed corpus; portable migration oracles remain in `tests/test_multioperator.py` |
 | `tests/proof-estate.yaml` and every file under `reports/test-governance/` except its `README.md` | Starter-local families, witness receipts, reset evidence, reports, and judgments; regenerate from the destination's own inventory |
 | `briefs/BRIEF.md`, `briefs/eacp-pattern-map.md`, `briefs/methodology-treatise.md`, `briefs/astra-era-development.md` | about *this* repository; `BRIEF.md` is authored fresh in Step 3 |
 | `tests/fixtures/astra_evaluation/` | the evaluation pack behind `briefs/astra-era-development.md`, which stays behind with it |
@@ -252,7 +253,7 @@ Everything else under those surfaces is universal by construction. When in doubt
 - The universal managers and checkers, all of which `bin/check` requires present before it will run a single gate: `bin/kickoff-config`, `bin/kickoff-tree-id`, `bin/kickoff-evidence`, `bin/check-receipt`, `bin/execution-telemetry`, `bin/check-execution-dashboards`, `bin/check-harness-parity`, `bin/check-toolchain-callers`, `bin/test-governance`, `bin/lessons`, `bin/treatise`, `bin/check-catalogs`, `bin/check-hooks-installed`, `bin/check-shell-syntax`, `bin/new-name`, `bin/multioperator`, `bin/multioperator`, `bin/multioperator`, `bin/kickoff-command-zero`, `bin/multioperator`, `bin/multioperator`, `bin/normalize-final-newline`; plus the operator convenience `bin/serve-execution-dashboard`, the phase renumbering script `bin/multioperator` (with `tests/test_multioperator.py`), and `bin/check-plan-concreteness`, which `kickoff` runs over every plan artifact before plan review (with `tests/test_check_plan_concreteness.py`), `bin/check-plan-delivery`, which `kickoff` runs over every implementation before code review (with `tests/test_check_plan_delivery.py`, both sharing `lib/agentic_starter/plan_artifact.py`), and `bin/review-verdicts`, the `sweep-planning` / `sweep-coding` trace harvester (with `tests/test_review_verdicts.py`)
 - `lib/agentic_starter/` — the telemetry, dashboard, plan-artifact, and test-governance managers import it; omitting it makes their gates fail at startup
 - `reports/execution/` with `index.html`, `index-data.js`, and `assets/` — `bin/check-execution-dashboards` reads the archive and validates the vendored offline renderer. A fresh destination's archive holds zero phases once the copied index's `phases` and `dates` are emptied and its `project` set to null, which the checker reports as `EXECUTION DASHBOARDS PASS (0 phases)`
-- `tests/test_toolchain_entrypoints.py` and `tests/test_check.py` (adapted with the toolchain in Step 5), plus verbatim `tests/test_check_receipt.py`, `tests/test_install_hooks.py`, `tests/test_check_hooks_installed.py`, `tests/test_kickoff_config.py`, `tests/test_kickoff_tree_id.py`, `tests/test_kickoff_evidence.py`, `tests/test_lessons.py`, `tests/test_kickoff_control_plane.py`, `tests/test_log_control_plane.py`, `tests/test_check_catalogs.py`, `tests/test_treatise.py`, `tests/test_new_name.py`, `tests/test_multioperator.py`, `tests/test_shell_syntax.py`, `tests/test_toolchain_callers.py`, `tests/test_mirror_parity.py`, `tests/test_research_authority.py`, `tests/test_execution_telemetry.py`, `tests/test_execution_dashboard.py`, `tests/test_test_governance.py`, `tests/test_pre_commit.py`, `tests/render_execution_dashboard_fixture.py`, and `tests/fixtures/` except the Starter-local entries the denylist names
+- `tests/test_toolchain_entrypoints.py` and `tests/test_check.py` (adapted with the toolchain in Step 5), plus verbatim `tests/test_check_receipt.py`, `tests/test_install_hooks.py`, `tests/test_check_hooks_installed.py`, `tests/test_kickoff_config.py`, `tests/test_kickoff_tree_id.py`, `tests/test_kickoff_evidence.py`, `tests/test_lessons.py`, `tests/test_kickoff_control_plane.py`, `tests/test_log_control_plane.py`, `tests/test_check_catalogs.py`, `tests/test_treatise.py`, `tests/test_new_name.py`, `tests/test_multioperator.py` (portable synthetic contracts only), `tests/test_shell_syntax.py`, `tests/test_toolchain_callers.py`, `tests/test_mirror_parity.py`, `tests/test_research_authority.py`, `tests/test_execution_telemetry.py`, `tests/test_execution_dashboard.py`, `tests/test_test_governance.py`, `tests/test_pre_commit.py`, `tests/render_execution_dashboard_fixture.py`, and `tests/fixtures/` except the Starter-local entries the denylist names
 - `reports/test-governance/README.md`; the destination creates its own `tests/proof-estate.yaml`, empty witness ledger, and governance reports in Step 5
 - `.gitattributes` — the line-ending normalization that keeps cross-harness mirrors byte-identical across platforms
 
@@ -420,10 +421,35 @@ Use the target's committed language profile:
 |---|---|
 | Python | `.python-version` + `pyproject.toml` + `uv.lock`; managed default plus an authoritative absolute-path compatibility override; locked sync/run; a real deliverable-and-tool load/run probe; recurring tools in the dev dependency group |
 | TypeScript / Node | package-manager/version metadata plus the selected lockfile; frozen/immutable setup; package scripts behind `bin/test` and `bin/check` |
-| Rust | declared/pinned toolchain when applicable; dependency fetch/build/test with Cargo `--locked` |
+| Rust | declared/pinned toolchain when applicable; Cargo `--locked`; checkout-owned output for every probe/build/test/format/lint invocation, using the recipe below |
 | Go | declared Go version; dependency and test commands with module reads `-mod=readonly` |
 
 When `project_isolation` is enabled, each language gate runs from `<dest>/project`; otherwise it runs from `<dest>`. The `policy` mode must check at least the universal instruction/config invariants (`AGENTS.md` is regular with no top-level `CLAUDE.md`; `bin/kickoff-config show` succeeds) and any target-specific deterministic policy gates. It must not be an unconditional pass.
+
+### Rust output ownership
+
+A lockfile does not isolate compiled output. An ambient shared `CARGO_TARGET_DIR` is a base, never the final directory for a stamped checkout. Use a stable namespace for the physical checkout, with no package-name guess or consumer-specific prefix. Keep incremental artifacts and dependency caches; do not delete shared output to make a gate pass. One helper initializes output before any Cargo probe or command, and setup/test/check/descriptor wrappers reuse it. The recipe below requires only the existing shell and `pwd`; it appends the exact physical checkout path rather than a collision-prone short checksum. Reentry preserves the already selected path. A relative ambient base retains Cargo's project-relative meaning.
+
+<!-- cargo-output-recipe -->
+```bash
+cargo_output_init() {
+  local physical_root physical_project output_base
+  physical_root="$(cd "$repo_root" && pwd -P)" || return $?
+  physical_project="$(cd "$rust_project_root" && pwd -P)" || return $?
+  case "${CARGO_TARGET_DIR:-}" in
+    "") CARGO_TARGET_DIR="$physical_project/target" ;;
+    "$physical_project/target" | */.cargo-checkouts"$physical_root") ;;
+    *)
+      output_base="$CARGO_TARGET_DIR"
+      [[ "$output_base" == /* ]] || output_base="$physical_project/$output_base"
+      CARGO_TARGET_DIR="${output_base%/}/.cargo-checkouts$physical_root"
+      ;;
+  esac
+  export CARGO_TARGET_DIR
+}
+```
+
+Call `cargo_output_init` after assigning `repo_root` and `rust_project_root` and before Cargo's first invocation. Route all subsequent calls through the selected helper/environment; do not independently recompute a different target for a probe. The portable profile must prove two copies under the same ambient base cannot select one another's output, good/bad results in both orders, stable reentry/cwd/symlink behavior and unchanged pre-existing shared bytes. Missing tools or a failed output path refuse; no download, global environment edit or clean-output fallback is implied. Other ambient compiler variables are outside this output-ownership contract.
 
 ### The non-Python profile is a two-runtime contract
 
