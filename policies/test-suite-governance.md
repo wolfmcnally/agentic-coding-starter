@@ -14,12 +14,14 @@ Retain direct executable proof for every applicable custody, security, authority
 
 These criteria are the one home for proof-value judgment. Authoring, critique, reset, and reassessment apply them; persona and skill text cites this section rather than restating it.
 
+**Failure mode and net value.** Operator-ratified 2026-10-31: every test must address a plausible anticipated or demonstrated failure mode and add confidence worth its authoring, execution and maintenance cost. Merely restating behavior true by inspection or enumerating every possible invariant does not earn a test. A test that repeats a plainly visible comparison without a credible failure risk adds no independent confidence; an actual security, protocol, boundary or contract risk can justify testing even a simple comparison. Name the risk and the additional confidence, rather than treating a category label, test count, coverage score or ability to turn red as sufficient value. Apply this judgment to new tests and to authorized bounded reassessment; it mandates neither exhaustive testing nor a suite-wide cull or deletion percentage. Existing safeguards, required checks and evidence-preserving retirement rules remain binding.
+
 **Admission.** Before a proof is written or modified, answer these questions; a missing answer means it is not written yet:
 
-1. What observable behavior, invariant, or independent contract does it protect?
-2. What credible regression makes it fail?
+1. What plausible anticipated or demonstrated failure mode does it cover, and what observable behavior or independent contract is at risk?
+2. What credible regression makes it fail, and why is that failure a risk worth detecting rather than an invariant invented solely to test?
 3. Why does existing coverage not already catch that failure? Each contract has one primary proof at its strongest boundary. Another layer needs its own distinct risk the primary cannot reach. Extending a table case or shared fixture is preferred over a near-duplicate proof.
-4. What attempted work does the scenario require, transitively through fixtures, helpers, setup, teardown and child processes? Bound the relevant inputs, generated attempts, retries, polls and external operations concretely; name opaque work that cannot be counted.
+4. Why is its additional confidence worth the authoring, execution and maintenance cost? Include attempted work transitively through fixtures, helpers, setup, teardown and child processes. Bound the relevant inputs, generated attempts, retries, polls and external operations concretely; name opaque work that cannot be counted.
 5. Does it need a production seam (an export, flag, wrapper, parameter, or injection hook) that no production caller needs? If so, the proof moves to the real boundary and the seam is not added.
 
 A proof that would break under behavior-preserving refactoring asserts the implementation, not the behavior, and is rewritten at the owning boundary before it lands. A regression proof must fail on the pre-fix code for the intended reason; one regression at the owning boundary covers the bug, not one per layer it crosses.
@@ -41,7 +43,7 @@ A proof that would break under behavior-preserving refactoring asserts the imple
 - fault-injection and timing proofs that never show the fault or window was reached, such as a fake that raises without first asserting the state the real function would see, or a kill that can land between writes; each asserts the precondition and is shown red against a deliberately broken implementation;
 - names or fixtures that promise more than the assertions check.
 
-**Retention bar.** Resemblance to the implementation is a proxy, and it can invert: the proofs that guard exact bytes, keys, paths, and wire formats look most like the code they protect. A proof is retained when it independently enforces a public interface, protocol, configuration, storage format, security, platform, default, generated artifact, release, or architecture contract; when call order is observable behavior; when it is a regression with a credible failure mode; or when source inspection is the cheapest independent guard, failing when the contract changes and surviving an identifier-only rename. Static or slow is not a removal reason. A retained proof that fails on the baseline is a suspected product defect: reproduce it and repair its owner rather than removing the proof.
+**Retention bar.** Resemblance to the implementation is a proxy, and it can invert: the proofs that guard exact bytes, keys, paths, and wire formats look most like the code they protect. Subject to the failure-mode and net-value requirement above, retain a proof when it independently enforces a public interface, protocol, configuration, storage format, security, platform, default, generated artifact, release, or architecture contract; when call order is observable behavior; when it is a regression with a credible failure mode; or when source inspection is the cheapest independent guard, failing when the contract changes and surviving an identifier-only rename. Static or slow alone is not a removal reason, and trivial-looking implementation alone does not waive a genuine risk. A retained proof that fails on the baseline is a suspected product defect: reproduce it and repair its owner rather than removing the proof.
 
 ## Removal and growth
 

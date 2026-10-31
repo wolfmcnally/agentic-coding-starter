@@ -10,6 +10,8 @@ The evidentiary discipline around those checks—reading grep matches before cal
 
 ## A test carries its falsifier
 
+First justify the test's plausible anticipated or demonstrated failure mode and the additional confidence relative to its authoring, execution and maintenance cost under [test-suite governance](test-suite-governance.md#judging-a-proof). A falsifier qualifies an otherwise warranted test; being able to invent a mutation is not by itself a reason to add a test or exhaustively enumerate invariants.
+
 Every new or materially changed test names the one-line mutation of the code under test that would turn it red — the coder records the pair in Change Evidence (`falsifiers`), the critic judges whether the mutation really reds the test. A test with no nameable falsifier is scoring a stand-in for the property: the implementation's own output, a constant lifted from the code, a count preserved by any write. It is rewritten or deleted, never shipped as coverage. (A month of code reviews across three derived projects put this shape first among all findings.)
 
 **Derive the falsifier from what the check cannot distinguish.** A mutation taken from the fault the proof was designed to catch shows only that the control fires in the direction it was aimed. Name the property the check claims and the quantity it actually measures, then construct a wrong implementation that preserves the measured quantity while violating the property: incomplete enumeration behind a count, structured input reduced to tokens, a state claim represented by a total, a refusal verified only by an exit status. That projection gap is the falsifier worth recording. Qualify the harness against known-good code first — a baseline that fails for its own reasons must stop the run, never be counted as detection. *(Graduated from `attentive-dolphin`, 3 occurrences — `lessons-archived/attentive-dolphin.md`. Six deliberate mutations all caught while four wrong implementations passed the same suite; an assay that counted its own copying defect as a detection; a fixture that accepted an unrelated startup crash as a successful rejection.)*
@@ -65,7 +67,7 @@ During editing and revision, run the smallest falsifying test first and then the
 When acceptance leans on a test suite:
 
 - **Name the tests.** "All of `tests/test_pipelines_load.py`" is acceptable; "the tests" is not. The phase plan can list test names; the phase acceptance lists the commands plus expected counts or specific test names that must pass.
-- **Tests must exercise behavior, not type signatures.** A test that constructs a class and asserts it is not `None` is not a test. A test that calls the function and asserts on its output is.
+- **Behavior alone does not establish value.** A constructor/non-`None` check or a function call with an output assertion does not earn a test merely by executing code. It must expose a credible failure mode and add confidence beyond behavior already clear by inspection or covered elsewhere, worth its authoring, execution and maintenance cost. Preserve risk-justified security, protocol, boundary and contract checks.
 - **Hit real boundaries when feasible.** Integration tests that hit a real database, a real file system, or a real subprocess catch failures that mocks miss. Save mocking for genuinely external dependencies (network APIs, large datasets).
 
 ## Baseline-dependent criteria
