@@ -72,6 +72,7 @@ See also [universal skills](#universal-skills).
 - [Reader-centered documentation](briefs/software-documentation.md)
 - [Refactoring method and sources](briefs/refactoring-methodology.md)
 - [Draft multi-operator collaboration](briefs/multi-operator-collaboration.md)
+- [Open-source release design](briefs/open-source-releases.md)
 
 ## Policies catalog
 
