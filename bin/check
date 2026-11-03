@@ -138,6 +138,10 @@ run_changed() {
   run_gate changed "$repo_root/bin/test" --changed-from "$1"
 }
 
+run_log() {
+  run_gate policy-log "$repo_root/bin/multioperator" validate --root "$repo_root"
+}
+
 run_policy() {
   (
     cd "$repo_root"
@@ -150,7 +154,7 @@ run_policy() {
     run_gate policy-treatise ./bin/treatise validate || return $?
     run_gate policy-hooks-installed ./bin/check-hooks-installed || return $?
     run_gate policy-shell-syntax ./bin/check-shell-syntax || return $?
-    run_gate policy-log ./bin/multioperator validate --root . || return $?
+    run_log || return $?
     run_gate policy-candidate-partition ./bin/check-candidate-partition || return $?
     run_gate policy-docs ./bin/docs check || return $?
     run_gate policy-test-governance ./bin/test-governance validate || return $?
@@ -161,6 +165,8 @@ run_policy() {
 }
 
 run_all() {
+  # Fail cheaply before tests; run_policy still revalidates at the final seam.
+  run_log || return $?
   run_lint || return $?
   run_format || return $?
   run_test || return $?

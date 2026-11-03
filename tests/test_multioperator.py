@@ -872,11 +872,81 @@ def test_transition_and_maintenance_refuse_false_state(tmp_path: Path, source: P
     body = tmp_path / "body.md"
     body.write_text("## New maintenance entry\nExact bytes\n")
     bad_body = tmp_path / "bad-terminal.md"
-    bad_body.write_text("## 2026-10-29 01:00 — END\nUnqualified terminal record\n")
-    terminal = run("append", "--root", output, "--writer", "operator-b", "--body", bad_body)
-    assert terminal.returncode == 2 and "Lessons" in terminal.stderr, (
-        "MIGRATION TERMINAL WITNESS LOST"
+    original_logs = snapshot(output / "log/entries")
+    refusals = []
+    for kind in ("END", "PARK"):
+        for answer in ("", "Lessons: substantive prose\n"):
+            bad_body.write_text(f"## 2026-10-29 01:00 — {kind}\n{answer}")
+            rejected_bytes = bad_body.read_bytes()
+            terminal = run("append", "--root", output, "--writer", "operator-b", "--body", bad_body)
+            refusals.append(
+                terminal.returncode == 2
+                and "Lessons" in terminal.stderr
+                and bad_body.read_bytes() == rejected_bytes
+                and snapshot(output / "log/entries") == original_logs
+            )
+    assert all(refusals), "TERMINAL REFUSAL LOST OR IMMUTABLE LOG BYTES CHANGED"
+
+    content = tmp_path / "terminal.json"
+    fields = {
+        "title": "END (correction)",
+        "body": (
+            "Correction bookkeeping\n\nBuild status:\n- Focused checks passed\n\nRemaining:\n- None"
+        ),
+        "lessons": ["Require structural composition at the publication boundary."],
+    }
+    write_json(content, fields)
+    prepared = tmp_path / "prepared.md"
+    result(
+        run(
+            "compose-terminal",
+            "--content",
+            content,
+            "--output",
+            prepared,
+            "--at",
+            "2026-10-29T01:00:00Z",
+        )
     )
+    expected = (
+        "## 2026-10-29 01:00 — END (correction)\n\nCorrection bookkeeping\n\n"
+        "Build status:\n- Focused checks passed\n\nRemaining:\n- None\n\n"
+        "Lessons:\n- Require structural composition at the publication boundary.\n"
+    ).encode()
+    assert prepared.read_bytes() == expected, "TERMINAL COMPOSITION CHANGED MEANING OR FORMAT"
+    result(
+        run(
+            "append-terminal",
+            "--root",
+            output,
+            "--writer",
+            "operator-c",
+            "--content",
+            content,
+            "--at",
+            "2026-10-29T01:00:00Z",
+        )
+    )
+    published = snapshot(output / "log/entries")
+    added = set(published) - set(original_logs)
+    assert len(added) == 1 and published[added.pop()].split(b"\n---\n", 1)[1] == expected, (
+        "TERMINAL COMPOSER DID NOT USE IMMUTABLE DESTINATION"
+    )
+    # Compose collisions and malformed substantive input never overwrite records.
+    collision = run("compose-terminal", "--content", content, "--output", prepared)
+    failures = [collision.returncode == 2 and prepared.read_bytes() == expected]
+    for malformed in (
+        {key: value for key, value in fields.items() if key != "lessons"},
+        {**fields, "lessons": []},
+        {**fields, "body": "Lessons: inline substitute"},
+        {**fields, "body": "## 2026-10-29 01:01 — END\nInjected record"},
+    ):
+        write_json(content, malformed)
+        refused = run(
+            "append-terminal", "--root", output, "--writer", "operator-c", "--content", content
+        )
+        failures.append(refused.returncode == 2 and snapshot(output / "log/entries") == published)
+    assert all(failures), "TERMINAL COMPOSER INFERRED LESSONS OR MUTATED ON REFUSAL"
     result(
         run(
             "append",
@@ -913,8 +983,10 @@ def test_transition_and_maintenance_refuse_false_state(tmp_path: Path, source: P
     prefix = (source / "LOG.md").read_bytes()
     first_body, second_body = [path.read_bytes() for path in bodies]
     assert projected in (
-        prefix + first_body + second_body + body.read_bytes(),
-        prefix + second_body + first_body + body.read_bytes(),
+        prefix + first_body + second_body + body.read_bytes() + expected,
+        prefix + second_body + first_body + body.read_bytes() + expected,
+        prefix + first_body + second_body + expected + body.read_bytes(),
+        prefix + second_body + first_body + expected + body.read_bytes(),
     ), "MAINTENANCE LOG PROJECTION WRONG"
     result(run("render", "--root", output, "--check"))
     entry = next(

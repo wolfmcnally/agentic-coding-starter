@@ -293,6 +293,43 @@ def terminal_body(body: bytes) -> None:
     require(not errors, "terminal body lacks Lessons witness")
 
 
+def compose_terminal(content: dict[str, Any], at: str) -> bytes:
+    """Supply structure, never substantive outcomes or an inferred lessons answer."""
+    require(
+        set(content) == {"title", "body", "lessons"},
+        "terminal content requires title, body and explicit lessons",
+    )
+    title, meaning, lessons = content["title"], content["body"], content["lessons"]
+    require(
+        isinstance(title, str) and re.fullmatch(r"(?:END|PARK)(?: [^\r\n]+)?", title),
+        "terminal title must be one END or PARK line",
+    )
+    require(isinstance(meaning, str) and bool(meaning.strip()), "terminal body is required")
+    require(
+        not any(line.strip().startswith("Lessons:") for line in meaning.splitlines()),
+        "supply lessons separately, not a handwritten Lessons heading",
+    )
+    require(
+        isinstance(lessons, list)
+        and bool(lessons)
+        and all(isinstance(item, str) and bool(item.strip()) for item in lessons),
+        "explicit nonempty lessons array is required; none is never inferred",
+    )
+    instant = datetime.fromisoformat(at.replace("Z", "+00:00"))
+    require(instant.tzinfo is not None, "log timestamp needs timezone")
+    lesson_lines = ["- " + item.replace("\n", "\n  ") for item in lessons]
+    body = (
+        f"## {instant.astimezone(UTC):%Y-%m-%d %H:%M} — {title}\n\n"
+        + meaning.rstrip("\n")
+        + "\n\nLessons:\n"
+        + "\n".join(lesson_lines)
+        + "\n"
+    ).encode()
+    require(len(log_blocks.parse(body.decode()).blocks) == 1, "nested log entry in content")
+    terminal_body(body)
+    return body
+
+
 def logs(root: Path) -> list[tuple[dict[str, Any], bytes]]:
     entries = []
     for path in safe(root, "log/entries").glob("*.md"):
@@ -1450,6 +1487,15 @@ def main() -> int:
     migration = commands.add_parser("rehearse")
     for name in ("source", "output", "mapping"):
         migration.add_argument("--" + name, type=Path, required=True)
+    for name in ("compose-terminal", "append-terminal"):
+        command = commands.add_parser(name)
+        command.add_argument("--content", type=Path, required=True)
+        command.add_argument("--at", default=datetime.now(UTC).isoformat())
+        if name == "compose-terminal":
+            command.add_argument("--output", type=Path, required=True)
+        else:
+            command.add_argument("--root", type=Path, required=True)
+            command.add_argument("--writer", required=True)
     for name in ("validate", "render", "event", "append", "add", "order"):
         command = commands.add_parser(name)
         command.add_argument("--root", type=Path, required=True)
@@ -1471,7 +1517,13 @@ def main() -> int:
             command.add_argument("--at", default=datetime.now(UTC).isoformat())
     args = parser.parse_args()
     try:
-        if args.command == "transfer-preflight":
+        if args.command in {"compose-terminal", "append-terminal"}:
+            body = compose_terminal(load(args.content), args.at)
+            if args.command == "compose-terminal":
+                publish(args.output, body)
+            else:
+                append(args.root, args.writer, body, args.at)
+        elif args.command == "transfer-preflight":
             print(
                 json.dumps(
                     transfer_preflight(args.donor, args.recipient, args.entry),

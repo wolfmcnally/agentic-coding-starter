@@ -86,16 +86,7 @@ contract and is not invoked directly.
 
 ### `check` — authoritative repository build gate
 
-The single authoritative entry point for automated repository checks. It
-resolves the repo root from its own location, validates the complete toolchain
-bundle, probes the selected locked environment, then runs the selected named
-mode with the identical runtime selection.
-Its `test` mode delegates to `bin/test`. `all` runs lint, format verification,
-tests, and deterministic policy checks in order. Child failures retain their
-exact status and emit a terminal `CHECK <name> FAIL`; success ends with
-`CHECK ALL PASS`. Every `all` run also captures a complete durable log and
-terminal run metadata under `.kickoff/check-all/`; success stores a receipt
-bound to the exact candidate, environment fingerprint, and log digest.
+The single authoritative entry point for automated repository checks. It resolves the repo root from its own location, validates the complete toolchain bundle, probes the selected locked environment, then runs the selected named mode with the identical runtime selection. Its `test` mode delegates to `bin/test`. `all` validates immutable logs before expensive work, then runs lint, format verification, tests, and deterministic policy checks including final log revalidation in order. Child failures retain their exact status and emit a terminal `CHECK <name> FAIL`; success ends with `CHECK ALL PASS`. Every `all` run also captures a complete durable log and terminal run metadata under `.kickoff/check-all/`; success stores a receipt bound to the exact candidate, environment fingerprint, and log digest.
 
 ```bash
 ./bin/check
@@ -695,6 +686,6 @@ An attested continuation starts its own role numbering at 1 if any additional re
 
 `execution-telemetry interrupt --trace-id <old> --successor-trace-id <new> --custody-evidence <file>` records a separately checked cross-boot interruption/successor observation without closing or rewriting the old trace. See [clock and custody requirements](../policies/execution-telemetry.md#cross-boot-interruption-observation). It supplies no missing original review evidence or new review allowance.
 
-- `multioperator` — opt-in proposed-format transition rehearsal and maintenance (`rehearse`, `validate`, `add`, `order`, `event`, `append`, `render`). See [the migration runbook](../policies/multi-operator-migration.md#0-unified-migration-runbook). It never switches the invoking live project, grants ownership or runs Git rollback; rehearsal is not adoption.
+- `multioperator` — transition rehearsal and maintenance (`rehearse`, `validate`, `add`, `order`, `event`, `append`, `render`). For terminal log records, use `append-terminal --root . --writer <operator> --content <content.json>` to compose and publish through the immutable writer, or `compose-terminal --content <content.json> --output <fresh-block.md>` to prepare the exact body for evidence close. Supply the shared `title`, `body` and explicit `lessons` array as defined in [log discipline](../policies/log-discipline.md#follow-up-correction-format); the tool never infers a lessons answer. See [the migration runbook](../policies/multi-operator-migration.md#0-unified-migration-runbook). It never grants ownership or runs Git rollback; rehearsal is not adoption.
 
 - `multioperator` — structured records and isolated migration rehearsal; current-format semantics require separate qualification.

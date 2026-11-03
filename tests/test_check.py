@@ -198,6 +198,7 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
             f"uv cwd={root} args=run --project {root / 'project'} --locked "
             f"--managed-python python -c {PROBE}"
         ),
+        f"log cwd={root}",
         (
             f"uv cwd={root / 'project'} args=run --locked --managed-python "
             "ruff check example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence "
@@ -270,6 +271,41 @@ def test_all_policy_failure_cannot_be_masked_by_later_policy_output(
     assert "CHECK policy-anonymization FAIL (exit 41)" in result.stdout
     assert "CHECK policy PASS" not in result.stdout
     assert "CHECK ALL PASS" not in result.stdout
+
+    # The same immutable-log check runs before tests, inside the receipt boundary.
+    Path(environment["CHECK_TEST_LOG"]).unlink()
+    _write_executable(
+        root / "bin" / "multioperator",
+        "#!/usr/bin/env bash\necho 'bad terminal record' >&2\nexit 37\n",
+    )
+    early = _run(root, environment, "all")
+    calls = Path(environment["CHECK_TEST_LOG"]).read_text()
+    assert (
+        early.returncode == 37
+        and "CHECK policy-log FAIL (exit 37)" in early.stdout
+        and "test_runner.py" not in calls
+        and "ruff check" not in calls
+        and "--outcome failed" in calls
+        and "CHECK ALL PASS" not in early.stdout
+    ), "INVALID LOG REACHED EXPENSIVE GATES OR PASSED RECEIPT"
+
+    Path(environment["CHECK_TEST_LOG"]).unlink()
+    _write_executable(
+        root / "bin" / "multioperator",
+        "#!/usr/bin/env bash\n"
+        "printf 'log validation\\n' >> \"$CHECK_TEST_LOG\"\n"
+        'if [[ -f "$PWD/log-checked" ]]; then exit 38; fi\n'
+        'touch "$PWD/log-checked"\n',
+    )
+    late = _run(root, environment, "all")
+    calls = Path(environment["CHECK_TEST_LOG"]).read_text()
+    assert (
+        late.returncode == 38
+        and calls.count("log validation") == 2
+        and "test_runner.py" in calls
+        and "--outcome failed" in calls
+        and "CHECK ALL PASS" not in late.stdout
+    ), "FINAL LOG VALIDATION LOST OR PASSED RECEIPT"
 
 
 def test_format_rejects_staged_unstaged_and_untracked_candidates_without_rewriting(

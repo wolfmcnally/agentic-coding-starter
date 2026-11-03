@@ -110,6 +110,8 @@ When a phase pauses (not completes), the END block uses the same format but adds
 
 For an inter-phase correction, preserve the historical START/END pair and completed phase status, and append the record below. If the operator chose an inserted phase/sub-phase instead, use its own normal START/END records with formal planning and reviews; do not present it as an unreviewed inter-phase correction.
 
+Use `./bin/multioperator append-terminal --root . --writer <operator> --content <content.json>` for direct terminal entries instead of copying boilerplate. Supply the shared semantic content contract: `title` (a one-line terminal label beginning with `END` or `PARK`, such as `END (correction)`), `body` (substantive Markdown without a handwritten Lessons field), and `lessons` (an explicit nonempty array of learning strings, or `["none"]` only when that is the actual supplied answer). The script composes the header and standalone fields, validates with the shared terminal predicate, and appends through the locked immutable writer to `log/entries/`; it never supplies a lessons answer or claims acceptance. For phase acceptance, use `compose-terminal --content <content.json> --output <fresh-block.md>` first, then pass that exact prepared file to the existing evidence close operation, which owns acceptance and publication. Both commands accept `--at <observed-UTC>`; omitted timestamps are read from the current clock. Existing raw `append` remains for nonterminal records and already prepared evidence-close bodies, with the same terminal guard.
+
 ```markdown
 ## <YYYY-MM-DD HH:MM> — END (correction)
 <Phase heading>
@@ -131,6 +133,9 @@ Build status:
 
 Delivery:
 - default — commit + fast-forward push after validation | restricted: <user's words, verbatim> | parked: <reason>
+
+Lessons:
+- <actual lesson and disposition, or an explicitly supplied "none">
 
 Remaining:
 - <anything significant left incomplete, or "None">
