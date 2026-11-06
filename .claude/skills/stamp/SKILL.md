@@ -197,6 +197,8 @@ When `project_isolation` is disabled (polyglot or multi-deliverable repos), the 
 
 ### Step 2 — Copy verbatim, adapt names
 
+**Gate applicability precedes copying.** For each emitted gate, record the adopted contract, plausible failure, independent oracle, nearest overlap and cost. The universal methodology machinery remains a complete bundle because the stamped repository adopts its contracts; copying itself is not its justification. Language/product checks are adapted to the approved deliverable. Capability-specific gates travel with an explicitly selected capability and its complete tools/tests; unsupported omission is not implemented as a runtime missing-file skip. Starter history/template/anonymization proofs stay excluded. Use the receiving project and actual source, never donor proof judgments or receipts, to justify its checks. Run all applicable travelling proofs in a zero-history scaffold, not collection alone. Refer to `policies/test-suite-governance.md` for retirement and parallelism obligations.
+
 **The copy rule is a denylist, not an allowlist.** Copy *everything* under the universal surfaces below into the new project, leave behind only the starter-only entries named in the table, then run a name substitution pass (replacing `Agentic Coding Starter Template`, `agentic-coding-starter-template`, and `starter` with `<project_name>`, `<project_slug>`, and a project-appropriate handle).
 
 The direction matters. An allowlist of files to copy goes stale silently: every universal script, skill, or test added to the template after the list was written is invisible to it, and the omission surfaces downstream as a stamped project whose own gate refuses to start — `bin/check` fails closed on the first missing executable. A denylist fails the other way: a forgotten entry copies one harmless extra file, which the adaptation pass or the next `sweep` catches.
@@ -236,7 +238,7 @@ The direction matters. An allowlist of files to copy goes stale silently: every 
 | `plan/`, `log/`, `collaboration/`, `README.md`, `AGENTS.md`, `project/` | authored or adapted fresh in Steps 3–5 |
 | the *contents* of `lessons/`, `lessons-archived/`, `user-actions/`, `user-actions-archived/` | every ledger starts **empty** — a `.gitkeep` in each of the four, never Starter's own entries |
 
-Everything else under those surfaces is universal by construction. When in doubt, copy it: an extra file downstream is a nuisance, a missing one is a broken gate.
+Everything else under those surfaces is eligible for the adopted universal bundle; copying does not itself establish its benefit. Keep the dependency closure intact, record applicability and unresolved value, and retain uncertain checks until a justified retirement. Do not silently omit required tools or carry template-only historical proof.
 
 **Load-bearing members — a floor, not a ceiling.** The denylist above is the authority for what to copy; this list names members whose absence is known to break the destination, so a copy that omits any of them is wrong regardless of how the copy was performed. It is not exhaustive and does not need to be.
 
@@ -342,7 +344,7 @@ Write a minimal-but-runnable code skeleton in the project's primary language. Th
 
 **Python (paths inside `project/`):**
 - `.python-version` selecting the repository's default managed interpreter.
-- `pyproject.toml` with `[project]` metadata, `[tool.uv]` managed-interpreter policy, `[tool.ruff]`, `[tool.pytest.ini_options]`, and committed dev dependencies `ruff`, `pytest`.
+- `pyproject.toml` with `[project]` metadata, `[tool.uv]` managed-interpreter policy, `[tool.ruff]`, `[tool.pytest.ini_options]`, and committed dev dependencies `ruff`, `pytest`, `pytest-xdist`; retain the supervised parallel runner and its nested-pool bound.
 - `uv.lock`, generated from that manifest and interpreter policy.
 - A concise `README.md` for the artifact (the repo's didactic README is at the root).
 - `<slug>/__init__.py` with version export.
@@ -455,7 +457,7 @@ Call `cargo_output_init` after assigning `repo_root` and `rust_project_root` and
 
 For a Python deliverable, its committed dev dependency group and lockfile cover both the deliverable and the root methodology tests, and everything below is moot. For **any other language** the repository has two runtimes, and treating that as a footnote is how a stamp produces a project whose gate cannot start. The shape, proved by stamping a TypeScript browser game end to end:
 
-- **A committed governance environment**, conventionally `<dest>/tooling/`: runtime pin, manifest, and lockfile, no source of its own. It exists to run the universal managers under `bin/` and the root `tests/` suite, both of which are Python. Do not reach for an unpinned `uv run --with pytest` escape hatch merely because the deliverable is Node, Rust, or Go.
+- **A committed governance environment**, conventionally `<dest>/tooling/`: runtime pin, manifest, and lockfile, no source of its own. It exists to run the universal managers under `bin/` and the root `tests/` suite, both of which are Python. Include locked `pytest-xdist` in that governance environment and preserve supervised parallel execution/nested-pool control. Do not reach for an unpinned `uv run --with pytest` escape hatch merely because the deliverable is Node, Rust, or Go.
 - **A per-language helper beside `bin/_python-toolchain`** — `bin/_node-toolchain` and so on — with the same contract: prerequisite check, contract-member check, an authoritative absolute-path override (`TOOLCHAIN_NODE` alongside `TOOLCHAIN_PYTHON`) that never falls back, and a real dependency-chain probe. Each helper takes its own root variable (`node_project_root`, `python_project_root`); the single `project_root` of the Python profile no longer says enough.
 - **The package manager comes from the manifest, not from `PATH`.** Pin it in the manifest's own field (`packageManager` for Node) and invoke it through the launcher that honors that pin (`corepack`), so no caller depends on whichever version happens to be installed.
 - **`bin/setup` provisions both**, from committed lockfiles, and probes both before reporting success.

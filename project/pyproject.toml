@@ -23,6 +23,7 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.6",
     "cosmic-ray>=8.7,<9",
+    "pytest-xdist>=3.8,<4",
 ]
 
 [tool.uv]

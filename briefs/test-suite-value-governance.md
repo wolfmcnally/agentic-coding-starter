@@ -21,7 +21,7 @@ When a test is created or modified, demonstrate that each authored assertion can
 
 A targeted authoring witness and a mutation-tool survey serve different purposes. The witness establishes one authored check against a chosen defect. The survey searches for missed faults and can be costly or incomplete. Mutation tools run only on an explicit operator request, over any requested new or committed subset and for any requested duration. No routine gate, sweep or generic implementation approval supplies that request. A mutation score is never an acceptance target.
 
-Historical reset ledgers and observation receipts remain recoverable evidence. No committed mutant corpus is restored: source-anchored defect patches previously became stale, and apparent detections could arise from unrelated failures. New modifications link their own receipts; an old matching test name does not prove a new assertion. Structural checks verify recorded shape and linkage, while independent review verifies semantic relevance and freshness.
+Historical reset ledgers and observation receipts remain recoverable evidence. No committed mutant corpus is restored: source-anchored defect patches previously became stale, and apparent detections could arise from unrelated failures. New modifications link their own receipts; an old matching test name does not prove a new assertion. Structural checks verify recorded shape and linkage, while the selected review lane verifies semantic relevance and freshness (primary self-inspection for methodology work).
 
 ## Work, elapsed time and hang safety answer different questions
 

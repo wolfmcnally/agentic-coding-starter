@@ -849,3 +849,7 @@ Workflow runtime transfer includes `lib/agentic_starter/workflow.py` and `lib/ag
 ### Compiled-output ownership at bootstrap
 
 For Rust, locked dependencies alone do not bind output to a checkout. The generated helper resolves the physical checkout and project, uses local project output by default, and namespaces an ambient target base per checkout. All Cargo probes and gates reuse the same selected output; reentry, outside-cwd invocation and symlink aliases do not create another identity. Retain incremental output and shared cache bytes. Two controlled good/bad copies under one base must retain their own verdicts in both orders; the test must catch removal of isolation. This is output ownership, not a general compiler-environment audit.
+
+## Justified gate inheritance
+
+A bootstrap carries checks for its adopted contracts, not an unexplained donor test count. Universal methodology gates protect the shipped evidence, authority, metadata and delivery machinery. Language/product gates protect the receiving deliverable; capability-specific checks require that declared capability and complete dependency closure. Template-only history, anonymization and proof judgments do not travel. The receiving owner records failure mode, oracle, overlap, benefit/cost and any uncertainty, and executes the applicable portable proofs in a new-history fixture. Independent tests run concurrently by default, with bounded nested work and explicit serial reasons. Python governance tooling includes locked pytest-xdist; the supervisor and outcome/cleanup semantics stay intact.

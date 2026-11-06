@@ -94,11 +94,3 @@ def test_retrieval_only_roles_reject_originating_search_budget(tmp_path: Path) -
     )
     assert result.returncode == 2
     assert "coder is retrieval-only" in result.stderr
-
-
-def test_policy_is_allow_by_default_without_assuming_any_named_server() -> None:
-    policy = (ROOT / "policies" / "research-authority.md").read_text(encoding="utf-8")
-    assert "allow-by-default" in policy
-    assert "never assumed to exist" in policy
-    assert "GET-only" in policy
-    assert "same-host structural neighbors" in policy

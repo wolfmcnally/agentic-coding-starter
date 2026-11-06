@@ -16,7 +16,7 @@
 
 ### `docs` — build, review and publish the curated manual
 
-`./bin/docs setup` uses exact installed mdBook/admonish versions or installs locked tools under `.kickoff/docs-tools`; the compiler pin is explicit and global tools are unchanged. `./bin/docs` builds and opens the local book. `build` and `check` validate curated sources, generated links/anchors/assets and search/print. `serve` opens a foreground loopback preview; `--url` accepts an existing approved Tailnet proxy URL and creates no route. `deploy` requires the clean latest pushed configured release branch and an already approved Pages workflow; `deploy continuous on|off` changes the explicit push switch without removing manual deployment. `verify` probes the live site and private-path exclusions. A refusal exits nonzero; dispatch does not claim deployment completion or live/browser verification. See [software documentation](../policies/software-documentation.md) and [the manual](../manual/src/documentation.md).
+`./bin/docs setup` uses exact installed mdBook/admonish versions or installs locked tools under `.kickoff/docs-tools`; the compiler pin is explicit and global tools are unchanged. `./bin/docs` builds and opens the local book. `build` and `check` validate curated sources, generated links/anchors/assets and search/print. `serve` opens a foreground loopback preview; `--url` accepts an existing approved Tailnet proxy URL and creates no route. `deploy` requires the clean latest pushed configured release branch and an already approved Pages workflow; `deploy continuous on|off` changes the explicit push switch without removing manual deployment. `verify` probes the live site and private-path exclusions. A refusal exits nonzero; dispatch does not claim deployment completion or live/browser verification. See [software documentation](../policies/software-documentation.md) and [the manual](../manual/src/SUMMARY.md).
 
 ### `check-candidate-partition` — validate declared paths
 
@@ -705,3 +705,7 @@ The owning tools accept semantic input instead of agent-copied structural templa
 | Catalogs/skeletons | `check-catalogs --create-input <file>` then `--register-input <file> --expect-sha256 <digest>` | Explicit document content and zone; structure, links, placement and destination checked. |
 
 Read each owning policy's Mechanical authoring section for the semantic fields and failure boundaries. These methods do not migrate other repositories, normalize historical evidence, grant permission or establish human acceptance.
+
+### Parallel test execution
+
+`bin/test` retains full, changed and focused selection. Its Python supervisor defaults independent pytest selections to resource-bounded xdist workers with load-group scheduling and no crashed-worker restart. A single-function selection runs serially to avoid startup cost. Explicit pytest `-n <count>` selects a bounded diagnostic concurrency (`-n 0` is serial); a nested wrapper inside a worker always uses zero workers. A serial group uses pytest's `xdist_group` marker for an actual shared resource. Locks, caches and temporary paths must still belong to their fixture; grouping is not cleanup. Full-gate logs, test identities and receipts remain authoritative.

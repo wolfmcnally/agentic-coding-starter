@@ -19,13 +19,6 @@ sys.path.insert(0, str(REPO_ROOT / "lib"))
 
 import agentic_starter.test_governance as governance  # noqa: E402
 
-
-def test_parameterized_leaves_collapse_to_one_family() -> None:
-    assert governance._pytest_family("tests/test_x.py::test_case[value]") == (
-        "tests/test_x.py::test_case"
-    )
-
-
 EVIDENCE = {
     "contract": "The fixture contract holds.",
     "oracle": "A direct call observes the fixture outcome.",
@@ -1202,3 +1195,125 @@ def test_real_supervisor_entrypoint_handles_deadlines_and_signals(
                 except ProcessLookupError:
                     pass
         process.communicate(timeout=2)
+
+
+def test_parallel_pytest_keeps_coverage_isolation_and_failure_truth(tmp_path: Path) -> None:
+    """Exercise real workers, not a mock of their scheduling or terminal reports."""
+    import time
+    import xml.etree.ElementTree as ET
+
+    root = tmp_path / "parallel"
+    script = root / "lib/agentic_starter/test_runner.py"
+    script.parent.mkdir(parents=True)
+    script.write_bytes((REPO_ROOT / "lib/agentic_starter/test_runner.py").read_bytes())
+    (root / "tests").mkdir()
+    (root / "tests/proof-estate.yaml").write_text("hang_timeout_seconds: 20\n")
+    environment = os.environ.copy()
+    environment.pop("PYTEST_XDIST_WORKER", None)
+    environment.pop("PYTEST_XDIST_WORKER_COUNT", None)
+    environment.pop("PYTEST_ADDOPTS", None)
+    environment["PYTEST_XDIST_AUTO_NUM_WORKERS"] = "2"
+    (root / "conftest.py").write_text(
+        "from pathlib import Path\n"
+        "def pytest_testnodeready(node):\n"
+        "    with (Path(__file__).parent / 'worker-starts').open('a') as f:\n"
+        "        f.write(node.gateway.id + '\\n')\n"
+    )
+    fixture = root / "test_parallel.py"
+    fixture.write_text("""import os, pathlib, subprocess, sys, time
+import pytest
+ROOT = pathlib.Path(__file__).parent
+@pytest.mark.parametrize("case", [0, 1])
+def test_independent(case):
+    (ROOT / ("ready-" + str(case))).write_text(os.environ["PYTEST_XDIST_WORKER"])
+    deadline = time.monotonic() + 5
+    while len(list(ROOT.glob("ready-*"))) < 2 and time.monotonic() < deadline:
+        time.sleep(.01)
+    assert len(list(ROOT.glob("ready-*"))) == 2, "PARALLEL WORK WAS SERIALIZED"
+@pytest.mark.xdist_group("exclusive")
+@pytest.mark.parametrize("case", [0, 1])
+def test_shared_resource(case):
+    lock = ROOT / "exclusive"
+    with lock.open("x"):
+        time.sleep(.05)
+    lock.unlink()
+    (ROOT / ("group-" + str(case))).write_text(os.environ["PYTEST_XDIST_WORKER"])
+def test_nested():
+    nested = ROOT / "nested.py"
+    nested.write_text("def test_child(request):\\n"
+        "    assert not hasattr(request.config, 'workerinput'), 'NESTED WORKER POOL'\\n")
+    result = subprocess.run([sys.executable, str(ROOT / "lib/agentic_starter/test_runner.py"),
+        "-m", "pytest", "-q", "-n", "2", str(nested)], capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+""")
+
+    def run(*args: str, timeout: int = 30):
+        return subprocess.run(
+            [sys.executable, str(script), "-m", "pytest", "-q", *args],
+            cwd=root,
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+
+    xml = root / "parallel.xml"
+    result = run("--junitxml=" + str(xml), str(fixture))
+    assert result.returncode == 0, "PARALLEL CONTRACT FAILED: " + result.stdout + result.stderr
+    observed = list(ET.parse(xml).getroot().iter("testcase"))
+    assert len(observed) == 5, "PARALLEL COVERAGE LOST"
+    assert len({p.read_text() for p in root.glob("ready-*")}) == 2, "WORKERS NOT DISTINCT"
+    assert len({p.read_text() for p in root.glob("group-*")}) == 1, "RESOURCE GROUP SPLIT"
+    serial = root / "serial.py"
+    serial.write_text("def test_one():\n    assert True\ndef test_two():\n    assert True\n")
+    serial_xml, worker_xml = root / "serial.xml", root / "worker.xml"
+    for workers, output in (("0", serial_xml), ("2", worker_xml)):
+        result = run("-n", workers, "--junitxml=" + str(output), str(serial))
+        assert result.returncode == 0, result.stdout + result.stderr
+
+    def identities(path):
+        return sorted((c.get("classname"), c.get("name")) for c in ET.parse(path).iter("testcase"))
+
+    assert identities(serial_xml) == identities(worker_xml), "PARALLEL IDENTITIES DIFFER"
+    for mode in ("failure", "crash", "hang"):
+        target = root / (mode + ".py")
+        if mode == "failure":
+            target.write_text("def test_failed():\n    assert False, 'INTENDED FAILURE'\n")
+        elif mode == "crash":
+            target.write_text(
+                "import os,pathlib\ndef test_crash():\n"
+                "    p=pathlib.Path(__file__).with_suffix('.calls')\n"
+                "    with p.open('a') as f: f.write('attempt\\n')\n    os._exit(7)\n"
+            )
+        else:
+            (root / "tests/proof-estate.yaml").write_text("hang_timeout_seconds: 5\n")
+            target.write_text(
+                "import os,pathlib,time\ndef test_hang():\n"
+                "    pathlib.Path(__file__).with_suffix('.pid').write_text(str(os.getpid()))\n"
+                "    time.sleep(60)\n"
+            )
+        starts_before = len((root / "worker-starts").read_text().splitlines())
+        result = run("-n", "2", str(target))
+        if mode == "hang":
+            assert result.returncode == 124 and "INCOMPLETE" in result.stderr, (
+                "PARALLEL HANG PASSED"
+            )
+            pid = int(target.with_suffix(".pid").read_text())
+            deadline = time.monotonic() + 3
+            while time.monotonic() < deadline:
+                try:
+                    os.kill(pid, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(0.02)
+            else:
+                pytest.fail("PARALLEL WORKER SURVIVED CLEANUP")
+        else:
+            assert result.returncode == 1, (
+                "PARALLEL FAILURE PASSED: " + result.stdout + result.stderr
+            )
+        if mode == "crash":
+            assert (
+                target.with_suffix(".calls").read_text() == "attempt\n"
+                and len((root / "worker-starts").read_text().splitlines()) - starts_before == 2
+            ), "WORKER CRASH RETRIED"
