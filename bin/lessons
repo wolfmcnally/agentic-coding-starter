@@ -242,7 +242,68 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"list open lessons with no new occurrence in {AGING_DAYS} days",
     )
     aged_parser.add_argument("--as-of", type=date.fromisoformat, default=date.today())
+    for action in ("create", "recur", "edit"):
+        writer = subparsers.add_parser(action, help="compose and validate an open lesson")
+        writer.add_argument("--slug", required=True)
+        writer.add_argument("--input-json", type=Path, required=True)
+        writer.add_argument("--on", type=date.fromisoformat, default=date.today())
+        if action != "create":
+            writer.add_argument("--expect-sha256", required=True)
     return parser
+
+
+def write_lesson(arguments: argparse.Namespace) -> None:
+    sys.path.insert(0, str(DEFAULT_ROOT / "lib"))
+    from agentic_starter.input_io import checked_write, destination, read_object
+
+    root = arguments.root.resolve()
+    if not SLUG_PATTERN.fullmatch(arguments.slug):
+        raise LedgerError("use the two-word slug from bin/new-name")
+    archived = (root / "lessons-archived" / f"{arguments.slug}.md").exists()
+    if archived and arguments.action != "recur":
+        raise LedgerError("archived disposition is not editable through this command")
+    relative = f"{'lessons-archived' if archived else 'lessons'}/{arguments.slug}.md"
+    path = destination(root, relative)
+    supplied = read_object(arguments.input_json)
+    if arguments.action == "create":
+        if set(supplied) != {"title", "scope", "proposed_surface", "source", "ref", "body"}:
+            raise LedgerError("create requires title, scope, proposed_surface, source, ref, body")
+        metadata = {key: supplied[key] for key in ("title", "scope", "proposed_surface", "source")}
+        metadata.update(
+            slug=arguments.slug,
+            status="candidate",
+            filed=arguments.on.isoformat(),
+            occurrences=[{"date": arguments.on.isoformat(), "ref": supplied["ref"]}],
+        )
+        body = supplied["body"]
+    else:
+        validate_lesson(path, archived)
+        metadata = parse_frontmatter(path)
+        lines = path.read_bytes().decode().splitlines(keepends=True)
+        end = next(index for index in range(1, len(lines)) if lines[index].strip() == "---")
+        body = "".join(lines[end + 1 :])
+        if arguments.action == "recur":
+            if set(supplied) != {"ref"}:
+                raise LedgerError("recur requires exactly one substantive observation ref")
+            metadata["occurrences"].append(
+                {"date": arguments.on.isoformat(), "ref": supplied["ref"]}
+            )
+        else:
+            if not supplied or set(supplied) - {"title", "body", "scope", "proposed_surface"}:
+                raise LedgerError("edit accepts title, body, scope and proposed_surface only")
+            metadata.update({key: value for key, value in supplied.items() if key != "body"})
+            body = supplied.get("body", body)
+    if not isinstance(body, str) or not body.strip():
+        raise LedgerError("substantive lesson body is required")
+    separator = "\n\n" if arguments.action == "create" or "body" in supplied else "\n"
+    data = ("---\n" + yaml.safe_dump(metadata, sort_keys=False) + "---" + separator + body).encode()
+    checked_write(
+        root,
+        relative,
+        data,
+        lambda proposed: validate_lesson(proposed, archived),
+        getattr(arguments, "expect_sha256", None),
+    )
 
 
 def main() -> int:
@@ -251,6 +312,13 @@ def main() -> int:
     if errors:
         print("\n".join(sorted(errors)), file=sys.stderr)
         return 1
+    if arguments.action in {"create", "recur", "edit"}:
+        try:
+            write_lesson(arguments)
+            return 0
+        except (OSError, ValueError, TypeError, KeyError, yaml.YAMLError) as exc:
+            print(f"LESSONS REFUSED: {exc}", file=sys.stderr)
+            return 1
     lessons.sort(key=lambda lesson: str(lesson["slug"]))
     if arguments.action == "validate":
         return command_validate(lessons)

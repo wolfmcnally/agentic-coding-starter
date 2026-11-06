@@ -26,7 +26,11 @@ else:
     LIB_ROOT = REPO_ROOT / "lib"
 sys.path.insert(0, str(LIB_ROOT))
 
-from agentic_starter.execution_dashboard import render_phase_dashboard  # noqa: E402
+from agentic_starter.execution_dashboard import (  # noqa: E402
+    HANDOFF_SCHEMA,
+    render_phase_dashboard,
+    validate_handoff,
+)
 from agentic_starter.execution_telemetry import (  # noqa: E402
     CATEGORIES,
     OUTCOMES,
@@ -51,6 +55,7 @@ from agentic_starter.execution_telemetry import (  # noqa: E402
     recover_trace,
     report_across_scopes,
     report_history,
+    require_persistent_directory,
     run_observed,
     scope_ledger_path,
     start_span,
@@ -224,6 +229,13 @@ def build_parser() -> argparse.ArgumentParser:
     dashboard.add_argument("--output-root", type=Path)
     dashboard.add_argument("--open", action="store_true")
     dashboard.set_defaults(handler=cmd_dashboard)
+    handoff = commands.add_parser("compose-handoff")
+    _add_repo(handoff)
+    handoff.add_argument("--phase", required=True)
+    handoff.add_argument("--input-json", type=Path, required=True)
+    handoff.add_argument("--output", required=True, help="repo-relative durable handoff path")
+    handoff.add_argument("--expect-sha256")
+    handoff.set_defaults(handler=cmd_compose_handoff)
 
     park_open = commands.add_parser("park-open")
     _add_repo(park_open)
@@ -270,6 +282,31 @@ def build_parser() -> argparse.ArgumentParser:
     _add_repo(gc)
     gc.set_defaults(handler=cmd_gc)
     return parser
+
+
+def cmd_compose_handoff(args: argparse.Namespace) -> int:
+    from agentic_starter.input_io import checked_write, read_object
+
+    try:
+        value = read_object(args.input_json)
+        if "schema" in value or "phase_id" in value:
+            raise ValueError("schema and phase_id are composed from the command, not input")
+        value.update(schema=HANDOFF_SCHEMA, phase_id=args.phase)
+        value = validate_handoff(value, phase_id=args.phase)
+        data = (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode()
+        root = _engine(args)
+        require_persistent_directory(root / args.output)
+        checked_write(
+            root,
+            args.output,
+            data,
+            lambda path: validate_handoff(json.loads(path.read_bytes()), phase_id=args.phase),
+            args.expect_sha256,
+        )
+        print("DASHBOARD HANDOFF WRITTEN; semantic content is not acceptance")
+        return 0
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        raise TelemetryError(str(exc)) from exc
 
 
 def cmd_dashboard(args: argparse.Namespace) -> int:

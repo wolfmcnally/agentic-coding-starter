@@ -57,3 +57,7 @@ When reality changes, prefer updating the brief to retiring it; mark superseded 
 Briefs are subordinate to active `policies/` for next-action questions. They are *authoritative* for cross-session reasoning, methodology, and snapshot-of-the-world claims.
 
 When a brief and a more current source disagree, prefer the live source — but update or annotate the brief to reflect the new reality. Briefs decay if not maintained.
+
+## Mechanical authoring
+
+Create a document skeleton with `./bin/check-catalogs --create-input <semantic-document.json>`. Supply path, title and body, plus explicit scope/status for a brief. The tool composes structural metadata and checks links/citation direction at the owning path before creating it without overwrite. Register the existing document with `--register-input <registration.json> --expect-sha256 <catalog-digest>`; supply path and label, plus project/methodology zone for briefs. It generates the link in the existing authoritative catalog and checks structural limits. Paths are canonical repository-relative owning-subtree paths. Skeleton creation and catalog registration are separate observable operations; a partial sequence is not a delivered complete document. Run the full catalog check after both. Content, reference pins, status, scope and zone remain supplied judgments.

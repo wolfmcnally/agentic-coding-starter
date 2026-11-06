@@ -282,9 +282,50 @@ def main(argv: list[str] | None = None) -> int:
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("validate", help="validate every declared treatise")
     subparsers.add_parser("show", help="summarize every declared treatise")
+    writer = subparsers.add_parser("write", help="compose/update a brief's editorial metadata")
+    writer.add_argument("--brief", required=True)
+    writer.add_argument("--input-json", type=Path, required=True)
+    writer.add_argument("--expect-sha256", required=True)
+    writer.add_argument("--on", type=date.fromisoformat, default=date.today())
 
     arguments = parser.parse_args(argv)
     root = arguments.root.resolve()
+    if arguments.command == "write":
+        try:
+            sys.path.insert(0, str(DEFAULT_ROOT / "lib"))
+            from agentic_starter.input_io import checked_write, destination, read_object
+
+            relative = arguments.brief
+            if Path(relative).parent.as_posix() != "briefs" or Path(relative).suffix != ".md":
+                raise TreatiseError("editorial destination must be briefs/<name>.md")
+            path = destination(root, relative)
+            existing, _ = split_frontmatter(path)
+            supplied = read_object(arguments.input_json)
+            if not supplied or "updated" in supplied:
+                raise TreatiseError("updated is derived from --on, not supplied metadata")
+            proposed = {**existing.get(MARKER_KEY, {}), **supplied}
+            proposed["updated"] = arguments.on.isoformat()
+            validate_block(proposed)
+            lines = path.read_bytes().decode().splitlines(keepends=True)
+            end = next(index for index in range(1, len(lines)) if lines[index].strip() == "---")
+            start = next((i for i in range(1, end) if lines[i].startswith("treatise:")), end)
+            finish = start + 1
+            while finish < end and (not lines[finish].strip() or lines[finish][0].isspace()):
+                finish += 1
+            if start == end:
+                finish = end
+            stanza = yaml.safe_dump({MARKER_KEY: proposed}, sort_keys=False)
+            data = ("".join(lines[:start]) + stanza + "".join(lines[finish:])).encode()
+
+            def check(candidate: Path) -> None:
+                metadata, _ = split_frontmatter(candidate)
+                validate_block(metadata[MARKER_KEY])
+
+            checked_write(root, relative, data, check, arguments.expect_sha256)
+            return 0
+        except (OSError, ValueError, KeyError, TypeError, yaml.YAMLError) as exc:
+            print(f"TREATISE REFUSED: {exc}", file=sys.stderr)
+            return 1
     if arguments.command == "show":
         return show(root)
     return validate(root)

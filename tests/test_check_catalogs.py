@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -110,6 +111,95 @@ def test_tracked_markdown_deleted_from_worktree_is_not_read_as_a_source(
         "CATALOG LOST PRIMARY CONSTITUTION: " + result.stdout + result.stderr
     )
     _assert_instruction_delivery(root)
+    # The writer owns syntax and catalog placement; content and zone remain explicit.
+    instructions = root / "AGENTS.md"
+    instructions.write_text(
+        instructions.read_text().replace(
+            "<!-- METHODOLOGY_CONTRACT_START -->",
+            "<!-- METHODOLOGY_CONTRACT_START -->\n## Methodology briefs\n",
+        )
+    )
+    supplied = root / "document-input.json"
+    supplied.write_text(
+        json.dumps(
+            {
+                "path": "briefs/created.md",
+                "title": "Created brief",
+                "body": "Actual design.\n",
+                "status": "draft",
+                "scope": "A bounded design.",
+            }
+        )
+    )
+    command = [str(CHECKER), "--root", str(root)]
+    written = subprocess.run(
+        command + ["--create-input", str(supplied)], capture_output=True, text=True
+    )
+    document = root / "briefs/created.md"
+    assert written.returncode == 0 and "status: draft" in document.read_text(), (
+        "DOCUMENT SKELETON AUTHORING FAILED: " + written.stderr
+    )
+    before = document.read_bytes()
+    escaped = root / "project/example.md"
+    supplied.write_text(
+        json.dumps(
+            {
+                "path": "docs/../project/example.md",
+                "title": "Not docs",
+                "body": "Outside the owning subtree.",
+            }
+        )
+    )
+    traversal = subprocess.run(
+        command + ["--create-input", str(supplied)], capture_output=True, text=True
+    )
+    assert traversal.returncode != 0 and not escaped.exists(), (
+        "DOCUMENT DESTINATION ESCAPED SUBTREE"
+    )
+    supplied.write_text(
+        json.dumps(
+            {
+                "path": "briefs/created.md",
+                "title": "Created brief",
+                "body": "Actual design.\n",
+                "status": "draft",
+                "scope": "A bounded design.",
+            }
+        )
+    )
+    collision = subprocess.run(
+        command + ["--create-input", str(supplied)], capture_output=True, text=True
+    )
+    assert collision.returncode != 0 and document.read_bytes() == before, (
+        "DOCUMENT COLLISION OVERWROTE ORIGINAL"
+    )
+    supplied.write_text(
+        json.dumps({"path": "briefs/created.md", "label": "Created", "zone": "methodology"})
+    )
+    original = instructions.read_bytes()
+    registered = subprocess.run(
+        command
+        + [
+            "--register-input",
+            str(supplied),
+            "--expect-sha256",
+            hashlib.sha256(original).hexdigest(),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert (
+        registered.returncode == 0 and "[Created](briefs/created.md)" in instructions.read_text()
+    ), "CATALOG REGISTRATION FAILED: " + registered.stderr
+    current = instructions.read_bytes()
+    refused = subprocess.run(
+        command + ["--register-input", str(supplied), "--expect-sha256", "0" * 64],
+        capture_output=True,
+        text=True,
+    )
+    assert refused.returncode != 0 and instructions.read_bytes() == current, (
+        "CATALOG REFUSAL MUTATED CONSTITUTION"
+    )
 
 
 def _assert_instruction_delivery(root: Path) -> None:

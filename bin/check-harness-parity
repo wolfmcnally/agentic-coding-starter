@@ -6,8 +6,11 @@
 
 from __future__ import annotations
 
+import argparse
+import json
 import os
 import sys
+import tempfile
 import tomllib
 from pathlib import Path
 
@@ -105,22 +108,109 @@ def check_agents() -> None:
         except (OSError, ValueError, tomllib.TOMLDecodeError) as exc:
             report("agents", relative, f"unreadable metadata: {exc}")
             continue
-        if wrapper.get("name") != metadata.get("name") or wrapper.get("name") != role:
-            report("agents", relative, "name does not match canonical role")
-        if wrapper.get("description") != metadata.get("description"):
-            report("agents", relative, "description does not match canonical frontmatter")
-        instructions = wrapper.get("developer_instructions")
-        pointer = f"Read .claude/agents/{role}.md in this repo and follow it."
-        if not isinstance(instructions, str) or pointer not in instructions:
-            report("agents", relative, "missing exact canonical pointer")
-        if isinstance(instructions, str) and "# " in instructions:
-            report("agents", relative, "wrapper appears to duplicate canonical body")
+        for reason in agent_errors(role, metadata, wrapper):
+            report("agents", relative, reason)
+
+
+def agent_errors(role: str, metadata: dict, wrapper: dict) -> list[str]:
+    errors = []
+    if wrapper.get("name") != metadata.get("name") or wrapper.get("name") != role:
+        errors.append("name does not match canonical role")
+    if wrapper.get("description") != metadata.get("description"):
+        errors.append("description does not match canonical frontmatter")
+    instructions = wrapper.get("developer_instructions")
+    pointer = f"Read .claude/agents/{role}.md in this repo and follow it."
+    if not isinstance(instructions, str) or pointer not in instructions:
+        errors.append("missing exact canonical pointer")
+    if isinstance(instructions, str) and "# " in instructions:
+        errors.append("wrapper appears to duplicate canonical body")
+    return errors
 
 
 def main() -> int:
-    if len(sys.argv) != 1:
-        print("Usage: ./bin/check-harness-parity", file=sys.stderr)
-        return 2
+    global ROOT
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=ROOT)
+    writers = parser.add_mutually_exclusive_group()
+    writers.add_argument("--sync-role")
+    writers.add_argument("--sync-skill")
+    parser.add_argument("--expect-sha256")
+    parser.add_argument("--expect-target")
+    arguments = parser.parse_args()
+    source_lib = ROOT / "lib"
+    ROOT = arguments.root.resolve()
+    if arguments.sync_role or arguments.sync_skill:
+        try:
+            sys.path.insert(0, str(source_lib))
+            from agentic_starter.input_io import checked_write, destination
+
+            name = arguments.sync_role or arguments.sync_skill
+            if not name or Path(name).name != name or name in {".", ".."}:
+                raise ValueError("name must be one canonical role/skill basename")
+            if arguments.sync_role:
+                canonical = destination(ROOT, f".claude/agents/{name}.md")
+                metadata = frontmatter(canonical)
+                if metadata.get("name") != name or not metadata.get("description"):
+                    raise ValueError("canonical role metadata is incomplete/mismatched")
+                relative = f".codex/agents/{name}.toml"
+                path = destination(ROOT, relative)
+                if path.exists():
+                    previous = tomllib.loads(path.read_text())
+                    if set(previous) - {"name", "description", "developer_instructions"}:
+                        raise ValueError(
+                            "custom wrapper fields require owner adaptation; not overwritten"
+                        )
+                pointer = f"Read .claude/agents/{name}.md in this repo and follow it."
+                data = (
+                    "name = "
+                    + json.dumps(name, ensure_ascii=False)
+                    + "\ndescription = "
+                    + json.dumps(metadata["description"], ensure_ascii=False)
+                    + "\ndeveloper_instructions = "
+                    + json.dumps(pointer, ensure_ascii=False)
+                    + "\n"
+                ).encode()
+
+                def check(candidate: Path) -> None:
+                    value = tomllib.loads(candidate.read_text())
+                    errors = agent_errors(name, metadata, value)
+                    if errors:
+                        raise ValueError("; ".join(errors))
+
+                checked_write(ROOT, relative, data, check, arguments.expect_sha256)
+            else:
+                canonical = destination(ROOT, f".claude/skills/{name}/SKILL.md")
+                if not canonical.is_file():
+                    raise ValueError("canonical skill has no SKILL.md")
+                parent = destination(ROOT, ".agents/skills")
+                parent.mkdir(parents=True, exist_ok=True)
+                link = parent / name
+                expected = f"../../.claude/skills/{name}"
+
+                def preimage() -> None:
+                    if link.is_symlink():
+                        if os.readlink(link) != arguments.expect_target:
+                            raise ValueError("mirror target preimage mismatch")
+                    elif link.exists() or arguments.expect_target is not None:
+                        raise ValueError(
+                            "mirror collision or missing preimage; never remove a directory"
+                        )
+
+                preimage()
+                with tempfile.TemporaryDirectory(prefix=".input-", dir=parent.parent) as temporary:
+                    proposed = Path(temporary) / name
+                    proposed.symlink_to(expected)
+                    preimage()
+                    if arguments.expect_target is None:
+                        # Never replace a newly appearing entry on the create path.
+                        os.symlink(expected, link)
+                    else:
+                        os.replace(proposed, link)
+            print("HARNESS MIRROR WRITTEN; run parity validation before delivery")
+            return 0
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            print(f"HARNESS MIRROR REFUSED: {exc}", file=sys.stderr)
+            return 1
     for check in (check_instructions, check_skills, check_agents):
         try:
             check()

@@ -16,10 +16,12 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "lib"))
 from agentic_starter.candidate_boundaries import (  # noqa: E402
     FILENAME,
+    SCHEMA,
     BoundaryError,
     load_partition,
     parse_partition,
 )
+from agentic_starter.input_io import checked_write, read_object  # noqa: E402
 
 
 def git(root: Path, *arguments: str) -> bytes:
@@ -29,6 +31,8 @@ def git(root: Path, *arguments: str) -> bytes:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=ROOT)
+    parser.add_argument("--write-input", type=Path, help="compose active/bookkeeping lists")
+    parser.add_argument("--expect-sha256", help="exact existing declaration digest for edits")
     parser.add_argument(
         "--staged", action="store_true", help="use index paths and declaration bytes"
     )
@@ -38,6 +42,32 @@ def main() -> int:
         tracked = [
             os.fsdecode(p) for p in git(root, "ls-files", "--cached", "-z").split(b"\0") if p
         ]
+        if args.write_input:
+            if args.staged:
+                raise BoundaryError("cannot write indexed declarations")
+            value = read_object(args.write_input)
+            if set(value) != {"active", "bookkeeping"} or not all(
+                isinstance(value[key], list) for key in value
+            ):
+                raise BoundaryError("supply active and bookkeeping pattern lists")
+            import json
+
+            data = (
+                f"schema: {SCHEMA}\n"
+                + "".join(
+                    key
+                    + ":\n"
+                    + "".join("  - " + json.dumps(pattern) + "\n" for pattern in value[key])
+                    for key in ("active", "bookkeeping")
+                )
+            ).encode()
+
+            def check(proposed: Path) -> None:
+                parse_partition(proposed.read_bytes()).require_tracked(tracked)
+
+            checked_write(root, FILENAME, data, check, args.expect_sha256)
+            print("PARTITION WRITTEN")
+            return 0
         if args.staged:
             if FILENAME not in tracked:
                 raise BoundaryError("candidate-partition.yaml is absent from the index")
@@ -45,7 +75,7 @@ def main() -> int:
         else:
             partition = load_partition(root)
         partition.require_tracked(tracked)
-    except (BoundaryError, OSError, subprocess.CalledProcessError) as exc:
+    except (ValueError, TypeError, OSError, subprocess.CalledProcessError) as exc:
         print(f"PARTITION REFUSED: {exc}", file=sys.stderr)
         return 1
     print(f"PARTITION PASS: {len(tracked)} tracked paths; declaration {partition.sha256}")

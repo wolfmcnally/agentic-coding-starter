@@ -525,6 +525,7 @@ def test_every_gate_required_executable_propagates() -> None:
         "briefs/deterministic-orchestration-control-plane.md",
         "policies/orchestration-control-plane.md",
         "lib/agentic_starter/candidate_boundaries.py",
+        "lib/agentic_starter/input_io.py",
         "lib/agentic_starter/kickoff_runbook.py",
         "lib/agentic_starter/workflow.py",
         "lib/agentic_starter/advisory.py",

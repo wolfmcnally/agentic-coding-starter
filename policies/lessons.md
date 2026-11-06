@@ -153,3 +153,7 @@ A `scope: methodology` lesson in a derived repo is destined for the starter temp
 ## Per-phase waiver
 
 The human may grant a phase-specific waiver of any rule in this policy (for example, authorizing immediate codification of a first-occurrence lesson). Waivers are explicit, scoped, logged in the phase's END block, and one-shot — same contract as [`user-actions.md`](user-actions.md).
+
+## Mechanical authoring
+
+Use `./bin/lessons create --slug <from-new-name> --input-json <file>` for a new candidate. Supply title, scope, proposed_surface, source, one observation ref and substantive body; the tool derives slug/status/filed/occurrence structure. Use `recur` with only a fresh ref, or `edit` with title/body/scope/proposed_surface changes, plus `--expect-sha256 <current-digest>` for existing entries. `--on` supplies the actual evidence date when it differs from the current date. Recurrence also works on archived entries, preserving disposition, closed/graduated fields and exact body; it does not reopen or graduate them. Ordinary edit does not modify archived dispositions. All proposed metadata passes the same validator before publication; this API grants no human-only graduation or archival authority.

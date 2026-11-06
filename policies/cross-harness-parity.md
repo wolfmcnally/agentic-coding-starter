@@ -123,3 +123,7 @@ Run the deterministic checker from any directory:
 ```
 
 It fails on a copied or misdirected `AGENTS.md`, missing/orphan/wrong-target skill symlinks, missing/orphan agent wrappers, mismatched names or descriptions, and wrappers without the exact canonical pointer. `./bin/check policy` and the opt-in pre-commit hook invoke it automatically.
+
+## Mechanical authoring
+
+Use `./bin/check-harness-parity --sync-role <role>` or `--sync-skill <skill>` to generate a selected mirror from its actual canonical source. An existing role wrapper needs `--expect-sha256 <current-digest>`; custom wrapper fields refuse rather than being erased. An existing skill symlink needs its exact old target through `--expect-target`; regular-file/directory collisions refuse and are not removed. No constitutional alias, settings, hook or permission is created. Run normal parity validation after synchronization; a mirror update is not proof of native instruction loading.

@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import shlex
+import shutil
 import stat
 import subprocess
 import sys
@@ -232,6 +233,51 @@ def test_live_reset_validates(estate: Path, tmp_path: Path) -> None:
     assert fresh["state"] == "valid"
     assert fresh["dispositions"] == {"retain": 7, "repair": 0, "consolidate": 0, "delete": 0}
     assert (fresh["witness_receipts"], fresh["unwitnessed_baseline"]) == (0, 7)
+    authored = tmp_path / "authored"
+    shutil.copytree(estate, authored)
+    manifest_path = authored / "tests/proof-estate.yaml"
+    audit_path = authored / "reports/reset.jsonl"
+    previous_manifest, previous_audit = manifest_path.read_bytes(), audit_path.read_bytes()
+    manifest = governance.load_yaml(manifest_path)
+    family = {**manifest["families"][0], "contract": "An explicitly revised contract."}
+    supplied = tmp_path / "proof-input.json"
+    semantic = {
+        "families": [family],
+        "records": [
+            {
+                "action": "modify",
+                "proof_id": SAMPLE + "test_admitted",
+                "witness_receipts": [1],
+                **EVIDENCE,
+            }
+        ],
+    }
+    supplied.write_text(json.dumps(semantic))
+    governance.author_inputs(
+        authored,
+        supplied,
+        hashlib.sha256(previous_manifest).hexdigest(),
+        hashlib.sha256(previous_audit).hexdigest(),
+    )
+    assert (
+        governance.validate(authored)["state"] == "valid"
+        and audit_path.read_bytes().startswith(previous_audit)
+        and governance.load_ledger(audit_path)[-1]["record_type"] == "proof_modification"
+        and governance.load_yaml(manifest_path)["families"][0]["contract"] == family["contract"]
+    ), "PROOF AUTHORING LOST FAMILY OR APPEND HISTORY"
+    current_manifest, current_audit = manifest_path.read_bytes(), audit_path.read_bytes()
+    semantic["records"][0]["rationale"] = ""
+    supplied.write_text(json.dumps(semantic))
+    with pytest.raises(governance.GovernanceError):
+        governance.author_inputs(
+            authored,
+            supplied,
+            hashlib.sha256(current_manifest).hexdigest(),
+            hashlib.sha256(current_audit).hexdigest(),
+        )
+    assert (
+        manifest_path.read_bytes() == current_manifest and audit_path.read_bytes() == current_audit
+    ), "PROOF AUTHORING REFUSAL MUTATED ORIGINALS"
     # Last, because the live estate refuses while a red witness is pending in this checkout:
     # a defect planted to challenge this proof has to fail a fixture assertion above.
     assert governance.validate(REPO_ROOT)["state"] == "valid"

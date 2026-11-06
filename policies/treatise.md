@@ -52,3 +52,7 @@ The canonical artifact is normally a repository brief. A user may request a Mark
 ## Review
 
 Review the treatise against its named audience and its canonical authorities. Confirm that it leads with the governing thesis, distinguishes principles from implementation details, exposes real limitations, and contains no claim that cannot be traced to the repository or an identified external source.
+
+## Mechanical authoring
+
+Use `./bin/treatise write --brief briefs/<name>.md --input-json <semantic-fields.json> --expect-sha256 <current-digest>` to compose or update editorial metadata in an existing brief. Supply substantive required editorial fields for first declaration, or the changed fields for an update; the tool retains unspecified editorial fields, unrelated frontmatter and exact body, derives updated from the current date or `--on`, validates the complete block and refuses stale preimages. It does not infer directives, publication, external facts or approval.

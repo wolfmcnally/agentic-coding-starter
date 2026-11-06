@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import subprocess
 from pathlib import Path
 
@@ -120,7 +122,7 @@ def declared_treatise_briefs() -> list[str]:
     return declared
 
 
-def test_the_repository_own_treatises_validate() -> None:
+def test_the_repository_own_treatises_validate(briefs: Path) -> None:
     result = subprocess.run(
         [str(TREATISE), "validate"],
         capture_output=True,
@@ -135,3 +137,65 @@ def test_the_repository_own_treatises_validate() -> None:
             assert relative in result.stdout
     else:
         assert "no treatises declared" in result.stdout
+
+    import yaml
+
+    target = briefs / "briefs/example.md"
+    target.write_text(PLAIN_BRIEF)
+    supplied = briefs / "editorial.json"
+    metadata = yaml.safe_load(TREATISE_BRIEF.format(directives=directive_lines(1)).split("---")[1])[
+        "treatise"
+    ]
+    metadata.pop("updated")
+    metadata = json.loads(json.dumps(metadata, default=str))
+    supplied.write_text(json.dumps(metadata, default=str))
+    written = run(
+        "write",
+        "--brief",
+        "briefs/example.md",
+        "--input-json",
+        str(supplied),
+        "--on",
+        "2026-11-03",
+        "--expect-sha256",
+        hashlib.sha256(target.read_bytes()).hexdigest(),
+        root=briefs,
+    )
+    assert (
+        written.returncode == 0
+        and target.read_bytes().endswith(b"\nBody.\n")
+        and yaml.safe_load(target.read_text().split("---")[1])["treatise"]
+        == {**metadata, "updated": "2026-11-03"}
+    ), "TREATISE COMPOSITION LOST BODY: " + written.stderr
+    supplied.write_text(json.dumps({"purpose": "A refined purpose."}))
+    updated = run(
+        "write",
+        "--brief",
+        "briefs/example.md",
+        "--input-json",
+        str(supplied),
+        "--expect-sha256",
+        hashlib.sha256(target.read_bytes()).hexdigest(),
+        root=briefs,
+    )
+    current = yaml.safe_load(target.read_text().split("---")[1])["treatise"]
+    assert (
+        updated.returncode == 0
+        and current["purpose"] == "A refined purpose."
+        and current["directives"] == metadata["directives"]
+    ), "TREATISE UPDATE LOST PRIOR DIRECTIVES"
+    original = target.read_bytes()
+    supplied.write_text(json.dumps({**metadata, "purpose": ""}, default=str))
+    refused = run(
+        "write",
+        "--brief",
+        "briefs/example.md",
+        "--input-json",
+        str(supplied),
+        "--expect-sha256",
+        hashlib.sha256(original).hexdigest(),
+        root=briefs,
+    )
+    assert refused.returncode != 0 and target.read_bytes() == original, (
+        "TREATISE REFUSAL MUTATED BRIEF"
+    )

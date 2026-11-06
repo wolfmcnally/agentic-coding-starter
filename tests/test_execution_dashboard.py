@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -92,7 +94,7 @@ def write_ledger(engine: Path, bundles: list[dict[str, Any]]) -> None:
     )
 
 
-def test_payload_reports_each_operator_park_and_nonexact_total() -> None:
+def test_payload_reports_each_operator_park_and_nonexact_total(tmp_path: Path) -> None:
     accepted = kickoff_bundle()
     parks = telemetry.phase_park_summary(engine_root=ROOT, phase_id="7", ledger=PARK_FIXTURE)
     parks = parks | {
@@ -113,6 +115,40 @@ def test_payload_reports_each_operator_park_and_nonexact_total() -> None:
     assert payload["operator_parks"]["total_duration_ns"] == 75_000_000_000
     assert payload["operator_parks"]["total_exact"] is False
     assert "boot_id" not in json.dumps(payload["operator_parks"])
+    engine = tmp_path / "engine"
+    write_ledger(engine, [accepted])
+    supplied = engine / "semantic.json"
+    semantic = {
+        key: value for key, value in sample_handoff().items() if key not in {"schema", "phase_id"}
+    }
+    supplied.write_text(json.dumps(semantic))
+    command = [
+        str(CLI),
+        "compose-handoff",
+        "--repo-root",
+        str(engine),
+        "--phase",
+        "31.2",
+        "--input-json",
+        str(supplied),
+        "--output",
+        ".kickoff/handoff.json",
+    ]
+    written = subprocess.run(command, capture_output=True, text=True)
+    target = engine / ".kickoff/handoff.json"
+    assert written.returncode == 0 and json.loads(target.read_bytes()) == sample_handoff(), (
+        "HANDOFF AUTHORING FAILED: " + written.stderr
+    )
+    original = target.read_bytes()
+    supplied.write_text(json.dumps({**semantic, "project": str(engine)}))
+    refused = subprocess.run(
+        command + ["--expect-sha256", hashlib.sha256(original).hexdigest()],
+        capture_output=True,
+        text=True,
+    )
+    assert refused.returncode != 0 and target.read_bytes() == original, (
+        "HANDOFF REFUSAL MUTATED EVIDENCE"
+    )
 
 
 def test_render_is_byte_identical_and_recovers_interrupted_replacement(

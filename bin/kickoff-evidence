@@ -639,6 +639,7 @@ def tool_sources() -> dict[str, Path]:
         "lib/agentic_starter/candidate_boundaries.py": (
             REPO_ROOT / "lib" / "agentic_starter" / "candidate_boundaries.py"
         ),
+        "lib/agentic_starter/input_io.py": REPO_ROOT / "lib" / "agentic_starter" / "input_io.py",
         "lib/agentic_starter/kickoff_runbook.py": (
             REPO_ROOT / "lib" / "agentic_starter" / "kickoff_runbook.py"
         ),

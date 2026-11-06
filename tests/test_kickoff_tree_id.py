@@ -186,11 +186,56 @@ def _assert_partition_boundary(root: Path) -> None:
     )
     assert staged.returncode == 1
     assert "unclassified tracked" in staged.stderr
+    import hashlib
+
+    supplied = root / "partition-input.json"
+    supplied.write_text(
+        json.dumps(
+            {
+                "active": [*parsed.active, "/unclassified.asset"],
+                "bookkeeping": list(parsed.bookkeeping),
+            }
+        )
+    )
+    written = subprocess.run(
+        [
+            str(checker),
+            "--root",
+            str(root),
+            "--write-input",
+            str(supplied),
+            "--expect-sha256",
+            hashlib.sha256(declaration.read_bytes()).hexdigest(),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert written.returncode == 0 and "/unclassified.asset" in declaration.read_text(), (
+        "PARTITION AUTHORING FAILED: " + written.stderr
+    )
+    current = declaration.read_bytes()
+    supplied.write_text(json.dumps({"active": ["relative"], "bookkeeping": []}))
+    refused = subprocess.run(
+        [
+            str(checker),
+            "--root",
+            str(root),
+            "--write-input",
+            str(supplied),
+            "--expect-sha256",
+            hashlib.sha256(current).hexdigest(),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert refused.returncode != 0 and declaration.read_bytes() == current, (
+        "PARTITION REFUSAL MUTATED DECLARATION"
+    )
     # Actually exercise the tracked hook, with all unrelated checks stubbed.
     (root / "bin").mkdir(exist_ok=True)
     (root / "lib/agentic_starter").mkdir(parents=True, exist_ok=True)
     shutil.copy2(checker, root / "bin/check-candidate-partition")
-    for name in ("__init__.py", "candidate_boundaries.py"):
+    for name in ("__init__.py", "candidate_boundaries.py", "input_io.py"):
         shutil.copy2(ROOT / "lib/agentic_starter" / name, root / "lib/agentic_starter" / name)
     for name in (
         "check-harness-parity",

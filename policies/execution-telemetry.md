@@ -155,3 +155,7 @@ The custody file has exactly `source`, `reference` and `candidate_lineage`, all 
 - `policies/log-discipline.md`
 - `policies/mechanistic-vs-intelligence.md`
 - `policies/repo-relative-paths.md`
+
+## Mechanical authoring
+
+Prepare dashboard input with `./bin/execution-telemetry compose-handoff --phase <id> --input-json <semantic-content.json> --output <repo-relative-durable-file>`. Supply project, what_just_landed, see_for_yourself, coming_up_next and recommended_steps with their actual substantive content; the tool adds schema and the explicitly selected phase, reuses complete handoff/privacy validation and publishes only validated bytes. Edits require `--expect-sha256 <current-digest>`. The generated handoff is presentation content, not acceptance evidence.

@@ -689,3 +689,19 @@ An attested continuation starts its own role numbering at 1 if any additional re
 - `multioperator` — transition rehearsal and maintenance (`rehearse`, `validate`, `add`, `order`, `event`, `append`, `render`). For terminal log records, use `append-terminal --root . --writer <operator> --content <content.json>` to compose and publish through the immutable writer, or `compose-terminal --content <content.json> --output <fresh-block.md>` to prepare the exact body for evidence close. Supply the shared `title`, `body` and explicit `lessons` array as defined in [log discipline](../policies/log-discipline.md#follow-up-correction-format); the tool never infers a lessons answer. See [the migration runbook](../policies/multi-operator-migration.md#0-unified-migration-runbook). It never grants ownership or runs Git rollback; rehearsal is not adoption.
 
 - `multioperator` — structured records and isolated migration rehearsal; current-format semantics require separate qualification.
+
+### Mechanical record authoring
+
+The owning tools accept semantic input instead of agent-copied structural templates. `lib/agentic_starter/input_io.py` shares only bounded checked-file publication: canonical repository-relative destinations, expected preimages for edits, validation before publication and create collisions without overwrite. It does not choose content, approval, classifications or evidence. Existing independent validators and delivery gates remain authoritative.
+
+| Surface | Supported writer | Supplied meaning and retained limits |
+|---|---|---|
+| Lessons | `lessons create/recur/edit --slug <name> --input-json <file>` | Candidate content or one actual occurrence; existing edits need `--expect-sha256`. Archived recurrence preserves disposition and body. |
+| Treatise metadata | `treatise write --brief briefs/<name>.md --input-json <file> --expect-sha256 <digest>` | Full initial editorial meaning or changed fields; date/serialization generated, unrelated content retained. |
+| Candidate declaration | `check-candidate-partition --write-input <file>` | Approved active/bookkeeping arrays; schema and YAML generated; edits need `--expect-sha256`. |
+| Proof metadata | `test-governance author --input-json <file> --expect-manifest <digest> --expect-ledger <digest>` | families/records arrays; evidence/decisions explicit, bindings derived, ordinary full validation before publication. |
+| Dashboard handoff | `execution-telemetry compose-handoff --phase <id> --input-json <file> --output <durable-relative-file>` | Substantive presentation fields; phase/schema generated, privacy validator reused, edits need `--expect-sha256`. |
+| Harness mirrors | `check-harness-parity --sync-role <role>` or `--sync-skill <skill>` | Canonical source generates mirror; existing preimage required; custom fields and directory collisions refuse. |
+| Catalogs/skeletons | `check-catalogs --create-input <file>` then `--register-input <file> --expect-sha256 <digest>` | Explicit document content and zone; structure, links, placement and destination checked. |
+
+Read each owning policy's Mechanical authoring section for the semantic fields and failure boundaries. These methods do not migrate other repositories, normalize historical evidence, grant permission or establish human acceptance.

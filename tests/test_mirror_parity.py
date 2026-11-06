@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import shutil
 import subprocess
 from pathlib import Path
@@ -36,6 +37,42 @@ def test_repository_is_in_parity(tmp_path: Path) -> None:
     copied = run(tmp_path)
     assert copied.returncode == 0, copied.stdout + copied.stderr
     _assert_resource_bytes(tmp_path)
+    canonical_role = tmp_path / ".claude/agents/code-critic.md"
+    canonical_role.write_text(
+        canonical_role.read_text().replace("description: ", "description: Navigation 🧭 ", 1)
+    )
+    wrapper = tmp_path / ".codex/agents/code-critic.toml"
+    original_wrapper = wrapper.read_bytes()
+    wrapper.write_bytes(original_wrapper + b'\nmodel = "custom"\n')
+    custom = wrapper.read_bytes()
+    command = [str(CHECKER), "--root", str(tmp_path), "--sync-role", "code-critic"]
+    refused = subprocess.run(
+        command + ["--expect-sha256", hashlib.sha256(custom).hexdigest()],
+        capture_output=True,
+        text=True,
+    )
+    assert refused.returncode != 0 and wrapper.read_bytes() == custom, (
+        "MIRROR SYNC OVERWROTE CUSTOM FIELDS"
+    )
+    wrapper.write_bytes(original_wrapper)
+    written = subprocess.run(
+        command + ["--expect-sha256", hashlib.sha256(original_wrapper).hexdigest()],
+        capture_output=True,
+        text=True,
+    )
+    assert written.returncode == 0 and run(tmp_path).returncode == 0, (
+        "MIRROR ROLE AUTHORING FAILED: " + written.stderr
+    )
+    skill = tmp_path / ".agents/skills/kickoff"
+    skill.unlink()
+    linked = subprocess.run(
+        [str(CHECKER), "--root", str(tmp_path), "--sync-skill", "kickoff"],
+        capture_output=True,
+        text=True,
+    )
+    assert (
+        linked.returncode == 0 and skill.readlink().as_posix() == "../../.claude/skills/kickoff"
+    ), "MIRROR SKILL AUTHORING FAILED"
     canonical = tmp_path / ".claude/skills/kickoff"
     for name in RESOURCES:
         resource = canonical / name

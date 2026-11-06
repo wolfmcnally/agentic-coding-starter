@@ -486,7 +486,12 @@ def _is_iso_date(value: Any) -> bool:
         return False
 
 
-def validate(root: Path) -> dict[str, Any]:
+def validate(
+    root: Path,
+    *,
+    proposed_manifest: dict[str, Any] | None = None,
+    proposed_ledger: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     _refuse_pending_witness(root)
     captures = root / ".kickoff/witness/captures"
     try:
@@ -499,7 +504,7 @@ def validate(root: Path) -> dict[str, Any]:
     except (TelemetryError, KeyError) as exc:
         raise GovernanceError(f"witness capture invalid: {exc}") from exc
     manifest_path = root / "tests/proof-estate.yaml"
-    manifest = load_yaml(manifest_path)
+    manifest = load_yaml(manifest_path) if proposed_manifest is None else proposed_manifest
     errors: list[str] = []
     if manifest.get("schema") != SCHEMA:
         errors.append(f"manifest schema must be {SCHEMA}")
@@ -592,7 +597,7 @@ def validate(root: Path) -> dict[str, Any]:
         errors.append("audit_ledger must be a repo-relative path")
         ledger: list[dict[str, Any]] = []
     else:
-        ledger = load_ledger(root / ledger_rel)
+        ledger = load_ledger(root / ledger_rel) if proposed_ledger is None else proposed_ledger
     baseline_ids = {row.get("id") for row in baseline.get("proofs", [])}
     disposition_rows = [row for row in ledger if row.get("record_type") == "proof_disposition"]
     admission_rows = [row for row in ledger if row.get("record_type") == "proof_admission"]
@@ -1297,6 +1302,110 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
 
+def author_inputs(root: Path, source: Path, manifest_sha: str, ledger_sha: str) -> None:
+    """Compose real family edits and append-only decisions, checking the resulting estate."""
+    import fcntl
+
+    from agentic_starter.input_io import checked_write, destination, read_object
+
+    request = read_object(source)
+    if set(request) != {"families", "records"} or not all(
+        isinstance(request[key], list) for key in request
+    ):
+        raise GovernanceError("author input requires families and records arrays")
+    lock = destination(root, ".kickoff/input-writes/proof-estate.lock")
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    with lock.open("a+b") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        manifest_path = destination(root, "tests/proof-estate.yaml")
+        manifest_bytes = manifest_path.read_bytes()
+        manifest = load_yaml(manifest_path)
+        ledger_path = destination(root, manifest["audit_ledger"])
+        ledger_bytes = ledger_path.read_bytes()
+        if _digest(manifest_bytes) != manifest_sha or _digest(ledger_bytes) != ledger_sha:
+            raise GovernanceError("proof authoring preimage mismatch")
+        baseline = load_json(destination(root, manifest["baseline_report"]))
+        families = {family["id"]: family for family in manifest["families"]}
+        if len(families) != len(manifest["families"]):
+            raise GovernanceError("existing duplicate families require an explicit correction")
+        seen: set[str] = set()
+        for family in request["families"]:
+            errors = _validate_family_shape(family, 0)
+            if errors:
+                raise GovernanceError("; ".join(errors))
+            if family["id"] in seen:
+                raise GovernanceError("duplicate authored family")
+            seen.add(family["id"])
+            families[family["id"]] = family
+        manifest["families"] = list(families.values())
+        appended = []
+        evidence = {
+            "contract",
+            "oracle",
+            "red_witness",
+            "nearest_overlap",
+            "replacement_evidence",
+            "rationale",
+        }
+        for semantic in request["records"]:
+            action = semantic.get("action")
+            types = {
+                "admit": "proof_admission",
+                "modify": "proof_modification",
+                "retire": "proof_retirement",
+                "disposition": "proof_disposition",
+            }
+            if action not in types:
+                raise GovernanceError("unknown proof authoring action")
+            allowed = evidence | {"action", "proof_id"}
+            if action in {"retire", "disposition"}:
+                allowed |= {"disposition", "replacement"}
+            if action == "modify":
+                allowed |= {"witness_receipts"}
+            if set(semantic) != allowed:
+                raise GovernanceError("proof input has missing or derived fields")
+            proof = semantic["proof_id"]
+            row = {key: semantic[key] for key in evidence}
+            row.update(
+                record_type=types[action],
+                proof_id=proof,
+                baseline_inventory_sha256=baseline["inventory_sha256"],
+            )
+            row["disposition"] = (
+                "retain"
+                if action == "admit"
+                else "repair"
+                if action == "modify"
+                else semantic["disposition"]
+            )
+            row["replacement"] = proof if action in {"admit", "modify"} else semantic["replacement"]
+            if action == "modify":
+                row["witness_receipts"] = semantic["witness_receipts"]
+            appended.append(row)
+        ledger = load_ledger(ledger_path) + appended
+        validate(root, proposed_manifest=manifest, proposed_ledger=ledger)
+        # All refusal checks precede publication. An I/O interruption is not success;
+        # retain both files and diagnose it, never rewrite prior ledger history.
+        if manifest_path.read_bytes() != manifest_bytes or ledger_path.read_bytes() != ledger_bytes:
+            raise GovernanceError("proof inputs changed during qualification")
+        data = yaml.safe_dump(manifest, sort_keys=False).encode()
+        if request["families"]:
+            checked_write(
+                root, "tests/proof-estate.yaml", data, lambda path: load_yaml(path), manifest_sha
+            )
+        if appended:
+            with ledger_path.open("ab") as stream:
+                if ledger_bytes and not ledger_bytes.endswith(b"\n"):
+                    stream.write(b"\n")
+                stream.write(
+                    "".join(json.dumps(row, sort_keys=True) + "\n" for row in appended).encode()
+                )
+                stream.flush()
+                os.fsync(stream.fileno())
+
+        validate(root)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="test-governance")
     parser.add_argument(
@@ -1329,10 +1438,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     witness_actions.add_parser("abort")
     subparsers.add_parser("reassess")
     subparsers.add_parser("timing")
+    author = subparsers.add_parser("author", help="compose family edits and append real decisions")
+    author.add_argument("--input-json", type=Path, required=True)
+    author.add_argument("--expect-manifest", required=True)
+    author.add_argument("--expect-ledger", required=True)
     args = parser.parse_args(argv)
     root = args.repo_root.resolve()
     try:
-        if args.command == "inventory":
+        if args.command == "author":
+            author_inputs(root, args.input_json, args.expect_manifest, args.expect_ledger)
+            print("PROOF INPUTS WRITTEN; prior ledger prefix preserved")
+        elif args.command == "inventory":
             payload = inventory(root)
             if args.output:
                 output = args.output if args.output.is_absolute() else root / args.output
@@ -1389,6 +1505,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 124
     except GovernanceError as exc:
         print(f"TEST GOVERNANCE ERROR {exc}", file=sys.stderr)
+        return 1
+    except (OSError, ValueError, TypeError, KeyError, yaml.YAMLError) as exc:
+        print(f"TEST GOVERNANCE REFUSED {exc}", file=sys.stderr)
         return 1
 
 
