@@ -160,7 +160,11 @@ def records(root: Path) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]
         except (ValueError, TypeError, ZeroDivisionError) as exc:
             raise Refusal("invalid rational order key") from exc
         phases[identifier] = meta
-    require(bool(phases), "empty phase inventory")
+    manifest = load(safe(root, "collaboration/manifest.json"))
+    require(
+        bool(phases) or (manifest.get("mode") == "retrofit" and manifest.get("adopted") is False),
+        "empty phase inventory",
+    )
     events = []
     for path in sorted(safe(root, "plan/events").glob("*.json")):
         event = load(path)
@@ -403,6 +407,13 @@ def validate(root: Path) -> dict[str, Any]:
         verify_acceptance_bytes(root, event)
     entries = logs(root)
     manifest = load(safe(root, "collaboration/manifest.json"))
+    if manifest.get("mode") == "retrofit":
+        for name, expected in manifest["historical_plans"].items():
+            path = safe(root, name)
+            require(
+                path.is_file() and digest(path.read_bytes()) == expected,
+                "retained historical plan missing or mutated",
+            )
     imported = sorted(
         (pair for pair in entries if pair[0].get("source_offset") is not None),
         key=lambda pair: pair[0]["source_offset"],
@@ -512,7 +523,10 @@ def source_phase_states(index: str) -> dict[str, str]:
 def rehearse(source: Path, output: Path, mapping_path: Path) -> None:
     source, output = source.resolve(), output.absolute()
     require(not output.exists() and not output.is_symlink(), "output must be absent")
-    require(output != source and not source.is_relative_to(output), "output overlaps source")
+    require(
+        not output.resolve().is_relative_to(source) and not source.is_relative_to(output.resolve()),
+        "output overlaps source",
+    )
     compatibility = claude_compatibility()
     config = load(mapping_path)
     head = subprocess.check_output(
@@ -546,6 +560,11 @@ def rehearse(source: Path, output: Path, mapping_path: Path) -> None:
             not (root / "collaboration").exists(),
             "source already has collaboration records",
         )
+        if config.get("mode") == "retrofit":
+            retrofit_records(root, config, head, archive, compatibility)
+            require(not output.exists(), "output appeared during rehearsal")
+            root.rename(output)
+            return
         plan = root / "plan"
         index = (plan / "INDEX.md").read_text()
         rows = source_phase_states(index)
@@ -1224,6 +1243,16 @@ def validate_staged(root: Path) -> dict[str, Any]:
         "log/entries",
         "collaboration/manifest.json",
     )
+    manifest_bytes = git_read(root, "show", ":collaboration/manifest.json")
+    manifest = json.loads(manifest_bytes, object_pairs_hook=unique_pairs)
+    if manifest.get("mode") == "retrofit":
+        retained = manifest["historical_plans"]
+        require(
+            isinstance(retained, dict)
+            and all(name.startswith("plan/") and ".." not in Path(name).parts for name in retained),
+            "invalid retained historical plan paths",
+        )
+        prefixes += tuple(retained)
     raw_index = git_read(root, "ls-files", "--stage", "-z", "--", *prefixes)
     indexed = {}
     for row in raw_index.split(b"\0"):
@@ -1273,7 +1302,7 @@ def validate_staged(root: Path) -> dict[str, Any]:
         for relative, body in indexed.items():
             publish(safe(staging, relative), body)
         for relative in indexed:
-            if relative.startswith("plan/events/"):
+            if relative.startswith("plan/events/") and relative.endswith(".json"):
                 record = load(staging / relative)
                 if (
                     relative not in prior_paths
@@ -1369,7 +1398,102 @@ def validate_staged(root: Path) -> dict[str, Any]:
     return {**state, "staged": True}
 
 
-def layout(root: Path) -> str:
+def retrofit_records(
+    root: Path, recipe: dict[str, Any], head: str, archive: bytes, compatibility: Any
+) -> None:
+    """Seed prospective records in a committed snapshot; never infer old phase state."""
+    require(
+        layout(root) == "existing-project",
+        "retrofit requires an existing non-methodology project",
+    )
+    require(
+        set(recipe) == {"mode", "source_commit", "writer", "constitution", "historical_plans"}
+        and recipe["source_commit"] == head,
+        "retrofit recipe must bind the exact committed source",
+    )
+    require(
+        isinstance(recipe["writer"], str) and bool(recipe["writer"].strip()),
+        "explicit retrofit writer required",
+    )
+    plans = {
+        p.relative_to(root).as_posix(): digest(p.read_bytes())
+        for p in safe(root, "plan").rglob("*")
+        if p.is_file() and not p.is_symlink()
+    }
+    require(
+        recipe["historical_plans"] == plans,
+        "historical plan inventory/preimage mismatch",
+    )
+    constitution = recipe["constitution"]
+    require(
+        isinstance(constitution, str) and bool(constitution.strip()),
+        "reviewed constitution required",
+    )
+    require(
+        not any(
+            (root / name).exists() or (root / name).is_symlink()
+            for name in ("AGENTS.md", "CLAUDE.md")
+        ),
+        "existing constitution requires owner reconciliation before retrofit",
+    )
+    publish(root / "AGENTS.md", constitution.encode())
+    for name in ("plan/phases", "plan/events", "log/entries"):
+        publish(root / name / ".gitkeep", b"")
+    publish(
+        root / "plan/INDEX.md",
+        (
+            "# Plan discovery\n\nNew work uses phases/ and events/. "
+            "Historical narrative plans remain at their original paths; "
+            "they are not imported lifecycle or acceptance records.\n\n"
+            + "".join(
+                f"- [{name}]({Path(name).relative_to('plan').as_posix()})\n"
+                for name in sorted(plans)
+            )
+        ).encode(),
+    )
+    publish(
+        root / "log/README.md",
+        b"# Activity records\n\nProspective immutable entries; "
+        b"no historical activity log was supplied.\n",
+    )
+    publish(
+        root / "collaboration/manifest.json",
+        encode(
+            {
+                "format": FORMAT,
+                "adopted": False,
+                "source_commit": head,
+                "source_archive_sha256": digest(archive),
+                "writer": recipe["writer"],
+                "phase_mapping": {},
+                "active_imports": [],
+                "original_log_bytes": 0,
+                "original_log_sha256": digest(b""),
+                "historical_plans": plans,
+                "mode": "retrofit",
+            }
+        ),
+    )
+    publish(
+        root / "collaboration/adoption-blockers.json",
+        encode(
+            {
+                "remaining": [
+                    "Approved recipient-local atomic methodology/toolchain/caller/proof bundle",
+                    "Owner decisions for prospective phases; no historical acceptance inferred",
+                    "Settled work, external custody and terminal native/review boundaries",
+                    "Recipient validation, retirement audit, full gate and instruction loading",
+                ],
+                "compatibility": compatibility,
+                "loading_qualified": False,
+            }
+        ),
+    )
+    validate(root)
+    render(root)
+
+
+def layout(root: Path, *, capability_source: bool = False) -> str:
     require(root.is_dir(), "transfer directory NOT-FOUND")
     marker = safe(root, "collaboration/manifest.json")
     if marker.exists() or marker.is_symlink():
@@ -1379,46 +1503,129 @@ def layout(root: Path) -> str:
             "unknown/malformed collaboration declaration",
         )
         require(
-            (root / "plan/phases").is_dir() and (root / "log/entries").is_dir(),
+            all(
+                safe(root, name).is_dir() for name in ("plan/phases", "plan/events", "log/entries")
+            ),
             "partial collaboration structure",
         )
         return "declared-adopted" if data["adopted"] else "rehearsal"
     require(
-        not (root / "plan/phases").exists() and not (root / "log/entries").exists(),
+        not any(
+            safe(root, name).exists()
+            for name in ("collaboration", "plan/phases", "plan/events", "log/entries")
+        ),
         "partial collaboration structure has no declaration",
     )
+    index, log = safe(root, "plan/INDEX.md"), safe(root, "LOG.md")
+    if index.exists() or log.exists() or list(safe(root, "plan").glob("phase-*.md")):
+        require(
+            index.is_file() and log.is_file(),
+            "partial/unsupported pre-migration structure",
+        )
+        rows = source_phase_states(index.read_text())
+        require(
+            bool(rows) and {p.stem[6:] for p in (root / "plan").glob("phase-*.md")} == set(rows),
+            "phase files/table disagree",
+        )
+        return "pre-migration"
     require(
-        (root / "plan/INDEX.md").is_file() and (root / "LOG.md").is_file(),
-        "unsupported pre-migration structure",
+        not safe(root, "kickoff.yaml").exists()
+        and not safe(root, ".claude/skills/kickoff").exists(),
+        "partial methodology structure requires owner reconciliation",
     )
-    return "pre-migration"
+    for name in ("AGENTS.md", "CLAUDE.md"):
+        candidate = safe(root, name)
+        require(
+            not candidate.exists() or candidate.is_file(),
+            "unrecognized constitution structure",
+        )
+    require(
+        not ((root / "AGENTS.md").exists() and (root / "CLAUDE.md").exists()),
+        "conflicting constitutions require owner reconciliation",
+    )
+    if capability_source:
+        require(
+            any(
+                p.is_file() and not p.is_symlink() and p.stat().st_size > 0
+                for p in root.iterdir()
+                if p.name != ".DS_Store"
+            ),
+            "empty/unsupported capability source",
+        )
+        return "capability-source"
+    require(
+        any(
+            safe(root, name).is_file()
+            for name in (
+                "pyproject.toml",
+                "package.json",
+                "Cargo.toml",
+                "go.mod",
+                "Package.swift",
+                "CMakeLists.txt",
+            )
+        )
+        or any(
+            p.is_file()
+            and not p.is_symlink()
+            and p.suffix in {".py", ".rs", ".js", ".ts", ".go", ".swift", ".c", ".cpp"}
+            for p in root.iterdir()
+        ),
+        "unsupported existing-project structure; explicit owner assessment required",
+    )
+    return "existing-project"
 
 
-def transfer_preflight(donor: Path, recipient: Path, entry: str) -> dict[str, Any]:
+def transfer_preflight(
+    donor: Path, recipient: Path, entry: str, intent: str = "methodology"
+) -> dict[str, Any]:
     """Read-only route detection. Declared adoption is not verified authority."""
     require(
-        donor.resolve() != recipient.resolve(),
-        "donor and recipient are the same checkout",
+        not donor.resolve().is_relative_to(recipient.resolve())
+        and not recipient.resolve().is_relative_to(donor.resolve()),
+        "donor and recipient are the same checkout or overlap",
     )
-    donor_state, recipient_state = layout(donor), layout(recipient)
+    donor_state = layout(donor, capability_source=intent == "capability")
+    recipient_state = layout(recipient)
     require(
-        donor_state == "declared-adopted",
+        intent == "capability" or donor_state == "declared-adopted",
         "donor has not migrated; rehearsal is not adoption",
+    )
+    require(
+        donor_state != "rehearsal",
+        "donor rehearsal is not an operational source",
     )
     require(
         recipient_state != "rehearsal",
         "recipient has an unresolved rehearsal/partial transition",
     )
+    route = (
+        "capability-learning"
+        if intent == "capability"
+        else {
+            "pre-migration": "migration-rehearsal",
+            "existing-project": "retrofit-rehearsal",
+            "declared-adopted": "maintenance",
+        }[recipient_state]
+    )
+    if route == "retrofit-rehearsal":
+        require(
+            not any((recipient / name).exists() for name in ("AGENTS.md", "CLAUDE.md")),
+            "existing constitution requires owner reconciliation before retrofit",
+        )
     return {
-        "compatibility": claude_compatibility() if recipient_state == "pre-migration" else None,
+        "compatibility": claude_compatibility()
+        if route in {"migration-rehearsal", "retrofit-rehearsal"}
+        else None,
         "entry": entry,
-        "route": "migration-rehearsal" if recipient_state == "pre-migration" else "maintenance",
+        "intent": intent,
+        "route": route,
         "donor_layout": donor_state,
         "recipient_layout": recipient_state,
         "mutation_authorized": False,
         "adoption_verified": False,
         "required_owner_checks": [
-            "Actual qualified Starter-first adoption and exact donor candidate",
+            "Exact source/capability; qualified donor adoption for whole-methodology transfer",
             "Recipient custody, clean/settled work and terminal phase/review/native boundaries",
             "Approved concrete teach/learn migration plan and recipient-specific recipe/runtime",
             "Phase/budget/evidence continuity; obsolete-tool retirement and full acceptance",
@@ -1476,6 +1683,7 @@ def main() -> int:
     transfer.add_argument("--donor", type=Path, required=True)
     transfer.add_argument("--recipient", type=Path, required=True)
     transfer.add_argument("--entry", choices=("teach", "learn"), required=True)
+    transfer.add_argument("--intent", choices=("methodology", "capability"), default="methodology")
     selection = commands.add_parser("select")
     selection.add_argument("--root", type=Path, required=True)
     selection.add_argument("--owner", required=True)
@@ -1526,7 +1734,7 @@ def main() -> int:
         elif args.command == "transfer-preflight":
             print(
                 json.dumps(
-                    transfer_preflight(args.donor, args.recipient, args.entry),
+                    transfer_preflight(args.donor, args.recipient, args.entry, args.intent),
                     sort_keys=True,
                 )
             )

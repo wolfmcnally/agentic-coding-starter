@@ -10,12 +10,12 @@ description: >-
   /teach <target-dir> [<desc>] in Claude Code or $teach <target-dir> [<desc>]
   in Codex.
 argument-hint: "<target-dir> [<desc>]"
-last-reviewed: 2026-10-29
+last-reviewed: 2026-11-07
 ---
 
 # Teach — Apply patterns from this repo to another repo
 
-This skill is **universal**. It runs inside any project that follows the agentic methodology — the starter template and every project derived from it. It treats *this* repository (whichever one invokes the skill) as the source of patterns and `<target-dir>` as the destination. The user approves a plan before any change is made to the target.
+This skill is **universal**. It runs inside an existing source project, including a non-template project supplying a selected capability. It treats *this* repository (whichever one invokes the skill) as the source of patterns and `<target-dir>` as the destination. The user approves a plan before any change is made to the target.
 
 The pipeline is the same three-stage shape as `learn` (structural analysis → semantic identification → translation), inverted: we read both repos but only write to the target. Updates use a Copier-style discipline — the target's customizations are preserved by default; files that exist verbatim in the target may be overwritten; conflicts are surfaced for the user.
 
@@ -28,7 +28,7 @@ This repo is **read-only** for the entire skill. We never modify the teaching re
 - **`stamp`** (available only in the starter template) stamps out a *brand-new* project from the template. Use when the target directory is empty or doesn't exist.
 - **`teach`** retrofits or upgrades an *existing* project. Use when the target already has work in it — either a previously stamped project that has fallen behind, or a project that didn't start from the template but wants to adopt parts of the methodology, or a project that should adopt a particular pattern this repo has evolved.
 
-If the target is empty or doesn't exist, refuse and suggest the `stamp` skill instead: `/stamp` in Claude Code or `$stamp` in Codex. If invoked from a non-starter repo, explain that `stamp` must be run from the starter template; `teach` retrofits existing projects and does not bootstrap new ones from scratch.
+If the target is empty or doesn't exist, refuse and suggest the `stamp` skill instead: `/stamp` in Claude Code or `$stamp` in Codex. The donor may be any existing source project for capability learning; whole-methodology transfer additionally requires a qualified adopted donor. `stamp` creates new projects from the template; `teach` retrofits existing ones.
 
 ## Parse arguments
 
@@ -39,33 +39,19 @@ Raw arguments: `$ARGUMENTS`
 
 If `<target-dir>` is missing or is an empty/non-existent directory, refuse with `Usage: /teach <target-dir> [<desc>] (Claude Code) or $teach <target-dir> [<desc>] (Codex)` (and, if non-existent, suggest the `stamp` skill instead) and exit.
 
-## Multi-operator migration and maintenance routing
+## Transfer direction and route preflight
 
-First inspect both layouts. For a requested structural migration or a whole-methodology transfer from an adopted donor to a legacy methodology receiver, read [the migration and transfer boundary](../../../policies/multi-operator-migration.md#0-unified-migration-runbook) before applying the single-log/numbered-plan assumptions below. After the canonical template actually migrates, `teach <project>` from it and `learn <starter>` from the receiver are the migration entrypoints. Invocation authorizes assessment; the ordinary concrete transfer-plan approval still governs receiving writes. A donor marker alone does not make an unrelated, mini-method or unstructured project a failed migration target.
+As of 2026-11-07, `teach <recipient>` invoked in the donor and `learn <donor>` invoked in the recipient are dual entrypoints to the same transfer. The donor is always read-only; only the recipient receives approved changes. This holds both when the template supplies methodology and when another project supplies a capability to the template. The invocation label never changes eligibility, approval, preservation, checks or resulting recipient bytes. Apply recipient publication rules, including Starter-only anonymization when Starter receives content.
 
-Use the qualified donor's `bin/multioperator transfer-preflight --entry teach --donor . --recipient <target-dir>` for read-only route detection. Refuse unknown/partial layouts or unresolved rehearsals; a declaration is not proof of adoption, a grant, or transfer approval. Verify actual donor adoption/candidate and recipient ownership, preserved project/runtime/content and terminal active-work/native/review boundaries independently. Ordinary transfers from a pre-migration source keep their existing workflow; they do not silently become migrations.
+Read [the shared transfer runbook](../../../policies/multi-operator-migration.md#9-symmetric-transfer-and-existing-product-retrofit) before assessment. Select `--intent methodology` for a whole-methodology transfer, or `--intent capability` for selected patterns/capabilities. Run the available qualified `bin/multioperator transfer-preflight --entry teach|learn --intent <intent> --donor <source> --recipient <destination>` with the same absolute source/destination from either invocation. A receiver without installed tools uses the donor's executable; an ordinary capability donor need not contain that executable or have adopted Starter. If neither checkout supplies the detector, perform the same documented read-only checks and report that executable detection is unavailable; never invent an adoption marker to obtain a route.
 
-A migration is one concrete Stage3 plan under the existing Stage4 operator approval and Stage5 recipient-owner application boundary. Include explicit id/owner mapping, exact old-only retirement preimages, the complete new-tool/caller/fixture bundle, historical byte/evidence/budget preservation, isolated rehearsal and semantic acceptance/full gates. Keep the donor read-only, never install a compatibility alias, never reset review allowances and never hot-patch a frozen run. An adopted receiver records through `multioperator append --root <receiver> --writer <operator> --body <durable-body.md> --at <observed-UTC>`. A pre-migration receiver is assessed under its own current policy and actual writer until its approved atomic cutover; do not run the donor’s new writer against the old layout. Do not waive an old invariant until the receiving project's actual atomic policy/caller cutover replaces it. Report detection, rehearsal, adoption, runtime instruction loading and human acceptance as separate facts; no new migration is performed by this capability's presence.
+- Whole-methodology transfer requires a qualified adopted donor with the complete selected portable contracts. Independently verify its exact candidate and actual adoption, not just its declaration. A canonical legacy receiver selects `migration-rehearsal`; a recognized existing code project without methodology history selects `retrofit-rehearsal`; an adopted receiver selects `maintenance`.
+- Capability learning accepts a nonempty ordinary source (including a documentation-only source), an existing non-adopted code source or a canonical legacy source and selects `capability-learning`. Absence of Starter's roles, policies, configuration or adoption records in that source is expected. Assess the selected capability and dependency closure rather than demanding unrelated donor scaffolding. It does not authorize structural adoption or lifecycle conversion.
+- Unknown, conflicting, malformed and partial layouts, overlapping checkouts and unresolved rehearsals refuse. Explain the exact missing property and retain the refusal. A refusal is never repaired by synthesizing historical INDEX/LOG files, accepted phase events or adoption declarations.
+- Verify receiving ownership, attribution of dirty work and terminal phase/review/native boundaries. Assessment may inspect a known dirty receiver read-only, but application waits for explicit settlement under its current authority. Preserve unique work, raw evidence, consumed budgets, language/runtime, package metadata and historical content. Neither invocation may overwrite or silently stash work.
+- For adopted maintenance validate regular primary `AGENTS.md` with no top-level `CLAUDE.md` file or symlink, canonical roles and skills/resources, the Rule One skill/brief pair, valid `kickoff.yaml` through `bin/kickoff-config show`, complete dependency-bearing wrappers/evidence/proofs, catalogs and `multioperator validate`. Apply exactly the same checks regardless of which side invoked the transfer. Legacy migration and retrofit do not require the future recipient scaffold before assessment.
 
-The migration target uses regular primary `AGENTS.md` without a top-level `CLAUDE.md` alias. Run the receiving host’s installed-Claude check: absent means no Claude gate; installed requires a successful parseable version at least 2.1.290. Preserve local/ancestor instruction files and document loading caveats; a version probe does not prove a live session loaded AGENTS. After actual qualified adoption, use the new constitution and structured writers rather than legacy filename/log preconditions; before adoption the existing transfer path remains unchanged. See the migration policy’s constitution section for the fixed-release evidence and precise boundary.
-
-## Pre-flight checks
-
-1. **This repo follows the methodology.** Verify the universal invariants:
-   - `AGENTS.md` is a regular primary constitution, with no top-level `CLAUDE.md` file or symlink.
-   - `.claude/agents/` contains the four canonical roles (`phase-planner`, `plan-reviewer`, `phase-coder`, `code-critic`).
-   - `.claude/skills/kickoff/SKILL.md` and its seven directly linked execution resources, `.claude/skills/methodology/SKILL.md`, `.claude/skills/rule-one/SKILL.md`, and `briefs/rule-one-diagnostic-learning.md` exist. Rule One's skill and brief are one required methodology pair; either missing member fails pre-flight.
-   - `bin/kickoff-config` and `kickoff.yaml` exist; `show` validates role models, role timeouts, and research budgets.
-   - `.claude/settings.json` exists and sets `worktree.bgIsolation` to `none`.
-   - `bin/kickoff-tree-id` and `bin/kickoff-evidence` exist, are executable, and have behavioral tests.
-   - `briefs/`, `policies/`, `plan/` directories are present and non-empty.
-   - `collaboration/manifest.json`, `plan/phases/`, `plan/events/` and `log/entries/` exist and `./bin/multioperator validate --root .` passes. If any fail, refuse before touching anything.
-
-2. **Target is reachable and non-empty.** `ls -la <target-dir>` returns at least one substantive file (anything beyond `.git/`, `.DS_Store`, or empty marker files).
-
-3. **Target's working tree clean** (if it is a git repo). `teach` produces commits' worth of changes; running it on a dirty tree mixes the upgrade with other work. If unclean, refuse and ask the user to stash or commit in the target first.
-
-4. **Target's harness compatibility.** Note which agent harnesses the target appears to use (`AGENTS.md` (or a legacy CLAUDE constitution needing explicit migration) at root; `.claude/` and/or `.codex/` directories). Some teachings only apply if a particular harness is in use.
+All routes use the ordinary Stage 3 concrete recipient plan, Stage 4 operator approval and Stage 5 primary application. Invocation authorizes assessment only. Present the same selected bundle, conflicts, preservation, stale sweep, applicability decisions, actual validation and delivery in either direction. No independent review is added. Retrofit uses the committed-source recipe and prospective records described in the shared runbook, then completes the approved recipient-local bundle. Rehearsal, actual adoption, runtime instruction loading and human acceptance remain separate facts. No hook installation, access grant or review-budget reset is inferred. Installed Claude requires the shared version check (absent is ungated); version success is not instruction-loading evidence.
 
 ## Primary one-shot ownership and scope
 

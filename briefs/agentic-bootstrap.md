@@ -17,6 +17,10 @@ This brief assumes you already have (or are about to write) a high-level brief f
 
 ---
 
+### Existing products use transfer, not seed stamping
+
+As of 2026-11-07, an existing code project with product manifests/source and narrative plans enters through `teach <recipient>` in the donor or `learn <donor>` in the recipient. Both assess the same source/destination and produce the same approved recipient candidate. Whole-methodology retrofit preserves historical narratives and starts prospective records with no invented completion or flat-log history. The isolated `multioperator rehearse` retrofit recipe binds the committed source, reviewed recipient constitution and exact narrative preimages; it leaves adoption pending until the complete adapted tooling, policies, future phases, proofs, custody and gates qualify. Canonical old INDEX/LOG histories use conversion instead. Partial/unknown histories require reconciliation. A selected capability may be learned from a non-template source without demanding unrelated adoption records. Seed stamping retains its empty/seed-only boundary and never overlays an existing product.
+
 ## Seed briefs
 
 A real brief is the best input to `stamp`. It gives the bootstrap enough information to identify the project's users, purpose, surfaces, dependencies, constraints, and major phases. A one-line description is useful for an experiment, but it usually yields only a starter brief and the first phase.

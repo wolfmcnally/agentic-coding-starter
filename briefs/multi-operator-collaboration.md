@@ -99,3 +99,8 @@ The single authoritative [migration runbook](../policies/multi-operator-migratio
 - Current Starter source, observed 2026-10-29 UTC: one numbered adoption placeholder, the actual append-only historical log, root wrappers and the recorded caller inventory. These are the rehearsal inputs and enforcement evidence, rather than assumptions that all derived projects have the same shape. No third-party code or document body is copied into the implementation.
 
 - [Claude Code stable release 2.1.290](https://github.com/anthropics/claude-code/releases/tag/v2.1.290), as of 2026-10-05; retrieved 2026-10-29 UTC. Selected fixed-release minimum for AGENTS-primary migration. [Native AGENTS loading rules](https://code.claude.com/docs/en/memory#agentsmd), retrieved 2026-10-29 UTC; a living configuration reference, not proof that a particular session loaded its instructions.
+
+
+## Existing-product transfer boundary
+
+As of 2026-11-07, capability learning, canonical-history conversion and first methodology retrofit have different evidence inputs. Existing numbered prose plans are historical documents, not lifecycle events. An isolated retrofit can retain their exact preimages while starting prospective records without importing accepted work. The committed source and explicit receiving constitution bind that rehearsal; its success does not establish live custody, complete caller adoption or runtime loading. Teach from the source and learn from the receiver describe the same transformation in both directions, with the source read-only and one concrete receiving-plan approval. Non-template capability sources need evidence for their selected capability rather than unrelated lifecycle scaffolding.

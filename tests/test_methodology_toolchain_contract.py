@@ -813,6 +813,7 @@ def test_travelling_migration_proofs_run_without_donor_history(tmp_path: Path) -
         "bin/normalize-final-newline",
         "tests/test_multioperator.py",
         "tests/test_log_control_plane.py",
+        "tests/structured_fixtures.py",
         "policies/multi-operator-migration.md",
     ):
         shutil.copy2(REPO_ROOT / relative, fresh / relative)
@@ -836,7 +837,7 @@ def test_travelling_migration_proofs_run_without_donor_history(tmp_path: Path) -
         text=True,
         timeout=180,
     )
-    assert child.returncode == 0 and "3 passed" in child.stdout, (
+    assert child.returncode == 0 and "5 passed" in child.stdout, (
         "FRESH SCAFFOLD MIGRATION PROOFS FAILED: " + child.stdout + child.stderr
     )
     assert manifest.read_bytes() == original, "PORTABLE PROOFS FABRICATED DONOR PROVENANCE"
