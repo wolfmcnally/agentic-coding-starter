@@ -269,6 +269,16 @@ Once approved, apply the approved items. Before importing any donor remedy for a
 - **Skill-exclusion list.** `stamp` and the starter template's `example/` Python project are starter-only and never transferred. `learn` and `teach` themselves are universal — if the donor has a more evolved version, treat it like any other candidate; if this repo lacks them and the donor has them, propose adding them (the bootstrap procedure expects them in every methodology-following project).
 
 
+## Source-release provenance
+
+In the concrete plan and actual receiving completion record, record the exact donor revision and verified declared source release/tag when available. For an unversioned source, say unversioned; when provenance is unproved, say unknown. Verify tag identity from Git rather than inferring it from notes or declarations. Distinguish assessed/proposed source, partially applied capabilities and completed whole-methodology adoption, preserving the previous baseline and local adaptations. An assessment, plan approval or donor tag alone does not upgrade the receiver.
+
+For Starter provenance, historically Starter-derived repositories without a named adopted baseline are `pre-1.0.0`; never-adopted repositories are `outside`. Unknown ancestry stays unknown. Both invocation directions use the same classification and actual-adoption evidence. Starter-only release policy and notes do not transfer as a receiver's product version, notes or tag authority; only the generic provenance obligation travels.
+
+## Optional coordination transfer
+
+Transfer the generic optional cross-harness coordination contract in `policies/role-models.md`, `policies/four-canonical-agents.md`, `briefs/cross-agent-invocation.md` and kickoff's entry/preflight/dispatch resources together. Preserve the preference for available supported launch/communication and the direct native/watched-CLI fallback when unavailable. Assess capabilities on the receiving host; do not copy donor registrations, service names, endpoint identities, grants, credentials, configuration or qualification claims. No integration becomes a receiving prerequisite or grants new delegation authority.
+
 ## Candidate declaration transfer
 
 For documentation, inspect donor manuals, renderer/plugin/compiler pins, native example checks, preview and publication scope read-only. Transfer generic capabilities through `bin/docs`, its shared module/proofs, skill/mirror, policy/brief and recipient-local configuration; never donor content, publication identity, operational records or live Pages/CD/network grants. Keep Starter's first-party manual distinct from third-party pins.

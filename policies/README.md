@@ -32,7 +32,7 @@ Don't add a policy for:
 ## How a policy evolves
 
 - **Add** a policy when a rule starts being cited or implicitly assumed in more than one place. Don't pre-write speculative policies.
-- **Revise** in place when the rule changes; bump no version metadata, just edit. Git is the audit trail.
+- **Revise** in place when the rule changes; keep no per-policy version counter. Git is the audit trail; Starter-wide release batches follow the Starter-only release policy.
 - **Supersede** by replacing the file's contents and noting the prior shape inline if the prior shape will be referenced. Don't keep dead policies around just for history.
 - **Cite the brief** that motivated the policy when the brief's argument is the load-bearing justification. The policy is the rule; the brief is why.
 

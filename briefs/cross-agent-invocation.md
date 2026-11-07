@@ -11,7 +11,7 @@ Primary ownership, independent advice and the one-shot route for methodology wor
 
 This brief pins the researched best current practices (as of mid-2026) for invoking OpenAI's `codex` CLI from inside Claude Code and Anthropic's `claude` CLI from inside Codex, so future work cites a stable position instead of re-deriving it. It also records the design rationale for **cross-harness review** — an explicit option of the per-role model/venue feature, which pins a separate model and effort per canonical role, scoped by which harness is orchestrating.
 
-Both vendors sanction this interop: OpenAI ships an official Claude Code plugin that delegates to the local Codex CLI, and both CLIs document headless scripting modes. Every mature published pattern is **subprocess-first** — shelling out to the other CLI — rather than MCP-bridged. MCP wrappers exist but add a moving part without changing the fundamentals; for bounded, one-shot delegations the subprocess is the de-facto standard.
+As of 2026-11-07, the preferred route is an available supported cross-harness launcher and communication surface. A shared supported surface can retain exact session identity, correlated handoffs and observable lifecycle across harnesses without each caller reconstructing those connections. Launching and messaging are separate capabilities, and a product name or installed tool alone does not prove either one meets the role execution contract. No particular integration is required. When a supported launch path is unavailable, the direct native or generated watched-CLI recipes below remain the supported fallback with the same model, authority, permissions, budgets and evidence controls. This preference does not authorize installing a service, changing access, bypassing a refusal or duplicating an uncertain launch.
 
 Research authority remains role-based across either transport. Planner and
 reviewer may originate search and retrieve. Coder and critic may retrieve only
@@ -190,3 +190,8 @@ Issues and reports underpinning specific claims:
 - No flag to disable AGENTS.md ingestion — openai/codex#5983, openai/codex#10067
 - Self-assessment redaction finding — Todd Orr, "What I Found When Claude Reviewed Codex's Work," May 2026
 - Official OpenAI Codex plugin for Claude Code (subprocess-based) — github.com/openai/codex-plugin-cc
+
+
+## Shared readiness, separate roles
+
+As of 2026-11-07, readiness grouping follows the actual probe command's CLI, model, effort, access and tool arguments. A role label alone does not require a second identical headless file-read challenge. The receipt can name all roles covered by that qualification while each real dispatch still receives its own role authority, research directive, attempt registration and evidence. Distinct tool capabilities, write access, models and efforts remain separate probes. This is per-command capability qualification within one preflight, not approval sharing or reuse across runs.

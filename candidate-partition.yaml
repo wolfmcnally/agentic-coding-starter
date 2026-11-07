@@ -9,6 +9,7 @@ active:
   - "/AGENTS.md"
   - "/LICENSE"
   - "/README.md"
+  - "/RELEASES.md"
   - "/documentation.toml"
   - "/manual/**"
   - "/kickoff.yaml"

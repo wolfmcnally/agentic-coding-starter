@@ -769,6 +769,7 @@ def preflight_targets(
     section: MutableMapping[str, Any], harness: str
 ) -> dict[PreflightTarget, list[str]]:
     targets: dict[PreflightTarget, list[str]] = {}
+    probe_targets: dict[tuple[Any, ...], PreflightTarget] = {}
     for role, (model, effort) in resolve_models(section, harness).items():
         if model == "default":
             continue
@@ -777,7 +778,18 @@ def preflight_targets(
             target = PreflightTarget(role, "claude", CLAUDE_MODELS[model], effort, write_enabled)
         else:
             target = PreflightTarget(role, "codex", CODEX_MODELS[model], effort, write_enabled)
-        targets.setdefault(target, []).append(role)
+        # Qualification covers one readiness command, not one role's authority.
+        # Claude's tool argv differs by role capability; Codex's probe has the
+        # same read challenge/web flags for every role with the same access.
+        probe_key = (
+            target.cli,
+            target.model,
+            target.effort,
+            target.write_enabled,
+            claude_tools(role) if target.cli == "claude" else None,
+        )
+        representative = probe_targets.setdefault(probe_key, target)
+        targets.setdefault(representative, []).append(role)
     return targets
 
 

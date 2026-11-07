@@ -1509,3 +1509,94 @@ def test_watch_registered_review_durability_and_child_environment(
         assert argv[argv.index("--permission-mode") + 1] == "dontAsk", "REVIEW PERMISSION MODE"
         if resume:
             assert argv[argv.index("--resume") + 1] == resume, "REVIEW RESUME NOT FORWARDED"
+
+
+def test_preflight_groups_only_identical_readiness_commands(tmp_path: Path) -> None:
+    """One command's read challenge may qualify several roles, never different access/tools.
+
+    Five bounded real-manager cases cover the demonstrated duplicate cost and the
+    security-relevant separation of tool capability, effort, model and write access.
+    Existing command/role-authority proofs still own production dispatch permissions.
+    Only local stub processes run; no provider, model, credential or approval is used.
+    """
+    cases = (
+        ("codex", {"reviewer": ("sol", "high"), "critic": ("sol", "high")}, 1),
+        ("claude", {"reviewer": ("opus", "high"), "critic": ("opus", "high")}, 2),
+        ("codex", {"reviewer": ("sol", "high"), "critic": ("sol", "medium")}, 2),
+        ("codex", {"reviewer": ("sol", "high"), "coder": ("sol", "high")}, 2),
+        ("codex", {"reviewer": ("sol", "high"), "critic": ("astra", "high")}, 2),
+    )
+    for index, (venue, pins, expected) in enumerate(cases):
+        work = tmp_path / str(index)
+        work.mkdir()
+        config = seeded_config(work)
+        document = yaml.safe_load(config.read_text())
+        routing = {
+            role: {"model": "default"} for role in ("planner", "reviewer", "coder", "critic")
+        }
+        routing.update(
+            {role: dict(model=model, effort=effort) for role, (model, effort) in pins.items()}
+        )
+        document["role_models"] = {"default": routing, "claude": {}, "codex": {}}
+        config.write_text(yaml.safe_dump(document))
+        calls = work / "calls.jsonl"
+        executable = work / venue
+        executable.write_text(
+            f"#!{sys.executable}\n"
+            + r"""import json
+import os
+import sys
+from pathlib import Path
+
+if sys.argv[1:] == ["--version"]:
+    print("test-cli 1.0")
+    raise SystemExit(0)
+probe = Path(".kickoff-capability-probe")
+if probe.is_file():
+    token = probe.read_text()
+    prompt = sys.argv[sys.argv.index("-p") + 1] if "-p" in sys.argv else sys.argv[-1]
+    assert token not in prompt and len(token) == 64
+    kind = "readiness"
+    answer = "KICKOFF_PREFLIGHT_OK " + token
+else:
+    kind = "toolchain"
+    answer = "KICKOFF_TOOLCHAIN_OK"
+with Path(os.environ["PREFLIGHT_CALLS"]).open("a") as handle:
+    handle.write(json.dumps({"kind": kind, "argv": sys.argv[1:]}) + "\n")
+if "--output-last-message" in sys.argv:
+    Path(sys.argv[sys.argv.index("--output-last-message") + 1]).write_text(answer)
+else:
+    print(json.dumps({"result": answer}))
+"""
+        )
+        executable.chmod(0o755)
+        receipt = work / "receipt.json"
+        result = run_manager(
+            config,
+            "preflight",
+            "--receipt",
+            str(receipt),
+            cli=executable,
+            extra_env={"PREFLIGHT_CALLS": str(calls)},
+        )
+        observed = (
+            []
+            if not calls.exists()
+            else [json.loads(line) for line in calls.read_text().splitlines()]
+        )
+        rows = [] if not receipt.exists() else json.loads(receipt.read_text())["targets"]
+        grouped = sorted(tuple(row["roles"]) for row in rows)
+        expected_groups = (
+            [tuple(sorted(pins))] if expected == 1 else sorted((role,) for role in pins)
+        )
+        verified = run_manager(config, "verify-preflight-receipt", "--receipt", str(receipt))
+        assert (
+            result.returncode == 0
+            and sum(call["kind"] == "readiness" for call in observed) == expected
+            and sum(call["kind"] == "toolchain" for call in observed)
+            == (1 if "coder" in pins else 0)
+            and grouped == expected_groups
+            and verified.returncode == 0
+        ), "READINESS PROBE GROUPING LOST: " + repr(
+            (index, observed, rows, result.stderr, verified.stderr)
+        )

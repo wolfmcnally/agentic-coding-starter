@@ -841,3 +841,82 @@ def test_travelling_migration_proofs_run_without_donor_history(tmp_path: Path) -
         "FRESH SCAFFOLD MIGRATION PROOFS FAILED: " + child.stdout + child.stderr
     )
     assert manifest.read_bytes() == original, "PORTABLE PROOFS FABRICATED DONOR PROVENANCE"
+
+
+def test_optional_cross_harness_coordination_stays_optional(tmp_path: Path) -> None:
+    """Instruction contract: prefer supported coordination without making it a dependency.
+
+    Risk: dispatch retains the old unconditional direct-launch preference, or optional
+    absence turns into a new gate. The owning instructions are the interface being
+    changed, so clause withdrawal at that owner is the cheapest independent oracle;
+    this does not qualify a runtime adapter or a live host. Finite filesystem copies,
+    no model, provider, service, credentials or new production seam.
+    """
+    policy = _normalized(REPO_ROOT / "policies/role-models.md")
+    clauses = (
+        "cross-harness launching and communication are optional capabilities, never prerequisites.",
+        "Prefer an available supported cross-harness launcher and communication surface "
+        "over direct native harness launches and ad hoc peer messaging.",
+        "When no supported cross-harness launch path is available, use the existing "
+        "direct native dispatch path.",
+        "Do not retry a denied or uncertain launch through another transport.",
+    )
+
+    def assert_policy(text: str) -> None:
+        for clause in clauses:
+            assert clause in text, "OPTIONAL COORDINATION POLICY LOST: " + clause
+
+    assert_policy(policy)
+    for clause in clauses:
+        with pytest.raises(AssertionError, match="OPTIONAL COORDINATION POLICY LOST"):
+            assert_policy(policy.replace(clause, "Obligation withdrawn."))
+    _exercise_owned_contract(
+        tmp_path / "dispatch",
+        "dispatch.md",
+        (
+            "Prefer an available supported cross-harness launcher and communication surface "
+            "over direct native harness launches.",
+            "When no supported cross-harness launch path is available, use the existing "
+            "direct native dispatch path.",
+            "A denied or uncertain launch is not retried through another transport; "
+            "inspect actual state and follow governed recovery before any authorized retry.",
+        ),
+    )
+    _exercise_owned_contract(
+        tmp_path / "preflight",
+        "preflight.md",
+        (
+            "A missing optional integration is not a preflight failure, and communication "
+            "availability alone does not establish launch support.",
+        ),
+    )
+
+
+def test_starter_release_provenance_and_transfer_boundary() -> None:
+    """A named source release must not become a fabricated receiver upgrade.
+
+    This source-policy interface has no release automation. Check its initial public
+    contract and actual independent copy exclusions; live tag/signature/remote facts
+    are verified at release time, not synthesized by the test. Bounded text/Git-free
+    recipe reads, no provider, network or release mutation.
+    """
+    policy = _normalized(REPO_ROOT / "policies/starter-releases.md")
+    for clause in (
+        "tagged **`v1.0.0`**",
+        "**Minor:** a new methodology capability or feature",
+        "**Patch:** small fixes or refinements without a new capability",
+        "**Major:** a complete rewrite or breaking change",
+        "**`outside`:** a repository established to have never adopted",
+        "**`pre-1.0.0`:** a repository with verified historical Starter derivation or adoption",
+        "**Unknown:** provenance not yet established.",
+        "A partial capability transfer records its precise imported items and donor release "
+        "separately from the recipient's overall baseline",
+    ):
+        assert clause in policy, "STARTER RELEASE PROVENANCE LOST: " + clause
+    surfaces, exclusions = _stamp_copy_rule()
+    for path in ("policies/starter-releases.md", "RELEASES.md"):
+        assert _specificity(path, exclusions) > _specificity(path, surfaces), (
+            "STARTER RELEASE AUTHORITY LEAKS INTO RECEIVER: " + path
+        )
+    notes = (REPO_ROOT / "RELEASES.md").read_text()
+    assert "## 1.0.0 — 2026-11-07" in notes, "INITIAL STARTER RELEASE NOTES LOST"

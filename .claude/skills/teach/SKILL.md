@@ -362,6 +362,16 @@ Once approved, apply the approved items to the target. Order:
 - **`stamp` and the starter template's `example/` are never taught.** They live only in the starter template. The corresponding `.agents/skills/stamp` mirror is also starter-only — if a target somehow acquired it (e.g., from a buggy Codex import), remove it as part of the apply. The fifteen universal skills — including `rule-one`, `learn`, `teach`, `sweep-planning`, `sweep-coding`, `demo`, `treatise`, `plain`, `ask`, `refactor`, and `mutate` — may be transferred to a target that lacks them, with the user's approval.
 
 
+## Source-release provenance
+
+In the concrete plan and actual receiving completion record, record the exact donor revision and verified declared source release/tag when available. For an unversioned source, say unversioned; when provenance is unproved, say unknown. Verify tag identity from Git rather than inferring it from notes or declarations. Distinguish assessed/proposed source, partially applied capabilities and completed whole-methodology adoption, preserving the previous baseline and local adaptations. An assessment, plan approval or donor tag alone does not upgrade the receiver.
+
+For Starter provenance, historically Starter-derived repositories without a named adopted baseline are `pre-1.0.0`; never-adopted repositories are `outside`. Unknown ancestry stays unknown. Both invocation directions use the same classification and actual-adoption evidence. Starter-only release policy and notes do not transfer as a receiver's product version, notes or tag authority; only the generic provenance obligation travels.
+
+## Optional coordination transfer
+
+Transfer the generic optional cross-harness coordination contract in `policies/role-models.md`, `policies/four-canonical-agents.md`, `briefs/cross-agent-invocation.md` and kickoff's entry/preflight/dispatch resources together. Preserve the preference for available supported launch/communication and the direct native/watched-CLI fallback when unavailable. Assess capabilities on the receiving host; do not copy donor registrations, service names, endpoint identities, grants, credentials, configuration or qualification claims. No integration becomes a receiving prerequisite or grants new delegation authority.
+
 ## Candidate declaration transfer
 
 Documentation transfers as one bundle: `bin/docs`, `lib/agentic_starter/documentation.py`, `tests/test_documentation.py`, `documentation.toml`, the docs skill/mirror, policy/brief, exact renderer/plugin/compiler pins and generated CSS/license. Adapt the recipient's product manual, native example checks, preview port, publication identity and proof inventory. Preserve source documents/links and the third-party-only `docs/` boundary. Do not copy Starter's manual into a product, enable CD, install live workflows or infer new Pages/OIDC/network grants. Run recipient docs checks in its full gate.

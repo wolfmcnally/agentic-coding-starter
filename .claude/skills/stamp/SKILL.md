@@ -226,6 +226,7 @@ The direction matters. An allowlist of files to copy goes stale silently: every 
 | Entry | Why it does not propagate |
 |---|---|
 | `.claude/skills/stamp/` and `.agents/skills/stamp` | this skill itself; a derived project stamps out more projects only if it deliberately becomes a template too |
+| `policies/starter-releases.md`, `RELEASES.md` | Starter's release authority and notes; record source provenance without importing its product version or tag authority |
 | `policies/anonymize-log-references.md` | starter-only: the rule exists because *this* template is public, not because of any methodology principle |
 | `bin/check-anonymization.sh` and `bin/anonymization-denylist.local.example` | that policy's enforcement (also drop the `bin/anonymization-denylist.local` line from the copied `.gitignore`) |
 | `tests/test_methodology_toolchain_contract.py` | asserts on `stamp` and the anonymization policy, neither of which the destination has |
@@ -311,7 +312,7 @@ Author these afresh, using the gathered configuration:
   - **Copy the file as a whole.**
   - **Above both zones — the Hard rules section**: delete **Hard rule 3**, the starter-only anonymization rule. Its own text says it does not propagate, and it links `policies/anonymize-log-references.md`, which the destination will not have — a link `bin/check-catalogs` will report as a missing target. Then repair the sentence that introduces the rules: "Rules 1 and 2 are universal … Rule 3 is **starter-only** …" becomes a statement that both remaining rules are universal. Leave rules 1 and 2, and the restriction/waiver paragraph beneath them, untouched.
   - **Inside the `<!-- METHODOLOGY_CONTRACT_START --> ... <!-- METHODOLOGY_CONTRACT_END -->` markers**: verbatim *except* for the starter-only members it names. This is the universal methodology content and every derived project gets the same text, but the zone also carries the catalog of what exists in *this* repo, and starter-only entries do not travel:
-    - Delete the `anonymize-log-references.md` bullet from the **Policies catalog**. Left in place, it is a `AGENTS.md` reference to a file the destination does not have, and `bin/check-catalogs` fails closed on it.
+    - Delete the Starter-only `starter-releases.md` and `anonymize-log-references.md` bullets from the **Policies catalog**. Left in place, it is a `AGENTS.md` reference to a file the destination does not have, and `bin/check-catalogs` fails closed on it.
     - If adapting an older root that still names `check-anonymization.sh` in its layout, remove that starter-only clause; the compact root uses the `bin/README.md` catalog pointer. Preserve all universal entries.
     - Nothing else in the zone changes. If a future starter-only surface is added to the template, it gets an entry in Step 2's denylist *and* a line here.
   - **Inside the `<!-- PROJECT_CONTEXT_START --> ... <!-- PROJECT_CONTEXT_END -->` markers**: rewrite from scratch for the new project. Sections to author:
@@ -579,3 +580,8 @@ Transfer the documentation bundle: `policies/software-documentation.md`, `briefs
 Create a product-specific `manual/` with `book.toml`, `src/SUMMARY.md` and a welcome/getting-started chapter from the approved brief, with a brief Starter acknowledgment/link. Seed recipient-adapted `documentation.toml`: exact tool pins, free loopback port, `master` release branch, blank publication repository/URL until chosen. Set `create-missing=false`, disable Rust Playground, declare manual/config in the candidate inventory and admit recipient-local documentation proofs/witnesses. Run `bin/docs setup` and `bin/docs check`. Do not copy Starter's manual/publication identity or enable CD. Keep the prepared workflow outside `.github/workflows/` until its exact new permissions and Pages/environment changes are separately approved.
 
 The candidate boundary transfers atomically: `candidate-partition.yaml`, `bin/check-candidate-partition`, `lib/agentic_starter/candidate_boundaries.py`, candidate/evidence managers, the staged hook, gate inventory, and their behavioral fixtures. Generate the recipient's explicit active inventory and retain only its approved bookkeeping exclusions; never copy the donor's path judgments. The declaration remains active, unclassified tracked files refuse, unclassified nonignored untracked files remain included, and complete-tree delivery receipts remain mandatory. Verify the staged checker by actually tripping it in an isolated fixture. The tiny supported YAML subset and pattern syntax are defined in `policies/orchestration-evidence.md`.
+
+
+## Source provenance
+
+Record the exact source revision and verified declared release/tag, when available, in the bootstrap plan and actual completion record. A proposed source release is not completed recipient adoption. Keep unknown or unversioned source provenance explicit; do not assign the donor's release number to the receiver's product. Do not copy Starter-only release notes/policy, donor tags, signatures or adoption records as recipient evidence.

@@ -45,6 +45,12 @@ The root [candidate-partition.yaml](candidate-partition.yaml) distinguishes impl
 
 The log records what happened. When an assumption is corrected, work fails, or a result is surprising, Rule One diagnoses the cause before turning it into a reusable lesson. Later maintenance passes can fold recurring lessons into the methodology, revise stale guidance, or remove rules that no longer earn their keep.
 
+## Releases and adoption
+
+Starter's first named baseline is **1.0.0**, with signed annotated tag `v1.0.0` identifying its qualified source commit. [Release notes](RELEASES.md) describe the snapshot; the [release policy](policies/starter-releases.md) defines minor bumps for new features, patch bumps for small fixes/refinements and rare major bumps for rewrites or breaking changes.
+
+Historically Starter-derived repositories without a named adopted baseline are `pre-1.0.0`. Repositories that never adopted the methodology are `outside` and can enter through `teach` from Starter or the equivalent `learn` from the recipient. An actual approved, applied and qualified transfer establishes adoption; a source release or assessment alone does not upgrade a receiver.
+
 ## Getting started
 
 You need Git, [`uv`](https://docs.astral.sh/uv/), and either Claude Code or Codex CLI.

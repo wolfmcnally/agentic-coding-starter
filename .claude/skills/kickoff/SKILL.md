@@ -52,6 +52,7 @@ Full initial lane: preflight → dispatch + planning → dispatch + implementati
 
 ## Essential controls
 
+- Prefer available supported cross-harness launch and communication capabilities under [role-model policy](../../../policies/role-models.md#optional-cross-harness-coordination). Missing optional capabilities retain the direct native/watched-CLI path; no new dependency, grant or delegation authority follows. Read dispatch's transport selection before launching.
 - Resolve per-role venue/model/effort from `kickoff.yaml`; live preflight precedes phase mutation. Freeze runtime selection with the run. No silent substitution or permission changes. Retain configured timeouts, self-resume limits and recursion guard. [Role authority](../../../policies/role-models.md) governs admissible recovery.
 - Keep coherent outcomes intact. Decompose only at an authorized consequential decision, independently accepted prerequisite, deployment/migration/human seam or demonstrated coherence limit. Surface count and missing child files are not boundaries. Planning settles consequential interfaces; ordinary implementation choices and approved deletions belong to the coder.
 - Mark major work `🚧` before whole-file authority capture. Approved governing-prose preparation ends in a truthful park; a fresh run captures final authority before real remaining qualification work. Later authority changes require a new park/rebind. Never edit hashes or normalize unrelated ledgers.

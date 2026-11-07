@@ -113,6 +113,7 @@ Every applicable policy binds.
 - [Simplicity](policies/simplicity-and-consolidation.md)
 - [Greenfield](policies/greenfield-until-released.md)
 - [Anonymization](policies/anonymize-log-references.md)
+- [Starter releases and provenance — starter-only](policies/starter-releases.md)
 
 ## Universal repo layout
 
