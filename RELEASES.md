@@ -1,5 +1,9 @@
 # Starter Releases
 
+## 1.0.2 — 2026-11-10
+
+On macOS the command wrappers now mark the ignored runtime-state directory `.kickoff/` as excluded from Dropbox syncing. The shared toolchain helper creates the directory and writes both Dropbox ignore attributes on every `./bin/setup`, `./bin/test` and `./bin/check` run, whether or not the checkout is currently inside a Dropbox folder, and stops if the marking fails. The rule travels with the helper through `stamp` and `teach`, so a project that receives it is marked on its next wrapper run. Dropbox removes an already-synced `.kickoff/` from its server and other devices once it is marked and keeps the local copy. Other platforms and other sync services are unchanged. Released as a patch at the operator's direction; no recipient upgrade is inferred.
+
 ## 1.0.1 — 2026-11-10
 
 Corrected the mini-method's copyable setup and delivery instructions to match the full methodology: agents commit and non-force fast-forward-push approved work without separate human approval after applicable checks, explicit staging and custody verification. Delivery uses only an existing authorized upstream and publication scope, verifies the actual remote result, and preserves task-specific holds, hooks, native permission denials and human subjective acceptance. Setup still never creates or changes a remote. This is a patch refinement, with no new capability or inferred recipient upgrade.
