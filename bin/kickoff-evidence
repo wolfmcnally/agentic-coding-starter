@@ -1309,6 +1309,91 @@ def role_dispatch_ledger(
     )
 
 
+UNLAUNCHED_FIELDS = {
+    "schema_version",
+    "recorded_at",
+    "operation",
+    "attempt",
+    "registration_sha256",
+    "refusal_artifact",
+    "refusal_sha256",
+}
+
+
+def _registration_digest(record: dict[str, Any]) -> str:
+    return hashlib.sha256(json.dumps(record, sort_keys=True).encode()).hexdigest()
+
+
+def load_unlaunched_attempts(run_dir: Path) -> dict[tuple[str, int], dict[str, Any]]:
+    """Registered attempts recorded as never launched: a third truthful state.
+
+    A row is admitted only against its exact registration and a refusal record retained
+    inside the run. It asserts nothing by itself; `require_unlaunched` proves the absence
+    of every launch trace each time the row is relied on.
+    """
+    rows: dict[tuple[str, int], dict[str, Any]] = {}
+    if not (run_dir / "role-unlaunched.jsonl").exists():
+        return rows
+    registrations = {
+        (item.get("operation"), item.get("attempt")): item
+        for item in load_jsonl(run_dir / "role-attempts.jsonl")
+    }
+    for row in load_jsonl(run_dir / "role-unlaunched.jsonl"):
+        if set(row) != UNLAUNCHED_FIELDS or row.get("schema_version") != SCHEMA_VERSION:
+            raise EvidenceError("invalid unlaunched-attempt record")
+        key = (row["operation"], row["attempt"])
+        registration = registrations.get(key)
+        if key in rows or registration is None:
+            raise EvidenceError("unlaunched-attempt record is duplicated or names no registration")
+        if _registration_digest(registration) != row["registration_sha256"]:
+            raise EvidenceError("unlaunched attempt's registration changed after it was recorded")
+        artifact = (run_dir / str(row["refusal_artifact"])).resolve()
+        if (
+            run_dir.resolve() not in artifact.parents
+            or not artifact.is_file()
+            or hashlib.sha256(artifact.read_bytes()).hexdigest() != row["refusal_sha256"]
+        ):
+            raise EvidenceError(
+                "unlaunched attempt's retained refusal record is missing or altered"
+            )
+        rows[key] = row
+    return rows
+
+
+def require_unlaunched(run_dir: Path, run: dict[str, Any], key: tuple[str, int]) -> None:
+    """Refuse the unlaunched state for an attempt that left any trace of a launch."""
+    _, opened, omissions = role_dispatch_ledger(
+        run_dir, allow_opened=True, allow_orphan_omissions=True
+    )
+    closed = {
+        (item["operation"], item["attempt"]) for item in load_role_dispatches_lenient(run_dir)
+    }
+    if key in closed or key in opened or key in omissions:
+        raise EvidenceError("unlaunched attempt has a dispatch record")
+    root = Path(run["repository_root"])
+    try:
+        spans = closed_spans(engine_root=root, trace_id=run["telemetry_trace_id"])
+    except TelemetryError as exc:
+        raise EvidenceError(f"invalid runtime trace: {exc}") from exc
+    if any(item.get("operation") == key[0] and item.get("attempt") == key[1] for item in spans):
+        raise EvidenceError("unlaunched attempt has a recorded execution span")
+    if run["workflow"]["mode"] == "primary":
+        budget = advisory.budget_path(root, run["phase"])
+        text = budget.read_text() if budget.exists() else ""
+        for line in text.splitlines():
+            claim = json.loads(line)
+            if (
+                claim.get("run") == str(run_dir.resolve())
+                and claim.get("operation") == key[0]
+                and claim.get("attempt") == key[1]
+            ):
+                raise EvidenceError("unlaunched attempt has an advisory launch claim")
+
+
+def load_role_dispatches_lenient(run_dir: Path) -> list[dict[str, Any]]:
+    return role_dispatch_ledger(run_dir, allow_opened=True, allow_orphan_omissions=True)[0]
+
+
 def load_role_dispatches(run_dir: Path) -> list[dict[str, Any]]:
     return role_dispatch_ledger(run_dir)[0]
 
@@ -1395,6 +1480,33 @@ def command_register_role_attempt(arguments: argparse.Namespace) -> None:
         for item in existing
     ):
         raise EvidenceError("duplicate role operation/attempt registration")
+    # A refusal before launch consumes nothing, so the attempt it refused is still the one
+    # to launch. Registering the next number instead leaves a registration nothing can
+    # account for, and acceptance refuses the run much later.
+    _, opened_dispatches, omitted_opens = role_dispatch_ledger(
+        arguments.run_dir, allow_opened=True, allow_orphan_omissions=True
+    )
+    accounted = (
+        {
+            (item["operation"], item["attempt"])
+            for item in load_role_dispatches_lenient(arguments.run_dir)
+        }
+        | set(opened_dispatches)
+        | set(omitted_opens)
+        | set(load_unlaunched_attempts(arguments.run_dir))
+    )
+    for item in existing:
+        if (
+            item.get("operation") == record["operation"]
+            and item.get("attempt") < record["attempt"]
+            and (item["operation"], item["attempt"]) not in accounted
+        ):
+            raise EvidenceError(
+                f"{item['operation']} attempt {item['attempt']} is registered and was never "
+                "dispatched. A refusal before launch consumes nothing: correct the command and "
+                "relaunch that registration. If it can never be launched, record it with "
+                "record-unlaunched-attempt before registering another attempt."
+            )
     by_operation: dict[str, list[int]] = {}
     for item in [*existing, record]:
         validate_role_record(item, run)
@@ -1415,6 +1527,51 @@ def command_register_role_attempt(arguments: argparse.Namespace) -> None:
         print(f"native span recipe: {recipe_path}")
         return
     print("registered")
+
+
+def command_record_unlaunched_attempt(arguments: argparse.Namespace) -> None:
+    """Record that a registered attempt was refused before anything was launched.
+
+    This is a statement of fact with its proof, not a waiver: it is accepted only when no
+    dispatch row, execution span or advisory claim exists for the attempt, and it binds
+    the exact registration and a refusal record retained inside the run. Attempts that
+    did launch keep every existing join.
+    """
+    run = validate_run_dir(arguments.run_dir)
+    run_dir = arguments.run_dir.resolve()
+    registration = load_json(arguments.registration)
+    key = (registration.get("operation"), registration.get("attempt"))
+    ledger = {
+        (item.get("operation"), item.get("attempt")): item
+        for item in load_jsonl(run_dir / "role-attempts.jsonl")
+    }
+    if ledger.get(key) != registration:
+        raise EvidenceError("registration does not match the run's recorded attempt")
+    if key in load_unlaunched_attempts(run_dir):
+        raise EvidenceError("attempt is already recorded as unlaunched")
+    artifact = arguments.refusal_artifact.resolve()
+    if (
+        run_dir not in artifact.parents
+        or not artifact.is_file()
+        or not artifact.read_bytes().strip()
+    ):
+        raise EvidenceError(
+            "the refusal record must be a nonempty file retained inside the run directory"
+        )
+    require_unlaunched(run_dir, run, key)
+    append_jsonl(
+        run_dir / "role-unlaunched.jsonl",
+        {
+            "schema_version": SCHEMA_VERSION,
+            "recorded_at": now(),
+            "operation": key[0],
+            "attempt": key[1],
+            "registration_sha256": _registration_digest(registration),
+            "refusal_artifact": artifact.relative_to(run_dir).as_posix(),
+            "refusal_sha256": hashlib.sha256(artifact.read_bytes()).hexdigest(),
+        },
+    )
+    print("UNLAUNCHED ATTEMPT RECORDED; registration, budget and other attempts unchanged")
 
 
 def native_span_recipe(record: dict[str, Any]) -> dict[str, Any]:
@@ -3574,7 +3731,14 @@ def validate_role_spans(
         if key in dispatch_by_key:
             raise EvidenceError("duplicate role-dispatch record")
         dispatch_by_key[key] = dispatch
-    if set(dispatch_by_key) != keys:
+    unlaunched = set(load_unlaunched_attempts(run_dir))
+    for key in sorted(unlaunched):
+        require_unlaunched(run_dir, run, key)
+    if require_initial:
+        for operation in {key[0] for key in unlaunched}:
+            if not any(key[0] == operation for key in keys - unlaunched):
+                raise EvidenceError(f"role has only unlaunched attempts: {operation}")
+    if set(dispatch_by_key) != keys - unlaunched:
         raise EvidenceError("role registrations and dispatch results do not agree")
     try:
         spans = closed_spans(
@@ -3594,6 +3758,10 @@ def validate_role_spans(
         ]
         intelligence = [item for item in matching if item["category"] == "intelligence"]
         waits = [item for item in matching if item["category"] == "wait"]
+        if (record["operation"], record["attempt"]) in unlaunched:
+            # require_unlaunched already proved no span, dispatch or claim exists.
+            observed.add((record["operation"], record["attempt"]))
+            continue
         dispatch = dispatch_by_key[(record["operation"], record["attempt"])]
         if len(intelligence) != 1:
             raise EvidenceError(
@@ -5843,6 +6011,12 @@ def build_parser() -> argparse.ArgumentParser:
     register.add_argument("--output", type=Path, required=True)
     register.add_argument("--cause", default="")
     register.set_defaults(handler=command_register_role_attempt)
+
+    unlaunched = subparsers.add_parser("record-unlaunched-attempt")
+    add_run_dir(unlaunched)
+    unlaunched.add_argument("--registration", type=Path, required=True)
+    unlaunched.add_argument("--refusal-artifact", type=Path, required=True)
+    unlaunched.set_defaults(handler=command_record_unlaunched_attempt)
 
     role_validate = subparsers.add_parser("validate-role-attempt")
     add_run_dir(role_validate)

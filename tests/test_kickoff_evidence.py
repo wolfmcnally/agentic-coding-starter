@@ -3313,7 +3313,9 @@ def test_registrar_refuses_gap_before_any_dispatch(repository, tmp_path):
     accepted = run(*common, "--attempt", "1")
     assert accepted.returncode == 0, accepted.stderr
     sequential = run(*common, "--attempt", "2")
-    assert sequential.returncode == 0, sequential.stderr
+    assert sequential.returncode != 0 and "relaunch that registration" in sequential.stderr, (
+        "a later attempt was registered over one that never launched"
+    )
 
 
 @pytest.mark.parametrize("advisory_continuation", ["historical-two-roles"], indirect=True)
@@ -3368,3 +3370,121 @@ def test_historical_distinct_role_predecessors(advisory_continuation, tmp_path):
     assert accepted.returncode == 0, accepted.stderr
     assert budget.read_bytes() == saved
     assert all(p.read_bytes() == data for p, data in originals.items())
+
+
+def test_a_refused_launch_is_relaunched_or_recorded_never_left_unaccounted(
+    repository: Path, tmp_path: Path
+) -> None:
+    """Admission: a launcher refusal orphaned a registration and two projects could not accept.
+
+    The real launcher refuses a venue option before anything starts. The registrar then
+    refuses the next attempt number and names the relaunch; an attempt that can never be
+    launched is recorded only while no dispatch, span or claim exists for it; and a run
+    holding that record and a real later review validates.
+    """
+    executable = tmp_path / "claude"
+    event = json.dumps({"type": "result", "result": json.dumps({"summary": "ok", "findings": []})})
+    executable.write_text(
+        "#!/bin/sh\n[ \"$1\" = --version ] && echo 'stub 1.0' && exit 0\n"
+        f"printf '%s\\n' '{event}'\n"
+    )
+    executable.chmod(0o755)
+    directory = tmp_path / "run"
+    initialize(repository, directory, mode="primary")
+    write_fixture_receipt(directory / "role-preflight.json", mode="primary", executable=executable)
+    plan = tmp_path / "plan.md"
+    plan.write_text("# Plan\n\nCheck constant VALUE = 1.\n")
+    assert run("capture-plan", "--run-dir", str(directory), "--plan", str(plan)).returncode == 0
+
+    def register(attempt: int) -> subprocess.CompletedProcess[str]:
+        return run(
+            "register-role-attempt", "--run-dir", str(directory),
+            "--operation", "role.plan-review", "--attempt", str(attempt),
+            "--role", "reviewer", "--harness", "claude", "--model", "opus",
+            "--reason", "initial" if attempt == 1 else "reexecution",
+            "--cause", "Launcher refused the first command before launch",
+            "--output", str(directory / f"plan-registration-{attempt}.json"),
+        )  # fmt: skip
+
+    def watch(attempt: int, *venue: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [
+                str(directory / "tools/kickoff-config"), "watch", "--role", "reviewer",
+                "--venue", "claude", "--model", "opus", "--effort", "default", "--phase", "1.1",
+                "--prompt-file", str(plan), *venue,
+                "--first-event-timeout", "2", "--idle-timeout", "2", "--hard-timeout", "4",
+                "--telemetry-role-registration",
+                str(directory / f"plan-registration-{attempt}.json"),
+            ],
+            cwd=repository,
+            env={
+                **os.environ,
+                "KICKOFF_CLI_CLAUDE": str(executable),
+                "KICKOFF_CONFIG_FILE": str(directory / "fixture-config.yaml"),
+            },
+            capture_output=True, text=True, check=False, timeout=15,
+        )  # fmt: skip
+
+    def record(artifact: Path) -> subprocess.CompletedProcess[str]:
+        return run(
+            "record-unlaunched-attempt", "--run-dir", str(directory),
+            "--registration", str(directory / "plan-registration-1.json"),
+            "--refusal-artifact", str(artifact),
+        )  # fmt: skip
+
+    assert register(1).returncode == 0
+    result = tmp_path / "report.json"
+    refused = watch(1, "--result-file", str(result), "--required-output-file", str(result))
+    refusal = directory / "plan-review-refusal-1.log"
+    refusal.write_text(refused.stderr)
+    dispatch_ledger = directory / "role-dispatch.jsonl"
+    untouched = not dispatch_ledger.exists() or not dispatch_ledger.read_text().strip()
+    next_number = register(2)
+    outside = tmp_path / "refusal-copy.log"
+    outside.write_text(refused.stderr)
+    unretained = record(outside)
+    recorded = record(refusal)
+    repeated = record(refusal)
+    second = register(2)
+    reviewed = watch(2, "--result-file", str(result))
+    validated = run("advice-source", "--run-dir", str(directory))
+    budget = advisory.budget_path(repository, "1.1").read_text()
+    assert (
+        refused.returncode != 0
+        and "extracts its artifact" in refused.stderr
+        and untouched
+        and next_number.returncode == 2
+        and "relaunch that registration" in next_number.stderr
+        and unretained.returncode == 2
+        and recorded.returncode == 0
+        and repeated.returncode == 2
+        and second.returncode == 0
+        and reviewed.returncode == 0
+        and validated.returncode == 0
+        and budget.count('"operation": "role.plan-review"') == 1
+    ), "REFUSED LAUNCH LEFT UNACCOUNTED, MISRECORDED OR CHARGED: " + "".join(
+        item.stderr
+        for item in (
+            refused,
+            next_number,
+            unretained,
+            recorded,
+            repeated,
+            second,
+            reviewed,
+            validated,
+        )
+    )
+    # Forge the same record for the attempt that really ran, with its true registration.
+    ledger = directory / "role-unlaunched.jsonl"
+    row = json.loads(ledger.read_text())
+    launched = json.loads((directory / "plan-registration-2.json").read_text())
+    row["attempt"] = 2
+    row["registration_sha256"] = hashlib.sha256(
+        json.dumps(launched, sort_keys=True).encode()
+    ).hexdigest()
+    ledger.write_text(ledger.read_text() + json.dumps(row) + "\n")
+    forged = run("advice-source", "--run-dir", str(directory))
+    assert forged.returncode == 2, (
+        "A LAUNCHED ATTEMPT WAS ACCEPTED AS NEVER LAUNCHED: " + forged.stderr
+    )

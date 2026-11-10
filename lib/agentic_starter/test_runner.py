@@ -177,6 +177,39 @@ def pytest_arguments(arguments: Sequence[str]) -> list[str]:
     ]
 
 
+SCRIPT_SHEBANG = b"#!/usr/bin/env -S uv run --script"
+
+
+def prepare_script_environments(root: Path, arguments: Sequence[str]) -> list[str]:
+    """Build each script tool's cached environment once, before parallel workers start.
+
+    A tool that declares its own dependencies gets an environment the first time it runs.
+    Parallel workers that all start such a tool at once build that environment together,
+    and each can remove what another is using. Building it here, serially, leaves the
+    workers nothing to build. Returns the tools prepared; a tool that cannot be prepared
+    is named and left for its own test to report.
+    """
+    if "-n" in arguments and arguments[arguments.index("-n") + 1] == "0":
+        return []
+    prepared = []
+    for tool in sorted((root / "bin").glob("*")):
+        try:
+            if not tool.is_file() or not tool.read_bytes().startswith(SCRIPT_SHEBANG):
+                continue
+        except OSError:
+            continue
+        built = subprocess.run(
+            ["uv", "sync", "--script", str(tool), "--quiet"], capture_output=True, text=True
+        )
+        if built.returncode == 0:
+            prepared.append(tool.name)
+        else:
+            print(
+                f"TEST NOTE: could not prepare {tool.name}: {built.stderr.strip()}", file=sys.stderr
+            )
+    return prepared
+
+
 def main() -> int:
     import yaml
 
@@ -184,9 +217,9 @@ def main() -> int:
     try:
         manifest = yaml.safe_load((root / "tests/proof-estate.yaml").read_text())
         timeout = manifest["hang_timeout_seconds"]
-        result = run_command(
-            [sys.executable, *pytest_arguments(sys.argv[1:])], cwd=root, timeout=timeout
-        )
+        arguments = pytest_arguments(sys.argv[1:])
+        prepare_script_environments(root, arguments)
+        result = run_command([sys.executable, *arguments], cwd=root, timeout=timeout)
     except (OSError, ValueError, TypeError, KeyError, yaml.YAMLError) as exc:
         print(f"TEST INCOMPLETE: supervisor could not run: {exc}", file=sys.stderr)
         return INCOMPLETE

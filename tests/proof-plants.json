@@ -125,6 +125,15 @@
       "with": "    raise SystemExit(0)"
     }
   },
+  "pytest:tests/test_kickoff_evidence.py::test_a_refused_launch_is_relaunched_or_recorded_never_left_unaccounted": {
+    "defect": "Validation ignores recorded never-launched attempts",
+    "expect": "REFUSED LAUNCH LEFT UNACCOUNTED",
+    "plant": {
+      "path": "bin/kickoff-evidence",
+      "replace": "    if set(dispatch_by_key) != keys - unlaunched:\n",
+      "with": "    if set(dispatch_by_key) != keys:\n"
+    }
+  },
   "pytest:tests/test_kickoff_evidence.py::test_historical_advice_attestation_preserves_originals[historical-gap]": {
     "defect": "Evidence refusals exit successfully",
     "expect": "failed",
@@ -243,12 +252,12 @@
     }
   },
   "pytest:tests/test_kickoff_evidence.py::test_registrar_refuses_gap_before_any_dispatch": {
-    "defect": "Evidence refusals exit successfully",
-    "expect": "failed",
+    "defect": "The registrar accepts a later attempt over one that never launched",
+    "expect": "a later attempt was registered over one that never launched",
     "plant": {
       "path": "bin/kickoff-evidence",
-      "replace": "        return 2\n    return 0 if result is None else result",
-      "with": "        return 0\n    return 0 if result is None else result"
+      "replace": "            and (item[\"operation\"], item[\"attempt\"]) not in accounted\n",
+      "with": "            and False\n"
     }
   },
   "pytest:tests/test_log_control_plane.py::test_shared_normalization_survives_record_migration": {
@@ -402,6 +411,15 @@
       "path": "lib/agentic_starter/test_governance.py",
       "replace": "        return _families_for_changes(root, families, changed, [])\n",
       "with": "        return [], None\n"
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_script_tool_environments_are_built_before_parallel_workers_start": {
+    "defect": "The supervised runner starts parallel workers without preparing script tool environments",
+    "expect": "SCRIPT ENVIRONMENTS NOT PREPARED BEFORE WORKERS",
+    "plant": {
+      "path": "lib/agentic_starter/test_runner.py",
+      "replace": "        prepare_script_environments(root, arguments)\n",
+      "with": ""
     }
   },
   "pytest:tests/test_toolchain_entrypoints.py::test_reuse_lane_runs_native_runner_families_and_nothing_when_nothing_changed": {

@@ -1623,3 +1623,43 @@ def test_nested():
                 target.with_suffix(".calls").read_text() == "attempt\n"
                 and len((root / "worker-starts").read_text().splitlines()) - starts_before == 2
             ), "WORKER CRASH RETRIED"
+
+
+def test_script_tool_environments_are_built_before_parallel_workers_start(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Admission: parallel workers raced the first build of a script tool's environment.
+
+    A parallel run prepares exactly the tools that declare their own environment, one at a
+    time and before pytest starts; a single-worker run prepares none.
+    """
+    import agentic_starter.test_runner as runner
+
+    root = tmp_path / "repo"
+    (root / "bin").mkdir(parents=True)
+    (root / "bin/declares").write_text("#!/usr/bin/env -S uv run --script\n# /// script\n# ///\n")
+    (root / "bin/plain").write_text("#!/usr/bin/env bash\n")
+    log = tmp_path / "uv.log"
+    stub = tmp_path / "stubs"
+    stub.mkdir()
+    (stub / "uv").write_text(f'#!/bin/sh\necho "$@" >> {log}\n')
+    (stub / "uv").chmod(0o755)
+    monkeypatch.setenv("PATH", f"{stub}:{os.environ['PATH']}")
+
+    parallel = runner.prepare_script_environments(root, ["-m", "pytest", "-n", "auto", "tests"])
+    serial = runner.prepare_script_environments(root, ["-m", "pytest", "-n", "0", "tests"])
+    order = []
+    monkeypatch.setattr(runner, "prepare_script_environments", lambda *a: order.append("prepare"))
+    monkeypatch.setattr(
+        runner,
+        "run_command",
+        lambda *a, **k: order.append("pytest") or subprocess.CompletedProcess([], 0, "", ""),
+    )
+    monkeypatch.setattr(sys, "argv", ["test_runner.py", "-m", "pytest", "tests"])
+    runner.main()
+    assert (
+        parallel == ["declares"]
+        and serial == []
+        and log.read_text().splitlines() == [f"sync --script {root / 'bin/declares'} --quiet"]
+        and order == ["prepare", "pytest"]
+    ), f"SCRIPT ENVIRONMENTS NOT PREPARED BEFORE WORKERS: {parallel} {serial} {order}"

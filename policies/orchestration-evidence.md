@@ -240,6 +240,10 @@ Export, carry and acceptance revalidate the attested originals, and later contin
 
 An attested continuation starts its own role numbering at 1 if any additional review is separately authorized; the receipt preserves historical provenance and does not assign local attempt numbers or authorize another pass.
 
+## Registered but never launched
+
+A registered role attempt has one of three truthful ends: it was dispatched and accepted, it was dispatched and rejected inside a closed error span, or it was never launched. The third is recorded with `record-unlaunched-attempt` and is a statement of fact with its proof, not a waiver: it binds the exact registration and a refusal record retained in the run, and it is refused, when written and every time the run is validated, if any dispatch row, execution span or advisory launch claim exists for that attempt. A role whose every attempt is unlaunched does not satisfy a required review. Attempt numbers, candidate bindings, reports and the phase budget are unchanged. The registrar prevents the state from arising unrecorded: it refuses a later attempt of an operation while an earlier one was never dispatched, because a refusal before launch consumes nothing and the same registration is the one to relaunch.
+
 ## Retained artifact validation and interrupted adoption
 
 New gate artifacts, complete gate diagnostics, revision packets and ingested review inputs are copied into `retained-artifacts/<sha256>` before their ledger references are published. Every current validation reads and hashes the referenced bytes; absent, altered or unsafe referenced artifacts refuse. A gate that produced no requested artifact remains truthful incomplete history and cannot supply a successful final seal; a later qualifying rerun can recover without rewriting that row. The content address is the byte reference, not a claim that a digest alone constitutes evidence. Original external scratch may disappear after verified capture. Detailed witness command output is retained privately under `.kickoff/witness/captures/`; mutation patches remain disposable as required by test governance.
