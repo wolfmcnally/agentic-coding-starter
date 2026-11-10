@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -134,6 +135,27 @@ def test_test_defaults_to_every_repository_test_from_any_cwd(
             "-o junit_family=xunit1 project/tests tests"
         ),
     ]
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="Dropbox ignore attributes are macOS-only")
+def test_wrapper_run_excludes_runtime_state_from_dropbox_sync(
+    toolchain_repo: tuple[Path, dict[str, str]],
+) -> None:
+    root, environment = toolchain_repo
+
+    result = _run(root, environment, "setup")
+
+    assert result.returncode == 0, result.stderr
+    for attribute in ("com.dropbox.ignored", "com.apple.fileprovider.ignore#P"):
+        stored = subprocess.run(
+            ["/usr/bin/xattr", "-p", attribute, str(root / ".kickoff")],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert stored.stdout.strip() == "1", (
+            f"RUNTIME STATE NOT SYNC-EXCLUDED {attribute}: {stored.stderr}"
+        )
 
 
 def _assert_selected_repository(

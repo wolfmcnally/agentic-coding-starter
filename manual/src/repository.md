@@ -18,7 +18,7 @@
 | `tests/` | Independent proofs and recipient-local proof governance. |
 | `log/entries/` | Append-only activity history. |
 | `user-actions/`, `lessons/` | Open human-only actions and provisional learning, with separate archive directories. |
-| `.kickoff/` | Ignored runtime state, full-gate receipts, documentation tools and build output. |
+| `.kickoff/` | Ignored runtime state, full-gate receipts, documentation tools and build output. On macOS the command wrappers also mark it excluded from Dropbox syncing. |
 
 Briefs explain decisions; policies prescribe behavior; plans refine the work. Pinned sources supply external authority. The manual is a reader-facing guide to the current system and does not replace those authorities.
 

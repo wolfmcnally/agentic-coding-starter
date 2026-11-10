@@ -76,13 +76,9 @@ failed dependency probe stops the command; no managed or ambient fallback is
 tried. Select a base interpreter outside `project/.venv`; an interpreter inside
 the environment uv manages is rejected before synchronization can replace it.
 
-### `_python-toolchain` — shared runtime resolver and probe
+### `_python-toolchain` — shared runtime resolver, probe and sync exclusion
 
-Source-only helper used by `setup`, `test`, `check`, and `python`. It validates
-the Python bundle, resolves the managed default or authoritative override, and
-runs the real project-and-tool dependency probe with the same selection
-arguments used by the eventual command. It is part of the atomic toolchain
-contract and is not invoked directly.
+Source-only helper used by `setup`, `test`, `check`, and `python`. It validates the Python bundle, resolves the managed default or authoritative override, and runs the real project-and-tool dependency probe with the same selection arguments used by the eventual command. On macOS its initialiser also creates `.kickoff/` and marks it excluded from Dropbox syncing on every run, whether or not the checkout is inside a Dropbox folder; a failed marking stops the entry point ([build gates](../policies/build-gates.md#runtime-state-stays-out-of-file-syncing)). It is part of the atomic toolchain contract and is not invoked directly.
 
 ### `check` — authoritative repository build gate
 

@@ -1,8 +1,33 @@
 #!/usr/bin/env bash
-# Shared Python runtime selection and dependency-chain probe.
+# Shared Python runtime selection, dependency-chain probe, and sync exclusion
+# of the runtime-state directory.
 #
 # Source this file after defining repo_root and project_root, then call
 # python_toolchain_init with the entry point's diagnostic prefix.
+
+# Dropbox uploads everything beneath a synced folder unless the item itself
+# carries an ignore attribute; .gitignore has no effect on it. Every wrapper
+# run marks the runtime-state directory, so it stays excluded wherever the
+# checkout lives now or is moved later. The classic Dropbox folder reads the
+# first attribute and Dropbox on File Provider reads the second.
+python_toolchain_exclude_runtime_state_from_sync() {
+  [[ "$OSTYPE" == darwin* ]] || return 0
+
+  local attribute
+  local runtime_state="$repo_root/.kickoff"
+  if ! mkdir -p "$runtime_state"; then
+    echo "$python_toolchain_prefix ERROR could not create runtime-state directory: .kickoff" >&2
+    return 1
+  fi
+  for attribute in com.dropbox.ignored 'com.apple.fileprovider.ignore#P'; do
+    if ! /usr/bin/xattr -w "$attribute" 1 "$runtime_state"; then
+      echo \
+        "$python_toolchain_prefix ERROR could not exclude .kickoff from file syncing: $attribute" \
+        >&2
+      return 1
+    fi
+  done
+}
 
 python_toolchain_init() {
   python_toolchain_prefix="$1"
@@ -28,6 +53,8 @@ python_toolchain_init() {
       return 1
     fi
   done
+
+  python_toolchain_exclude_runtime_state_from_sync || return $?
 
   python_toolchain_uv_args=(--managed-python)
   python_toolchain_runtime_description="managed runtime from project/.python-version"

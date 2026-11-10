@@ -19,7 +19,7 @@ The contract is one unit:
 - `bin/setup`, `bin/test`, `bin/check`, the full-gate receipt manager, and the proof-estate governance manager when governed fast lanes are present;
 - the command-zero preflight, immutable command-manifest manager, and composed log-policy gate when candidate-bound orchestration is present;
 - any runtime entry point such as `bin/python`;
-- any shared runtime resolver or dependency-chain probe used by those entry points;
+- any shared runtime resolver or dependency-chain probe used by those entry points, including its [sync exclusion of runtime state](#runtime-state-stays-out-of-file-syncing);
 - the runtime-version file, package manifest, and lockfile;
 - behavioral tests for the entry points;
 - this policy and every dependency-bearing operational caller, generated command, tracked hook, workflow, agent, and active instruction that calls repository code.
@@ -27,6 +27,14 @@ The contract is one unit:
 A partial transfer is stale and blocking. Copying `bin/check` without its version pin, teaching a raw test command without `bin/test`, or changing a lockfile without checking the wrappers is not an adoption of the contract. `learn`, `teach`, and `stamp` assess and migrate the entire bundle atomically while preserving the target repository's language, version policy, package manager, and dependencies.
 
 Adaptation may change syntax and fixtures to fit the target, but it may not weaken coverage. Behavioral execution is the minimum test floor: source-text assertions may supplement it, but do not replace tests that invoke the entrypoints with controlled toolchain stubs and prove routing, ordering, working-directory independence, single-hop and chained-symlink independence, child-status propagation, and fail-closed selection.
+
+## Runtime state stays out of file syncing
+
+Operator-ratified 2026-11-09. `.kickoff/` holds private evidence and bulky generated output, and `.gitignore` does not stop a file-syncing service from uploading it. On macOS the shared runtime resolver creates `.kickoff/` and writes both Dropbox ignore attributes to it, `com.dropbox.ignored` for the classic Dropbox folder and `com.apple.fileprovider.ignore#P` for Dropbox on File Provider, on every run of an entry point that initialises through it.
+
+The marking is unconditional. It does not ask whether the checkout is inside a Dropbox folder today, so a checkout later moved or restored into one is already excluded, and a repository that receives the resolver is marked on its next `./bin/setup`, `./bin/test` or `./bin/check` without a separate step. A failed write stops the entry point; it is never skipped silently. A target whose entry points initialise through a different resolver carries the same step there. Other platforms are unqualified, and the step does nothing on them.
+
+Dropbox removes an already-synced folder from its server and from other devices once the folder is marked, keeping the local copy. A checkout shared between machines through Dropbox therefore stops sharing `.kickoff/`, which is the intent: that evidence is recipient-local. Attribute names are as of Dropbox's "ignored files" help page, updated 2025-10-07 and retrieved 2026-11-09.
 
 ## Ownership boundary
 
