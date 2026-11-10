@@ -1,5 +1,15 @@
 # Starter Releases
 
+## 1.3.1 — 2026-11-10
+
+Fixes found by the first transfer of 1.3.0 to a recipient, and one rule learned from that recipient. `./bin/test-governance admit` now checks that its result can be recorded before it plants anything, and refuses with nothing witnessed when it cannot; given part of a batch it previously recorded a witness and then refused. It keeps each planted defect in `tests/proof-plants.json`, which travels with the tests, so a recipient admits an arriving proof by replaying the recorded defect and observing the failure itself instead of rediscovering what to plant. The two gate proofs that need a failing policy check now fail the test-timing check every adopter carries, not the template-only anonymization check, so they travel unchanged. A project adopting parallel test execution now qualifies its existing suite by one full parallel run, not a serial baseline, and labels subtests and parametrized cases with plain text. Nothing here adds work to a gate or test run: a defect is planted once, when a proof is admitted or changed. This is a patch release: fixes and one refinement, no new capability. No recipient is inferred upgraded.
+
+Transfers:
+
+- **Admission that refuses before witnessing, and recorded defects:** `lib/agentic_starter/test_governance.py` with `tests/test_test_governance.py` and `tests/proof-plants.json`; `policies/test-suite-governance.md`; the `teach`, `learn` and `stamp` skills.
+- **Gate proofs that fail a universal lane:** `tests/test_check.py`. A recipient that hand-adapted these two proofs may keep its adaptation.
+- **Parallel adoption qualified through the worker boundary:** `policies/test-suite-governance.md` and the transfer skills.
+
 ## 1.3.0 — 2026-11-10
 
 Less paperwork for the same guarantees. A direct methodology change the operator asked for in the current session now needs one log record, its close, which states what was authorized beside what was delivered; a separate scope record before the work remains for transfers, work spanning sessions and agent-initiated work. A new or changed test is admitted with one command, `./bin/test-governance admit`, which plants the described defect, requires the named failure, restores the tree, and records the witness receipt and the admission together; it records nothing for a test it did not see fail. A stale generated dashboard file, the most frequent record-keeping gate failure in sampled recipients, now names its repair, and `./bin/check-execution-dashboards --regenerate` rewrites the archive from tracked inputs. Every new or changed assertion is still observed failing, every close still carries Lessons, and the gate still refuses a stale file. This is a minor release. No recipient is inferred upgraded.
