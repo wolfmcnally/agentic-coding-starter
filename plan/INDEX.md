@@ -1,6 +1,6 @@
-# Proposed plan discovery — REHEARSAL ONLY
+# Plan discovery
 
-State lives in phases/ and events/; render produces disposable local views. The preserved context below still needs owner/caller cutover review.
+State lives in `phases/` and `events/`; `./bin/multioperator render --root .` produces disposable local views. Entries below written before the 2026-11-07 migration name phases by their old numbers; `collaboration/manifest.json` maps each to its permanent id.
 
 # Phased Execution Plan — Agentic Coding Starter Template
 

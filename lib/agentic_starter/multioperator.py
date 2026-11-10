@@ -700,7 +700,7 @@ def rehearse(source: Path, output: Path, mapping_path: Path) -> None:
             if not section.startswith(("## Phase Table", "## Phase Dependency Graph"))
         )
         (plan / "INDEX.md").write_text(
-            "# Proposed plan discovery — REHEARSAL ONLY\n\n"
+            REHEARSAL_BANNER + "\n\n"
             "State lives in phases/ and events/; render produces disposable local views. "
             "The preserved context below still needs owner/caller cutover review.\n\n"
             + rewrite_links(context, Path("plan/INDEX.md"), mapping)
@@ -1335,8 +1335,13 @@ def validate_staged(root: Path) -> dict[str, Any]:
                     "staged execution history rewrite refused",
                 )
             elif relative != "AGENTS.md" and not relative.startswith("plan/phases/"):
+                committed = git_read(root, "show", head + ":" + relative)
                 require(
-                    indexed[relative] == git_read(root, "show", head + ":" + relative),
+                    indexed[relative] == committed
+                    or (
+                        relative == "collaboration/manifest.json"
+                        and adoption_declared(committed, indexed[relative])
+                    ),
                     "staged immutable record rewrite refused",
                 )
     with tempfile.TemporaryDirectory(prefix="multioperator-index-") as temporary:
@@ -1731,6 +1736,127 @@ def transfer_preflight(
     }
 
 
+REHEARSAL_BANNER = "# Proposed plan discovery — REHEARSAL ONLY"
+
+
+def adoption_declared(committed: bytes, staged: bytes) -> bool:
+    """The one permitted manifest change: the owner's adoption declaration, nothing else."""
+    try:
+        before, after = json.loads(committed), json.loads(staged)
+    except ValueError:
+        return False
+    return (
+        isinstance(before, dict)
+        and before.get("adopted") is False
+        and after == {**before, "adopted": True}
+    )
+
+
+def adopt(root: Path) -> dict[str, Any]:
+    """Record the owner's adoption of a delivered conversion.
+
+    Delivery and adoption are separate facts, so a cutover may be committed undeclared.
+    This is the only route that changes the manifest afterwards. It records a declaration
+    the owner has made; it does not decide it.
+    """
+    path = safe(root, "collaboration/manifest.json")
+    raw = path.read_bytes()
+    manifest = json.loads(raw)
+    require(manifest.get("format") == FORMAT, "wrong format")
+    require(manifest.get("adopted") is False, "adoption is already declared")
+    index = root / "plan/INDEX.md"
+    require(
+        not index.is_file() or not index.read_text().startswith(REHEARSAL_BANNER),
+        "plan index still carries the rehearsal banner; finish the cutover review first",
+    )
+    validate(root)
+    require(raw.count(b'"adopted": false') == 1, "manifest adoption field is not canonical")
+    publish_over = raw.replace(b'"adopted": false', b'"adopted": true')
+    require(adoption_declared(raw, publish_over), "adoption edit would change other fields")
+    path.write_bytes(publish_over)
+    return {"adopted": True, "manifest_sha256": digest(publish_over)}
+
+
+def transfer_ancestry(donor: Path, recipient: Path, release: str = "HEAD") -> dict[str, Any]:
+    """Report, per shared file, what a transfer must merge and what it must preserve.
+
+    A recipient's files rarely descend from one donor revision. Merging against a single
+    assumed base reads content the recipient never received as content it deleted, and
+    drops it without a conflict. This names, for each file that differs, the donor
+    revision nearest the recipient's copy, the recipient lines that no donor revision
+    ever held, and the conflicts a three-way merge on that ancestor leaves. Read-only.
+    """
+    donor, recipient = donor.resolve(), recipient.resolve()
+    require(donor != recipient, "donor and recipient are the same checkout")
+
+    def blob(root: Path, revision: str, path: str) -> bytes | None:
+        result = subprocess.run(
+            ["git", "-C", str(root), "show", f"{revision}:{path}"], capture_output=True
+        )
+        return result.stdout if result.returncode == 0 else None
+
+    listing = git_read(donor, "ls-tree", "-rz", release).split(b"\0")
+    received = set(git_read(recipient, "ls-tree", "-rz", "--name-only", "HEAD").split(b"\0"))
+    files = []
+    for entry in listing:
+        if not entry:
+            continue
+        meta, raw_path = entry.split(b"\t", 1)
+        if meta.split()[0] == b"120000" or raw_path not in received:
+            continue
+        path = raw_path.decode()
+        theirs, ours = blob(donor, release, path), blob(recipient, "HEAD", path)
+        if theirs is None or ours is None or theirs == ours:
+            continue
+        revisions = git_read(donor, "log", "--format=%H", release, "--", path).decode().split()
+        ours_lines = set(ours.split(b"\n"))
+        ever: set[bytes] = set()
+        nearest: tuple[int, str, bytes] | None = None
+        for revision in revisions:
+            old = blob(donor, revision, path)
+            if old is None:
+                continue
+            lines = set(old.split(b"\n"))
+            ever.update(line.strip() for line in lines)
+            distance = len(ours_lines ^ lines)
+            if nearest is None or distance < nearest[0]:
+                nearest = (distance, revision, old)
+        if nearest is None:
+            continue
+        own = sorted(
+            {
+                line.strip().decode(errors="replace")
+                for line in ours.split(b"\n")
+                if line.strip() and line.strip() not in ever
+            }
+        )
+        with tempfile.TemporaryDirectory(prefix="multioperator-ancestry-") as directory:
+            for name, data in (("ours", ours), ("base", nearest[2]), ("theirs", theirs)):
+                (Path(directory) / name).write_bytes(data)
+            merged = subprocess.run(
+                ["git", "merge-file", "-p", "ours", "base", "theirs"],
+                cwd=directory,
+                capture_output=True,
+            )
+        files.append(
+            {
+                "path": path,
+                "state": "behind" if nearest[0] == 0 else "edited",
+                "ancestor": nearest[1],
+                "recipient_own_lines": own,
+                "conflicts": 0 if nearest[0] == 0 else max(merged.returncode, 0),
+            }
+        )
+    return {
+        "release": git_read(donor, "rev-parse", release + "^{commit}").decode().strip(),
+        "files": files,
+        "behind": sum(1 for item in files if item["state"] == "behind"),
+        "edited": sum(1 for item in files if item["state"] == "edited"),
+        "with_recipient_own_lines": sum(1 for item in files if item["recipient_own_lines"]),
+        "conflicting": sum(1 for item in files if item["conflicts"]),
+    }
+
+
 def select_phase(root: Path, owner: str, phase: str | None = None) -> dict[str, Any]:
     """Select current canonical work without acquiring or pretending to acquire custody."""
     require(bool(owner.strip()), "selection requires a named current operator")
@@ -1782,6 +1908,12 @@ def main() -> int:
     transfer.add_argument("--recipient", type=Path, required=True)
     transfer.add_argument("--entry", choices=("teach", "learn"), required=True)
     transfer.add_argument("--intent", choices=("methodology", "capability"), default="methodology")
+    ancestry = commands.add_parser("transfer-ancestry")
+    ancestry.add_argument("--donor", type=Path, required=True)
+    ancestry.add_argument("--recipient", type=Path, required=True)
+    ancestry.add_argument("--release", default="HEAD")
+    adoption = commands.add_parser("adopt")
+    adoption.add_argument("--root", type=Path, required=True)
     selection = commands.add_parser("select")
     selection.add_argument("--root", type=Path, required=True)
     selection.add_argument("--owner", required=True)
@@ -1836,6 +1968,14 @@ def main() -> int:
                     sort_keys=True,
                 )
             )
+        elif args.command == "transfer-ancestry":
+            print(
+                json.dumps(
+                    transfer_ancestry(args.donor, args.recipient, args.release), sort_keys=True
+                )
+            )
+        elif args.command == "adopt":
+            print(json.dumps(adopt(args.root), sort_keys=True))
         elif args.command == "select":
             print(json.dumps(select_phase(args.root, args.owner, args.phase), sort_keys=True))
         elif args.command == "status":

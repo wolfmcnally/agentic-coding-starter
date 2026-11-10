@@ -362,6 +362,30 @@ Once approved, apply the approved items to the target. Order:
 - **`stamp` and the starter template's `example/` are never taught.** They live only in the starter template. The corresponding `.agents/skills/stamp` mirror is also starter-only — if a target somehow acquired it (e.g., from a buggy Codex import), remove it as part of the apply. The fifteen universal skills — including `rule-one`, `learn`, `teach`, `sweep-planning`, `sweep-coding`, `demo`, `treatise`, `plain`, `ask`, `refactor`, and `mutate` — may be transferred to a target that lacks them, with the user's approval.
 
 
+## Merging files the target has edited
+
+A target's files rarely descend from one source revision: a project takes some files at one transfer, others at another, and edits a few itself. Do not three-way merge against one assumed base, such as the revision the target last recorded. Where the target's copy is older than that base, the merge reads content the target never received as content it deleted and drops it with no conflict.
+
+Run `./bin/multioperator transfer-ancestry --donor <source> --recipient <target> [--release <revision>]` during assessment. For each shared file that differs it reports the source revision nearest the target's copy, the target lines that no source revision of that file ever held, and the conflicts a merge on that ancestor leaves. Then, per file:
+
+- **Behind** (identical to an earlier source revision): take the source's version.
+- **Edited with no lines of its own**: take the source's version; the differences are older source text.
+- **Edited with lines of its own**: merge on the reported ancestor, resolve what conflicts, and audit the result twice: every reported target line is still present unless the plan retires it, and no source line was dropped except where a target line deliberately replaces it. A file that fails either audit is not finished.
+
+The report is a lead about text, not about meaning. A target line can restate an old source idea in new words, and a target feature can depend on machinery the source has since replaced; read what the lines do before preserving or retiring them, and bring a retirement to the operator.
+
+## Migrating a target on the pre-migration layout
+
+Land the target on the source's first post-migration release as a whole, then bring it current as an ordinary maintenance transfer under its own plan. Do not split by which files mention the old layout: that produces a tree no release ever was, with new callers resting on old machinery. Hold a cluster at the target's version only when it does not depend on the record layout and its data would need its own conversion, such as a proof estate on an older schema, and say so in the plan and the provenance record.
+
+Size the cutover from a built candidate, not from the rehearsal's caller inventory, which lists files naming the old layout and nothing else. Before presenting a size, check at least the path-classification file, report and dashboard assets that travel with their code, and whether documentation tooling expects a project manual the target lacks.
+
+Build and prove the whole change in a private clone, rehearse the commit with the target's hooks enabled in a second clone, and write the target's checkout once. At cutover, replace the rehearsal banner the converter writes at the top of the plan index and tidy the converter's mechanical edits to the target's own tests. Write the provenance record with exactly the fields `transfer-preflight` accepts and confirm the preflight reads it.
+
+Adoption is the owner's declaration. Either the owner declares it before the cutover commit and the manifest is committed adopted, or the cutover is committed undeclared and the declaration is recorded afterwards with `./bin/multioperator adopt --root <target>`, the only manifest change the staged validator admits. A maintenance transfer is refused until one of the two has happened.
+
+A catch-up across many releases admits many proofs at once. Admit them in one batch on recorded defects where the source carries them, under the shared-defect limits in [test governance](../../../policies/test-suite-governance.md#mechanical-authoring).
+
 ## Source-release provenance
 
 In the concrete plan and actual receiving completion record, record the exact donor revision and verified declared source release/tag when available. For an unversioned source, say unversioned; when provenance is unproved, say unknown. Verify tag identity from Git rather than inferring it from notes or declarations. Distinguish assessed/proposed source, partially applied capabilities and completed whole-methodology adoption, preserving the previous baseline and local adaptations. An assessment, plan approval or donor tag alone does not upgrade the receiver.

@@ -1,5 +1,16 @@
 # Starter Releases
 
+## 1.4.0 — 2026-11-10
+
+Makes migrating a recipient from the pre-migration layout a repeatable procedure, from what the first such migration through `teach` found. Two commands are new. `multioperator transfer-ancestry` reports, for each shared file that differs, the source revision nearest the recipient's copy, the recipient lines no source revision ever held, and the conflicts a merge on that ancestor leaves; merging against one assumed base had silently dropped content a recipient never received. `multioperator adopt` records an owner's adoption of a conversion that was committed undeclared, which until now had no route: the staged validator refused every manifest change. The teach procedure now says how to merge edited files, routes a legacy recipient to the first post-migration release as a whole before an ordinary upgrade, and warns that the rehearsal's caller inventory understates a cutover. Test governance gains the operator's ruling on when one planted defect may witness several proofs, and twenty-nine verified defects are recorded for proofs a catching-up recipient inherits. This template's own plan index no longer opens with the rehearsal banner. A minor release: new capability, nothing removed. No recipient is inferred upgraded.
+
+Transfers:
+
+- **Transfer ancestry report and adoption declaration:** `lib/agentic_starter/multioperator.py` with `tests/test_multioperator.py`, their recorded defects in `tests/proof-plants.json`, and the `multioperator` entry in `bin/README.md`.
+- **Edited-file merging and the legacy-recipient route:** `.claude/skills/teach/SKILL.md` and `policies/multi-operator-migration.md`.
+- **Shared-defect limits:** `policies/test-suite-governance.md`.
+- **Recorded defects for inherited proofs:** `tests/proof-plants.json`.
+
 ## 1.3.2 — 2026-11-10
 
 Fixes an intermittent false failure in the process supervisor that runs tests, gates and witness commands. Under parallel load a command that had finished normally was occasionally reported as `TEST INCOMPLETE` with `owned group cleanup could not signal`, because for a few milliseconds after a command's last process exits the system refuses a probe of its process group, and the supervisor read one refusal as a child still running. It failed full gates in two repositories in one day and reproduced at about four per thousand short commands. The supervisor now probes again within its cleanup grace before deciding; a group that proves gone is a finished command, and one still unprovable at the deadline is reported incomplete as before. A patch release: one fix, no new capability. No recipient is inferred upgraded.
