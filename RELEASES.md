@@ -1,5 +1,15 @@
 # Starter Releases
 
+## 1.1.0 — 2026-11-10
+
+The build gate can now say everything that is wrong with a tree in one run, and a checkout that does not hold a project's private evidence can pass it. `./bin/check report` runs every lane to the end, names each failed or incomplete lane, and never stores a receipt; `./bin/check all` is unchanged and still stops at the first failure. Every lane now prints its elapsed seconds. Retained acceptance evidence under the ignored `.kickoff/` directory that is absent from a checkout, as on a fresh clone or a second machine, is reported as `EVIDENCE NOT HELD` and no longer refuses the gate; evidence that is present but altered still refuses, and publishing a new completion still requires the bytes. A methodology close must now be an END or PARK record composed with its Lessons, and can no longer be appended under a bare heading. Receivers carry a machine-readable record of the release they have adopted, and the transfer preflight lists the releases a receiver has not recorded. Repeated tool names in the transfer skills' bundle lists were collapsed. This is a minor release: it adds capabilities and relaxes one refusal, with no change to existing commands. No recipient is inferred upgraded.
+
+Transfers:
+
+- **Gate report mode and lane timing:** `bin/check` with `tests/test_check.py`; `policies/build-gates.md`.
+- **Evidence not held, methodology close guard, provenance preflight:** `bin/multioperator` and `lib/agentic_starter/multioperator.py` with `tests/test_multioperator.py`; `policies/phase-status.md`, `policies/log-discipline.md`.
+- **Receiver provenance record:** `collaboration/methodology-provenance.json`, written by the receiving transfer; `teach`, `learn` and `stamp` skills; `policies/starter-releases.md`.
+
 ## 1.0.2 — 2026-11-10
 
 On macOS the command wrappers now mark the ignored runtime-state directory `.kickoff/` as excluded from Dropbox syncing. The shared toolchain helper creates the directory and writes both Dropbox ignore attributes on every `./bin/setup`, `./bin/test` and `./bin/check` run, whether or not the checkout is currently inside a Dropbox folder, and stops if the marking fails. The rule travels with the helper through `stamp` and `teach`, so a project that receives it is marked on its next wrapper run. Dropbox removes an already-synced `.kickoff/` from its server and other devices once it is marked and keeps the local copy. Other platforms and other sync services are unchanged. Released as a patch at the operator's direction; no recipient upgrade is inferred.

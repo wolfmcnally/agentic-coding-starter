@@ -14,9 +14,12 @@ project_root="$repo_root/project"
 
 usage() {
   cat <<'EOF'
-Usage: ./bin/check [all|lint|format|test|policy|vital|changed <ref>]
+Usage: ./bin/check [all|report|lint|format|test|policy|vital|changed <ref>]
 
 Run the repository's build gates. The default and authoritative mode is "all".
+It stops at the first failing lane, because no receipt can follow a failure.
+Report runs every lane, names each one that failed, and never produces a
+receipt: use it to see how far a tree is from passing.
 Vital and changed are governed lanes (changed is the local-commit and
 implementation-candidate gate) and never produce a full-gate receipt.
 EOF
@@ -29,7 +32,7 @@ fi
 
 gate_mode="${1:-all}"
 case "$gate_mode" in
-  all|lint|format|test|policy|vital)
+  all|report|lint|format|test|policy|vital)
     if [[ $# -gt 1 ]]; then
       usage >&2
       exit 2
@@ -77,18 +80,30 @@ for evidence_executable in \
   fi
 done
 
+# Set only by report mode: every lane then runs, and failures are named at the end.
+report_failures=""
+
 run_gate() {
   local gate_name="$1"
   shift
+  local gate_started="$SECONDS"
   echo "CHECK $gate_name START"
   if "$@"; then
-    echo "CHECK $gate_name PASS"
+    echo "CHECK $gate_name PASS $((SECONDS - gate_started))s"
   else
     local command_exit=$?
+    local gate_verdict=FAIL
     if [[ "$command_exit" -eq 124 || "$command_exit" -ge 128 ]]; then
-      echo "CHECK $gate_name INCOMPLETE (exit $command_exit; correctness unknown)" >&2
+      gate_verdict=INCOMPLETE
+      echo \
+        "CHECK $gate_name INCOMPLETE (exit $command_exit; correctness unknown)" \
+        "$((SECONDS - gate_started))s" >&2
     else
-      echo "CHECK $gate_name FAIL (exit $command_exit)" >&2
+      echo "CHECK $gate_name FAIL (exit $command_exit) $((SECONDS - gate_started))s" >&2
+    fi
+    if [[ -n "$report_failures" ]]; then
+      printf '%s %s\n' "$gate_verdict" "$gate_name" >> "$report_failures"
+      return 0
     fi
     return "$command_exit"
   fi
@@ -160,7 +175,7 @@ run_policy() {
     run_gate policy-test-governance ./bin/test-governance validate || return $?
     run_gate policy-test-time ./bin/test-governance timing || return $?
     run_gate policy-anonymization ./bin/check-anonymization.sh || return $?
-    echo "CHECK policy PASS"
+    [[ -n "$report_failures" ]] || echo "CHECK policy PASS"
   )
 }
 
@@ -171,6 +186,34 @@ run_all() {
   run_format || return $?
   run_test || return $?
   run_policy || return $?
+}
+
+# A lane that dies outside run_gate (a failed cd, a missing tool) is still named.
+run_reported() {
+  local lane_name="$1"
+  shift
+  "$@" || printf 'INCOMPLETE %s\n' "$lane_name" >> "$report_failures"
+}
+
+run_report() {
+  local failed_lanes
+  local incomplete_lanes
+
+  report_failures="$(mktemp "${TMPDIR:-/tmp}/check-report.XXXXXX")"
+  trap 'rm -f "$report_failures"' EXIT
+  run_reported lint run_lint
+  run_reported format run_format
+  run_reported test run_test
+  run_reported policy run_policy
+  failed_lanes="$(awk '$1 == "FAIL" { printf " %s", $2 }' "$report_failures")"
+  incomplete_lanes="$(awk '$1 == "INCOMPLETE" { printf " %s", $2 }' "$report_failures")"
+  if [[ -z "$failed_lanes" && -z "$incomplete_lanes" ]]; then
+    echo "CHECK REPORT CLEAN (no receipt; ./bin/check all qualifies a push)"
+    return 0
+  fi
+  [[ -z "$failed_lanes" ]] || echo "CHECK REPORT FAILED:$failed_lanes" >&2
+  [[ -z "$incomplete_lanes" ]] || echo "CHECK REPORT INCOMPLETE:$incomplete_lanes" >&2
+  return 1
 }
 
 run_all_with_receipt() {
@@ -250,5 +293,6 @@ case "$gate_mode" in
   policy) run_policy ;;
   vital) run_vital ;;
   changed) run_changed "$2" ;;
+  report) run_report ;;
   all) run_all_with_receipt ;;
 esac

@@ -397,6 +397,27 @@ def test_governed_iteration_lanes_dispatch_selected_tests_without_receipt(
     assert not any("check-receipt" in call for call in calls)
 
 
+def test_report_runs_every_lane_names_each_failure_and_stores_no_receipt(
+    check_repo: tuple[Path, dict[str, str]],
+) -> None:
+    root, environment = check_repo
+    environment["CHECK_TEST_FAIL_MATCH"] = "ruff format --check"
+    environment["CHECK_POLICY_FAIL_CODE"] = "41"
+
+    result = _run(root, environment, "report")
+
+    calls = Path(environment["CHECK_TEST_LOG"]).read_text()
+    assert (
+        result.returncode == 1
+        and "CHECK REPORT FAILED: format policy-anonymization" in result.stderr
+        and "test_runner.py" in calls
+        and "governance cwd=" in calls
+        and not any(line.startswith("receipt ") for line in calls.splitlines())
+        and "CHECK policy PASS" not in result.stdout
+        and "CHECK ALL PASS" not in result.stdout
+    ), f"REPORT STOPPED EARLY, HID A FAILED LANE OR STORED A RECEIPT: {result.stderr}"
+
+
 def test_authoritative_runtime_probe_failure_stops_before_gate_without_fallback(
     check_repo: tuple[Path, dict[str, str]],
     tmp_path: Path,

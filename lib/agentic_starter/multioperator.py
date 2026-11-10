@@ -371,7 +371,22 @@ def logs(root: Path) -> list[tuple[dict[str, Any], bytes]]:
     )
 
 
-def verify_acceptance_bytes(root: Path, event: dict[str, Any]) -> None:
+def not_held(path: Path, relative: str, absent: list[str] | None) -> bool:
+    """Ignored runtime evidence does not travel with a clone or to another machine.
+
+    Historical validation reports its absence instead of refusing. A file that is
+    present must still match, tracked paths are never excused, and publishing a new
+    completion passes no list, so it keeps requiring the bytes.
+    """
+    if absent is None or not relative.startswith(".kickoff/") or path.exists() or path.is_symlink():
+        return False
+    absent.append(relative)
+    return True
+
+
+def verify_acceptance_bytes(
+    root: Path, event: dict[str, Any], absent: list[str] | None = None
+) -> None:
     """Check retention, not semantic phase approval; live adapters still own that."""
     if event["previous"] is None or event["state"] != "completed":
         return
@@ -385,11 +400,13 @@ def verify_acceptance_bytes(root: Path, event: dict[str, Any]) -> None:
         "acceptance reference must be repo-relative",
     )
     artifact = safe(root, reference["path"])
+    if not_held(artifact, reference["path"], absent):
+        return
     require(
         artifact.is_file() and digest(artifact.read_bytes()) == reference["sha256"],
         "acceptance artifact missing or mutated",
     )
-    inspect_phase_acceptance(root, event)
+    inspect_phase_acceptance(root, event, absent=absent)
 
 
 def validate(root: Path) -> dict[str, Any]:
@@ -403,8 +420,9 @@ def validate(root: Path) -> dict[str, Any]:
     )
     phases, events = records(root)
     heads = fold(phases, events)
+    absent: list[str] = []
     for event in events:
-        verify_acceptance_bytes(root, event)
+        verify_acceptance_bytes(root, event, absent)
     entries = logs(root)
     manifest = load(safe(root, "collaboration/manifest.json"))
     if manifest.get("mode") == "retrofit":
@@ -438,6 +456,7 @@ def validate(root: Path) -> dict[str, Any]:
         "heads": heads,
         "historical_log_sha256": digest(original),
         "adopted": manifest["adopted"],
+        "evidence_not_held": sorted(set(absent)),
     }
 
 
@@ -918,7 +937,9 @@ def snapshot_acceptance(root: Path, run_dir: Path) -> dict[str, Any]:
     }
 
 
-def verify_qualification_snapshot(root: Path, value: dict[str, Any]) -> None:
+def verify_qualification_snapshot(
+    root: Path, value: dict[str, Any], absent: list[str] | None = None
+) -> None:
     require(
         isinstance(value, dict)
         and set(value) == {"schema", "files", "budget_prefix", "execution_prefix"}
@@ -929,6 +950,8 @@ def verify_qualification_snapshot(root: Path, value: dict[str, Any]) -> None:
     )
     for relative, expected in value["files"].items():
         path = safe(root, relative)
+        if not_held(path, relative, absent):
+            continue
         require(
             path.is_file() and not path.is_symlink() and digest(path.read_bytes()) == expected,
             "accepted phase input is missing or mutated: " + relative,
@@ -949,6 +972,8 @@ def verify_qualification_snapshot(root: Path, value: dict[str, Any]) -> None:
         if key == "execution_prefix":
             require(prefix["path"] == "EXECUTION_LOG.jsonl", "wrong execution ledger prefix")
         path = safe(root, prefix["path"])
+        if not_held(path, prefix["path"], absent):
+            continue
         require(
             path.is_file()
             and len(path.read_bytes()) >= prefix["bytes"]
@@ -957,7 +982,13 @@ def verify_qualification_snapshot(root: Path, value: dict[str, Any]) -> None:
         )
 
 
-def inspect_phase_acceptance(root: Path, event: dict[str, Any], *, fresh: bool = False) -> None:
+def inspect_phase_acceptance(
+    root: Path,
+    event: dict[str, Any],
+    *,
+    fresh: bool = False,
+    absent: list[str] | None = None,
+) -> None:
     reference = event["acceptance"]
     closure_path = safe(root, reference["path"])
     closure = load(closure_path)
@@ -980,7 +1011,7 @@ def inspect_phase_acceptance(root: Path, event: dict[str, Any], *, fresh: bool =
         and custody.get("claim") == event.get("claim"),
         "completion does not match accepted phase custody",
     )
-    verify_qualification_snapshot(root, closure.get("qualification"))
+    verify_qualification_snapshot(root, closure.get("qualification"), absent)
     log_id = uuid.uuid5(
         uuid.NAMESPACE_URL, "log:" + custody["owner"] + ":" + closure["closure_id"]
     ).hex
@@ -1089,6 +1120,17 @@ def append(
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         validate(root)
         terminal_body(body)
+        # A methodology close under any other heading would skip the Lessons contract.
+        # New entries only: earlier closes keep the headings they were written with.
+        require(
+            not any(
+                re.search(r"— METHODOLOGY(?! SCOPE\b)", block.header)
+                and "— END" not in block.header
+                and "— PARK" not in block.header
+                for block in log_blocks.parse(body.decode()).blocks
+            ),
+            "methodology close must be an END or PARK record from append-terminal",
+        )
         identifier = (
             uuid.uuid5(uuid.NAMESPACE_URL, "log:" + writer + ":" + idempotency_key).hex
             if idempotency_key
@@ -1349,6 +1391,9 @@ def validate_staged(root: Path) -> dict[str, Any]:
                         "acceptance must be repo-relative",
                     )
                     artifact = safe(root, reference["path"])
+                    unheld: list[str] | None = [] if relative in prior_paths else None
+                    if not_held(artifact, reference["path"], unheld):
+                        continue
                     require(
                         artifact.is_file() and digest(artifact.read_bytes()) == reference["sha256"],
                         "staged acceptance bytes missing/mutated",
@@ -1358,13 +1403,15 @@ def validate_staged(root: Path) -> dict[str, Any]:
                         publish(destination, artifact.read_bytes())
                     closure = load(artifact)
                     qualification = closure.get("qualification")
-                    verify_qualification_snapshot(root, qualification)
+                    verify_qualification_snapshot(root, qualification, unheld)
                     retained = list(qualification["files"])
                     for key in ("execution_prefix", "budget_prefix"):
                         if qualification[key] is not None:
                             retained.append(qualification[key]["path"])
                     for retained_relative in retained:
                         retained_source = safe(root, retained_relative)
+                        if not_held(retained_source, retained_relative, unheld):
+                            continue
                         if retained_relative in indexed:
                             data = indexed[retained_relative]
                         else:
@@ -1576,6 +1623,48 @@ def layout(root: Path, *, capability_source: bool = False) -> str:
     return "existing-project"
 
 
+PROVENANCE = "collaboration/methodology-provenance.json"
+RELEASE = r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
+
+
+def methodology_provenance(root: Path) -> dict[str, Any] | None:
+    """The recipient-carried record of the methodology release it last adopted.
+
+    Absent means no named baseline is recorded, never that one is current. A malformed
+    record refuses: a wrong answer here would hide releases the recipient lacks.
+    """
+    path = root / PROVENANCE
+    if not path.exists() and not path.is_symlink():
+        return None
+    value = load(safe(root, PROVENANCE))
+    require(
+        isinstance(value, dict)
+        and set(value) == {"schema", "source", "release", "revision", "recorded", "capabilities"}
+        and value["schema"] == "agentic.methodology-provenance.v1"
+        and isinstance(value["source"], str)
+        and bool(value["source"].strip())
+        and (value["release"] is None or bool(re.fullmatch(RELEASE, str(value["release"]))))
+        and isinstance(value["revision"], str)
+        and bool(re.fullmatch(r"[0-9a-f]{40}", value["revision"]))
+        and isinstance(value["recorded"], str)
+        and bool(re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", value["recorded"]))
+        and isinstance(value["capabilities"], list)
+        and all(isinstance(item, str) and bool(item.strip()) for item in value["capabilities"]),
+        "invalid methodology provenance record",
+    )
+    return value
+
+
+def declared_releases(root: Path) -> list[str]:
+    """Release headings a source declares in RELEASES.md, oldest first; none if it has no file."""
+    path = root / "RELEASES.md"
+    if not path.is_file():
+        return []
+    found = re.findall(r"(?m)^## (" + RELEASE.replace("(", "(?:") + r")(?= |$)", path.read_text())
+    require(len(found) == len(set(found)), "source declares a release twice")
+    return sorted(found, key=lambda name: tuple(map(int, name.split("."))))
+
+
 def transfer_preflight(
     donor: Path, recipient: Path, entry: str, intent: str = "methodology"
 ) -> dict[str, Any]:
@@ -1613,6 +1702,7 @@ def transfer_preflight(
             not any((recipient / name).exists() for name in ("AGENTS.md", "CLAUDE.md")),
             "existing constitution requires owner reconciliation before retrofit",
         )
+    recorded = methodology_provenance(recipient)
     return {
         "compatibility": claude_compatibility()
         if route in {"migration-rehearsal", "retrofit-rehearsal"}
@@ -1622,6 +1712,14 @@ def transfer_preflight(
         "route": route,
         "donor_layout": donor_state,
         "recipient_layout": recipient_state,
+        "recipient_provenance": recorded,
+        "releases_not_recorded": [
+            name
+            for name in declared_releases(donor)
+            if recorded is None
+            or recorded["release"] is None
+            or tuple(map(int, name.split("."))) > tuple(map(int, recorded["release"].split(".")))
+        ],
         "mutation_authorized": False,
         "adoption_verified": False,
         "required_owner_checks": [
@@ -1749,12 +1847,14 @@ def main() -> int:
         elif args.command == "rehearse":
             rehearse(args.source, args.output, args.mapping)
         elif args.command == "validate":
-            print(
-                json.dumps(
-                    validate_staged(args.root) if args.staged else validate(args.root),
-                    sort_keys=True,
+            state = validate_staged(args.root) if args.staged else validate(args.root)
+            print(json.dumps(state, sort_keys=True))
+            if state["evidence_not_held"]:
+                print(
+                    f"EVIDENCE NOT HELD {len(state['evidence_not_held'])}: retained acceptance "
+                    "evidence is absent from this checkout; present evidence was verified",
+                    file=sys.stderr,
                 )
-            )
         elif args.command == "render":
             render(args.root, args.check)
         elif args.command == "event":

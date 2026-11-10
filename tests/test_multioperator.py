@@ -1318,3 +1318,194 @@ def test_retrofit_rehearsal_preserves_narrative_history(tmp_path: Path) -> None:
         )
     observed.append(snapshot(source) == dirty)
     assert all(observed), "RETROFIT HISTORY OR REFUSAL CONTRACT LOST: " + repr(observed)
+
+
+def test_absent_retained_evidence_is_reported_while_altered_evidence_refuses(
+    tmp_path: Path,
+) -> None:
+    """Admission: a clean clone could not pass the gate, yet tampering must still refuse.
+
+    A hand-built historical completion gives validation real retained bytes to re-verify.
+    The oracle is the validator's own exit status and reported list for three states of
+    the same file: intact, altered and absent.
+    """
+    from structured_fixtures import create_records
+
+    def sha(data: bytes) -> str:
+        return hashlib.sha256(data).hexdigest()
+
+    root = tmp_path / "held"
+    root.mkdir()
+    (root / "AGENTS.md").write_text("# Synthetic constitution\n")
+    (root / "EXECUTION_LOG.jsonl").write_bytes(b"")
+    name = "kept-work-package"
+    opened = create_records(root, {name: {"state": "in-progress"}})[name]
+    retained = root / ".kickoff/runs/fixture/gates.jsonl"
+    retained.parent.mkdir(parents=True)
+    retained.write_text("{}\n")
+    retained_name = retained.relative_to(root).as_posix()
+    body = (
+        "## 2026-01-01 00:00 — END " + name + "\n\nSynthetic historical close.\n\n"
+        "Lessons:\n- none\n"
+    ).encode()
+    bound = {
+        "phase": name,
+        "outcome": "accepted",
+        "phase_custody": {
+            "id": opened["id"],
+            "owner": opened["owner"],
+            "claim": opened["claim"],
+        },
+        "qualification": {
+            "schema": "agentic.phase-qualification.v1",
+            "files": {retained_name: sha(retained.read_bytes())},
+            "budget_prefix": None,
+            "execution_prefix": {"path": "EXECUTION_LOG.jsonl", "bytes": 0, "sha256": sha(b"")},
+        },
+        "log_sha256": sha(body),
+    }
+    closure_id = sha(json.dumps(bound, sort_keys=True, separators=(",", ":")).encode())
+    closure = retained.parent / "closure.json"
+    closure.write_text(json.dumps({**bound, "closure_id": closure_id, "status": "complete"}))
+    log_id = uuid.uuid5(uuid.NAMESPACE_URL, "log:" + opened["owner"] + ":" + closure_id).hex
+    envelope = {
+        "at": "2026-01-01T00:00:00+00:00",
+        "body_sha256": sha(body),
+        "id": log_id,
+        "previous": None,
+        "sequence": 1,
+        "writer": opened["owner"],
+    }
+    (root / "log/entries" / (log_id + ".md")).write_bytes(
+        b"---\n" + json.dumps(envelope).encode() + b"\n---\n" + body
+    )
+    completed = {
+        **opened,
+        "id": uuid.uuid4().hex,
+        "previous": opened["id"],
+        "from": "in-progress",
+        "state": "completed",
+        "reason": "Synthetic historical completion",
+        "acceptance": {
+            "path": closure.relative_to(root).as_posix(),
+            "sha256": sha(closure.read_bytes()),
+        },
+    }
+    write_json(root / "plan/events" / (completed["id"] + ".json"), completed)
+
+    intact = run("validate", "--root", root)
+    assert intact.returncode == 0, "VALID RETAINED EVIDENCE REFUSED: " + intact.stderr
+    original = retained.read_bytes()
+    retained.write_text("altered\n")
+    altered = run("validate", "--root", root)
+    retained.write_bytes(original)
+    retained.unlink()
+    absent = run("validate", "--root", root)
+    shutil.rmtree(root / ".kickoff")
+    cloned = run("validate", "--root", root)
+    assert (
+        json.loads(intact.stdout)["evidence_not_held"] == []
+        and altered.returncode == 2
+        and "missing or mutated" in altered.stderr
+        and absent.returncode == 0
+        and json.loads(absent.stdout)["evidence_not_held"] == [retained_name]
+        and "EVIDENCE NOT HELD 1" in absent.stderr
+        and cloned.returncode == 0
+        and json.loads(cloned.stdout)["evidence_not_held"] == [completed["acceptance"]["path"]]
+    ), (
+        "RETAINED EVIDENCE ABSENCE REFUSED OR ALTERATION PASSED: "
+        + altered.stderr
+        + absent.stderr
+        + cloned.stderr
+    )
+
+
+def test_methodology_close_cannot_bypass_the_lessons_contract(tmp_path: Path) -> None:
+    """Admission: closes written under a bare methodology heading carried no Lessons.
+
+    The append boundary is exercised directly: a scope record and a composed terminal
+    record are admitted, while a close under any non-terminal methodology heading refuses
+    and leaves the log bytes unchanged.
+    """
+    from structured_fixtures import create_records
+
+    root = tmp_path / "records"
+    root.mkdir()
+    (root / "AGENTS.md").write_text("# Synthetic constitution\n")
+    create_records(root, {"open-work-package": {"state": "next"}})
+    body = tmp_path / "body.md"
+
+    def append(heading: str, tail: str = "Body.\n") -> subprocess.CompletedProcess[str]:
+        body.write_text(f"## 2026-11-10 01:00 — {heading}\n\n{tail}")
+        return run(
+            "append", "--root", root, "--writer", "operator-a", "--body", body,
+            "--at", "2026-11-10T01:00:00Z",
+        )  # fmt: skip
+
+    scope = append("METHODOLOGY SCOPE")
+    before = snapshot(root / "log/entries")
+    bypasses = [append("METHODOLOGY"), append("METHODOLOGY CLOSE gate work")]
+    unchanged = snapshot(root / "log/entries") == before
+    terminal = append("END — METHODOLOGY gate work", "Done.\n\nLessons:\n- none\n")
+    assert (
+        scope.returncode == 0
+        and all(item.returncode == 2 and "append-terminal" in item.stderr for item in bypasses)
+        and unchanged
+        and terminal.returncode == 0
+    ), "METHODOLOGY CLOSE BYPASSED LESSONS OR VALID RECORD REFUSED: " + "".join(
+        item.stderr for item in (scope, *bypasses, terminal)
+    )
+
+
+def test_preflight_lists_source_releases_the_recipient_has_not_recorded(tmp_path: Path) -> None:
+    """Admission: no recipient could say which source release it held.
+
+    Real preflight runs compare a recorded baseline with the source's declared releases;
+    an absent record claims nothing, and a malformed one refuses instead of hiding a gap.
+    """
+    from structured_fixtures import create_records
+
+    roots = []
+    for name in ("source", "recipient"):
+        root = tmp_path / name
+        root.mkdir()
+        (root / "AGENTS.md").write_text("# Synthetic constitution\n")
+        create_records(root, {})
+        roots.append(root)
+    source, recipient = roots
+    (source / "RELEASES.md").write_text(
+        "# Releases\n\n## 1.1.0 — 2026-11-10\n\n## 1.0.2 — 2026-11-10\n\n## 1.0.1 — 2026-11-10\n"
+    )
+    record = recipient / "collaboration/methodology-provenance.json"
+
+    def preflight() -> subprocess.CompletedProcess[str]:
+        return run(
+            "transfer-preflight", "--entry", "teach", "--donor", source, "--recipient", recipient
+        )  # fmt: skip
+
+    unrecorded = preflight()
+    write_json(
+        record,
+        {
+            "schema": "agentic.methodology-provenance.v1",
+            "source": "synthetic-source",
+            "release": "1.0.2",
+            "revision": "a" * 40,
+            "recorded": "2026-11-10",
+            "capabilities": ["gate-report-mode"],
+        },
+    )
+    recorded = preflight()
+    record.write_text('{"release": "1.1.0"}')
+    malformed = preflight()
+    assert (
+        unrecorded.returncode == 0
+        and json.loads(unrecorded.stdout)["recipient_provenance"] is None
+        and json.loads(unrecorded.stdout)["releases_not_recorded"] == ["1.0.1", "1.0.2", "1.1.0"]
+        and recorded.returncode == 0
+        and json.loads(recorded.stdout)["releases_not_recorded"] == ["1.1.0"]
+        and malformed.returncode == 2
+        and "provenance" in malformed.stderr
+    ), "RELEASE GAP MISREPORTED OR MALFORMED PROVENANCE ACCEPTED: " + "".join(
+        item.stderr for item in (unrecorded, recorded, malformed)
+    )

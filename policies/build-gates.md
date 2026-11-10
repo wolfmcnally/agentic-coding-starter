@@ -7,7 +7,7 @@ Every methodology-following repository owns one canonical, atomic interface for 
 ```bash
 ./bin/setup
 ./bin/test [--vital | --changed-from <ref> | focused test arguments...]
-./bin/check [all|lint|format|test|policy|vital|changed <ref>]
+./bin/check [all|report|lint|format|test|policy|vital|changed <ref>]
 ```
 
 A language profile may add a repository-selected runtime entry point such as `./bin/python`. The repository—not an agent prompt, shell history, IDE task, or machine-global environment—defines what these commands mean.
@@ -34,7 +34,7 @@ Operator-ratified 2026-11-09. `.kickoff/` holds private evidence and bulky gener
 
 The marking is unconditional. It does not ask whether the checkout is inside a Dropbox folder today, so a checkout later moved or restored into one is already excluded, and a repository that receives the resolver is marked on its next `./bin/setup`, `./bin/test` or `./bin/check` without a separate step. A failed write stops the entry point; it is never skipped silently. A target whose entry points initialise through a different resolver carries the same step there. Other platforms are unqualified, and the step does nothing on them.
 
-Dropbox removes an already-synced folder from its server and from other devices once the folder is marked, keeping the local copy. A checkout shared between machines through Dropbox therefore stops sharing `.kickoff/`, which is the intent: that evidence is recipient-local. Attribute names are as of Dropbox's "ignored files" help page, updated 2025-10-07 and retrieved 2026-11-09.
+Dropbox removes an already-synced folder from its server and from other devices once the folder is marked, keeping the local copy. A checkout shared between machines through Dropbox therefore stops sharing `.kickoff/`, which is the intent: that evidence is recipient-local. Nothing else carries it either: Git ignores it and a clone starts without it, so the gate reports retained acceptance evidence a checkout does not hold instead of refusing ([phase status](phase-status.md)), and keeping a copy of `.kickoff/` is the operator's own backup decision. Attribute names are as of Dropbox's "ignored files" help page, updated 2025-10-07 and retrieved 2026-11-09.
 
 ## Ownership boundary
 
@@ -65,7 +65,8 @@ When the repository carries the universal proof-estate bundle, `--vital` selects
 
 `./bin/check` with no arguments is identical to `./bin/check all`. Universal named modes are:
 
-- `all` — every authoritative repository gate, in deterministic order;
+- `all` — every authoritative repository gate, in deterministic order, stopping at the first failing lane;
+- `report` — every lane run to the end whatever fails, for diagnosis only;
 - `lint` — static lint checks;
 - `format` — formatting checks without rewriting files;
 - `test` — delegates to `./bin/test`;
@@ -74,6 +75,8 @@ When the repository carries the universal proof-estate bundle, `--vital` selects
 The universal policy lane includes `policy-log`, which runs the structured phase/event/log validator. The staged pre-commit hook runs the same wrapper against the indexed record inventory, preserving committed immutable bytes. Neither substitutes for the full gate.
 
 A repository with governed proof lanes also exposes `vital` and `changed <ref>` modes that delegate to the matching `bin/test` selection; `changed` is the local-commit and implementation-candidate gate. Neither writes or satisfies a full-gate receipt.
+
+`all` stops at the first failure on purpose: no receipt can follow a failed lane, so the remaining lanes would only cost time. That makes one `all` run report one blocker. `report` answers the other question, how far a tree is from passing: it runs lint, format, tests and every policy check regardless of failures, prints `CHECK REPORT FAILED:` and `CHECK REPORT INCOMPLETE:` lines naming each lane, exits non-zero if any lane did not pass, and never writes or satisfies a receipt. A clean report qualifies nothing; only `all` qualifies a push. Every lane's terminal line carries its elapsed seconds, so a run's log shows where its time went.
 
 A project may add named modes but does not remove or weaken `all`. Unknown modes and extra arguments are usage errors. Every entry point preserves child failures, emits unambiguous terminal results where applicable, hides no failure behind a pipe or fallback, and performs no commit, push, deploy, or other shared-state mutation.
 
