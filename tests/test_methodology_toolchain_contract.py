@@ -892,6 +892,51 @@ def test_optional_cross_harness_coordination_stays_optional(tmp_path: Path) -> N
     )
 
 
+def test_mini_method_delivers_within_existing_authority() -> None:
+    """Guard the actual copyable instruction interface against the escaped no-push rule.
+
+    There is no executable emitter: setup copies this fenced block verbatim. Inspecting
+    that artifact is the cheapest independent oracle, not a claim about agent behavior.
+    Four finite text checks cover delivery, setup, retained limits and stale overrides;
+    no service, model, Git mutation or test-only production seam is needed.
+    """
+    brief = (REPO_ROOT / "briefs/mini-method.md").read_text()
+    block = brief.split("````markdown\n", 1)[1].split("\n````", 1)[0]
+    delivery = block.partition("- **Delivery.**")[2].split("\n- **", 1)[0]
+    assert "Commit and push approved project work without a separate human approval" in delivery, (
+        "MINI DELIVERY AUTHORITY LOST"
+    )
+    setup = block.split("## Setup", 1)[1].split("## Project", 1)[0]
+    assert all(
+        clause in setup
+        for clause in (
+            "Never create or change a remote.",
+            "Apply the delivery rule below",
+            "retain the local commit and report the missing destination",
+        )
+    ), "MINI SETUP DELIVERY BOUNDARY LOST"
+    assert all(
+        clause in block
+        for clause in (
+            "applicable objective checks pass",
+            "stage only attributable explicit paths",
+            "existing unambiguous authorized upstream and publication scope",
+            "non-force fast-forward push",
+            "actual remote tip agree and the tree is clean",
+            "uncertain custody park delivery",
+            "Preserve explicit task-specific local-only or no-publication holds",
+            "Never bypass hooks or native permission denials, disclose secrets, rewrite history",
+            "pending human judgment does not block qualified delivery",
+        )
+    ), "MINI DELIVERY SAFEGUARDS LOST"
+    assert not re.search(
+        r"never push|do not push|push only when|commit, never push|"
+        r"anything outward-facing are theirs to approve",
+        brief,
+        re.IGNORECASE,
+    ), "MINI STALE DELIVERY OVERRIDE"
+
+
 def test_starter_release_provenance_and_transfer_boundary() -> None:
     """A named source release must not become a fabricated receiver upgrade.
 

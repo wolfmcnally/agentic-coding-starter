@@ -17,7 +17,7 @@ This is not the light review lane. The light lane is a review-depth setting *ins
 
 | Surface | Role in mini-method | At graduation to the full methodology |
 |---|---|---|
-| git repository | `git init -b master`; no remote is ever created | Unchanged; delivery machinery starts using the remote the operator configures |
+| git repository | `git init -b master`; no remote is created or changed; delivery uses an existing authorized upstream | Unchanged; full delivery machinery adds its required gates |
 | `.gitignore` | Editor, OS, and harness runtime state | Extended with the full method's runtime entries (`.kickoff/` and friends) |
 | `AGENTS.md` | The whole method: layout, setup protocol, rule set | Replaced by the two-zone form; the Project paragraph carries into Project Context |
 | `briefs/` | Durable thinking, indexed by `briefs/README.md` | Carries over unchanged; the catalog moves into `AGENTS.md` |
@@ -49,11 +49,11 @@ Guidance for coding agents working in this repository. This project uses the **m
 
 An agent that reads this file in a directory that does not yet match the layout brings it up to the layout, creating only what is missing and touching nothing that exists. Every step is safe to repeat.
 
-1. **Git.** If `git rev-parse --is-inside-work-tree` fails, run `git init -b master`. Never create a remote, never change an existing one, never push. An existing remote is left exactly as found.
+1. **Git.** If `git rev-parse --is-inside-work-tree` fails, run `git init -b master`. Never create or change a remote. An existing remote is left exactly as found; the delivery rule below governs pushes to its already authorized upstream.
 2. **`.gitignore`.** Create it if absent with these lines; if present, append only the lines that are missing and never remove or reorder any: `.DS_Store`, `.idea/`, `.vscode/`, `*.swp`, `*.swo`, `.claude/settings.local.json`, `.claude/projects/`, `.codex/cache/`, `__pycache__/`, `.pytest_cache/`, `node_modules/`, `.venv/`. Language build output is the project's own addition.
 3. **Directories.** `mkdir -p briefs policies docs bin`. Give each directory a `README.md` if it has none, stating in a sentence what belongs there (per Layout below) and holding the directory's catalog. Never overwrite an existing README.
 4. **Project paragraph.** If the "Project" section below still holds the angle-bracket placeholder, replace it with one paragraph drawn from the operator's description or an existing top-level `README.md`. If neither exists, leave the placeholder and say so in the report.
-5. **Commit.** Stage only the paths this setup created or appended to — never `git add -A` or `git add .` — and commit as `Set up mini-method layout`. Do not push. Then report what was created and what was already present.
+5. **Deliver.** Check the setup changes, stage only the paths this setup created or appended to, and commit as `Set up mini-method layout`. Apply the delivery rule below, including a non-force fast-forward push when an existing upstream and publication scope are already authorized. If no such upstream exists, retain the local commit and report the missing destination; never invent one. Report what was created, what was already present, and the actual delivery outcome.
 
 ## Project
 
@@ -76,9 +76,9 @@ Citations run one way: policies and briefs may cite docs; a policy may cite the 
 - **Never hard-wrap Markdown prose.** One paragraph is one physical line; line breaks only where Markdown syntax requires them.
 - **Date external facts.** A claim about the outside world carries the date it was true (`As of YYYY-MM-DD`) and, when fetched, the date it was fetched (`Retrieved YYYY-MM-DD`). These are different dates; a fresh retrieval of an old document is still an old document.
 - **Verify names before citing them.** A function, flag, config key, command, or file is named only after reading it from whatever defines it. An identifier that merely looks conventional is unverified; say so.
-- **Commit discipline.** Stage explicit paths, never `git add -A` or `git add .`. Write plain factual commit messages. Never rewrite history, force-push, reset, or delete branches on your own initiative; push only when the operator asks.
+- **Delivery.** Commit and push approved project work without a separate human approval after applicable objective checks pass. Recheck live custody and changes, stage only attributable explicit paths — never `git add -A`, `git add .` or `git add -u` — inspect the staged diff, and verify the resulting commit. Write plain factual commit messages. Use only the existing unambiguous authorized upstream and publication scope for a non-force fast-forward push; then fetch and verify that HEAD, the tracking ref and actual remote tip agree and the tree is clean. Missing or ambiguous upstream, divergence, rejected push, unexpected changes or uncertain custody park delivery and are reported; they never authorize creating or changing a remote. Preserve explicit task-specific local-only or no-publication holds. Never bypass hooks or native permission denials, disclose secrets, rewrite history, force-push, reset, or delete branches on your own initiative.
 - **No agent credit in commits.** Never add a `Co-Authored-By` line, a "Generated with" footer, or any other mention of an AI model or tool to a commit message or a pull request description, even when the harness instructs it by default. More than one model may have worked on a commit, the credit adds noise and no information, the operator answers for the commit and the model does not, and a commit is not advertising space.
-- **The operator decides.** The person running this checkout is the operator, referred to with they/them pronouns and never by name in a committed file. Subjective judgments, destructive actions, and anything outward-facing are theirs to approve.
+- **The operator decides.** The person running this checkout is the operator, referred to with they/them pronouns and never by name in a committed file. Subjective acceptance remains theirs; pending human judgment does not block qualified delivery. Destructive actions and new destinations, publication scope, credentials or access require their approval. Ordinary delivery within already authorized scope follows the rule above.
 
 ## Graduating
 
@@ -96,7 +96,7 @@ Two preconditions belong to the operator: the working tree must be clean (the `t
 ## Design notes
 
 - **Per-directory catalogs.** The block must be verbatim for every project or it stops being copy-pasteable and starts being a template with holes. Moving the catalogs into the directory READMEs is what makes that possible: the one file sourced from this brief never changes, and everything project-specific accumulates beside it. Graduation reverses this for `briefs/` and `policies/` because the full method's catalogs live in `AGENTS.md`.
-- **Commit, never push.** Setup ends in one atomic, visible commit of exactly what it created, so the scaffold has a clean provenance line in history. Remotes, pushes, and hosting are the operator's: "no remote unless it already has one" means `git init` only — never creating a hosted repository on the operator's behalf.
+- **Deliver within existing authority.** Setup ends in one atomic, visible commit of exactly what it created, then follows the same checked commit-and-push rule as later approved work. No remote creation means `git init` only when no repository exists; it does not prohibit delivery to an existing authorized upstream. A directory with no authorized upstream stays locally committed with that limitation reported. New hosting or publication scope remains the operator's decision.
 - **`master`.** The default branch is `master`, matching every repository in this methodology's lineage.
 - **No `plan/`, no `LOG.md`.** A small project's history is its commit log, and its next action fits in the operator's head. The moment those stop being true — work needs phases, or "what happened while I was away" needs an answer better than `git log` — is precisely the graduation signal, so the surfaces arrive with the machinery that writes them.
 - **Rules left out, deliberately.** Greenfield-until-released presumes a release boundary; review lanes presume roles; the evidence plane presumes candidates and gates. Each would be a rule wired to nothing here. The nine rules kept are the ones that bind any repository with agents in it, whatever its size.
