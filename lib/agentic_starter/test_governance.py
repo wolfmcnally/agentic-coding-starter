@@ -1494,14 +1494,35 @@ ADMIT_EVIDENCE = (
 )
 
 
+PLANTS = "tests/proof-plants.json"
+PLANT_FIELDS = ("defect", "expect", "plant", "command", "failure_exit")
+
+
+def recorded_plants(root: Path) -> dict[str, Any]:
+    """The defect last planted to witness each proof, kept beside the tests it challenges.
+
+    It travels with the tests: a receiver replays the same defect against its own copy and
+    observes the failure itself. It is an input to a witness, never evidence of one.
+    """
+    path = root / PLANTS
+    if not path.exists():
+        return {}
+    plants = load_json(path)
+    if not all(isinstance(value, dict) for value in plants.values()):
+        raise GovernanceError(f"{PLANTS} must map proof ids to recorded defects")
+    return plants
+
+
 def admit(root: Path, source: Path) -> dict[str, Any]:
     """Observe each new or changed proof fail, restore the tree, and record the decision.
 
     One input replaces the begin, plant, finish and author steps. For each proof it names
-    the defect as an exact text replacement, so the plant is repeatable and reviewable; the
-    command observes the proof red with that defect, restores the original bytes, and only
-    then appends the witness receipts and the admission or modification rows together.
-    Nothing is recorded for a proof that was not seen to fail.
+    the defect as an exact text replacement, so the plant is repeatable and reviewable; a
+    proof may leave the defect out when one is already recorded for it. Before anything is
+    planted the command checks that the finished ledger would be valid, so an input that
+    cannot be recorded, such as one that leaves another new proof unadmitted, refuses with
+    nothing witnessed. It then observes each proof red, restores the original bytes, and
+    appends the witness receipts and the admission or modification rows together.
     """
     from agentic_starter.input_io import read_object
 
@@ -1509,11 +1530,15 @@ def admit(root: Path, source: Path) -> dict[str, Any]:
     proofs = request.get("proofs")
     if set(request) != {"proofs"} or not isinstance(proofs, list) or not proofs:
         raise GovernanceError("admit input requires a nonempty proofs array")
-    needed = {"action", "proof_id", "defect", "expect", "plant", *ADMIT_EVIDENCE}
-    for item in proofs:
+    plants = recorded_plants(root)
+    resolved = []
+    for supplied in proofs:
+        if not isinstance(supplied, dict):
+            raise GovernanceError("admit proof must be an object")
+        item = {**plants.get(str(supplied.get("proof_id")), {}), **supplied}
+        needed = {"action", "proof_id", "defect", "expect", "plant", *ADMIT_EVIDENCE}
         if (
-            not isinstance(item, dict)
-            or not needed <= set(item)
+            not needed <= set(item)
             or set(item) - needed - {"command", "failure_exit"}
             or item["action"] not in {"admit", "modify"}
             or not isinstance(item["plant"], dict)
@@ -1521,11 +1546,50 @@ def admit(root: Path, source: Path) -> dict[str, Any]:
             or not all(isinstance(item["plant"][key], str) for key in item["plant"])
             or not item["plant"]["replace"]
         ):
-            raise GovernanceError("admit proof has missing, unknown or malformed fields")
+            raise GovernanceError(
+                "admit proof has missing, unknown or malformed fields, "
+                f"or no defect is recorded for it: {supplied.get('proof_id')}"
+            )
+        resolved.append(item)
     manifest = load_yaml(root / "tests/proof-estate.yaml")
     witness_ledger = root / str(manifest["witness_ledger"])
+
+    def author(records: list[dict[str, Any]], *, check_only: bool) -> list[str]:
+        composed = root / ".kickoff/input-writes/admit-request.json"
+        _write_json(composed, {"families": [], "records": records})
+        try:
+            return author_inputs(
+                root,
+                composed,
+                _digest((root / "tests/proof-estate.yaml").read_bytes()),
+                _digest((root / str(manifest["audit_ledger"])).read_bytes()),
+                check_only=check_only,
+            )
+        finally:
+            composed.unlink(missing_ok=True)
+
+    def decision(item: dict[str, Any], receipt: int) -> dict[str, Any]:
+        record = {key: item[key] for key in ("action", "proof_id", *ADMIT_EVIDENCE)}
+        if item["action"] == "modify":
+            record["witness_receipts"] = [receipt]
+        return record
+
+    # Every problem except the witnesses this run has yet to make is a reason to stop now.
+    ours = {str(item["proof_id"]) for item in resolved}
+    blocking = [
+        error
+        for error in author([decision(item, 1) for item in resolved], check_only=True)
+        if not (
+            any(error.endswith(proof) for proof in ours)
+            and ("has no witness receipt" in error or error.startswith("modification "))
+        )
+    ]
+    if blocking:
+        raise GovernanceError(
+            "admit input cannot be recorded; nothing was witnessed:\n- " + "\n- ".join(blocking)
+        )
     records = []
-    for item in proofs:
+    for item in resolved:
         proof_id = str(item["proof_id"])
         plant = item["plant"]
         command = item.get("command") or (
@@ -1552,21 +1616,10 @@ def admit(root: Path, source: Path) -> dict[str, Any]:
             witness_abort(root)
             raise
         witness_finish(root)
-        record = {key: item[key] for key in ("action", "proof_id", *ADMIT_EVIDENCE)}
-        if item["action"] == "modify":
-            record["witness_receipts"] = [len(load_ledger(witness_ledger))]
-        records.append(record)
-    composed = root / ".kickoff/input-writes/admit-request.json"
-    _write_json(composed, {"families": [], "records": records})
-    try:
-        author_inputs(
-            root,
-            composed,
-            _digest((root / "tests/proof-estate.yaml").read_bytes()),
-            _digest((root / str(manifest["audit_ledger"])).read_bytes()),
-        )
-    finally:
-        composed.unlink(missing_ok=True)
+        records.append(decision(item, len(load_ledger(witness_ledger))))
+        plants[proof_id] = {key: item[key] for key in PLANT_FIELDS if key in item}
+    author(records, check_only=False)
+    _write_json(root / PLANTS, plants)
     return {"admitted": [record["proof_id"] for record in records], "witnessed": len(records)}
 
 
@@ -1575,7 +1628,9 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
 
-def author_inputs(root: Path, source: Path, manifest_sha: str, ledger_sha: str) -> None:
+def author_inputs(
+    root: Path, source: Path, manifest_sha: str, ledger_sha: str, *, check_only: bool = False
+) -> list[str]:
     """Compose real family edits and append-only decisions, checking the resulting estate."""
     import fcntl
 
@@ -1656,6 +1711,15 @@ def author_inputs(root: Path, source: Path, manifest_sha: str, ledger_sha: str) 
                 row["witness_receipts"] = semantic["witness_receipts"]
             appended.append(row)
         ledger = load_ledger(ledger_path) + appended
+        if check_only:
+            # Report what would refuse, and publish nothing.
+            try:
+                validate(root, proposed_manifest=manifest, proposed_ledger=ledger)
+            except GovernanceError as exc:
+                return [line[2:] for line in str(exc).splitlines() if line.startswith("- ")] or [
+                    str(exc)
+                ]
+            return []
         validate(root, proposed_manifest=manifest, proposed_ledger=ledger)
         # All refusal checks precede publication. An I/O interruption is not success;
         # retain both files and diagnose it, never rewrite prior ledger history.
@@ -1677,6 +1741,7 @@ def author_inputs(root: Path, source: Path, manifest_sha: str, ledger_sha: str) 
                 os.fsync(stream.fileno())
 
         validate(root)
+        return []
 
 
 def main(argv: Sequence[str] | None = None) -> int:

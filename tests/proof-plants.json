@@ -1,0 +1,155 @@
+{
+  "pytest:tests/test_check.py::test_all_is_default_locked_ordered_and_cwd_independent": {
+    "defect": "Route the gate's test lane back to the uncached full suite",
+    "expect": "GATE OMITTED OR REORDERED REQUIRED COMMAND",
+    "plant": {
+      "path": "bin/check",
+      "replace": "    run_gate test \"$repo_root/bin/test\" --reuse || return $?\n",
+      "with": "    run_test || return $?\n"
+    }
+  },
+  "pytest:tests/test_check.py::test_all_policy_failure_cannot_be_masked_by_later_policy_output": {
+    "defect": "Swallow the last policy check's failure status",
+    "expect": "== 41",
+    "plant": {
+      "path": "bin/check",
+      "replace": "    run_gate policy-test-time ./bin/test-governance timing || return $?\n",
+      "with": "    run_gate policy-test-time ./bin/test-governance timing || true\n"
+    }
+  },
+  "pytest:tests/test_check.py::test_no_reuse_runs_the_whole_suite_and_a_failing_reuse_lane_fails_the_gate": {
+    "defect": "Ignore the gate's --no-reuse option",
+    "expect": "UNCACHED GATE REUSED TESTS OR A FAILED REUSE LANE PASSED",
+    "plant": {
+      "path": "bin/check",
+      "replace": "  test_reuse=0\n",
+      "with": "  test_reuse=1\n"
+    }
+  },
+  "pytest:tests/test_check.py::test_report_runs_every_lane_names_each_failure_and_stores_no_receipt": {
+    "defect": "Drop the policy lane from report mode",
+    "expect": "REPORT STOPPED EARLY, HID A FAILED LANE OR STORED A RECEIPT",
+    "plant": {
+      "path": "bin/check",
+      "replace": "  run_reported policy run_policy\n",
+      "with": ""
+    }
+  },
+  "pytest:tests/test_execution_dashboard.py::test_stale_dashboard_refuses_until_regenerated_from_tracked_inputs": {
+    "defect": "Make regeneration report success without rewriting",
+    "expect": "STALE DASHBOARD PASSED OR REGENERATION DID NOT RESTORE TRACKED BYTES",
+    "plant": {
+      "path": "bin/check-execution-dashboards",
+      "replace": "            shutil.copyfile(actual, expected)\n",
+      "with": "            pass\n"
+    }
+  },
+  "pytest:tests/test_kickoff_config.py::test_preflight_groups_only_identical_readiness_commands": {
+    "defect": "Group roles that differ only in effort under one readiness probe",
+    "expect": "READINESS PROBE GROUPING LOST",
+    "plant": {
+      "path": "bin/kickoff-config",
+      "replace": "            target.model,\n            target.effort,\n",
+      "with": "            target.model,\n"
+    }
+  },
+  "pytest:tests/test_multioperator.py::test_absent_retained_evidence_is_reported_while_altered_evidence_refuses": {
+    "defect": "Never excuse absent ignored evidence",
+    "expect": "RETAINED EVIDENCE ABSENCE REFUSED OR ALTERATION PASSED",
+    "plant": {
+      "path": "lib/agentic_starter/multioperator.py",
+      "replace": "    absent.append(relative)\n    return True\n",
+      "with": "    return False\n"
+    }
+  },
+  "pytest:tests/test_multioperator.py::test_methodology_close_cannot_bypass_the_lessons_contract": {
+    "defect": "Disable the append-boundary refusal of a bare methodology close",
+    "expect": "METHODOLOGY CLOSE BYPASSED LESSONS OR VALID RECORD REFUSED",
+    "plant": {
+      "path": "lib/agentic_starter/multioperator.py",
+      "replace": "                and \"\u2014 PARK\" not in block.header\n",
+      "with": "                and \"\u2014 PARK\" not in block.header\n                and False\n"
+    }
+  },
+  "pytest:tests/test_multioperator.py::test_preflight_lists_source_releases_the_recipient_has_not_recorded": {
+    "defect": "Report every declared release as unrecorded",
+    "expect": "RELEASE GAP MISREPORTED OR MALFORMED PROVENANCE ACCEPTED",
+    "plant": {
+      "path": "lib/agentic_starter/multioperator.py",
+      "replace": "            if recorded is None\n",
+      "with": "            if True\n"
+    }
+  },
+  "pytest:tests/test_multioperator.py::test_retrofit_rehearsal_preserves_narrative_history": {
+    "defect": "Remove the retrofit dispatch so a narrative-only project is rehearsed as if it had canonical history",
+    "expect": "RETROFIT HISTORY OR REFUSAL CONTRACT LOST",
+    "plant": {
+      "path": "lib/agentic_starter/multioperator.py",
+      "replace": "        if config.get(\"mode\") == \"retrofit\":\n",
+      "with": "        if False:\n"
+    }
+  },
+  "pytest:tests/test_multioperator.py::test_transfer_equivalence_for_existing_product": {
+    "defect": "Require an adopted donor even for capability learning",
+    "expect": "TRANSFER EQUIVALENCE OR REFUSAL CONTRACT LOST",
+    "plant": {
+      "path": "lib/agentic_starter/multioperator.py",
+      "replace": "        intent == \"capability\" or donor_state == \"declared-adopted\",\n",
+      "with": "        donor_state == \"declared-adopted\",\n"
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_a_command_family_is_inventoried_and_selected_for_its_own_runner": {
+    "defect": "Drop command-kind selectors from the printed selection",
+    "expect": "NATIVE-RUNNER FAMILY NOT SELECTED OR NOT INVENTORIED",
+    "plant": {
+      "path": "lib/agentic_starter/test_governance.py",
+      "replace": "                            print(\"command \" + str(selector))\n",
+      "with": "                            pass\n"
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_admit_records_a_proof_only_after_seeing_it_fail_and_restoring_the_tree": {
+    "defect": "Abort the witness instead of finishing it",
+    "expect": "ADMIT RECORDED AN UNSEEN FAILURE, LEFT A DEFECT PLANTED OR LOST A RECEIPT",
+    "plant": {
+      "path": "lib/agentic_starter/test_governance.py",
+      "replace": "        witness_finish(root)\n        records.append(",
+      "with": "        witness_abort(root)\n        records.append("
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_admit_refuses_before_witnessing_and_replays_a_recorded_defect": {
+    "defect": "Proceed to witnessing even when the finished ledger could not be recorded",
+    "expect": "nothing was witnessed",
+    "plant": {
+      "path": "lib/agentic_starter/test_governance.py",
+      "replace": "    if blocking:\n",
+      "with": "    if False:\n"
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_reuse_runs_only_what_changed_since_a_proven_tree_and_everything_when_unsure": {
+    "defect": "Have the reuse lane select no family whatever changed",
+    "expect": "REUSE SKIPPED AN AFFECTED FAMILY OR RERAN AN UNAFFECTED ONE",
+    "plant": {
+      "path": "lib/agentic_starter/test_governance.py",
+      "replace": "        return _families_for_changes(root, families, changed, [])\n",
+      "with": "        return [], None\n"
+    }
+  },
+  "pytest:tests/test_toolchain_entrypoints.py::test_reuse_lane_runs_native_runner_families_and_nothing_when_nothing_changed": {
+    "defect": "Skip selected native-runner families in the test entry point",
+    "expect": "REUSE LANE SKIPPED A NATIVE-RUNNER FAMILY OR RAN TESTS WHEN NOTHING CHANGED",
+    "plant": {
+      "path": "bin/test",
+      "replace": "    \"$repo_root/bin/test\" \"${command_words[@]}\" || return $?\n",
+      "with": "    :\n"
+    }
+  },
+  "pytest:tests/test_toolchain_entrypoints.py::test_wrapper_run_excludes_runtime_state_from_dropbox_sync": {
+    "defect": "Drop the sync-exclusion call from the shared toolchain initialiser",
+    "expect": "RUNTIME STATE NOT SYNC-EXCLUDED",
+    "plant": {
+      "path": "bin/_python-toolchain",
+      "replace": "  python_toolchain_exclude_runtime_state_from_sync || return $?\n",
+      "with": ""
+    }
+  }
+}

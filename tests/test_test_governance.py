@@ -242,6 +242,59 @@ def test_admit_records_a_proof_only_after_seeing_it_fail_and_restoring_the_tree(
     ), "ADMIT RECORDED AN UNSEEN FAILURE, LEFT A DEFECT PLANTED OR LOST A RECEIPT"
 
 
+def test_admit_refuses_before_witnessing_and_replays_a_recorded_defect(
+    estate: Path, tmp_path: Path
+) -> None:
+    """Admission: run on part of a batch, the command witnessed and then refused, leaving
+    receipts with no decision; and a receiver had to rediscover each defect to plant.
+
+    Against a copy of a valid estate that gains a second, unadmitted proof, the oracle is
+    the witness ledger's exact bytes after a refused partial input, and then a successful
+    admission that supplies no defect because one was recorded for the proof.
+    """
+    authored = tmp_path / "authored"
+    shutil.copytree(estate, authored)
+    (authored / "guard.txt").write_text("deny\n")
+    os.utime(authored / "guard.txt", (0, 0))
+    check = authored / "check.sh"
+    check.write_text(
+        '#!/bin/sh\ngrep -qx deny guard.txt || { echo "E GUARD OPEN"; exit 1; }\necho checked\n'
+    )
+    check.chmod(0o755)
+    witnesses = authored / "reports/witnesses.jsonl"
+    supplied = tmp_path / "admit.json"
+    defect = {
+        "defect": "The guard allows instead of denying.",
+        "expect": "GUARD OPEN",
+        "command": "./check.sh",
+        "plant": {"path": "guard.txt", "replace": "deny", "with": "allow"},
+    }
+    known = {"action": "modify", "proof_id": SAMPLE + "test_admitted", **EVIDENCE}
+    arriving = {"action": "admit", "proof_id": SAMPLE + "test_arriving", **EVIDENCE}
+
+    sample = authored / "tests/test_sample.py"
+    sample.write_text(sample.read_text() + "\n\ndef test_arriving():\n    pass\n")
+    before = witnesses.read_bytes()
+    supplied.write_text(json.dumps({"proofs": [{**known, **defect}]}))
+    with pytest.raises(governance.GovernanceError, match="nothing was witnessed") as refused:
+        governance.admit(authored, supplied)
+    untouched = witnesses.read_bytes() == before and "test_arriving" in str(refused.value)
+
+    supplied.write_text(json.dumps({"proofs": [{**known, **defect}, {**arriving, **defect}]}))
+    governance.admit(authored, supplied)
+    recorded = governance.recorded_plants(authored)
+    supplied.write_text(json.dumps({"proofs": [known]}))
+    replayed = governance.admit(authored, supplied)
+    assert (
+        untouched
+        and recorded[arriving["proof_id"]]["plant"] == defect["plant"]
+        and replayed == {"admitted": [known["proof_id"]], "witnessed": 1}
+        and len(governance.load_ledger(witnesses)) == len(before.splitlines()) + 3
+        and (authored / "guard.txt").read_bytes() == b"deny\n"
+        and governance.validate(authored)["state"] == "valid"
+    ), "ADMIT WITNESSED WHAT IT COULD NOT RECORD OR LOST THE RECORDED DEFECT"
+
+
 def test_inventory_counts_executable_families_and_expanded_leaves(estate: Path) -> None:
     observed = governance.inventory(estate)
     assert observed["counts"] == {"families": 6, "leaves": 7}

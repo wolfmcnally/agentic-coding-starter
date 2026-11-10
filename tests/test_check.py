@@ -76,9 +76,6 @@ fi
         root / "bin" / "check-anonymization.sh",
         """#!/usr/bin/env bash
 printf 'policy cwd=%s\\n' "$PWD" >> "$CHECK_TEST_LOG"
-if [[ -n "${CHECK_POLICY_FAIL_CODE:-}" ]]; then
-  exit "$CHECK_POLICY_FAIL_CODE"
-fi
 """,
     )
     _write_executable(
@@ -103,6 +100,10 @@ printf 'treatise cwd=%s args=%s\\n' "$PWD" "$*" >> "$CHECK_TEST_LOG"
         root / "bin" / "test-governance",
         """#!/usr/bin/env bash
 printf 'governance cwd=%s args=%s\n' "$PWD" "$*" >> "$CHECK_TEST_LOG"
+# A lane every adopter has, so proofs that need a failing policy check travel unchanged.
+if [[ "${1:-}" == "timing" && -n "${CHECK_POLICY_FAIL_CODE:-}" ]]; then
+  exit "$CHECK_POLICY_FAIL_CODE"
+fi
 if [[ "${1:-}" == "select" ]]; then
   printf '%s\n' 'FOCUSED' 'fixture selection' 'tests/test_check.py'
 fi
@@ -270,7 +271,7 @@ def test_all_policy_failure_cannot_be_masked_by_later_policy_output(
     result = _run(root, environment, "all")
 
     assert result.returncode == 41
-    assert "CHECK policy-anonymization FAIL (exit 41)" in result.stdout
+    assert "CHECK policy-test-time FAIL (exit 41)" in result.stdout
     assert "CHECK policy PASS" not in result.stdout
     assert "CHECK ALL PASS" not in result.stdout
 
@@ -435,7 +436,7 @@ def test_report_runs_every_lane_names_each_failure_and_stores_no_receipt(
     calls = Path(environment["CHECK_TEST_LOG"]).read_text()
     assert (
         result.returncode == 1
-        and "CHECK REPORT FAILED: format policy-anonymization" in result.stderr
+        and "CHECK REPORT FAILED: format policy-test-time" in result.stderr
         and "test_runner.py" in calls
         and "governance cwd=" in calls
         and not any(line.startswith("receipt ") for line in calls.splitlines())
