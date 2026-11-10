@@ -1350,6 +1350,41 @@ def test_outstanding_child_makes_completed_leader_incomplete(
                 pass
 
 
+def test_a_refused_liveness_probe_is_settled_before_a_finished_command_is_called_incomplete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Admission: under parallel load a finished two-line command was reported incomplete,
+    twice in one day in two repositories, because one refused probe was read as a live child.
+
+    The refusal is injected at the system call, so the oracle is the supervisor's own
+    result for a probe that clears after a few refusals and for one that never clears.
+    """
+    from agentic_starter import test_runner
+
+    real = os.killpg
+    refusals = {"left": 3}
+
+    def probe(group: int, signum: int) -> None:
+        if signum == 0 and refusals["left"] != 0:
+            refusals["left"] -= 1
+            raise PermissionError(1, "Operation not permitted")
+        if signum == 0:
+            raise ProcessLookupError(3, "No such process")
+        real(group, signum)
+
+    monkeypatch.setattr(test_runner.os, "killpg", probe)
+    command = [sys.executable, "-c", "print('done')"]
+    settled = test_runner.run_command(command, cwd=tmp_path, capture=True, cleanup_grace=2)
+    refusals["left"] = -1  # never clears
+    unprovable = test_runner.run_command(command, cwd=tmp_path, capture=True, cleanup_grace=0.05)
+    assert (
+        (settled.returncode, settled.stdout.strip()) == (0, "done")
+        and "INCOMPLETE" not in settled.stderr
+        and unprovable.returncode == 124
+        and "INCOMPLETE" in unprovable.stderr
+    ), f"REFUSED PROBE MISREAD: {settled.returncode} {settled.stderr!r} {unprovable.returncode}"
+
+
 def test_governance_allows_nested_supervisor_cleanup(tmp_path: Path, monkeypatch) -> None:
     import functools
     import signal

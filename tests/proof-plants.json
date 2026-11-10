@@ -107,6 +107,15 @@
       "with": "                            pass\n"
     }
   },
+  "pytest:tests/test_test_governance.py::test_a_refused_liveness_probe_is_settled_before_a_finished_command_is_called_incomplete": {
+    "defect": "Count a refused liveness probe as a live child at once, without probing again",
+    "expect": "REFUSED PROBE MISREAD",
+    "plant": {
+      "path": "lib/agentic_starter/test_runner.py",
+      "replace": "            if time.monotonic() >= deadline:\n                return True\n",
+      "with": "            if True:\n                return True\n"
+    }
+  },
   "pytest:tests/test_test_governance.py::test_admit_records_a_proof_only_after_seeing_it_fail_and_restoring_the_tree": {
     "defect": "Abort the witness instead of finishing it",
     "expect": "ADMIT RECORDED AN UNSEEN FAILURE, LEFT A DEFECT PLANTED OR LOST A RECEIPT",

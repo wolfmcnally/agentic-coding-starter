@@ -8,6 +8,7 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -33,14 +34,33 @@ def _stop(process: subprocess.Popen[str], grace: float) -> str:
     return "\n".join(errors)
 
 
-def _group_exists(group_id: int) -> bool:
-    try:
-        os.killpg(group_id, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
+SETTLE_POLL_SECONDS = 0.005
+
+
+def _group_outstanding(group_id: int, settle: float) -> bool:
+    """Whether the child's group still has a member after its leader exited.
+
+    A refused probe is ambiguous. For a few milliseconds after the last member of a
+    group exits, and before the system has finished collecting it, this platform refuses
+    a signal to that group exactly as it would refuse one to a group the caller may not
+    signal. Counting the refusal as a live child reported finished commands as incomplete
+    under parallel load. So a refusal is probed again within the cleanup grace: a group
+    that turns out to be gone is finished, one that answers is outstanding, and one still
+    refusing at the deadline is treated as outstanding, because that cannot be told apart
+    from a child that escaped.
+    """
+    deadline = time.monotonic() + settle
+    while True:
+        try:
+            os.killpg(group_id, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            if time.monotonic() >= deadline:
+                return True
+            time.sleep(SETTLE_POLL_SECONDS)
+            continue
         return True
-    return True
 
 
 def run_command(
@@ -91,7 +111,7 @@ def run_command(
                 raise InterruptedError("interrupted during child startup")
             stdout, stderr = process.communicate(timeout=timeout)
             code = process.returncode
-            if code < 0 or _group_exists(process.pid):
+            if code < 0 or _group_outstanding(process.pid, cleanup_grace):
                 cleaning = True
                 cleanup_detail = _stop(process, cleanup_grace)
                 code = INCOMPLETE

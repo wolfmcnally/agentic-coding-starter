@@ -1,5 +1,13 @@
 # Starter Releases
 
+## 1.3.2 — 2026-11-10
+
+Fixes an intermittent false failure in the process supervisor that runs tests, gates and witness commands. Under parallel load a command that had finished normally was occasionally reported as `TEST INCOMPLETE` with `owned group cleanup could not signal`, because for a few milliseconds after a command's last process exits the system refuses a probe of its process group, and the supervisor read one refusal as a child still running. It failed full gates in two repositories in one day and reproduced at about four per thousand short commands. The supervisor now probes again within its cleanup grace before deciding; a group that proves gone is a finished command, and one still unprovable at the deadline is reported incomplete as before. A patch release: one fix, no new capability. No recipient is inferred upgraded.
+
+Transfers:
+
+- **Supervisor liveness probe that settles a refusal:** `lib/agentic_starter/test_runner.py` with `tests/test_test_governance.py` and its recorded defect in `tests/proof-plants.json`.
+
 ## 1.3.1 — 2026-11-10
 
 Fixes found by the first transfer of 1.3.0 to a recipient, and one rule learned from that recipient. `./bin/test-governance admit` now checks that its result can be recorded before it plants anything, and refuses with nothing witnessed when it cannot; given part of a batch it previously recorded a witness and then refused. It keeps each planted defect in `tests/proof-plants.json`, which travels with the tests, so a recipient admits an arriving proof by replaying the recorded defect and observing the failure itself instead of rediscovering what to plant. The two gate proofs that need a failing policy check now fail the test-timing check every adopter carries, not the template-only anonymization check, so they travel unchanged. A project adopting parallel test execution now qualifies its existing suite by one full parallel run, not a serial baseline, and labels subtests and parametrized cases with plain text. Nothing here adds work to a gate or test run: a defect is planted once, when a proof is admitted or changed. This is a patch release: fixes and one refinement, no new capability. No recipient is inferred upgraded.
