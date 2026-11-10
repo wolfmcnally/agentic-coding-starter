@@ -14,12 +14,14 @@ project_root="$repo_root/project"
 
 usage() {
   cat <<'EOF'
-Usage: ./bin/test [--vital | --changed-from <ref> | pytest arguments...]
+Usage: ./bin/test [--vital | --changed-from <ref> | --reuse | pytest arguments...]
 
-Run the full repository test suite by default. The governed --vital and
---changed-from lanes select admitted proof families and widen to full when
-selection cannot be proved safe. Other arguments are forwarded to pytest for
-explicit focused testing; paths are interpreted relative to the repo root.
+Run the full repository test suite by default, always in full. The governed
+--vital and --changed-from lanes select admitted proof families and widen to
+full when selection cannot be proved safe. --reuse runs only the families that
+changes since the last fully passing tree can affect, and everything when that
+tree is unknown; it is what the full gate uses. Other arguments are forwarded
+to pytest for explicit focused testing; paths are relative to the repo root.
 EOF
 }
 
@@ -32,6 +34,10 @@ if [[ $# -ge 1 && "$1" == "--vital" && $# -ne 1 ]]; then
   exit 2
 fi
 if [[ $# -ge 1 && "$1" == "--changed-from" && ( $# -ne 2 || -z "${2:-}" ) ]]; then
+  usage >&2
+  exit 2
+fi
+if [[ $# -ge 1 && "$1" == "--reuse" && $# -ne 1 ]]; then
   usage >&2
   exit 2
 fi
@@ -49,17 +55,51 @@ python_toolchain_probe
 # Every full run leaves its per-test timings where `test-governance timing` reads them.
 full_suite=(-q --junitxml "$repo_root/.kickoff/test-timing/full.xml" -o junit_family=xunit1
   project/tests tests)
-if [[ $# -eq 0 ]]; then
+
+# A run that can prove the whole tree is bracketed: its identity is fixed before it starts,
+# and a pass records that tree as the one later --reuse runs compare against. A failed
+# uncached run reports any failure that reuse would have skipped. Bookkeeping trouble never
+# changes the tests' own exit status; it only costs the next run its shortcut.
+run_proving() {
+  local reuse_lane="$1"
+  shift
+  local proving_exit=0
+  local reuse_ready=0
+
+  if [[ -x "$repo_root/bin/test-governance" ]] \
+    && "$repo_root/bin/test-governance" reuse begin --lane "$reuse_lane" > /dev/null; then
+    reuse_ready=1
+  else
+    echo "TEST REUSE UNAVAILABLE: this run records no proven tree" >&2
+  fi
+  "$@" || proving_exit=$?
+  if [[ "$reuse_ready" -eq 1 ]]; then
+    "$repo_root/bin/test-governance" reuse finish --exit "$proving_exit" \
+      || echo "TEST REUSE UNAVAILABLE: the run's result was not recorded" >&2
+  fi
+  return "$proving_exit"
+}
+
+run_full_suite() {
   rm -f "$repo_root/.kickoff/test-timing/full.xml"
-  exec uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" \
+  run_proving full uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" \
     python "$repo_root/lib/agentic_starter/test_runner.py" -m pytest "${full_suite[@]}"
+}
+
+if [[ $# -eq 0 ]]; then
+  run_full_suite
+  exit $?
 fi
 
 run_governed_lane() {
   local -a selection
   local selection_mode
   local selection_reason
-  local -a selectors
+  local -a selectors=()
+  local -a command_selectors=()
+  local -a command_words
+  local selected
+  local lane_mode="$1"
 
   if [[ ! -x "$repo_root/bin/test-governance" ]]; then
     echo "TEST ERROR missing required executable: bin/test-governance" >&2
@@ -74,17 +114,45 @@ run_governed_lane() {
   selection_reason="${selection[1]}"
   echo "TEST GOVERNED $selection_mode: $selection_reason"
   if [[ "$selection_mode" == "FULL" ]]; then
-    rm -f "$repo_root/.kickoff/test-timing/full.xml"
-    exec uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" \
-      python "$repo_root/lib/agentic_starter/test_runner.py" -m pytest "${full_suite[@]}"
+    run_full_suite
+    exit $?
+  fi
+  if [[ "$selection_mode" == "NONE" && "$lane_mode" == "--reuse" ]]; then
+    # Nothing that any family covers or reads has changed since the proven tree.
+    run_proving reuse true
+    exit $?
   fi
   if [[ "$selection_mode" != "FOCUSED" || ${#selection[@]} -lt 3 ]]; then
     echo "TEST ERROR governance selection did not provide runnable selectors" >&2
     return 1
   fi
-  selectors=("${selection[@]:2}")
-  exec uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" \
-    python "$repo_root/lib/agentic_starter/test_runner.py" -m pytest -q "${selectors[@]}"
+  for selected in "${selection[@]:2}"; do
+    if [[ "$selected" == "command "* ]]; then
+      command_selectors+=("${selected#command }")
+    else
+      selectors+=("$selected")
+    fi
+  done
+  if [[ "$lane_mode" == "--reuse" ]]; then
+    run_proving reuse run_selected
+  else
+    run_selected
+  fi
+  exit $?
+}
+
+# pytest families in one invocation, then each family that belongs to the deliverable's own
+# runner, through this same entry point so the profile's routing applies.
+run_selected() {
+  if [[ ${#selectors[@]} -gt 0 ]]; then
+    uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" \
+      python "$repo_root/lib/agentic_starter/test_runner.py" -m pytest -q "${selectors[@]}" \
+      || return $?
+  fi
+  for selected in "${command_selectors[@]}"; do
+    read -r -a command_words <<< "$selected"
+    "$repo_root/bin/test" "${command_words[@]}" || return $?
+  done
 }
 
 if [[ $# -eq 1 && "$1" == "--vital" ]]; then
@@ -93,6 +161,10 @@ fi
 
 if [[ $# -ge 1 && "$1" == "--changed-from" ]]; then
   run_governed_lane --changed-from "$2"
+fi
+
+if [[ $# -eq 1 && "$1" == "--reuse" ]]; then
+  run_governed_lane --reuse
 fi
 
 exec uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" \

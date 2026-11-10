@@ -426,6 +426,9 @@ Use the target's committed language profile:
 | TypeScript / Node | package-manager/version metadata plus the selected lockfile; frozen/immutable setup; package scripts behind `bin/test` and `bin/check` |
 | Rust | declared/pinned toolchain when applicable; Cargo `--locked`; checkout-owned output for every probe/build/test/format/lint invocation, using the recipe below |
 | Go | declared Go version; dependency and test commands with module reads `-mod=readonly` |
+| Swift | committed `Package.swift` + `Package.resolved`; resolution that refuses to rewrite the pin file; `swift build` and `swift test --parallel` behind `bin/check` and `bin/test`; an Xcode project, when there is one, generated or built by a named mode of its own |
+
+Whatever the language, turn on the runner's own parallel scheduler by default, and declare the deliverable's suite in the generated proof estate as families of kind `command` whose selectors are `bin/test` argument lists and whose `covers` name the deliverable's paths. That is what lets changed-path selection and the gate's reuse lane run only the affected part of a non-Python suite; a deliverable with no such family runs everything on every change beneath it. Split a large suite into several families along the boundaries its runner can filter by (a test target, a package, a test file).
 
 When `project_isolation` is enabled, each language gate runs from `<dest>/project`; otherwise it runs from `<dest>`. The `policy` mode must check at least the universal instruction/config invariants (`AGENTS.md` is regular with no top-level `CLAUDE.md`; `bin/kickoff-config show` succeeds) and any target-specific deterministic policy gates. It must not be an unconditional pass.
 

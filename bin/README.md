@@ -47,6 +47,12 @@ are stable from any caller directory.
 ./bin/test --changed-from HEAD~1
 ```
 
+```bash
+./bin/test --reuse
+```
+
+`--reuse` is the lane the full gate uses: it runs the families that changes since the last fully passing tree can affect, everything when that tree or the runtime is unknown, and nothing when no covered or read path changed. A bare `./bin/test` always runs everything and, on a pass, records the tree that later reuse runs compare against.
+
 The governed lanes use the recipient-local `tests/proof-estate.yaml`. Vital
 runs every locally admitted fast family; changed runs the union of every family
 mapped to the live diff. Invalid governance, an unresolved ref, or an unmapped
@@ -82,7 +88,7 @@ Source-only helper used by `setup`, `test`, `check`, and `python`. It validates 
 
 ### `check` — authoritative repository build gate
 
-The single authoritative entry point for automated repository checks. It resolves the repo root from its own location, validates the complete toolchain bundle, probes the selected locked environment, then runs the selected named mode with the identical runtime selection. Its `test` mode delegates to `bin/test`. `all` validates immutable logs before expensive work, then runs lint, format verification, tests, and deterministic policy checks including final log revalidation in order. Child failures retain their exact status and emit a terminal `CHECK <name> FAIL`; success ends with `CHECK ALL PASS`. `report` runs every lane to the end for diagnosis, names each failed or incomplete lane in a final `CHECK REPORT` line, and never stores a receipt. Each lane's terminal line carries its elapsed seconds. Every `all` run also captures a complete durable log and terminal run metadata under `.kickoff/check-all/`; success stores a receipt bound to the exact candidate, environment fingerprint, and log digest.
+The single authoritative entry point for automated repository checks. It resolves the repo root from its own location, validates the complete toolchain bundle, probes the selected locked environment, then runs the selected named mode with the identical runtime selection. Its `test` mode delegates to `bin/test`. `all` validates immutable logs before expensive work, then runs lint, format verification, tests, and deterministic policy checks including final log revalidation in order. Child failures retain their exact status and emit a terminal `CHECK <name> FAIL`; success ends with `CHECK ALL PASS`. The test lane of `all` runs through `bin/test --reuse`, so proofs whose inputs are unchanged since the last fully passing tree are not repeated; `all --no-reuse` runs every test. `report` runs every lane to the end for diagnosis, names each failed or incomplete lane in a final `CHECK REPORT` line, and never stores a receipt. Each lane's terminal line carries its elapsed seconds. Every `all` run also captures a complete durable log and terminal run metadata under `.kickoff/check-all/`; success stores a receipt bound to the exact candidate, environment fingerprint, and log digest.
 
 ```bash
 ./bin/check

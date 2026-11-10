@@ -584,6 +584,172 @@ def test_changed_code_selects_the_families_of_files_that_use_it(tmp_path: Path) 
     assert ({item["id"] for item in chosen}, widened) == ({"vital", "helper", "user"}, None)
 
 
+def test_reuse_runs_only_what_changed_since_a_proven_tree_and_everything_when_unsure(
+    tmp_path: Path,
+) -> None:
+    """Admission: the full gate re-ran every test after changes no test could observe.
+
+    A real git tree, the real tree-identity tool and the real selection are driven through
+    each state the reuse lane must tell apart. The oracle is the set of families selected
+    and the widening reason, compared with what each change can actually reach.
+    """
+
+    def family(name: str, covers: str, tier: str = "changed") -> str:
+        return (
+            f"- id: {name}\n  tier: {tier}\n  kind: pytest\n"
+            f"  selectors: [tests/test_{name}.py]\n  covers: ['{covers}']\n"
+            f"  source_paths: [tests/test_{name}.py]\n"
+        )
+
+    files = {
+        "tests/proof-estate.yaml": "families:\n"
+        + family("vital", "known/**", tier="vital")
+        + family("mapped", "lib/example.py")
+        + family("other", "lib/other.py")
+        + family("records", "plan/events/*")
+        + family("ledger", "plan/events/*.json"),
+        "candidate-partition.yaml": "schema: agentic.candidate-partition.v1\nactive:\n"
+        '  - "/candidate-partition.yaml"\n  - "/lib/**"\n  - "/tests/**"\nbookkeeping:\n'
+        '  - "/EXECUTION_LOG.jsonl"\n  - "/plan/events/**"\n  - "/log/entries/**"\n',
+        ".gitignore": ".kickoff/\n",
+        "known/file": "base\n",
+        "lib/example.py": "VALUE = 1\n",
+        "lib/other.py": "VALUE = 2\n",
+        "plan/events/a.json": "{}\n",
+        "log/entries/x.md": "entry\n",
+        "EXECUTION_LOG.jsonl": "{}\n",
+        ".kickoff/runtime": "1" * 64 + "\n",
+    }
+    for name, text in files.items():
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_text(text)
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "lib/agentic_starter").mkdir()
+    shutil.copy2(REPO_ROOT / "bin/kickoff-tree-id", tmp_path / "bin/kickoff-tree-id")
+    for module in ("__init__.py", "candidate_boundaries.py"):
+        shutil.copy2(
+            REPO_ROOT / "lib/agentic_starter" / module, tmp_path / "lib/agentic_starter" / module
+        )
+    receipt = tmp_path / "bin/check-receipt"
+    receipt.write_text('#!/bin/sh\ncat "$(dirname "$0")/../.kickoff/runtime"\n')
+    receipt.chmod(0o755)
+
+    def git(*arguments: str) -> None:
+        subprocess.run(["git", *arguments], cwd=tmp_path, check=True, capture_output=True)
+
+    git("init", "-q")
+    git("config", "user.email", "test@example.invalid")
+    git("config", "user.name", "Test")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    record = tmp_path / governance.REUSE_RECORD
+
+    def edit(*changed: str) -> None:
+        for path in changed:
+            target = tmp_path / path
+            target.write_text((target.read_text() if target.exists() else "") + "# two\n")
+
+    def selection(*changed: str) -> tuple[set[str], str | None]:
+        edit(*changed)
+        chosen, widened = governance.selected_families(tmp_path, "reuse")
+        git("reset", "-q", "--hard", "HEAD")
+        git("clean", "-qfd")
+        return {item["id"] for item in chosen}, (widened or "").split(":")[0] or None
+
+    everything = {"vital", "mapped", "other", "records", "ledger"}
+    unknown_tree = selection()
+    governance.reuse_begin(tmp_path, "full")
+    proven = governance.reuse_finish(tmp_path, 0)
+    observed = {
+        "unchanged": selection(),
+        "records nobody reads": selection("log/entries/x.md", "EXECUTION_LOG.jsonl"),
+        "record two families cover": selection("plan/events/a.json"),
+        "covered code": selection("lib/example.py"),
+        "uncovered path": selection("new.txt"),
+        "selection inputs": selection("tests/proof-estate.yaml"),
+    }
+    (tmp_path / ".kickoff/runtime").write_text("2" * 64 + "\n")
+    observed["other runtime"] = selection()
+    (tmp_path / ".kickoff/runtime").write_text("1" * 64 + "\n")
+
+    # An uncached run fails a family that reuse would have skipped: the record is discarded.
+    edit("lib/other.py")
+    governance.reuse_begin(tmp_path, "full")
+    timing = tmp_path / governance.TIMING_RECORD
+    timing.parent.mkdir(parents=True, exist_ok=True)
+    timing.write_text(
+        '<testsuites><testsuite><testcase file="tests/test_mapped.py" name="t">'
+        "<failure/></testcase></testsuite></testsuites>"
+    )
+    unsound = governance.reuse_finish(tmp_path, 1)
+    discarded = not record.exists()
+    # A tree that moved while its tests ran is never recorded as proven.
+    governance.reuse_begin(tmp_path, "full")
+    edit("lib/example.py")
+    moved = governance.reuse_finish(tmp_path, 0)
+
+    assert (
+        unknown_tree == (everything, "no-proven-tree")
+        and proven.startswith("TEST REUSE RECORDED")
+        and observed
+        == {
+            "unchanged": (set(), None),
+            "records nobody reads": (set(), None),
+            "record two families cover": ({"records", "ledger"}, None),
+            "covered code": ({"mapped"}, None),
+            "uncovered path": (everything, "unmapped-changes"),
+            "selection inputs": (everything, "selection-inputs-changed"),
+            "other runtime": (everything, "no-proven-tree"),
+        }
+        and unsound.startswith("TEST REUSE UNSOUND mapped")
+        and discarded
+        and moved.startswith("TEST REUSE NOT RECORDED")
+        and not record.exists()
+    ), f"REUSE SKIPPED AN AFFECTED FAMILY OR RERAN AN UNAFFECTED ONE: {unknown_tree} {observed}"
+
+
+def test_a_command_family_is_inventoried_and_selected_for_its_own_runner(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Admission: only pytest families could be selected, so a deliverable in another
+    language always ran its whole suite. The oracle is the selection printed for a change
+    under the path the command family covers."""
+    files = {
+        "tests/proof-estate.yaml": "families:\n"
+        "- id: unit\n  tier: changed\n  kind: pytest\n  selectors: [tests/test_unit.py]\n"
+        "  covers: [lib/unit.py]\n  source_paths: [tests/test_unit.py]\n"
+        "- id: deliverable\n  tier: changed\n  kind: command\n"
+        "  selectors: ['project/tests/smoke.rs --quiet']\n"
+        "  covers: ['project/*']\n  source_paths: []\n",
+        "lib/unit.py": "VALUE = 1\n",
+        "project/src/lib.rs": "pub fn value() -> u8 { 1 }\n",
+    }
+    for name, text in files.items():
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / name).write_text(text)
+
+    def git(*arguments: str) -> None:
+        subprocess.run(["git", *arguments], cwd=tmp_path, check=True, capture_output=True)
+
+    git("init", "-q")
+    git("config", "user.email", "test@example.invalid")
+    git("config", "user.name", "Test")
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    (tmp_path / "project/src/lib.rs").write_text("pub fn value() -> u8 { 2 }\n")
+    status = governance.main(
+        ["--root", str(tmp_path), "select", "--changed-from", "HEAD", "--format", "lines"]
+    )
+    lines = capsys.readouterr().out.splitlines()
+    proofs = [(proof.proof_id, proof.kind) for proof in governance.collect_commands(tmp_path)]
+    assert (
+        status == 0
+        and lines[0] == "FOCUSED"
+        and lines[2:] == ["command project/tests/smoke.rs --quiet"]
+        and proofs == [("command:project/tests/smoke.rs --quiet", "command")]
+    ), f"NATIVE-RUNNER FAMILY NOT SELECTED OR NOT INVENTORIED: {lines} {proofs}"
+
+
 def test_report_counts_the_frozen_baseline_and_current_estate(estate: Path) -> None:
     payload = governance.report(estate)
     assert payload["baseline"] == {"families": 8, "leaves": 9}

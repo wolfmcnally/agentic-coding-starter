@@ -14,10 +14,13 @@ project_root="$repo_root/project"
 
 usage() {
   cat <<'EOF'
-Usage: ./bin/check [all|report|lint|format|test|policy|vital|changed <ref>]
+Usage: ./bin/check [all [--no-reuse]|report|lint|format|test|policy|vital|changed <ref>]
 
 Run the repository's build gates. The default and authoritative mode is "all".
 It stops at the first failing lane, because no receipt can follow a failure.
+Its test lane runs the proof families that changes since the last fully
+passing tree can affect, and every test when that tree is unknown; --no-reuse
+runs every test regardless.
 Report runs every lane, names each one that failed, and never produces a
 receipt: use it to see how far a tree is from passing.
 Vital and changed are governed lanes (changed is the local-commit and
@@ -31,6 +34,11 @@ if [[ $# -gt 2 ]]; then
 fi
 
 gate_mode="${1:-all}"
+test_reuse=1
+if [[ "$gate_mode" == "all" && $# -eq 2 && "$2" == "--no-reuse" ]]; then
+  test_reuse=0
+  set -- all
+fi
 case "$gate_mode" in
   all|report|lint|format|test|policy|vital)
     if [[ $# -gt 1 ]]; then
@@ -184,7 +192,11 @@ run_all() {
   run_log || return $?
   run_lint || return $?
   run_format || return $?
-  run_test || return $?
+  if [[ "$test_reuse" -eq 1 ]]; then
+    run_gate test "$repo_root/bin/test" --reuse || return $?
+  else
+    run_test || return $?
+  fi
   run_policy || return $?
 }
 
