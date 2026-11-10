@@ -114,6 +114,8 @@ lockfile. Behavioral coverage lives in
 
 Inventories families, expanded leaves, gates and hooks; validates preserved baseline/ledger replay, explicit pending review, witness references and direct risks; reports diagnostic runtime without thresholds or automatic reruns; records authoring observations; and selects vital/changed feedback. `lib/agentic_starter/test_runner.py` supplies the Python profile's separately qualified process-group hang supervision. Timeout/interruption is incomplete evidence, never a pass or a red witness. Runtime startup remains outside this guard. The supervisor puts tests in their own session and forwards TERM, INT and HUP; killing the supervisor with SIGKILL can orphan that group. Enclosing tools must allow cleanup or track both owned groups. Deliberately detached descendants need separate cleanup.
 
+`admit --input-json <file>` is the one-step form for a new or changed proof: it plants the described defect as an exact text replacement, requires the named failure, restores the tree, and records the witness receipt and the admission or modification row together. It also provides `select --reuse` and the `reuse begin` and `reuse finish` commands that `bin/test` uses to record the last fully passing tree; do not run those by hand.
+
 `witness begin` runs the named command and requires it to pass, then journals the
 named files. Plant the defect in those files, and `witness finish` requires the
 same command to fail with the `--expect` text and the declared `--failure-exit` (default 1; completed failure codes 1–123), restores and verifies the original
@@ -402,6 +404,12 @@ runtime data. An empty archive is valid before the first completed phase.
 ```bash
 ./bin/check-execution-dashboards
 ```
+
+```bash
+./bin/check-execution-dashboards --regenerate
+```
+
+`--regenerate` rewrites any tracked report file that differs from its regeneration, from tracked inputs only, then applies every other check. The plain form never writes.
 
 ### `serve-execution-dashboard` — local report server
 

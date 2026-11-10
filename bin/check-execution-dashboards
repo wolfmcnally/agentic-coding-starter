@@ -10,6 +10,7 @@ import filecmp
 import hashlib
 import json
 import re
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -96,11 +97,25 @@ def fail(message: str) -> None:
     raise TelemetryError(message)
 
 
+# Set by --regenerate: a tracked file that differs from its regeneration is rewritten from
+# the same tracked inputs this check renders, instead of being refused.
+REGENERATED: list[str] | None = None
+
+
 def compare_files(expected: Path, actual: Path) -> None:
+    if REGENERATED is not None and actual.is_file():
+        if not expected.is_file() or not filecmp.cmp(expected, actual, shallow=False):
+            expected.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(actual, expected)
+            REGENERATED.append(str(expected.relative_to(REPO_ROOT)))
+        return
     if not expected.is_file() or not actual.is_file():
         fail(f"missing dashboard artifact: {expected.relative_to(REPO_ROOT)}")
     if not filecmp.cmp(expected, actual, shallow=False):
-        fail(f"stale dashboard artifact: {expected.relative_to(REPO_ROOT)}")
+        fail(
+            f"stale dashboard artifact: {expected.relative_to(REPO_ROOT)}; "
+            "regenerate with ./bin/check-execution-dashboards --regenerate"
+        )
 
 
 def validate_static_assets() -> None:
@@ -155,6 +170,11 @@ def validate_static_assets() -> None:
 
 
 def main() -> int:
+    global REGENERATED
+    if sys.argv[1:] == ["--regenerate"]:
+        REGENERATED = []
+    elif sys.argv[1:]:
+        fail("usage: check-execution-dashboards [--regenerate]")
     validate_static_assets()
     payload_files = sorted(ARCHIVE.glob("????-??-??/phase-*/data.js"))
     if not payload_files:
@@ -240,6 +260,8 @@ def main() -> int:
         for pattern in FORBIDDEN_PAYLOAD:
             if pattern.search(text):
                 fail(f"unsafe dashboard HTML: {file_path.relative_to(REPO_ROOT)}")
+    if REGENERATED:
+        print("EXECUTION DASHBOARDS REGENERATED " + " ".join(sorted(REGENERATED)))
     print(f"EXECUTION DASHBOARDS PASS ({len(payloads)} phases)")
     return 0
 

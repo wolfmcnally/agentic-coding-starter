@@ -176,7 +176,7 @@ Invoke the pinned command without `--open`:
 $TELEMETRY_TOOL dashboard --phase "$PHASE_ID" --accepted-trace-id "$TRACE_ID" --handoff "$RUN_DIR/dashboard-handoff.json"
 ```
 
-It validates and archives the sanitized handoff and regenerates the chronological offline report under `reports/execution/`. This is the final tracked close write. A render failure keeps the phase unreported and routes to the close-repair path in Step 12. When report presentation code changed, the localhost desktop/mobile, interaction, chart/table agreement, and console protocol in the telemetry policy must already have passed.
+It validates and archives the sanitized handoff and regenerates the chronological offline report under `reports/execution/`. This is the final tracked close write. If a later bookkeeping write to the trace ledger leaves an archived file stale, `./bin/check-execution-dashboards --regenerate` rewrites it from tracked inputs; run that before the handoff gate rather than discovering it there. A render failure keeps the phase unreported and routes to the close-repair path in Step 12. When report presentation code changed, the localhost desktop/mobile, interaction, chart/table agreement, and console protocol in the telemetry policy must already have passed.
 
 ### Step 12: Prove the actual handoff tree
 

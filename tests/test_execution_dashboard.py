@@ -430,3 +430,48 @@ def test_named_phase_identity_waits_and_reader_refusals(tmp_path: Path) -> None:
             accepted_trace_id=accepted["trace_id"],
             handoff=sample_handoff("other"),
         )
+
+
+def test_stale_dashboard_refuses_until_regenerated_from_tracked_inputs(tmp_path: Path) -> None:
+    """Admission: a stale generated file failed the gate repeatedly with no named repair.
+
+    A copy of the real checker, library, trace ledger and archive is made stale and then
+    regenerated; the oracle is the checker's exit status and the archive's exact bytes.
+    """
+    import shutil
+
+    mirror = tmp_path / "mirror"
+    (mirror / "bin").mkdir(parents=True)
+    shutil.copy2(ROOT / "bin/check-execution-dashboards", mirror / "bin/check-execution-dashboards")
+    shutil.copytree(ROOT / "lib", mirror / "lib", ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copytree(ROOT / "reports/execution", mirror / "reports/execution")
+    shutil.copy2(ROOT / "EXECUTION_LOG.jsonl", mirror / "EXECUTION_LOG.jsonl")
+    stale = mirror / "reports/execution/index-data.js"
+    original = stale.read_bytes()
+
+    def check(*arguments: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(mirror / "bin/check-execution-dashboards"), *arguments],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+
+    clean = check()
+    stale.write_bytes(original + b"\n")
+    refused = check()
+    still_stale = stale.read_bytes() != original
+    regenerated = check("--regenerate")
+    assert (
+        clean.returncode == 0
+        and refused.returncode == 1
+        and "stale dashboard artifact: reports/execution/index-data.js" in refused.stderr
+        and "--regenerate" in refused.stderr
+        and still_stale
+        and regenerated.returncode == 0
+        and "REGENERATED reports/execution/index-data.js" in regenerated.stdout
+        and stale.read_bytes() == original
+        and check().returncode == 0
+    ), "STALE DASHBOARD PASSED OR REGENERATION DID NOT RESTORE TRACKED BYTES: " + "".join(
+        item.stderr for item in (clean, refused, regenerated)
+    )

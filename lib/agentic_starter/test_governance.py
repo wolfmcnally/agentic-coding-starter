@@ -1484,6 +1484,92 @@ def witness_abort(root: Path) -> dict[str, Any]:
     return {"state": "aborted", "restored": [entry["path"] for entry in request["paths"]]}
 
 
+ADMIT_EVIDENCE = (
+    "contract",
+    "oracle",
+    "red_witness",
+    "nearest_overlap",
+    "replacement_evidence",
+    "rationale",
+)
+
+
+def admit(root: Path, source: Path) -> dict[str, Any]:
+    """Observe each new or changed proof fail, restore the tree, and record the decision.
+
+    One input replaces the begin, plant, finish and author steps. For each proof it names
+    the defect as an exact text replacement, so the plant is repeatable and reviewable; the
+    command observes the proof red with that defect, restores the original bytes, and only
+    then appends the witness receipts and the admission or modification rows together.
+    Nothing is recorded for a proof that was not seen to fail.
+    """
+    from agentic_starter.input_io import read_object
+
+    request = read_object(source)
+    proofs = request.get("proofs")
+    if set(request) != {"proofs"} or not isinstance(proofs, list) or not proofs:
+        raise GovernanceError("admit input requires a nonempty proofs array")
+    needed = {"action", "proof_id", "defect", "expect", "plant", *ADMIT_EVIDENCE}
+    for item in proofs:
+        if (
+            not isinstance(item, dict)
+            or not needed <= set(item)
+            or set(item) - needed - {"command", "failure_exit"}
+            or item["action"] not in {"admit", "modify"}
+            or not isinstance(item["plant"], dict)
+            or set(item["plant"]) != {"path", "replace", "with"}
+            or not all(isinstance(item["plant"][key], str) for key in item["plant"])
+            or not item["plant"]["replace"]
+        ):
+            raise GovernanceError("admit proof has missing, unknown or malformed fields")
+    manifest = load_yaml(root / "tests/proof-estate.yaml")
+    witness_ledger = root / str(manifest["witness_ledger"])
+    records = []
+    for item in proofs:
+        proof_id = str(item["proof_id"])
+        plant = item["plant"]
+        command = item.get("command") or (
+            "./bin/test " + shlex.quote(proof_id.removeprefix("pytest:")) + " -q"
+        )
+        witness_begin(
+            root,
+            proof_ids=[proof_id],
+            defect=item["defect"],
+            expect=item["expect"],
+            command=command,
+            paths=[plant["path"]],
+            failure_exit=item.get("failure_exit", 1),
+        )
+        target = root / plant["path"]
+        try:
+            text = target.read_text()
+            if text.count(plant["replace"]) != 1:
+                raise GovernanceError(
+                    f"plant text must occur exactly once in {plant['path']}: {proof_id}"
+                )
+            target.write_text(text.replace(plant["replace"], plant["with"]))
+        except (OSError, UnicodeDecodeError, GovernanceError):
+            witness_abort(root)
+            raise
+        witness_finish(root)
+        record = {key: item[key] for key in ("action", "proof_id", *ADMIT_EVIDENCE)}
+        if item["action"] == "modify":
+            record["witness_receipts"] = [len(load_ledger(witness_ledger))]
+        records.append(record)
+    composed = root / ".kickoff/input-writes/admit-request.json"
+    _write_json(composed, {"families": [], "records": records})
+    try:
+        author_inputs(
+            root,
+            composed,
+            _digest((root / "tests/proof-estate.yaml").read_bytes()),
+            _digest((root / str(manifest["audit_ledger"])).read_bytes()),
+        )
+    finally:
+        composed.unlink(missing_ok=True)
+    return {"admitted": [record["proof_id"] for record in records], "witnessed": len(records)}
+
+
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
@@ -1636,10 +1722,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     author.add_argument("--input-json", type=Path, required=True)
     author.add_argument("--expect-manifest", required=True)
     author.add_argument("--expect-ledger", required=True)
+    admit_parser = subparsers.add_parser(
+        "admit", help="observe new or changed proofs red, then record them in one step"
+    )
+    admit_parser.add_argument("--input-json", type=Path, required=True)
     args = parser.parse_args(argv)
     root = args.repo_root.resolve()
     try:
-        if args.command == "author":
+        if args.command == "admit":
+            print(json.dumps(admit(root, args.input_json), indent=2, sort_keys=True))
+            print("PROOFS WITNESSED AND RECORDED; prior ledger prefix preserved")
+        elif args.command == "author":
             author_inputs(root, args.input_json, args.expect_manifest, args.expect_ledger)
             print("PROOF INPUTS WRITTEN; prior ledger prefix preserved")
         elif args.command == "inventory":

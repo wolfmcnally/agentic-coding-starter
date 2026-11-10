@@ -190,6 +190,58 @@ def estate():
         yield _write_estate(Path(directory), pruned=True)
 
 
+def test_admit_records_a_proof_only_after_seeing_it_fail_and_restoring_the_tree(
+    estate: Path, tmp_path: Path
+) -> None:
+    """Admission: admitting one test took a begin, a hand edit, a finish and an authoring call.
+
+    The single command is run against a copy of a valid estate; the oracle is the estate's
+    own validator plus the exact ledger rows and file bytes left behind, for a proof that
+    is seen to fail and for one whose defect cannot be planted.
+    """
+    authored = tmp_path / "authored"
+    shutil.copytree(estate, authored)
+    (authored / "guard.txt").write_text("deny\n")
+    os.utime(authored / "guard.txt", (0, 0))
+    check = authored / "check.sh"
+    check.write_text(
+        '#!/bin/sh\ngrep -qx deny guard.txt || { echo "E GUARD OPEN"; exit 1; }\necho checked\n'
+    )
+    check.chmod(0o755)
+    audit = authored / "reports/reset.jsonl"
+    witnesses = authored / "reports/witnesses.jsonl"
+    proof = {
+        "action": "modify",
+        "proof_id": SAMPLE + "test_admitted",
+        "defect": "The guard allows instead of denying.",
+        "expect": "GUARD OPEN",
+        "command": "./check.sh",
+        "plant": {"path": "guard.txt", "replace": "deny", "with": "allow"},
+        **EVIDENCE,
+    }
+    supplied = tmp_path / "admit.json"
+    supplied.write_text(json.dumps({"proofs": [proof]}))
+    before = len(governance.load_ledger(witnesses))
+    outcome = governance.admit(authored, supplied)
+    recorded = governance.load_ledger(audit)[-1]
+    settled = (audit.read_bytes(), witnesses.read_bytes())
+    supplied.write_text(
+        json.dumps({"proofs": [{**proof, "plant": {**proof["plant"], "replace": "absent"}}]})
+    )
+    with pytest.raises(governance.GovernanceError, match="exactly once"):
+        governance.admit(authored, supplied)
+    assert (
+        outcome == {"admitted": [proof["proof_id"]], "witnessed": 1}
+        and len(governance.load_ledger(witnesses)) == before + 1
+        and recorded["record_type"] == "proof_modification"
+        and recorded["witness_receipts"] == [before + 1]
+        and (authored / "guard.txt").read_bytes() == b"deny\n"
+        and not (authored / governance.WITNESS_PENDING).exists()
+        and (audit.read_bytes(), witnesses.read_bytes()) == settled
+        and governance.validate(authored)["state"] == "valid"
+    ), "ADMIT RECORDED AN UNSEEN FAILURE, LEFT A DEFECT PLANTED OR LOST A RECEIPT"
+
+
 def test_inventory_counts_executable_families_and_expanded_leaves(estate: Path) -> None:
     observed = governance.inventory(estate)
     assert observed["counts"] == {"families": 6, "leaves": 7}

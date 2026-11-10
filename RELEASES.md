@@ -1,5 +1,15 @@
 # Starter Releases
 
+## 1.3.0 — 2026-11-10
+
+Less paperwork for the same guarantees. A direct methodology change the operator asked for in the current session now needs one log record, its close, which states what was authorized beside what was delivered; a separate scope record before the work remains for transfers, work spanning sessions and agent-initiated work. A new or changed test is admitted with one command, `./bin/test-governance admit`, which plants the described defect, requires the named failure, restores the tree, and records the witness receipt and the admission together; it records nothing for a test it did not see fail. A stale generated dashboard file, the most frequent record-keeping gate failure in sampled recipients, now names its repair, and `./bin/check-execution-dashboards --regenerate` rewrites the archive from tracked inputs. Every new or changed assertion is still observed failing, every close still carries Lessons, and the gate still refuses a stale file. This is a minor release. No recipient is inferred upgraded.
+
+Transfers:
+
+- **Single-record methodology close:** `policies/review-lanes.md`, `policies/log-discipline.md`.
+- **One-step proof admission:** `lib/agentic_starter/test_governance.py` and `bin/test-governance` with `tests/test_test_governance.py`; `policies/test-suite-governance.md`.
+- **Dashboard regeneration:** `bin/check-execution-dashboards` with `tests/test_execution_dashboard.py`; `policies/execution-telemetry.md` and the kickoff close resource.
+
 ## 1.2.0 — 2026-11-10
 
 The full gate no longer re-runs tests whose inputs have not changed. Its test lane compares the tree with the last tree on which every proof family passed, on the same runtime, and runs only the families the changed-path selection maps to what differs: one family for a new log entry, none when nothing a test covers or reads changed, and every test whenever the comparison cannot be trusted. The push receipt still binds the exact whole tree. `./bin/check all --no-reuse` and a bare `./bin/test` always run everything, and an uncached run that fails a family reuse would have skipped reports `TEST REUSE UNSOUND` and discards the record. A deliverable's own test runner can now be declared as proof families of kind `command`, so a Swift, Rust or Node suite takes part in selection and reuse instead of always running in full. Paths the candidate partition classes as bookkeeping are treated as data in selection and no longer widen a run. Language profiles gain a Swift entry and name each runner's parallel switch. A Starter release is now qualified by the uncached gate. This is a minor release: it adds capabilities and changes which tests the gate executes, not what it certifies. No recipient is inferred upgraded.
