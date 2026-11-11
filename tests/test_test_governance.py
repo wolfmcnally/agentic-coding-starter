@@ -1663,3 +1663,79 @@ def test_script_tool_environments_are_built_before_parallel_workers_start(
         and log.read_text().splitlines() == [f"sync --script {root / 'bin/declares'} --quiet"]
         and order == ["prepare", "pytest"]
     ), f"SCRIPT ENVIRONMENTS NOT PREPARED BEFORE WORKERS: {parallel} {serial} {order}"
+
+
+def test_script_environments_are_prepared_in_the_cache_the_caller_names(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Admission: a project with per-worker caches raced a cold cache inside one worker.
+
+    The supervisor's build lands in the supervisor's cache. A worker that keeps its own
+    cache passes its environment, and the build lands there instead.
+    """
+    import agentic_starter.test_runner as runner
+
+    root = tmp_path / "repo"
+    (root / "bin").mkdir(parents=True)
+    (root / "bin/declares").write_text("#!/usr/bin/env -S uv run --script\n# /// script\n# ///\n")
+    log = tmp_path / "uv.log"
+    stub = tmp_path / "stubs"
+    stub.mkdir()
+    (stub / "uv").write_text(f'#!/bin/sh\necho "$UV_CACHE_DIR" >> {log}\n')
+    (stub / "uv").chmod(0o755)
+    path = f"{stub}:{os.environ['PATH']}"
+    monkeypatch.setenv("PATH", path)
+    monkeypatch.setenv("UV_CACHE_DIR", str(tmp_path / "shared"))
+    private = {**os.environ, "UV_CACHE_DIR": str(tmp_path / "worker-3")}
+
+    runner.prepare_script_environments(root, ["-m", "pytest", "-n", "auto", "tests"])
+    runner.prepare_script_environments(root, ["-m", "pytest", "-n", "auto", "tests"], private)
+    assert log.read_text().splitlines() == [
+        str(tmp_path / "shared"),
+        str(tmp_path / "worker-3"),
+    ], f"SCRIPT ENVIRONMENT BUILT IN THE WRONG CACHE: {log.read_text()!r}"
+
+
+def test_fixture_repositories_never_sign_whatever_the_machine_configures(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Admission: fixture commits inherited the machine's signing and failed in parallel.
+
+    A machine that signs every commit, with a signing program that refuses, still lets a
+    fixture repository commit and tag; a caller's own entries survive and a nested run
+    adds nothing twice.
+    """
+    import conftest
+
+    refusing = tmp_path / "refusing-gpg"
+    refusing.write_text("#!/bin/sh\nexit 1\n")
+    refusing.chmod(0o755)
+    machine = tmp_path / "machine.gitconfig"
+    machine.write_text(
+        "[user]\n\tname = Fixture\n\temail = fixture@example.invalid\n"
+        f"[commit]\n\tgpgsign = true\n[tag]\n\tgpgsign = true\n[gpg]\n\tprogram = {refusing}\n"
+    )
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(machine))
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    repository = tmp_path / "fixture"
+    repository.mkdir()
+
+    def git(*arguments: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["git", "-C", str(repository), *arguments], capture_output=True, text=True
+        )
+
+    assert git("init", "-q").returncode == 0
+    committed = git("commit", "-q", "--allow-empty", "-m", "fixture")
+    tagged = git("tag", "-a", "fixture", "-m", "fixture")
+    supplied = {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "core.pager", "GIT_CONFIG_VALUE_0": ""}
+    conftest.isolate_fixture_git_signing(supplied)
+    once = dict(supplied)
+    conftest.isolate_fixture_git_signing(supplied)
+    assert (
+        committed.returncode == 0
+        and tagged.returncode == 0
+        and supplied == once
+        and supplied["GIT_CONFIG_KEY_0"] == "core.pager"
+        and supplied["GIT_CONFIG_COUNT"] == "3"
+    ), f"FIXTURE REPOSITORY SIGNED: {committed.stderr} {tagged.stderr} {supplied}"

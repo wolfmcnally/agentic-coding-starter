@@ -404,6 +404,15 @@
       "with": "    if False:\n"
     }
   },
+  "pytest:tests/test_test_governance.py::test_fixture_repositories_never_sign_whatever_the_machine_configures": {
+    "defect": "Test setup leaves fixture repositories on the machine's signing configuration",
+    "expect": "FIXTURE REPOSITORY SIGNED",
+    "plant": {
+      "path": "tests/conftest.py",
+      "replace": "isolate_fixture_git_signing(os.environ)\n",
+      "with": ""
+    }
+  },
   "pytest:tests/test_test_governance.py::test_reuse_runs_only_what_changed_since_a_proven_tree_and_everything_when_unsure": {
     "defect": "Have the reuse lane select no family whatever changed",
     "expect": "REUSE SKIPPED AN AFFECTED FAMILY OR RERAN AN UNAFFECTED ONE",
@@ -411,6 +420,15 @@
       "path": "lib/agentic_starter/test_governance.py",
       "replace": "        return _families_for_changes(root, families, changed, [])\n",
       "with": "        return [], None\n"
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_script_environments_are_prepared_in_the_cache_the_caller_names": {
+    "defect": "Preparation ignores the environment its caller names",
+    "expect": "SCRIPT ENVIRONMENT BUILT IN THE WRONG CACHE",
+    "plant": {
+      "path": "lib/agentic_starter/test_runner.py",
+      "replace": "            env=None if environment is None else dict(environment),\n",
+      "with": ""
     }
   },
   "pytest:tests/test_test_governance.py::test_script_tool_environments_are_built_before_parallel_workers_start": {

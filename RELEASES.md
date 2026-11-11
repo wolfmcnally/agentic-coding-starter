@@ -1,5 +1,17 @@
 # Starter Releases
 
+## 1.5.1 — 2026-11-11
+
+Fixes three faults in the test setup that a batch transfer of 1.5.0 to four recipients exposed, none of them in the methodology's own rules. Throwaway repositories that tests create inherited the machine's commit signing; on a machine that signs every commit, a signing agent asked for many signatures at once refused some, and fixture commits failed intermittently under parallel workers in three recipients. Test repositories now never sign, whatever the machine configures. Stand-in programs that tests expect to answer were given one or two seconds to speak, which a loaded machine could not always meet; they now get a generous clock, and only the proof that a timeout fires keeps a short one. The script-environment preparation from 1.5.0 can now build into a cache the caller names, for a project that gives each test worker a private cache, where the supervisor's own build is never used. `test-governance validate` now says how many proofs await admission instead of listing the first three as if they were all. The `teach` skill gains the rules for a batch of targets and three limits of the ancestry report.
+
+Transfers:
+
+- **Fixture repositories that never sign:** `tests/conftest.py` with `tests/test_test_governance.py` and its recorded defect in `tests/proof-plants.json`. A recipient with its own `tests/conftest.py` merges the function and its one call.
+- **Generous clocks for stand-ins that answer:** `tests/test_kickoff_config.py` and `tests/test_kickoff_evidence.py`.
+- **Script environments in a named cache:** `lib/agentic_starter/test_runner.py` with `tests/test_test_governance.py` and its recorded defect.
+- **Admission count in validation:** `lib/agentic_starter/test_governance.py`.
+- **Batch transfers and ancestry limits:** `.claude/skills/teach/SKILL.md` and `policies/build-gates.md`.
+
 ## 1.5.0 — 2026-11-10
 
 Closes two faults found in recipients on the day 1.4.0 shipped. First, a launcher refusal before launch could leave a registered review attempt that nothing accounted for: the next attempt number was registered instead of relaunching, and acceptance refused the run much later with no truthful way to record what had happened. The registrar now refuses a later attempt of an operation while an earlier one was never dispatched and names the relaunch, and `kickoff-evidence record-unlaunched-attempt` records the remaining case, a registration that can never be launched. That record is a third truthful state, not a waiver: it binds the exact registration and a refusal record retained in the run, and it is refused, when written and at every validation, if any dispatch row, execution span or advisory claim exists for the attempt. A run pinned to an earlier tool bundle needs `repin-tools` under its owner's custody before it can use it. Second, parallel test workers could race the first build of a script tool's cached dependency environment and fail unrelated proofs; the supervised runner now builds those environments once before starting workers. A minor release: one new command, no behavior removed. No recipient is inferred upgraded.

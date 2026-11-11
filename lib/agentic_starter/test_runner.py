@@ -9,7 +9,7 @@ import subprocess
 import sys
 import threading
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 INCOMPLETE = 124
@@ -180,7 +180,9 @@ def pytest_arguments(arguments: Sequence[str]) -> list[str]:
 SCRIPT_SHEBANG = b"#!/usr/bin/env -S uv run --script"
 
 
-def prepare_script_environments(root: Path, arguments: Sequence[str]) -> list[str]:
+def prepare_script_environments(
+    root: Path, arguments: Sequence[str], environment: Mapping[str, str] | None = None
+) -> list[str]:
     """Build each script tool's cached environment once, before parallel workers start.
 
     A tool that declares its own dependencies gets an environment the first time it runs.
@@ -188,6 +190,10 @@ def prepare_script_environments(root: Path, arguments: Sequence[str]) -> list[st
     and each can remove what another is using. Building it here, serially, leaves the
     workers nothing to build. Returns the tools prepared; a tool that cannot be prepared
     is named and left for its own test to report.
+
+    The build lands in whichever cache `environment` selects, the caller's own by default.
+    A project that gives each worker a private cache gains nothing from the supervisor's
+    build, so each worker passes its own environment here before it runs tools together.
     """
     if "-n" in arguments and arguments[arguments.index("-n") + 1] == "0":
         return []
@@ -199,7 +205,10 @@ def prepare_script_environments(root: Path, arguments: Sequence[str]) -> list[st
         except OSError:
             continue
         built = subprocess.run(
-            ["uv", "sync", "--script", str(tool), "--quiet"], capture_output=True, text=True
+            ["uv", "sync", "--script", str(tool), "--quiet"],
+            capture_output=True,
+            text=True,
+            env=None if environment is None else dict(environment),
         )
         if built.returncode == 0:
             prepared.append(tool.name)

@@ -374,6 +374,21 @@ Run `./bin/multioperator transfer-ancestry --donor <source> --recipient <target>
 
 The report is a lead about text, not about meaning. A target line can restate an old source idea in new words, and a target feature can depend on machinery the source has since replaced; read what the lines do before preserving or retiring them, and bring a retirement to the operator.
 
+Three things the report cannot show, each found in a real transfer:
+
+- **Adaptation by deletion.** A file whose only target change is removed source text, such as starter-only rows dropped when the project was stamped, reads as edited with no lines of its own. Taking the source's version would put that text back. Compare such a file against its ancestor before replacing it, and keep the removals.
+- **Reformatting.** A target that formats code at a different line length shows many lines of its own that carry no change in content. Format the merged file the target's way and audit content, not layout.
+- **Which release a copy equals.** The report names the earliest source revision with identical content, which can predate a release the target is known to hold. Read the ancestor as "no later than", and use the target's recorded release to decide what it lacks.
+
+## Teaching several targets in one batch
+
+Separate targets are taught side by side, gates included; each target has one owner for the whole transfer and its own approval. Two rules keep a batch honest:
+
+- **Read the source at the release, not the working tree.** Take source content from the release tag (`git show <tag>:<path>` or an archive of the tag). The source's working tree may move while a batch is in flight, and a target must not receive a half-made next release.
+- **The source's own records are written once.** Targets never write to the source. The coordinator records the batch in the source and in any project registry after the targets report, from what each target's checkout actually shows.
+
+A gate that fails on something the transfer did not touch is diagnosed before anything else happens. A test that fails only under load is a defect in that test: fix it at its source and carry the fix to the targets. Slowing the batch down hides the defect and leaves it for the next busy machine.
+
 ## Migrating a target on the pre-migration layout
 
 Land the target on the source's first post-migration release as a whole, then bring it current as an ordinary maintenance transfer under its own plan. Do not split by which files mention the old layout: that produces a tree no release ever was, with new callers resting on old machinery. Hold a cluster at the target's version only when it does not depend on the record layout and its data would need its own conversion, such as a proof estate on an older schema, and say so in the plan and the provenance record.

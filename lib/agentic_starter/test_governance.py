@@ -792,7 +792,8 @@ def validate(
         shadow = sorted(active - current_ids)
         errors.append(
             "replayed proof estate does not match inventory"
-            f" (unadmitted={missing[:3]}, shadow={shadow[:3]})"
+            f" (unadmitted={len(missing)}, first {missing[:3]};"
+            f" shadow={len(shadow)}, first {shadow[:3]})"
         )
 
     try:

@@ -163,9 +163,12 @@ def watch_arguments(
         ),
         "--phase",
         "test",
-        *(() if "--first-event-timeout" in extra_watch else ("--first-event-timeout", "1")),
-        *(() if "--idle-timeout" in extra_watch else ("--idle-timeout", "1")),
-        *(() if "--hard-timeout" in extra_watch else ("--hard-timeout", "2")),
+        # A stub that answers finishes at once, so a generous clock costs nothing and a
+        # loaded machine cannot turn a slow interpreter start into a false timeout. A test
+        # that proves a timeout passes its own short clock.
+        *(() if "--first-event-timeout" in extra_watch else ("--first-event-timeout", "30")),
+        *(() if "--idle-timeout" in extra_watch else ("--idle-timeout", "30")),
+        *(() if "--hard-timeout" in extra_watch else ("--hard-timeout", "60")),
     )
 
 
@@ -1253,9 +1256,9 @@ def test_cap_hit_continuation_requires_assessment_and_preserves_budget(
         "max_turns": turn_cap,
         "cause": "Assessed prior native cap hit; no allowance reset",
         "clock_limits": {
-            "first_event_timeout_seconds": 1,
-            "idle_timeout_seconds": 1,
-            "hard_timeout_seconds": 2,
+            "first_event_timeout_seconds": 30,
+            "idle_timeout_seconds": 30,
+            "hard_timeout_seconds": 60,
         },
     }
     packet = tmp_path / "cap-assessment.json"
@@ -1334,7 +1337,7 @@ def test_cap_hit_continuation_requires_assessment_and_preserves_budget(
     assert refused.returncode != 0 and "cannot widen clock" in refused.stderr, (
         "CAP CLOCK GUARD WIDENED"
     )
-    assessment["clock_limits"]["hard_timeout_seconds"] = 2
+    assessment["clock_limits"]["hard_timeout_seconds"] = 60
     completed = assessed()
     assert completed.returncode == 0, "CAP VALID CONTINUATION REFUSED: " + completed.stderr
     argv = json.loads(calls.read_text().splitlines()[-1])
@@ -1448,7 +1451,7 @@ def test_watch_registered_review_durability_and_child_environment(
                     "--telemetry-role-registration",
                     str(registration),
                     "--hard-timeout",
-                    "10",
+                    "60",
                 ),
             )
         )
