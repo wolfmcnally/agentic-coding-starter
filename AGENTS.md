@@ -62,9 +62,9 @@ See also [universal skills](#universal-skills).
 - [Diagnosis and durable learning](briefs/rule-one-diagnostic-learning.md)
 - [Portable bootstrap procedure](briefs/agentic-bootstrap.md)
 - [Cross-CLI invocation contracts](briefs/cross-agent-invocation.md)
-- [Candidate-bound incremental assurance](briefs/incremental-orchestration.md)
+- [Incremental assurance](briefs/incremental-orchestration.md)
 - [Command authority and custody](briefs/deterministic-orchestration-control-plane.md)
-- [Draft deterministic workflow design](briefs/deterministic-orchestration.md)
+- [Draft workflow design](briefs/deterministic-orchestration.md)
 - [Lessons and maintenance flywheel](briefs/harness-self-improvement.md)
 - [Dated loading and continuity guidance](briefs/session-context-compaction.md)
 - [Proof-estate design](briefs/test-suite-value-governance.md)
@@ -73,6 +73,7 @@ See also [universal skills](#universal-skills).
 - [Refactoring method and sources](briefs/refactoring-methodology.md)
 - [Draft multi-operator collaboration](briefs/multi-operator-collaboration.md)
 - [Open-source release design](briefs/open-source-releases.md)
+- [Draft transfer management](briefs/transfer-management.md)
 
 ## Policies catalog
 
