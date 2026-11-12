@@ -13,7 +13,7 @@ The template repository is a hub. Improvements are made or learned there, releas
 
 It records procedures as they are being developed, with the operator's directions quoted and dated. It is a draft. Where practice has been tried once, it says so. The procedures of a single transfer belong to the `teach` and `learn` skills; this brief is about managing many of them.
 
-As of 2026-11-11 the evidence is two batches on one day: four projects taught one release by four parallel workers, and three follow-up transfers started the same evening.
+As of 2026-11-11 the evidence is two batches on one day: four projects taught one release by four parallel workers, and three transfers of the next release that evening, two small follow-ups and one full catch-up of a project stamped before the first release. All seven were delivered. Four of the seven parked once on the way and were finished after a ruling or a diagnosed second run.
 
 ## Roles
 
@@ -51,7 +51,7 @@ A transfer into a project with an open phase replaces the tools that phase's run
 ## The lifecycle of one managed transfer
 
 1. **Assess, read-only.** Route check, then the ancestry report against the release being taught. Read the source at the release tag, never at its working tree: the hub may be building its next release while a batch is in flight.
-2. **Plan.** A concrete plan per project: what is taken as released, what is merged, what the project keeps, what is not transferred, and the decisions that need someone else.
+2. **Plan.** A concrete plan per project: what is taken as released, what is merged, what the project keeps, what is not transferred, and the decisions that need someone else. The plan also names the records the project's own rules require of a transfer. Two projects required a scope record before implementation, the plans omitted it, and both wrote it late and said so.
 3. **Approve.** See the next section.
 4. **Apply.** For anything beyond a small change, build and prove the whole change in a private copy and write the project once. Each edited file is merged on the revision it actually descends from, then audited both ways.
 5. **Admit proofs** with the supported commands, replaying the defects the release records.
@@ -92,19 +92,25 @@ A batch produces findings, the findings become a small release, and the release 
 
 Every transfer is also a probe of the hub. Workers are asked to report what surprised them, and the first batch returned, among others: fixtures that inherited the machine's commit signing; clocks too short for a busy machine; a dependency range that let a project resolve a version that broke parallel test isolation; a bookkeeping command that could not record a retirement while catching a project up; a proof with no recorded defect; three limits of the ancestry report; and a project's gate that depended on an external tool nobody had recorded.
 
+The second batch returned three more that concern how a project's tests meet the arriving parallel runner. A project that gives each test worker a private cache needs each worker's cache prepared whenever any test starts tools together; the hub primary recommended leaving that out, and the first full run failed on it. A product suite in another language, especially one that launches browsers, should run through the project's own runner as a supervised family outside the worker pool from the start, with a full run recorded as proven only after both lanes pass; one project's first parallel run failed inside the pool, and one run could not say whether load, scheduling or the product was the cause. And a project catching up across many releases has no supported command to declare arriving proofs, so two workers edited the proof list by hand.
+
 Each either becomes a change in the next release, a candidate lesson for the operator, or a candidate for a `learn` pass in the other direction. Projects also hold unharvested lessons of their own, which the transfer lists and does not act on.
 
 ## Working with workers
 
-- **A worker's brief is complete.** It carries the plan, the rulings already made, the rules that bind, and what to report. A worker that must stop for an answer has been briefed too thinly; where a ruling truly is missing, the worker writes down what it needs and ends.
+- **Workers are reached through the shared messaging system wherever possible.** The operator's direction, 2026-11-11: the team of agents is both the primary user of that system and its testing team, so managed transfers should exercise it. The exception in force on that date was temporary: while a fault that refused delivery to sessions whose turns had ended was being repaired, transfers ran under sub-agents of the hub session instead, and return to the messaging system once the repair lands. Faults met while using it are reported to its owner with exact evidence; that is part of the job, not a detour from it.
+- **Use the messaging system's agent tools, not a side door.** Where its agent tools support an operation, they are how an agent uses it, even when the service documents an equivalent raw interface. The operator's correction, 2026-11-11: using a raw HTTP client "when it had access to its MCP tools" was a bad assumption. The hub primary had done so to trim verbose replies, and that side path is also where it drifted into reasoning from the service's internals. A tool that returns too much is a finding to report to its owner.
+- **A worker's brief is complete.** It carries the plan, the rulings already made, the rules that bind, and what to report. A complete brief avoids round trips; it is not a reason to avoid them. A worker that needs a ruling asks and ends its turn, and the answer is sent to the same session.
+- **A finished session can be woken.** A session that still exists is addressable after its turn ends, and an operation that needs it active revives it. The operator's correction, 2026-11-11, after the hub primary concluded otherwise: it "made a bad assumption that finished sessions could not be woken, and took as evidence the fact that it got the error we're trying to fix." A refusal to deliver is a fault to report. It is never evidence about what the system is meant to do, and it is not a reason to replace a worker that holds the context of its work.
 - **Accepted is not delivered, and delivered is not done.** After sending an instruction that work depends on, read its delivery state before saying anything about progress. On the first day, instructions to four workers were accepted by the messaging system and never delivered, and progress was reported for five hours on work that had not started.
-- **Report a refusal as the system gave it.** The same incident produced a confident explanation of how the messaging system behaves that had not been read anywhere and was wrong. Why another system refused belongs to that system's owner.
+- **Report a refusal as the system gave it.** The same incident produced a confident explanation of how the messaging system behaves that had not been read anywhere and was wrong, built on the refusal itself. Why another system refused belongs to that system's owner.
 - **Stale instructions are withdrawn.** Once replacement work is done, undelivered instructions to do it are dangerous: a repaired delivery path would run them. They are withdrawn through the supported operation, each checked before and after.
 - **Evidence, not repair, in someone else's system.** When a transfer exposes a fault in a tool the hub does not own, the hub primary supplies exact evidence to that tool's owner and writes no source there.
 
 ## Open questions
 
-- **Product prerequisites.** One transfer was fully applied before its gate revealed it needed an external tool the operator had to choose. Assessment should find what a project's gate needs from outside its tree. How, in general, is not settled.
+- **Product prerequisites and the first parallel run.** One transfer was fully applied before its gate revealed it needed an external tool the operator had to choose, and two more parked on how the project's own tests behaved under the arriving runner. Assessment should find what a project's gate needs from outside its tree and how its product suite will run, before anything is applied. How, in general, is not settled.
+- **A parked transfer leaves the project dirty.** Each park left a fully applied, uncommitted change in the project's working tree until a ruling came, in one case for hours. Building in a private copy until the gate has passed there would avoid that; it was done for the large transfer and not for the small ones.
 - **Recording outside selections.** Gate receipts record the language runtime and nothing else a gate depended on. Whether they should is a candidate lesson.
 - **Legacy layouts.** Most active projects are still on the earlier layout, and each needs a larger migration transfer. Whether to batch those, and in what order, is undecided.
 - **Learning inward at the same scale.** Everything above is teaching. Projects hold dozens of unharvested lessons and several local inventions. A managed `learn` cycle has not been run.
