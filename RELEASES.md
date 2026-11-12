@@ -1,5 +1,13 @@
 # Starter Releases
 
+## 1.6.0 — 2026-11-12
+
+Lets a run truthfully accept a review the owner directed outside the default launcher. A recipient's owner directed, for one task, a reviewer other than the one the run had frozen, started by a launcher other than the watcher. The review was real, but the evidence tool refused to register it, so nothing after registration could be recorded and the phase could not be accepted. The watcher remains the default and nothing new is required to use it. Two commands are new. `kickoff-evidence record-owner-directed-review` records the owner's verified, task-specific direction; it replaces the frozen reviewer for that review's next attempts and changes nothing else. `kickoff-evidence attest-directed-launch` retains what the launcher reported, with every unobserved value recorded as `unknown`. The attempt is still registered, spends its ordinary pass, is timed, bound to the candidate before and after, ingested and dispositioned; a directed review without its attestation is refused, and `status` reports such reviews as attested by the primary rather than witnessed by the tool. No launcher is named or required.
+
+Transfers:
+
+- **Owner-directed review outside the watcher:** `bin/kickoff-evidence` with `tests/test_kickoff_evidence.py`, its recorded defect in `tests/proof-plants.json`, `policies/orchestration-evidence.md`, `.claude/skills/kickoff/dispatch.md` and the `kickoff-evidence` entry in `bin/README.md`.
+
 ## 1.5.1 — 2026-11-11
 
 Fixes three faults in the test setup that a batch transfer of 1.5.0 to four recipients exposed, none of them in the methodology's own rules. Throwaway repositories that tests create inherited the machine's commit signing; on a machine that signs every commit, a signing agent asked for many signatures at once refused some, and fixture commits failed intermittently under parallel workers in three recipients. Test repositories now never sign, whatever the machine configures. Stand-in programs that tests expect to answer were given one or two seconds to speak, which a loaded machine could not always meet; they now get a generous clock, and only the proof that a timeout fires keeps a short one. The script-environment preparation from 1.5.0 can now build into a cache the caller names, for a project that gives each test worker a private cache, where the supervisor's own build is never used. `test-governance validate` now says how many proofs await admission instead of listing the first three as if they were all. The `teach` skill gains the rules for a batch of targets and three limits of the ancestry report.

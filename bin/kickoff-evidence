@@ -1398,7 +1398,172 @@ def load_role_dispatches(run_dir: Path) -> list[dict[str, Any]]:
     return role_dispatch_ledger(run_dir)[0]
 
 
-def validate_role_record(record: dict[str, Any], run: dict[str, Any]) -> None:
+DIRECTED_REVIEW_FIELDS = {
+    "schema_version",
+    "recorded_at",
+    "operation",
+    "from_attempt",
+    "harness",
+    "model",
+    "effort",
+    "launcher",
+    "scope",
+    "owner_evidence",
+}
+DIRECTED_LAUNCH_FIELDS = {
+    "schema_version",
+    "recorded_at",
+    "operation",
+    "attempt",
+    "registration_sha256",
+    "launch_evidence_sha256",
+    "prompt_sha256",
+    "observed_model",
+    "observed_effort",
+    "posture",
+}
+DIRECTED_POSTURES = ("read-only", "not-read-only", "unknown")
+
+
+def load_directed_reviews(run_dir: Path) -> list[dict[str, Any]]:
+    """The owner's task-specific directions that a review run outside the watcher.
+
+    A direction names the reviewer the owner asked for and the route that launched it. It
+    replaces the frozen reviewer for the attempts it covers and nothing else: the attempt
+    is still registered, claims its ordinary pass, is dispatched, timed and ingested.
+    """
+    file = run_dir / "owner-directed-reviews.jsonl"
+    return validate_directed_reviews(load_jsonl(file)) if file.exists() else []
+
+
+def validate_directed_reviews(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    latest: dict[str, int] = {}
+    for row in rows:
+        evidence = row.get("owner_evidence")
+        if (
+            set(row) != DIRECTED_REVIEW_FIELDS
+            or row.get("schema_version") != SCHEMA_VERSION
+            or row.get("operation") not in REVIEW_OPERATIONS
+            or row.get("harness") not in ROLE_HARNESSES - {"native"}
+            or type(row.get("from_attempt")) is not int
+            or row["from_attempt"] <= latest.get(row["operation"], 0)
+            or not isinstance(evidence, dict)
+            or set(evidence) != {"source", "reference", "statement"}
+            or any(not isinstance(v, str) or not v.strip() for v in evidence.values())
+            or any(
+                not isinstance(row.get(k), str) or not row[k].strip()
+                for k in ("model", "launcher", "scope")
+            )
+            or (row["effort"] is not None and not isinstance(row["effort"], str))
+        ):
+            raise EvidenceError("invalid owner-directed review record")
+        latest[row["operation"]] = row["from_attempt"]
+    return rows
+
+
+def directed_review_for(
+    directions: list[dict[str, Any]], operation: Any, attempt: Any
+) -> dict[str, Any] | None:
+    governing = [
+        row
+        for row in directions
+        if row["operation"] == operation
+        and isinstance(attempt, int)
+        and row["from_attempt"] <= attempt
+    ]
+    return governing[-1] if governing else None
+
+
+def load_directed_launches(run_dir: Path) -> dict[tuple[str, int], dict[str, Any]]:
+    """What the primary attests about a launch the tool did not witness."""
+    file = run_dir / "directed-review-launches.jsonl"
+    rows: dict[tuple[str, int], dict[str, Any]] = {}
+    if not file.exists():
+        return rows
+    directions = load_directed_reviews(run_dir)
+    registrations = {
+        (item.get("operation"), item.get("attempt")): item
+        for item in load_jsonl(run_dir / "role-attempts.jsonl")
+    }
+    for row in load_jsonl(file):
+        if (
+            set(row) != DIRECTED_LAUNCH_FIELDS
+            or row.get("schema_version") != SCHEMA_VERSION
+            or row.get("posture") not in DIRECTED_POSTURES
+            or any(
+                not isinstance(row.get(k), str) or not row[k].strip()
+                for k in ("observed_model", "observed_effort")
+            )
+        ):
+            raise EvidenceError("invalid directed-launch attestation")
+        key = (row["operation"], row["attempt"])
+        registration = registrations.get(key)
+        if (
+            key in rows
+            or registration is None
+            or directed_review_for(directions, *key) is None
+            or _registration_digest(registration) != row["registration_sha256"]
+        ):
+            raise EvidenceError(
+                "directed-launch attestation is duplicated or names no owner-directed attempt"
+            )
+        for field in ("launch_evidence_sha256", "prompt_sha256"):
+            retained = run_dir / "retained-artifacts" / str(row[field])
+            if (
+                not retained.is_file()
+                or hashlib.sha256(retained.read_bytes()).hexdigest() != row[field]
+            ):
+                raise EvidenceError(
+                    "directed-launch attestation's retained evidence is missing or altered"
+                )
+        rows[key] = row
+    return rows
+
+
+def directed_review_summary(run_dir: Path) -> list[dict[str, Any]]:
+    """Every review that ran under an owner direction, with what was and was not observed."""
+    directions = load_directed_reviews(run_dir)
+    launches = load_directed_launches(run_dir)
+    summary = []
+    for record in load_jsonl(run_dir / "role-attempts.jsonl"):
+        key = (record.get("operation"), record.get("attempt"))
+        direction = directed_review_for(directions, *key)
+        if direction is None:
+            continue
+        launch = launches.get(key)
+        summary.append(
+            {
+                "operation": key[0],
+                "attempt": key[1],
+                "launcher": direction["launcher"],
+                "scope": direction["scope"],
+                "owner_evidence": direction["owner_evidence"],
+                "registered": {k: record[k] for k in ("harness", "model", "effort")},
+                "launch_witness": "attested by the primary; not witnessed by this tool",
+                "attested_launch": (
+                    {
+                        k: launch[k]
+                        for k in (
+                            "observed_model",
+                            "observed_effort",
+                            "posture",
+                            "launch_evidence_sha256",
+                            "prompt_sha256",
+                        )
+                    }
+                    if launch
+                    else None
+                ),
+            }
+        )
+    return summary
+
+
+def validate_role_record(
+    record: dict[str, Any],
+    run: dict[str, Any],
+    directions: list[dict[str, Any]] | None = None,
+) -> None:
     required = {
         "schema_version",
         "registered_at",
@@ -1418,9 +1583,23 @@ def validate_role_record(record: dict[str, Any], run: dict[str, Any]) -> None:
     if run["workflow"]["mode"] == "primary":
         if operation not in REVIEW_OPERATIONS or record.get("harness") == "native":
             raise EvidenceError("primary mode only dispatches independent review instances")
-        selected = run["workflow"]["roles"][record["role"]]
-        if record.get("model") != selected["model"] or record.get("effort") != selected["effort"]:
-            raise EvidenceError("role differs from frozen primary workflow")
+        direction = directed_review_for(directions or [], operation, record.get("attempt"))
+        if direction is not None:
+            if any(record.get(k) != direction[k] for k in ("harness", "model", "effort")):
+                raise EvidenceError(
+                    "role differs from the owner-directed review recorded for this attempt"
+                )
+        else:
+            selected = run["workflow"]["roles"][record["role"]]
+            if (
+                record.get("model") != selected["model"]
+                or record.get("effort") != selected["effort"]
+            ):
+                raise EvidenceError(
+                    "role differs from frozen primary workflow. A reviewer the owner "
+                    "directed for this task is recorded first with "
+                    "record-owner-directed-review; nothing else changes the frozen reviewer."
+                )
     if operation not in ROLE_OPERATIONS or record.get("role") != ROLE_OPERATIONS[operation]:
         raise EvidenceError("role-attempt operation and role do not agree")
     if record.get("harness") not in ROLE_HARNESSES:
@@ -1473,7 +1652,7 @@ def command_register_role_attempt(arguments: argparse.Namespace) -> None:
         "effort": arguments.effort,
         "reason": arguments.reason,
     }
-    validate_role_record(record, run)
+    validate_role_record(record, run, load_directed_reviews(arguments.run_dir))
     existing = load_jsonl(arguments.run_dir / "role-attempts.jsonl")
     if any(
         item.get("operation") == record["operation"] and item.get("attempt") == record["attempt"]
@@ -1509,14 +1688,16 @@ def command_register_role_attempt(arguments: argparse.Namespace) -> None:
             )
     by_operation: dict[str, list[int]] = {}
     for item in [*existing, record]:
-        validate_role_record(item, run)
+        validate_role_record(item, run, load_directed_reviews(arguments.run_dir))
         by_operation.setdefault(item["operation"], []).append(item["attempt"])
     validate_role_continuity(arguments.run_dir, run, by_operation)
     append_jsonl(arguments.run_dir / "role-attempts.jsonl", record)
     atomic_json(arguments.output, record)
     if arguments.cause:
         atomic_json(Path(str(arguments.output) + ".cause.json"), {"cause": arguments.cause})
-    if arguments.harness == "native":
+    if arguments.harness == "native" or directed_review_for(
+        load_directed_reviews(arguments.run_dir), record["operation"], record["attempt"]
+    ):
         # An external dispatch gets its spans built by `kickoff-config watch`.
         # A native one leaves the orchestrator to reproduce that recipe by
         # hand, and a single omitted `--model` is unrecoverable once the span
@@ -1524,7 +1705,7 @@ def command_register_role_attempt(arguments: argparse.Namespace) -> None:
         recipe_path = Path(f"{arguments.output}.span-recipe.json")
         atomic_json(recipe_path, native_span_recipe(record))
         print("registered")
-        print(f"native span recipe: {recipe_path}")
+        print(f"hand-built span recipe: {recipe_path}")
         return
     print("registered")
 
@@ -1572,6 +1753,129 @@ def command_record_unlaunched_attempt(arguments: argparse.Namespace) -> None:
         },
     )
     print("UNLAUNCHED ATTEMPT RECORDED; registration, budget and other attempts unchanged")
+
+
+def require_directed_launch(run_dir: Path, operation: str, attempt: int) -> None:
+    """An owner-directed review counts only with its retained launch attestation."""
+    if directed_review_for(load_directed_reviews(run_dir), operation, attempt) is None:
+        return
+    if (operation, attempt) not in load_directed_launches(run_dir):
+        raise EvidenceError(
+            f"owner-directed {operation}#{attempt} has no launch attestation: record what "
+            "the launcher reported with attest-directed-launch before relying on the review"
+        )
+
+
+def command_record_owner_directed_review(arguments: argparse.Namespace) -> None:
+    """Record the owner's direction that this task's review run outside the watcher.
+
+    This is a statement of fact about an instruction already verified by the caller, not
+    an authenticator and not a waiver. It changes one thing: which reviewer the attempts
+    from here on may be registered as. Every other join still applies to them.
+    """
+    run = validate_run_dir(arguments.run_dir)
+    validate_kickoff_context(
+        Path(run["repository_root"]),
+        run["phase"],
+        run["telemetry_trace_id"],
+        run["telemetry_root_span_id"],
+        open_required=True,
+    )
+    if run["workflow"]["mode"] != "primary":
+        raise EvidenceError("an owner-directed review belongs to primary-mode advice")
+    evidence = load_json(arguments.owner_evidence)
+    existing = load_directed_reviews(arguments.run_dir)
+    attempts = [
+        item["attempt"]
+        for item in load_jsonl(arguments.run_dir / "role-attempts.jsonl")
+        if item.get("operation") == arguments.operation
+    ]
+    from_attempt = max(attempts, default=0) + 1
+    if any(
+        row["operation"] == arguments.operation and row["from_attempt"] == from_attempt
+        for row in existing
+    ):
+        raise EvidenceError(
+            "an owner direction for this review is already recorded and not yet used"
+        )
+    record = {
+        "schema_version": SCHEMA_VERSION,
+        "recorded_at": now(),
+        "operation": arguments.operation,
+        "from_attempt": from_attempt,
+        "harness": arguments.harness,
+        "model": arguments.model,
+        "effort": arguments.effort,
+        "launcher": arguments.launcher,
+        "scope": arguments.scope,
+        "owner_evidence": evidence,
+    }
+    try:
+        validate_directed_reviews([*existing, record])
+    except EvidenceError:
+        raise EvidenceError(
+            "owner-directed review requires a non-native harness, a model, a launcher, an "
+            "exact scope and attributable owner evidence (source, reference, statement)"
+        ) from None
+    append_jsonl(arguments.run_dir / "owner-directed-reviews.jsonl", record)
+    print(
+        f"OWNER-DIRECTED REVIEW RECORDED {arguments.operation} from attempt {from_attempt}; "
+        "the reviewer changes, the pass budget and every evidence join do not"
+    )
+
+
+def command_attest_directed_launch(arguments: argparse.Namespace) -> None:
+    """Retain what the primary observed of a launch this tool did not perform."""
+    validate_run_dir(arguments.run_dir)
+    run_dir = arguments.run_dir.resolve()
+    registration = load_json(arguments.registration)
+    key = (registration.get("operation"), registration.get("attempt"))
+    ledger = {
+        (item.get("operation"), item.get("attempt")): item
+        for item in load_jsonl(run_dir / "role-attempts.jsonl")
+    }
+    if ledger.get(key) != registration:
+        raise EvidenceError("registration does not match the run's recorded attempt")
+    if directed_review_for(load_directed_reviews(run_dir), *key) is None:
+        raise EvidenceError("only an owner-directed review carries a launch attestation")
+    if key in load_directed_launches(run_dir):
+        raise EvidenceError("this attempt's launch is already attested")
+    digests = {}
+    for label, source in (
+        ("launch_evidence_sha256", arguments.launch_evidence),
+        ("prompt_sha256", arguments.prompt),
+    ):
+        data = source.read_bytes()
+        if not data.strip():
+            raise EvidenceError("launch evidence and prompt must be nonempty files")
+        digests[label] = retain_evidence(run_dir, data)
+    append_jsonl(
+        run_dir / "directed-review-launches.jsonl",
+        {
+            "schema_version": SCHEMA_VERSION,
+            "recorded_at": now(),
+            "operation": key[0],
+            "attempt": key[1],
+            "registration_sha256": _registration_digest(registration),
+            **digests,
+            "observed_model": arguments.observed_model,
+            "observed_effort": arguments.observed_effort,
+            "posture": arguments.posture,
+        },
+    )
+    load_directed_launches(run_dir)
+    for field, observed in (
+        ("model", arguments.observed_model),
+        ("effort", arguments.observed_effort),
+    ):
+        if observed != "unknown" and observed != registration[field]:
+            print(
+                f"kickoff-evidence: the launcher reported {field} {observed!r}; the "
+                f"registration says {registration[field]!r}. Both are kept. State in the "
+                "primary decision why they name the same reviewer, or that they do not.",
+                file=sys.stderr,
+            )
+    print("DIRECTED LAUNCH ATTESTED; recorded as the primary's statement, not tool-witnessed")
 
 
 def native_span_recipe(record: dict[str, Any]) -> dict[str, Any]:
@@ -1629,8 +1933,16 @@ def native_span_recipe(record: dict[str, Any]) -> dict[str, Any]:
 def command_span_recipe(arguments: argparse.Namespace) -> None:
     validate_run_dir(arguments.run_dir)
     record = load_json(arguments.registration)
-    if not isinstance(record, dict) or record.get("harness") != "native":
-        raise EvidenceError("span recipes exist only for native role attempts")
+    if not isinstance(record, dict) or (
+        record.get("harness") != "native"
+        and directed_review_for(
+            load_directed_reviews(arguments.run_dir),
+            record.get("operation"),
+            record.get("attempt"),
+        )
+        is None
+    ):
+        raise EvidenceError("span recipes exist only for native and owner-directed role attempts")
     recipe = native_span_recipe(record)
     if arguments.intelligence_span_id:
         validate_span_identifier(arguments.intelligence_span_id, "intelligence span id")
@@ -1688,7 +2000,7 @@ def command_repin_tools(arguments: argparse.Namespace) -> None:
 def command_validate_role_attempt(arguments: argparse.Namespace) -> None:
     run = validate_run_dir(arguments.run_dir)
     registration = load_json(arguments.registration)
-    validate_role_record(registration, run)
+    validate_role_record(registration, run, load_directed_reviews(arguments.run_dir))
     matches = [
         item
         for item in load_jsonl(arguments.run_dir / "role-attempts.jsonl")
@@ -1740,7 +2052,7 @@ def validate_dispatch_span(
 def command_record_role_dispatch(arguments: argparse.Namespace) -> None:
     run = validate_run_dir(arguments.run_dir)
     registration = load_json(arguments.registration)
-    validate_role_record(registration, run)
+    validate_role_record(registration, run, load_directed_reviews(arguments.run_dir))
     if (
         sum(item == registration for item in load_jsonl(arguments.run_dir / "role-attempts.jsonl"))
         != 1
@@ -2329,7 +2641,7 @@ def command_grant_advice_exception(arguments: argparse.Namespace) -> None:
         open_required=True,
     )
     record = load_json(arguments.registration)
-    validate_role_record(record, run)
+    validate_role_record(record, run, load_directed_reviews(arguments.run_dir))
     if (
         run["workflow"]["mode"] != "primary"
         or record["operation"] != "role.code-review"
@@ -2354,7 +2666,7 @@ def command_grant_advice_exception(arguments: argparse.Namespace) -> None:
 def command_start_advice(arguments: argparse.Namespace) -> None:
     run = validate_run_dir(arguments.run_dir)
     record = load_json(arguments.registration)
-    validate_role_record(record, run)
+    validate_role_record(record, run, load_directed_reviews(arguments.run_dir))
     if record not in load_jsonl(arguments.run_dir / "role-attempts.jsonl"):
         raise EvidenceError("advice registration is not recorded")
     if run["workflow"]["mode"] != "primary":
@@ -2428,6 +2740,7 @@ def command_ingest_advice(arguments: argparse.Namespace) -> None:
     ]
     if len(claims) != 1:
         raise EvidenceError("advice requires its recorded phase launch")
+    require_directed_launch(arguments.run_dir, dispatch["operation"], dispatch["attempt"])
     identifier = f"{REVIEW_OPERATIONS[dispatch['operation']]}-{claims[0]['pass']}"
     row = {
         "report_id": identifier,
@@ -3679,7 +3992,7 @@ def validate_role_spans(
     keys: set[tuple[str, int]] = set()
     by_operation: dict[str, list[int]] = {}
     for record in records:
-        validate_role_record(record, run)
+        validate_role_record(record, run, load_directed_reviews(run_dir))
         key = (record["operation"], record["attempt"])
         if key in keys:
             raise EvidenceError("duplicate role-attempt registration")
@@ -3740,6 +4053,10 @@ def validate_role_spans(
                 raise EvidenceError(f"role has only unlaunched attempts: {operation}")
     if set(dispatch_by_key) != keys - unlaunched:
         raise EvidenceError("role registrations and dispatch results do not agree")
+    load_directed_launches(run_dir)
+    for key, dispatch in sorted(dispatch_by_key.items()):
+        if dispatch["accepted"]:
+            require_directed_launch(run_dir, *key)
     try:
         spans = closed_spans(
             engine_root=Path(run["repository_root"]), trace_id=run["telemetry_trace_id"]
@@ -5558,6 +5875,7 @@ def command_status(arguments: argparse.Namespace) -> None:
                 "phase": run["phase"],
                 "workflow": run["workflow"],
                 "advisory_reports": advisory.read(arguments.run_dir / "advisory-reports.json", []),
+                "owner_directed_reviews": directed_review_summary(arguments.run_dir),
                 "closure": closure,
                 "observed_role_operations": present,
                 "missing_acceptance_role_operations": missing,
@@ -6017,6 +6335,27 @@ def build_parser() -> argparse.ArgumentParser:
     unlaunched.add_argument("--registration", type=Path, required=True)
     unlaunched.add_argument("--refusal-artifact", type=Path, required=True)
     unlaunched.set_defaults(handler=command_record_unlaunched_attempt)
+
+    directed = subparsers.add_parser("record-owner-directed-review")
+    add_run_dir(directed)
+    directed.add_argument("--operation", choices=sorted(REVIEW_OPERATIONS), required=True)
+    directed.add_argument("--harness", choices=sorted(ROLE_HARNESSES - {"native"}), required=True)
+    directed.add_argument("--model", required=True)
+    directed.add_argument("--effort")
+    directed.add_argument("--launcher", required=True, help="what started the reviewer")
+    directed.add_argument("--scope", required=True, help="the exact task the direction covers")
+    directed.add_argument("--owner-evidence", type=Path, required=True)
+    directed.set_defaults(handler=command_record_owner_directed_review)
+
+    attested = subparsers.add_parser("attest-directed-launch")
+    add_run_dir(attested)
+    attested.add_argument("--registration", type=Path, required=True)
+    attested.add_argument("--launch-evidence", type=Path, required=True)
+    attested.add_argument("--prompt", type=Path, required=True)
+    attested.add_argument("--observed-model", required=True, help="as reported, or 'unknown'")
+    attested.add_argument("--observed-effort", required=True, help="as reported, or 'unknown'")
+    attested.add_argument("--posture", choices=DIRECTED_POSTURES, required=True)
+    attested.set_defaults(handler=command_attest_directed_launch)
 
     role_validate = subparsers.add_parser("validate-role-attempt")
     add_run_dir(role_validate)

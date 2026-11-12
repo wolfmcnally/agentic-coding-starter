@@ -206,6 +206,15 @@
       "with": "        return 0\n    return 0 if result is None else result"
     }
   },
+  "pytest:tests/test_kickoff_evidence.py::test_owner_directed_review_is_attested_counted_and_never_passed_off_as_witnessed": {
+    "defect": "An owner-directed review is ingested without its launch attestation",
+    "expect": "UNATTESTED DIRECTED REVIEW ACCEPTED",
+    "plant": {
+      "path": "bin/kickoff-evidence",
+      "replace": "    require_directed_launch(arguments.run_dir, dispatch[\"operation\"], dispatch[\"attempt\"])\n",
+      "with": ""
+    }
+  },
   "pytest:tests/test_kickoff_evidence.py::test_owner_exception_budget_is_scoped_atomic_and_auditable": {
     "defect": "A consumed owner exception can be granted again",
     "expect": "failed",

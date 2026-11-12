@@ -3488,3 +3488,224 @@ def test_a_refused_launch_is_relaunched_or_recorded_never_left_unaccounted(
     assert forged.returncode == 2, (
         "A LAUNCHED ATTEMPT WAS ACCEPTED AS NEVER LAUNCHED: " + forged.stderr
     )
+
+
+def test_owner_directed_review_is_attested_counted_and_never_passed_off_as_witnessed(
+    repository: Path, tmp_path: Path
+) -> None:
+    """A review the owner had launched outside the watcher, with a reviewer the run did
+    not freeze, is accepted as what it is: attested, counted against the ordinary pass,
+    and refused until the launch facts are retained."""
+    run_dir = tmp_path / "directed"
+    initialize(repository, run_dir, mode="primary")
+    metadata = json.loads((run_dir / "run.json").read_text())
+    registration = run_dir / "code-review-1.json"
+
+    def register(model: str, effort: str, harness: str = "codex"):
+        return run(
+            "register-role-attempt",
+            "--run-dir",
+            str(run_dir),
+            "--operation",
+            "role.code-review",
+            "--attempt",
+            "1",
+            "--role",
+            "critic",
+            "--harness",
+            harness,
+            "--model",
+            model,
+            "--effort",
+            effort,
+            "--reason",
+            "initial",
+            "--output",
+            str(registration),
+        )
+
+    refused = register("sol", "high")
+    assert refused.returncode != 0
+    assert "record-owner-directed-review" in refused.stderr
+    assert not registration.exists()
+
+    evidence = tmp_path / "owner-evidence.json"
+
+    def direct() -> subprocess.CompletedProcess[str]:
+        return run(
+            "record-owner-directed-review",
+            "--run-dir",
+            str(run_dir),
+            "--operation",
+            "role.code-review",
+            "--harness",
+            "codex",
+            "--model",
+            "sol",
+            "--effort",
+            "high",
+            "--launcher",
+            "a session-messaging worker launcher",
+            "--scope",
+            "the code review of this phase only",
+            "--owner-evidence",
+            str(evidence),
+        )
+
+    evidence.write_text(json.dumps({"source": "coordinator relay", "statement": "use Sol"}))
+    unattributed = direct()
+    assert unattributed.returncode != 0 and "attributable owner evidence" in unattributed.stderr
+    assert not (run_dir / "owner-directed-reviews.jsonl").exists()
+    evidence.write_text(
+        json.dumps(
+            {
+                "source": "coordinator relay of the owner",
+                "reference": "relay message 7",
+                "statement": "Run the code review with Sol High through the worker launcher.",
+            }
+        )
+    )
+    assert direct().returncode == 0
+    pending = direct()
+    assert pending.returncode != 0 and "not yet used" in pending.stderr
+
+    frozen = register("opus", "medium", harness="claude")
+    assert frozen.returncode != 0 and "owner-directed review" in frozen.stderr
+    registered = register("sol", "high")
+    assert registered.returncode == 0, registered.stderr
+    assert "span recipe" in registered.stdout
+
+    claimed = run("start-advice", "--run-dir", str(run_dir), "--registration", str(registration))
+    assert claimed.returncode == 0, claimed.stderr
+    again = run("start-advice", "--run-dir", str(run_dir), "--registration", str(registration))
+    assert again.returncode != 0 and "already launched" in again.stderr
+    claims = advisory.launches(repository, metadata["phase"])
+    assert [(c["operation"], c["pass"]) for c in claims] == [("role.code-review", 1)]
+
+    candidate = run("current-candidate", "--run-dir", str(run_dir), "--reason", "dispatch")
+    assert candidate.returncode == 0, candidate.stderr
+    routing = {"role": "critic", "harness": "codex", "model": "sol", "effort": "high"}
+    intelligence = start_span(
+        engine_root=repository,
+        trace_id=metadata["telemetry_trace_id"],
+        parent_span_id=metadata["telemetry_root_span_id"],
+        category="intelligence",
+        operation="role.code-review",
+        attempt=1,
+        **routing,
+    )
+    opened = open_role_dispatch(
+        run_dir, registration, intelligence.span_id, dispatch_candidate=candidate.stdout.strip()
+    )
+    assert opened.returncode == 0, opened.stderr
+    wait = start_span(
+        engine_root=repository,
+        trace_id=metadata["telemetry_trace_id"],
+        parent_span_id=intelligence.span_id,
+        category="wait",
+        operation="role.code-review",
+        attempt=1,
+        **routing,
+    )
+    for span_id in (wait.span_id, intelligence.span_id):
+        finish_span(
+            engine_root=repository,
+            trace_id=metadata["telemetry_trace_id"],
+            span_id=span_id,
+            outcome="success",
+            exit_code=0,
+        )
+    dispatched = run(
+        "record-role-dispatch",
+        "--run-dir",
+        str(run_dir),
+        "--registration",
+        str(registration),
+        "--state",
+        "accepted",
+        "--idle-telemetry",
+        "unavailable",
+        "--intelligence-span-id",
+        intelligence.span_id,
+        "--wait-span-id",
+        wait.span_id,
+    )
+    assert dispatched.returncode == 0, dispatched.stderr
+
+    report = tmp_path / "report.json"
+    report.write_text(json.dumps({"summary": "Bounded review", "findings": []}))
+
+    def ingest() -> subprocess.CompletedProcess[str]:
+        return run(
+            "ingest-findings",
+            "--run-dir",
+            str(run_dir),
+            "--kind",
+            "code",
+            "--input",
+            str(report),
+            "--candidate",
+            candidate.stdout.strip(),
+            "--review-span-id",
+            intelligence.span_id,
+        )
+
+    unattested = ingest()
+    assert unattested.returncode != 0 and "attest-directed-launch" in unattested.stderr, (
+        "UNATTESTED DIRECTED REVIEW ACCEPTED"
+    )
+    unproved = run("advice-source", "--run-dir", str(run_dir))
+    assert unproved.returncode != 0 and "attest-directed-launch" in unproved.stderr
+    assert json.loads((run_dir / "advisory-reports.json").read_text()) == []
+
+    launch = tmp_path / "launch-response.json"
+    launch.write_text(json.dumps({"model": "provider-sol", "sandbox": "readOnly"}))
+    prompt = tmp_path / "prompt.md"
+    prompt.write_text("Review the candidate.\n")
+
+    def attest() -> subprocess.CompletedProcess[str]:
+        return run(
+            "attest-directed-launch",
+            "--run-dir",
+            str(run_dir),
+            "--registration",
+            str(registration),
+            "--launch-evidence",
+            str(launch),
+            "--prompt",
+            str(prompt),
+            "--observed-model",
+            "provider-sol",
+            "--observed-effort",
+            "unknown",
+            "--posture",
+            "read-only",
+        )
+
+    attested = attest()
+    assert attested.returncode == 0, attested.stderr
+    assert "not tool-witnessed" in attested.stdout
+    assert "'provider-sol'" in attested.stderr and "'sol'" in attested.stderr
+    assert attest().returncode != 0
+    assert ingest().returncode == 0
+    proved = run("advice-source", "--run-dir", str(run_dir))
+    assert proved.returncode == 0, proved.stderr
+    reports = json.loads((run_dir / "advisory-reports.json").read_text())
+    assert [r["report_id"] for r in reports] == ["code-1"]
+
+    status = run("status", "--run-dir", str(run_dir))
+    assert status.returncode == 0, status.stderr
+    (directed,) = json.loads(status.stdout)["owner_directed_reviews"]
+    assert directed["launch_witness"].startswith("attested by the primary")
+    assert directed["registered"] == {"harness": "codex", "model": "sol", "effort": "high"}
+    assert directed["attested_launch"]["observed_effort"] == "unknown"
+    assert directed["attested_launch"]["posture"] == "read-only"
+    assert directed["owner_evidence"]["reference"] == "relay message 7"
+
+    digest = directed["attested_launch"]["launch_evidence_sha256"]
+    retained = run_dir / "retained-artifacts" / digest
+    assert retained.read_bytes() == launch.read_bytes()
+    retained.chmod(0o644)
+    retained.write_text("{}")
+    altered = run("status", "--run-dir", str(run_dir))
+    assert altered.returncode != 0 and "missing or altered" in altered.stderr
