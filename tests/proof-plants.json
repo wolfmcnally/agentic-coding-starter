@@ -116,6 +116,15 @@
       "with": "            target.model,\n"
     }
   },
+  "pytest:tests/test_kickoff_config.py::test_timeout_kills_descendant_after_group_leader_exits": {
+    "defect": "A timed-out role's descendant that ignores termination is never killed",
+    "expect": "DESCENDANT SURVIVED THE TIMEOUT",
+    "plant": {
+      "path": "bin/kickoff-config",
+      "replace": "                os.killpg(group_id, signal.SIGKILL)\n",
+      "with": "                pass\n"
+    }
+  },
   "pytest:tests/test_kickoff_config.py::test_watch_registered_review_durability_and_child_environment": {
     "defect": "Configuration refusals exit successfully",
     "expect": "failed",

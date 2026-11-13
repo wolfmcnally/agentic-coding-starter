@@ -8,6 +8,7 @@ import json
 import os
 import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -442,7 +443,12 @@ def stubborn_descendant_cli(tmp_path: Path, pid_file: Path) -> Path:
     return fake_cli(
         tmp_path,
         "claude",
-        f"""( trap '' TERM; echo $$ > {pid_file}; while :; do sleep 1; done ) &
+        # The leader waits for the descendant to record itself before it speaks and exits,
+        # so a slow start under load delays the proof instead of failing its setup.
+        # A subshell's `$$` is its parent's, so the descendant is its own shell: the recorded
+        # process is the one that ignores TERM and outlives the leader.
+        f"""sh -c 'trap "" TERM; echo $$ > {pid_file}; while :; do sleep 1; done' &
+while [ ! -s {pid_file} ]; do sleep 0.01; done
 printf '%s\\n' '{{"type":"assistant","message":{{"content":"working"}}}}'
 exit 0""",
     )
@@ -455,13 +461,16 @@ def test_timeout_kills_descendant_after_group_leader_exits(tmp_path: Path) -> No
         seeded_config(tmp_path),
         *watch_arguments(
             tmp_path,
+            # Only the idle clock is the subject: it fires once the leader has exited and
+            # the descendant stays silent. The other two clocks cover a loaded machine's
+            # process start and must not be able to end the run first.
             extra_watch=(
                 "--hard-timeout",
-                "0.2",
+                "60",
                 "--idle-timeout",
                 "0.1",
                 "--first-event-timeout",
-                "1",
+                "30",
             ),
         ),
         extra_env={"KICKOFF_TIMING_LOG": str(tmp_path / "timings.jsonl")},
@@ -469,10 +478,15 @@ def test_timeout_kills_descendant_after_group_leader_exits(tmp_path: Path) -> No
     )
     assert result.returncode == 124, result.stderr
     descendant = int(pid_file.read_text())
-    deadline = time.monotonic() + 2
-    while process_exists(descendant) and time.monotonic() < deadline:
-        time.sleep(0.02)
-    assert not process_exists(descendant)
+    try:
+        deadline = time.monotonic() + 2
+        while process_exists(descendant) and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert not process_exists(descendant), "DESCENDANT SURVIVED THE TIMEOUT"
+    finally:
+        # The descendant ignores TERM; a failing proof must not leave it running.
+        if process_exists(descendant):
+            os.kill(descendant, signal.SIGKILL)
 
 
 def test_watch_preserves_codex_artifact_when_terminal_stream_is_incomplete(
