@@ -33,7 +33,7 @@ printf '%s\n' "$0"
 def check_repo(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     root = tmp_path / "repo"
     (root / "bin").mkdir(parents=True)
-    (root / "project").mkdir()
+    (root / "project" / "tests").mkdir(parents=True)
     (root / "tests").mkdir()
     shutil.copy2(CHECK_SOURCE, root / "bin" / "check")
     shutil.copy2(REPO_ROOT / "bin" / "_python-toolchain", root / "bin" / "_python-toolchain")

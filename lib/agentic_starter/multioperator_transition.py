@@ -123,6 +123,55 @@ def constitution_links(text: str, relative: str) -> str:
     return re.sub(r"\]\(([^)\s]+)\)", replace, text)
 
 
+def retired_tool_paths(text: str, relative: str, operands: str) -> str:
+    """Drop a retired tool where it is a command operand; repoint it where it is a link.
+
+    Lint and format callers list tool paths as operands, and removing one is correct there.
+    In Markdown the same path is a link target: removing it leaves a link to nothing, so
+    the link is pointed at the successor tool.
+    """
+    if relative.endswith(".md"):
+        return re.sub(r"\]\(((?:\.\./)*bin/)(?:" + operands + r")\)", r"](\1multioperator)", text)
+    return re.sub(r"\.\./bin/(?:" + operands + r")\s*", "", text)
+
+
+OLD_CONSTITUTION = re.compile(r"(?<![A-Za-z0-9_./-])CLAUDE\.md(?![A-Za-z0-9_-])")
+
+
+def constitution_mentions(
+    text: str,
+    relative: str,
+    rewritten: list[dict[str, Any]],
+    left: list[dict[str, Any]],
+) -> str:
+    """Rename bare references to the project's own constitution, one visible line at a time.
+
+    In a Markdown file, a line that already names the new constitution is prose about both
+    names, such as a sentence on which harness reads which file. Renaming there says the
+    same name twice and loses the sentence's point, so it is left as written and reported
+    for a person to settle. Every line that is changed is reported with its old and new
+    text.
+    """
+    lines = text.splitlines(keepends=True)
+    for number, line in enumerate(lines, start=1):
+        if not OLD_CONSTITUTION.search(line):
+            continue
+        if relative.endswith(".md") and "AGENTS.md" in line:
+            left.append({"path": relative, "line": number, "text": line.rstrip("\n")})
+            continue
+        changed = OLD_CONSTITUTION.sub("AGENTS.md", line)
+        rewritten.append(
+            {
+                "path": relative,
+                "line": number,
+                "before": line.rstrip("\n"),
+                "after": changed.rstrip("\n"),
+            }
+        )
+        lines[number - 1] = changed
+    return "".join(lines)
+
+
 def promote_constitution(root: Path) -> dict[str, Any]:
     """Convert only the repository constitution; preserve other instruction files."""
     old, primary = root / "CLAUDE.md", root / "AGENTS.md"
@@ -139,6 +188,8 @@ def promote_constitution(root: Path) -> dict[str, Any]:
     primary.write_bytes(original)
     old.unlink()
     changes = []
+    rewritten_lines: list[dict[str, Any]] = []
+    left_for_review: list[dict[str, Any]] = []
     for path in active_files(root):
         relative = path.relative_to(root).as_posix()
         if relative in INTENTIONAL:
@@ -153,7 +204,7 @@ def promote_constitution(root: Path) -> dict[str, Any]:
             "policies/multi-operator-migration.md",
             "briefs/multi-operator-collaboration.md",
         }:
-            text = re.sub(r"(?<![A-Za-z0-9_./-])CLAUDE\.md(?![A-Za-z0-9_-])", "AGENTS.md", text)
+            text = constitution_mentions(text, relative, rewritten_lines, left_for_review)
         if relative == "tests/test_mirror_parity.py":
             alias = '    (tmp_path / "AGENTS.md").symlink_to("AGENTS.md")\n'
             if alias not in text:
@@ -199,6 +250,8 @@ def promote_constitution(root: Path) -> dict[str, Any]:
         "original_sha256": sha(original),
         "primary_sha256": sha(primary.read_bytes()),
         "rewritten_paths": changes,
+        "rewritten_lines": rewritten_lines,
+        "left_for_review": left_for_review,
     }
 
 
@@ -290,6 +343,7 @@ def retire(
                 )
             text = text.replace(before, after)
         path.write_text(text)
+    removed_families: list[str] = []
     # Remove obsolete Python-tool operands from lint/format and corresponding fixture argv.
     operands = "|".join(map(re.escape, sorted(RETIRED_TOOLS, key=len, reverse=True)))
     for path in active_files(root):
@@ -313,10 +367,17 @@ def retire(
             )
         elif relative == "tests/proof-estate.yaml":
             blocks = re.split(r"(?m)(?=^- id: )", text)
-            text = "".join(
-                block for block in blocks if "tests/test_renumber_phases.py" not in block
+            dropped = [block for block in blocks if "tests/test_renumber_phases.py" in block]
+            text = "".join(block for block in blocks if block not in dropped)
+            # The family list is edited here because no authoring input removes a family;
+            # the proofs it held still need their retirement rows from the recipient.
+            removed_families.extend(
+                match[1]
+                for block in dropped
+                for match in [re.match(r"- id: (\S+)", block)]
+                if match
             )
-        text = re.sub(r"\.\./bin/(?:" + operands + r")\s*", "", text)
+        text = retired_tool_paths(text, relative, operands)
         # Path redirection is mechanical, not a claim that mixed workflow semantics are qualified.
         for name in sorted(RETIRED_TOOLS, key=len, reverse=True):
             text = re.sub(token_pattern(name), "multioperator", text)
@@ -351,6 +412,7 @@ def retire(
         "inventory": observed,
         "constitution": constitution,
         "changes": changes,
+        "proof_families_removed": removed_families,
         "audit": result,
         "shared_semantic_adoption_pending": [
             "candidate/close/phase capture and current actor adapters",

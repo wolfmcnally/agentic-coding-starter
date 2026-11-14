@@ -295,6 +295,82 @@ def test_admit_refuses_before_witnessing_and_replays_a_recorded_defect(
     ), "ADMIT WITNESSED WHAT IT COULD NOT RECORD OR LOST THE RECORDED DEFECT"
 
 
+def test_admit_records_a_catch_up_that_retires_one_proof_while_another_arrives(
+    estate: Path, tmp_path: Path
+) -> None:
+    """Catch-up: a transfer that drops a proof while another arrives could record neither
+    half alone, so three recipients each invented a way round the prescribed order.
+
+    Against a copy of a valid estate that loses one proof and gains another, the oracle is
+    each half refused when recorded without the other, with nothing witnessed, and then
+    the two recorded together by one input, leaving a valid estate.
+    """
+    authored = tmp_path / "authored"
+    shutil.copytree(estate, authored)
+    (authored / "guard.txt").write_text("deny\n")
+    os.utime(authored / "guard.txt", (0, 0))
+    check = authored / "check.sh"
+    check.write_text(
+        '#!/bin/sh\ngrep -qx deny guard.txt || { echo "E GUARD OPEN"; exit 1; }\necho checked\n'
+    )
+    check.chmod(0o755)
+    sample = authored / "tests/test_sample.py"
+    sample.write_text(
+        sample.read_text().replace('"case", [1, 2]', '"case", [1]')
+        + "\n\ndef test_arriving():\n    pass\n"
+    )
+    witnesses = authored / "reports/witnesses.jsonl"
+    audit = authored / "reports/reset.jsonl"
+    before = (witnesses.read_bytes(), audit.read_bytes())
+    arriving = {
+        "action": "admit",
+        "proof_id": SAMPLE + "test_arriving",
+        "defect": "The guard allows instead of denying.",
+        "expect": "GUARD OPEN",
+        "command": "./check.sh",
+        "plant": {"path": "guard.txt", "replace": "deny", "with": "allow"},
+        **EVIDENCE,
+    }
+    leaving = {
+        "action": "retire",
+        "proof_id": SAMPLE + "test_cases[2]",
+        "disposition": "delete",
+        "replacement": None,
+        **EVIDENCE,
+    }
+    supplied = tmp_path / "admit.json"
+    supplied.write_text(json.dumps({"proofs": [arriving]}))
+    with pytest.raises(governance.GovernanceError, match="nothing was witnessed"):
+        governance.admit(authored, supplied)
+    alone = tmp_path / "retire.json"
+    alone.write_text(json.dumps({"families": [], "records": [leaving]}))
+    with pytest.raises(governance.GovernanceError):
+        governance.author_inputs(
+            authored,
+            alone,
+            hashlib.sha256((authored / "tests/proof-estate.yaml").read_bytes()).hexdigest(),
+            hashlib.sha256(audit.read_bytes()).hexdigest(),
+        )
+    halves_refused = (witnesses.read_bytes(), audit.read_bytes()) == before
+
+    supplied.write_text(json.dumps({"proofs": [arriving], "retirements": [arriving]}))
+    with pytest.raises(governance.GovernanceError, match="retire or disposition"):
+        governance.admit(authored, supplied)
+    supplied.write_text(json.dumps({"proofs": [arriving], "retirements": [leaving]}))
+    try:
+        outcome = governance.admit(authored, supplied)
+    except governance.GovernanceError as refusal:
+        outcome = {"refused": str(refusal)}
+    kinds = [row["record_type"] for row in governance.load_ledger(audit)[-2:]]
+    assert (
+        halves_refused
+        and outcome == {"admitted": [arriving["proof_id"]], "witnessed": 1}
+        and sorted(kinds) == ["proof_admission", "proof_retirement"]
+        and (authored / "guard.txt").read_bytes() == b"deny\n"
+        and governance.validate(authored)["state"] == "valid"
+    ), "CATCH-UP COULD NOT RECORD A RETIREMENT AND AN ARRIVAL TOGETHER"
+
+
 def test_inventory_counts_executable_families_and_expanded_leaves(estate: Path) -> None:
     observed = governance.inventory(estate)
     assert observed["counts"] == {"families": 6, "leaves": 7}

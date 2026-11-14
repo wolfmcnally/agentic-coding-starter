@@ -1617,3 +1617,86 @@ def test_transfer_ancestry_names_the_nearest_revision_and_recipient_lines(tmp_pa
         and files["behind.txt"]["ancestor"] == revisions["middle"]
         and files["behind.txt"]["recipient_own_lines"] == []
     ), "TRANSFER ANCESTRY MISREAD THE RECIPIENT: " + report.stdout
+
+
+def test_converter_reports_each_renamed_line_and_never_leaves_a_link_to_nothing(
+    tmp_path: Path,
+) -> None:
+    """Layout conversion: a migration renamed the old constitution in a sentence about both
+    names, which then said one name twice, and it left a link with no target where a retired
+    tool had been linked; its report listed paths, so neither showed.
+
+    Against the converter's own text functions and a synthetic target, the oracle is the
+    exact rewritten text, the per-line report and the lines left for a person.
+    """
+    sys.path.insert(0, str(ROOT / "lib"))
+    from agentic_starter import multioperator_transition as transition
+
+    rewritten: list[dict[str, object]] = []
+    left: list[dict[str, object]] = []
+    prose = (
+        "Read CLAUDE.md before any action.\n"
+        "Claude Code reads CLAUDE.md and Codex reads AGENTS.md.\n"
+    )
+    renamed = transition.constitution_mentions(prose, "policies/sample.md", rewritten, left)
+    code = '(root / "AGENTS.md").symlink_to("CLAUDE.md")\n'
+    code_renamed = transition.constitution_mentions(code, "tests/test_sample.py", [], [])
+    operands = "renumber-phases|log-append"
+    linked = transition.retired_tool_paths(
+        "See [the renumberer](../bin/renumber-phases) and [it](bin/log-append).\n",
+        "policies/sample.md",
+        operands,
+    )
+    listed = transition.retired_tool_paths(
+        "ruff check ../bin/renumber-phases ../bin/check\n", "bin/check", operands
+    )
+
+    target = tmp_path / "target"
+    (target / "policies").mkdir(parents=True)
+    (target / "CLAUDE.md").write_text("# Constitution\n")
+    (target / "policies/sample.md").write_text(prose)
+    report = transition.promote_constitution(target)
+
+    assert (
+        renamed == "Read AGENTS.md before any action.\n" + prose.splitlines(keepends=True)[1]
+        and rewritten
+        == [
+            {
+                "path": "policies/sample.md",
+                "line": 1,
+                "before": "Read CLAUDE.md before any action.",
+                "after": "Read AGENTS.md before any action.",
+            }
+        ]
+        and [(row["path"], row["line"]) for row in left] == [("policies/sample.md", 2)]
+        and code_renamed == '(root / "AGENTS.md").symlink_to("AGENTS.md")\n'
+        and linked == "See [the renumberer](../bin/multioperator) and [it](bin/multioperator).\n"
+        and listed == "ruff check ../bin/check\n"
+        and report["rewritten_lines"] == rewritten
+        and [row["line"] for row in report["left_for_review"]] == [2]
+        and (target / "policies/sample.md").read_text() == renamed
+    ), "CONVERTER RENAMED A TWO-NAME SENTENCE, HID A REWRITE OR LEFT AN EMPTY LINK"
+
+
+def test_a_relative_root_means_the_callers_directory(tmp_path: Path, source: Path) -> None:
+    """Record tool: run from another directory with a relative root, it validated the tool's
+    own repository instead and refused a valid tree with a message about the constitution.
+
+    The real command line is run from the parent of a converted synthetic tree; the oracle
+    is its exit status and the same result an absolute root gives.
+    """
+    target = convert(tmp_path, source, MAPPING, **checkpoint())
+    absolute = run("validate", "--root", target)
+    relative = subprocess.run(
+        [str(CLI), "validate", "--root", target.name],
+        cwd=target.parent,
+        text=True,
+        capture_output=True,
+        env={**os.environ, "UV_OFFLINE": "1"},
+        timeout=60,
+    )
+    assert (
+        absolute.returncode == 0
+        and relative.returncode == 0
+        and json.loads(relative.stdout)["events"] == json.loads(absolute.stdout)["events"]
+    ), "RELATIVE ROOT WAS READ FROM THE WRONG DIRECTORY: " + absolute.stderr + relative.stderr

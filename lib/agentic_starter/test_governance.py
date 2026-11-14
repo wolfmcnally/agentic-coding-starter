@@ -1524,13 +1524,34 @@ def admit(root: Path, source: Path) -> dict[str, Any]:
     cannot be recorded, such as one that leaves another new proof unadmitted, refuses with
     nothing witnessed. It then observes each proof red, restores the original bytes, and
     appends the witness receipts and the admission or modification rows together.
+
+    A catch-up that drops proofs while others arrive cannot record either half alone: the
+    arrivals are unadmitted while the retirements are checked, and the retired proofs are
+    unaccounted for while the arrivals are. So the same input may carry `retirements`,
+    authoring records with action `retire` or `disposition`, and `families`, replacement
+    family definitions. They are checked and published with the admissions as one change.
     """
     from agentic_starter.input_io import read_object
 
     request = read_object(source)
     proofs = request.get("proofs")
-    if set(request) != {"proofs"} or not isinstance(proofs, list) or not proofs:
-        raise GovernanceError("admit input requires a nonempty proofs array")
+    retirements = request.get("retirements", [])
+    families = request.get("families", [])
+    if (
+        not {"proofs"} <= set(request) <= {"proofs", "retirements", "families"}
+        or not isinstance(proofs, list)
+        or not proofs
+        or not isinstance(retirements, list)
+        or not isinstance(families, list)
+        or any(
+            not isinstance(row, dict) or row.get("action") not in {"retire", "disposition"}
+            for row in retirements
+        )
+    ):
+        raise GovernanceError(
+            "admit input requires a nonempty proofs array; optional retirements carry only "
+            "retire or disposition records, and optional families are family definitions"
+        )
     plants = recorded_plants(root)
     resolved = []
     for supplied in proofs:
@@ -1557,7 +1578,7 @@ def admit(root: Path, source: Path) -> dict[str, Any]:
 
     def author(records: list[dict[str, Any]], *, check_only: bool) -> list[str]:
         composed = root / ".kickoff/input-writes/admit-request.json"
-        _write_json(composed, {"families": [], "records": records})
+        _write_json(composed, {"families": families, "records": [*retirements, *records]})
         try:
             return author_inputs(
                 root,

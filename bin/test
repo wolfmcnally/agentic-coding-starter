@@ -14,7 +14,7 @@ project_root="$repo_root/project"
 
 usage() {
   cat <<'EOF'
-Usage: ./bin/test [--vital | --changed-from <ref> | --reuse | pytest arguments...]
+Usage: ./bin/test [--vital | --changed-from <ref> | --reuse | native [arguments...] | pytest arguments...]
 
 Run the full repository test suite by default, always in full. The governed
 --vital and --changed-from lanes select admitted proof families and widen to
@@ -22,6 +22,11 @@ full when selection cannot be proved safe. --reuse runs only the families that
 changes since the last fully passing tree can affect, and everything when that
 tree is unknown; it is what the full gate uses. Other arguments are forwarded
 to pytest for explicit focused testing; paths are relative to the repo root.
+
+A project whose deliverable has its own suite in another language supplies an
+executable bin/test-native. The full run then has two lanes, pytest and that
+suite under the same hang supervision, and proves the tree only when both pass.
+A leading `native` token runs that suite alone and forwards the rest to it.
 EOF
 }
 
@@ -52,9 +57,28 @@ python_toolchain_init TEST
 
 cd "$repo_root"
 python_toolchain_probe
+# The deliverable's own suite, when the project declares one: supervised like pytest, and
+# run as its own lane, never inside a pytest worker.
+native_runner="$repo_root/bin/test-native"
+run_native_suite() {
+  uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" \
+    python "$repo_root/lib/agentic_starter/native_suite.py" "$@"
+}
+
+if [[ $# -ge 1 && "$1" == "native" ]]; then
+  if [[ ! -x "$native_runner" ]]; then
+    echo "TEST ERROR no native suite is declared: bin/test-native is absent" >&2
+    exit 2
+  fi
+  shift
+  run_native_suite "$@"
+  exit $?
+fi
+
 # Every full run leaves its per-test timings where `test-governance timing` reads them.
-full_suite=(-q --junitxml "$repo_root/.kickoff/test-timing/full.xml" -o junit_family=xunit1
-  project/tests tests)
+full_suite=(-q --junitxml "$repo_root/.kickoff/test-timing/full.xml" -o junit_family=xunit1)
+[[ ! -d "$repo_root/project/tests" ]] || full_suite+=(project/tests)
+full_suite+=(tests)
 
 # A run that can prove the whole tree is bracketed: its identity is fixed before it starts,
 # and a pass records that tree as the one later --reuse runs compare against. A failed
@@ -80,10 +104,25 @@ run_proving() {
   return "$proving_exit"
 }
 
+# Every lane runs whatever an earlier one returned, so one run reports every failure. The
+# first failing status is the run's status, and only a run that passed every lane proves
+# the tree.
+run_full_lanes() {
+  local lanes_exit=0
+  local native_exit=0
+  uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" \
+    python "$repo_root/lib/agentic_starter/test_runner.py" -m pytest "${full_suite[@]}" \
+    || lanes_exit=$?
+  if [[ -x "$native_runner" ]]; then
+    run_native_suite || native_exit=$?
+    [[ "$lanes_exit" -ne 0 ]] || lanes_exit="$native_exit"
+  fi
+  return "$lanes_exit"
+}
+
 run_full_suite() {
   rm -f "$repo_root/.kickoff/test-timing/full.xml"
-  run_proving full uv run --project "$project_root" --locked "${python_toolchain_uv_args[@]}" \
-    python "$repo_root/lib/agentic_starter/test_runner.py" -m pytest "${full_suite[@]}"
+  run_proving full run_full_lanes
 }
 
 if [[ $# -eq 0 ]]; then

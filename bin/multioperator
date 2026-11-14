@@ -3,4 +3,6 @@
 set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PYTHONPATH="$repo_root/lib${PYTHONPATH:+:$PYTHONPATH}"
+# The interpreter wrapper changes directory; relative paths mean the caller's directory.
+export MULTIOPERATOR_INVOKED_FROM="$PWD"
 exec "$repo_root/bin/python" -m agentic_starter.multioperator "$@"

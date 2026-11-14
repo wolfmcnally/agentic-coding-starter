@@ -1689,10 +1689,18 @@ def transfer_preflight(
         donor_state != "rehearsal",
         "donor rehearsal is not an operational source",
     )
-    require(
-        recipient_state != "rehearsal",
-        "recipient has an unresolved rehearsal/partial transition",
-    )
+    if recipient_state == "rehearsal":
+        # A conversion may be committed before its owner declares adoption, and that state
+        # is still not a destination for a transfer. Say what it is, what it records and
+        # what lifts it, so the reader does not have to work that out from a bare refusal.
+        recorded_release = (methodology_provenance(recipient) or {}).get("release")
+        raise Refusal(
+            "recipient has an unresolved rehearsal/partial transition: its conversion is "
+            "present but adoption is not declared (recorded release: "
+            + (recorded_release or "none")
+            + "). Declaring it is the owner's act, recorded with "
+            "`multioperator adopt --root <recipient>`; a transfer waits for that."
+        )
     route = (
         "capability-learning"
         if intent == "capability"
@@ -1954,6 +1962,12 @@ def main() -> int:
             command.add_argument("--body", type=Path, required=True)
             command.add_argument("--at", default=datetime.now(UTC).isoformat())
     args = parser.parse_args()
+    # A relative path names a place under the caller's directory, not under wherever the
+    # launcher moved to; read the other way, a valid tree is refused for the wrong reason.
+    invoked_from = Path(os.environ.get("MULTIOPERATOR_INVOKED_FROM") or Path.cwd())
+    for name, value in vars(args).items():
+        if isinstance(value, Path) and not value.is_absolute():
+            setattr(args, name, invoked_from / value)
     try:
         if args.command in {"compose-terminal", "append-terminal"}:
             body = compose_terminal(load(args.content), args.at)

@@ -296,6 +296,15 @@
       "with": "            if nearest is None:\n"
     }
   },
+  "pytest:tests/test_multioperator.py::test_a_relative_root_means_the_callers_directory": {
+    "defect": "A relative root is read from the tool's own directory",
+    "expect": "RELATIVE ROOT WAS READ FROM THE WRONG DIRECTORY",
+    "plant": {
+      "path": "lib/agentic_starter/multioperator.py",
+      "replace": "            setattr(args, name, invoked_from / value)\n",
+      "with": "            pass\n"
+    }
+  },
   "pytest:tests/test_multioperator.py::test_absent_retained_evidence_is_reported_while_altered_evidence_refuses": {
     "defect": "Never excuse absent ignored evidence",
     "expect": "RETAINED EVIDENCE ABSENCE REFUSED OR ALTERATION PASSED",
@@ -321,6 +330,15 @@
       "path": "lib/agentic_starter/multioperator.py",
       "replace": "    if not condition:\n        raise Refusal(reason)",
       "with": "    return"
+    }
+  },
+  "pytest:tests/test_multioperator.py::test_converter_reports_each_renamed_line_and_never_leaves_a_link_to_nothing": {
+    "defect": "The converter renames the old constitution in a sentence that names both files",
+    "expect": "CONVERTER RENAMED A TWO-NAME SENTENCE, HID A REWRITE OR LEFT AN EMPTY LINK",
+    "plant": {
+      "path": "lib/agentic_starter/multioperator_transition.py",
+      "replace": "        if relative.endswith(\".md\") and \"AGENTS.md\" in line:\n",
+      "with": "        if False:\n"
     }
   },
   "pytest:tests/test_multioperator.py::test_methodology_close_cannot_bypass_the_lessons_contract": {
@@ -404,6 +422,15 @@
       "with": "            if True:\n                return True\n"
     }
   },
+  "pytest:tests/test_test_governance.py::test_admit_records_a_catch_up_that_retires_one_proof_while_another_arrives": {
+    "defect": "Admission ignores the retirements supplied with the arriving proofs",
+    "expect": "CATCH-UP COULD NOT RECORD A RETIREMENT AND AN ARRIVAL TOGETHER",
+    "plant": {
+      "path": "lib/agentic_starter/test_governance.py",
+      "replace": "{\"families\": families, \"records\": [*retirements, *records]}",
+      "with": "{\"families\": families, \"records\": records}"
+    }
+  },
   "pytest:tests/test_test_governance.py::test_admit_records_a_proof_only_after_seeing_it_fail_and_restoring_the_tree": {
     "defect": "Abort the witness instead of finishing it",
     "expect": "ADMIT RECORDED AN UNSEEN FAILURE, LEFT A DEFECT PLANTED OR LOST A RECEIPT",
@@ -458,6 +485,15 @@
       "with": ""
     }
   },
+  "pytest:tests/test_toolchain_entrypoints.py::test_a_declared_native_suite_is_a_second_lane_and_only_both_lanes_prove_the_tree": {
+    "defect": "The full run records the pytest lane's status and ignores a failed native lane",
+    "expect": "NATIVE SUITE WAS NOT A SECOND LANE, OR A TREE WAS PROVEN WITHOUT IT",
+    "plant": {
+      "path": "bin/test",
+      "replace": "    [[ \"$lanes_exit\" -ne 0 ]] || lanes_exit=\"$native_exit\"\n",
+      "with": ""
+    }
+  },
   "pytest:tests/test_toolchain_entrypoints.py::test_reuse_lane_runs_native_runner_families_and_nothing_when_nothing_changed": {
     "defect": "Skip selected native-runner families in the test entry point",
     "expect": "REUSE LANE SKIPPED A NATIVE-RUNNER FAMILY OR RAN TESTS WHEN NOTHING CHANGED",
@@ -465,6 +501,15 @@
       "path": "bin/test",
       "replace": "    \"$repo_root/bin/test\" \"${command_words[@]}\" || return $?\n",
       "with": "    :\n"
+    }
+  },
+  "pytest:tests/test_toolchain_entrypoints.py::test_the_native_suite_runs_supervised_with_its_arguments_and_never_signs": {
+    "defect": "The native lane runs its suite on the machine's signing configuration",
+    "expect": "NATIVE SUITE RAN UNSUPERVISED, LOST ITS SELECTION OR SIGNED FIXTURE COMMITS",
+    "plant": {
+      "path": "lib/agentic_starter/native_suite.py",
+      "replace": "        isolate_fixture_git_signing(os.environ)\n",
+      "with": ""
     }
   },
   "pytest:tests/test_toolchain_entrypoints.py::test_wrapper_run_excludes_runtime_state_from_dropbox_sync": {

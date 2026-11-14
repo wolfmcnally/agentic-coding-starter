@@ -51,6 +51,8 @@ are stable from any caller directory.
 ./bin/test --reuse
 ```
 
+A project whose deliverable has its own suite in another language supplies an executable `bin/test-native`. The full run then runs it as a second supervised lane after pytest and proves the tree only when both pass; `./bin/test native <arguments>` runs it alone. `lib/agentic_starter/native_suite.py` is the supervisor for that lane.
+
 `--reuse` is the lane the full gate uses: it runs the families that changes since the last fully passing tree can affect, everything when that tree or the runtime is unknown, and nothing when no covered or read path changed. A bare `./bin/test` always runs everything and, on a pass, records the tree that later reuse runs compare against.
 
 The governed lanes use the recipient-local `tests/proof-estate.yaml`. Vital
@@ -114,7 +116,7 @@ lockfile. Behavioral coverage lives in
 
 Inventories families, expanded leaves, gates and hooks; validates preserved baseline/ledger replay, explicit pending review, witness references and direct risks; reports diagnostic runtime without thresholds or automatic reruns; records authoring observations; and selects vital/changed feedback. `lib/agentic_starter/test_runner.py` supplies the Python profile's separately qualified process-group hang supervision. Timeout/interruption is incomplete evidence, never a pass or a red witness. Runtime startup remains outside this guard. The supervisor puts tests in their own session and forwards TERM, INT and HUP; killing the supervisor with SIGKILL can orphan that group. Enclosing tools must allow cleanup or track both owned groups. Deliberately detached descendants need separate cleanup.
 
-`admit --input-json <file>` is the one-step form for a new or changed proof: it plants the described defect as an exact text replacement, requires the named failure, restores the tree, and records the witness receipt and the admission or modification row together. It refuses before planting anything when the result could not be recorded, so give it every unadmitted proof in one input, and it keeps each planted defect in `tests/proof-plants.json` so a proof can later be admitted elsewhere without restating it. It also provides `select --reuse` and the `reuse begin` and `reuse finish` commands that `bin/test` uses to record the last fully passing tree; do not run those by hand.
+`admit --input-json <file>` is the one-step form for a new or changed proof: it plants the described defect as an exact text replacement, requires the named failure, restores the tree, and records the witness receipt and the admission or modification row together. It refuses before planting anything when the result could not be recorded, so give it every unadmitted proof in one input, with `retirements` for any proofs the same change removes and `families` for any family definition it changes, and it keeps each planted defect in `tests/proof-plants.json` so a proof can later be admitted elsewhere without restating it. It also provides `select --reuse` and the `reuse begin` and `reuse finish` commands that `bin/test` uses to record the last fully passing tree; do not run those by hand.
 
 `witness begin` runs the named command and requires it to pass, then journals the
 named files. Plant the defect in those files, and `witness finish` requires the
