@@ -200,6 +200,8 @@ def test_all_is_default_locked_ordered_and_cwd_independent(
             f"--managed-python python -c {PROBE}"
         ),
         f"log cwd={root}",
+        f"dashboards cwd={root}",
+        f"catalogs cwd={root}",
         (
             f"uv cwd={root / 'project'} args=run --locked --managed-python "
             "ruff check example tests ../lib ../bin/kickoff-config ../bin/kickoff-evidence "
@@ -309,6 +311,53 @@ def test_all_policy_failure_cannot_be_masked_by_later_policy_output(
         and "--outcome failed" in calls
         and "CHECK ALL PASS" not in late.stdout
     ), "FINAL LOG VALIDATION LOST OR PASSED RECEIPT"
+
+
+@pytest.mark.parametrize(
+    ("executable", "lane"),
+    [
+        ("check-catalogs", "policy-catalogs"),
+        ("check-execution-dashboards", "policy-execution-dashboards"),
+    ],
+)
+def test_stale_catalog_or_report_stops_the_gate_before_lint_and_tests(
+    check_repo: tuple[Path, dict[str, str]], executable: str, lane: str
+) -> None:
+    root, environment = check_repo
+    _write_executable(
+        root / "bin" / executable,
+        "#!/usr/bin/env bash\n"
+        "printf 'bookkeeping check\\n' >> \"$CHECK_TEST_LOG\"\n"
+        "echo 'stale entry' >&2\nexit 39\n",
+    )
+    early = _run(root, environment, "all")
+    calls = Path(environment["CHECK_TEST_LOG"]).read_text()
+    assert (
+        early.returncode == 39
+        and f"CHECK {lane} FAIL (exit 39)" in early.stdout
+        and "ruff check" not in calls
+        and "test_runner.py" not in calls
+        and "--outcome failed" in calls
+        and "CHECK ALL PASS" not in early.stdout
+    ), "STALE BOOKKEEPING REACHED EXPENSIVE GATES OR PASSED RECEIPT"
+
+    # A tree that drifts while the costly lanes run is still caught on the final tree.
+    Path(environment["CHECK_TEST_LOG"]).unlink()
+    _write_executable(
+        root / "bin" / executable,
+        "#!/usr/bin/env bash\n"
+        "printf 'bookkeeping check\\n' >> \"$CHECK_TEST_LOG\"\n"
+        'if [[ -f "$PWD/bookkeeping-checked" ]]; then exit 40; fi\n'
+        'touch "$PWD/bookkeeping-checked"\n',
+    )
+    late = _run(root, environment, "all")
+    calls = Path(environment["CHECK_TEST_LOG"]).read_text()
+    assert (
+        late.returncode == 40
+        and calls.count("bookkeeping check") == 2
+        and "test_runner.py" in calls
+        and "CHECK ALL PASS" not in late.stdout
+    ), "FINAL BOOKKEEPING CHECK LOST OR PASSED RECEIPT"
 
 
 def test_format_rejects_staged_unstaged_and_untracked_candidates_without_rewriting(

@@ -35,6 +35,24 @@
       "with": ""
     }
   },
+  "pytest:tests/test_check.py::test_stale_catalog_or_report_stops_the_gate_before_lint_and_tests[check-catalogs-policy-catalogs]": {
+    "defect": "The early guards skip the catalog check, leaving it to the final policy lane",
+    "expect": "STALE BOOKKEEPING REACHED EXPENSIVE GATES OR PASSED RECEIPT",
+    "plant": {
+      "path": "bin/check",
+      "replace": "    run_gate policy-execution-dashboards ./bin/check-execution-dashboards || return $?\n    run_gate policy-catalogs ./bin/check-catalogs || return $?\n",
+      "with": "    run_gate policy-execution-dashboards ./bin/check-execution-dashboards || return $?\n"
+    }
+  },
+  "pytest:tests/test_check.py::test_stale_catalog_or_report_stops_the_gate_before_lint_and_tests[check-execution-dashboards-policy-execution-dashboards]": {
+    "defect": "The early guards skip the execution-report check, leaving it to the final policy lane",
+    "expect": "STALE BOOKKEEPING REACHED EXPENSIVE GATES OR PASSED RECEIPT",
+    "plant": {
+      "path": "bin/check",
+      "replace": "    cd \"$repo_root\"\n    run_gate policy-execution-dashboards ./bin/check-execution-dashboards || return $?\n",
+      "with": "    cd \"$repo_root\"\n"
+    }
+  },
   "pytest:tests/test_check_catalogs.py::test_a_phase_names_other_phases_by_id_and_a_path_is_refused": {
     "defect": "The catalog checker prints its findings but exits successfully",
     "expect": "failed",

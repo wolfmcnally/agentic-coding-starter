@@ -187,9 +187,20 @@ run_policy() {
   )
 }
 
+# Catalog and report drift is bookkeeping that no lint or test run can repair, and both
+# checks take about a second. They run before the costly lanes so a stale tree stops there.
+run_early_guards() {
+  (
+    cd "$repo_root"
+    run_gate policy-execution-dashboards ./bin/check-execution-dashboards || return $?
+    run_gate policy-catalogs ./bin/check-catalogs || return $?
+  )
+}
+
 run_all() {
   # Fail cheaply before tests; run_policy still revalidates at the final seam.
   run_log || return $?
+  run_early_guards || return $?
   run_lint || return $?
   run_format || return $?
   if [[ "$test_reuse" -eq 1 ]]; then
