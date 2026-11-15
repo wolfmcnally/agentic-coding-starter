@@ -475,3 +475,77 @@ def test_stale_dashboard_refuses_until_regenerated_from_tracked_inputs(tmp_path:
     ), "STALE DASHBOARD PASSED OR REGENERATION DID NOT RESTORE TRACKED BYTES: " + "".join(
         item.stderr for item in (clean, refused, regenerated)
     )
+
+
+def test_regeneration_repairs_a_changed_history_whole_or_not_at_all(tmp_path: Path) -> None:
+    """Admission: a later failed attempt changed an accepted phase's report and nothing said so.
+
+    A phase is rendered from one accepted trace; a failed attempt of the same phase is then
+    added to the trace ledger. The oracle is the checker's exit status, the report's accepted
+    trace and attempt count, and the exact bytes of the ledger, the handoff and the report.
+    """
+    import shutil
+
+    accepted = kickoff_bundle()
+    engine = tmp_path / "engine"
+    output = engine / "reports" / "execution"
+    write_ledger(engine, [accepted])
+    (engine / "bin").mkdir()
+    shutil.copy2(ROOT / "bin/check-execution-dashboards", engine / "bin/check-execution-dashboards")
+    shutil.copytree(ROOT / "lib", engine / "lib", ignore=shutil.ignore_patterns("__pycache__"))
+    dashboard.render_phase_dashboard(
+        engine_root=engine,
+        output_root=output,
+        phase_id="31.2",
+        accepted_trace_id=accepted["trace_id"],
+        handoff=sample_handoff(),
+    )
+    shutil.copytree(ROOT / "reports/execution/assets", output / "assets", dirs_exist_ok=True)
+    ledger = engine / "EXECUTION_LOG.jsonl"
+    data = next(output.glob("????-??-??/phase-*/data.js"))
+    handoff = data.with_name("handoff.json")
+
+    def check(*arguments: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(engine / "bin/check-execution-dashboards"), *arguments],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+
+    clean = check()
+    with ledger.open("a", encoding="utf-8") as stream:
+        stream.write(
+            json.dumps(failed_predecessor(accepted), sort_keys=True, separators=(",", ":")) + "\n"
+        )
+    ledger_bytes, handoff_bytes, stale_bytes = (
+        ledger.read_bytes(),
+        handoff.read_bytes(),
+        data.read_bytes(),
+    )
+    refused = check()
+    # A handoff that differs from its rendering is an input fault: nothing may be written.
+    handoff.write_bytes(handoff_bytes + b"\n")
+    blocked = check("--regenerate")
+    wrote_nothing = (
+        data.read_bytes() == stale_bytes and handoff.read_bytes() == handoff_bytes + b"\n"
+    )
+    handoff.write_bytes(handoff_bytes)
+    regenerated = check("--regenerate")
+    repaired = dashboard.parse_data_script(data.read_text(encoding="utf-8"))
+    assert (
+        clean.returncode == 0
+        and refused.returncode == 1
+        and "stale dashboard artifact" in refused.stderr
+        and blocked.returncode == 1
+        and "never regenerated" in blocked.stderr
+        and wrote_nothing
+        and regenerated.returncode == 0
+        and repaired["accepted_trace_id"] == accepted["trace_id"]
+        and repaired["trace_count"] == 2
+        and ledger.read_bytes() == ledger_bytes
+        and handoff.read_bytes() == handoff_bytes
+        and check().returncode == 0
+    ), "REGENERATION REWROTE AN INPUT, WROTE BEFORE VALIDATING OR LOST THE ACCEPTED TRACE: " + (
+        "".join(item.stderr for item in (clean, refused, blocked, regenerated))
+    )

@@ -80,6 +80,15 @@
       "with": "        print(\"\\n\".join(sorted(DRIFT)))\n        return 0"
     }
   },
+  "pytest:tests/test_check_catalogs.py::test_registering_a_registered_document_again_changes_nothing": {
+    "defect": "A repeated registration is refused as an error",
+    "expect": "REPEATED REGISTRATION WAS REFUSED OR REWROTE THE CATALOG",
+    "plant": {
+      "path": "bin/check-catalogs",
+      "replace": "            print(\"DOCUMENT ALREADY REGISTERED; nothing written\")\n            return\n",
+      "with": "            raise ValueError(\"document is already registered\")\n"
+    }
+  },
   "pytest:tests/test_check_catalogs.py::test_structured_phase_order_and_events_are_checked_by_the_catalog": {
     "defect": "The catalog checker prints its findings but exits successfully",
     "expect": "failed",
@@ -98,13 +107,22 @@
       "with": ""
     }
   },
+  "pytest:tests/test_execution_dashboard.py::test_regeneration_repairs_a_changed_history_whole_or_not_at_all": {
+    "defect": "Regeneration treats a handoff as a generated file and rewrites one that differs",
+    "expect": "REGENERATION REWROTE AN INPUT, WROTE BEFORE VALIDATING OR LOST THE ACCEPTED TRACE",
+    "plant": {
+      "path": "bin/check-execution-dashboards",
+      "replace": "                regenerated / relative / \"handoff.json\",\n                generated=False,\n",
+      "with": "                regenerated / relative / \"handoff.json\",\n"
+    }
+  },
   "pytest:tests/test_execution_dashboard.py::test_stale_dashboard_refuses_until_regenerated_from_tracked_inputs": {
     "defect": "Make regeneration report success without rewriting",
     "expect": "STALE DASHBOARD PASSED OR REGENERATION DID NOT RESTORE TRACKED BYTES",
     "plant": {
       "path": "bin/check-execution-dashboards",
-      "replace": "            shutil.copyfile(actual, expected)\n",
-      "with": "            pass\n"
+      "replace": "        destination.write_bytes(pending[destination])\n",
+      "with": "        pass\n"
     }
   },
   "pytest:tests/test_kickoff_config.py::test_cap_hit_continuation_requires_assessment_and_preserves_budget[productive]": {
@@ -159,6 +177,15 @@
       "path": "bin/kickoff-evidence",
       "replace": "    if set(dispatch_by_key) != keys - unlaunched:\n",
       "with": "    if set(dispatch_by_key) != keys:\n"
+    }
+  },
+  "pytest:tests/test_kickoff_evidence.py::test_a_run_refuses_to_start_on_a_tree_that_fails_the_catalog_check": {
+    "defect": "Run start skips the catalog check",
+    "expect": "RUN STARTED OR CAPTURED EVIDENCE ON A TREE THAT FAILS ITS CATALOG CHECK",
+    "plant": {
+      "path": "bin/kickoff-evidence",
+      "replace": "    require_consistent_catalogs(root)\n    run_dir = require_persistent_directory(\n",
+      "with": "    run_dir = require_persistent_directory(\n"
     }
   },
   "pytest:tests/test_kickoff_evidence.py::test_historical_advice_attestation_preserves_originals[historical-gap]": {

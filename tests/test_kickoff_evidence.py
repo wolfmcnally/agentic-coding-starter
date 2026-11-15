@@ -3709,3 +3709,33 @@ def test_owner_directed_review_is_attested_counted_and_never_passed_off_as_witne
     retained.write_text("{}")
     altered = run("status", "--run-dir", str(run_dir))
     assert altered.returncode != 0 and "missing or altered" in altered.stderr
+
+
+def test_a_run_refuses_to_start_on_a_tree_that_fails_the_catalog_check(
+    repository: Path, tmp_path: Path
+) -> None:
+    """Admission: a run captured its authority on a stale catalog and failed only at its gate.
+
+    The fixture's catalog check is made to refuse; the oracle is the start command's status
+    and message, the absence of any run directory content, and a start that succeeds once
+    the same check passes.
+    """
+    checker = repository / "bin" / "check-catalogs"
+    passing = checker.read_text()
+    checker.write_text("#!/bin/sh\necho 'CATALOG DRIFT: briefs/unlisted.md' >&2\nexit 3\n")
+    refused_dir = tmp_path / "refused-run"
+    try:
+        initialize(repository, refused_dir)
+    except AssertionError as failure:
+        refusal = str(failure)
+    else:
+        refusal = ""
+    captured = refused_dir.exists() and any(refused_dir.iterdir())
+    checker.write_text(passing)
+    started = initialize(repository, tmp_path / "started-run")
+    assert (
+        "pre-capture catalog check failed" in refusal
+        and "CATALOG DRIFT: briefs/unlisted.md" in refusal
+        and not captured
+        and started
+    ), "RUN STARTED OR CAPTURED EVIDENCE ON A TREE THAT FAILS ITS CATALOG CHECK: " + refusal

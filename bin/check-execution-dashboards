@@ -10,7 +10,6 @@ import filecmp
 import hashlib
 import json
 import re
-import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -98,24 +97,33 @@ def fail(message: str) -> None:
 
 
 # Set by --regenerate: a tracked file that differs from its regeneration is rewritten from
-# the same tracked inputs this check renders, instead of being refused.
-REGENERATED: list[str] | None = None
+# the same tracked inputs this check renders, instead of being refused. Nothing is written
+# until the whole archive has validated, and a handoff is never rewritten: it is an input.
+REGENERATED: dict[Path, bytes] | None = None
 
 
-def compare_files(expected: Path, actual: Path) -> None:
-    if REGENERATED is not None and actual.is_file():
+def compare_files(expected: Path, actual: Path, *, generated: bool = True) -> None:
+    if REGENERATED is not None and generated and actual.is_file():
         if not expected.is_file() or not filecmp.cmp(expected, actual, shallow=False):
-            expected.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(actual, expected)
-            REGENERATED.append(str(expected.relative_to(REPO_ROOT)))
+            REGENERATED[expected] = actual.read_bytes()
         return
     if not expected.is_file() or not actual.is_file():
         fail(f"missing dashboard artifact: {expected.relative_to(REPO_ROOT)}")
     if not filecmp.cmp(expected, actual, shallow=False):
+        if not generated:
+            fail(
+                f"dashboard handoff differs from its rendering: "
+                f"{expected.relative_to(REPO_ROOT)}; a handoff is an input and is never regenerated"
+            )
         fail(
             f"stale dashboard artifact: {expected.relative_to(REPO_ROOT)}; "
             "regenerate with ./bin/check-execution-dashboards --regenerate"
         )
+
+
+def archived(file_path: Path) -> bool:
+    """Whether the archive holds the file, counting one a regeneration is about to write."""
+    return file_path.is_file() or (REGENERATED is not None and file_path in REGENERATED)
 
 
 def validate_static_assets() -> None:
@@ -172,7 +180,7 @@ def validate_static_assets() -> None:
 def main() -> int:
     global REGENERATED
     if sys.argv[1:] == ["--regenerate"]:
-        REGENERATED = []
+        REGENERATED = {}
     elif sys.argv[1:]:
         fail("usage: check-execution-dashboards [--regenerate]")
     validate_static_assets()
@@ -243,25 +251,36 @@ def main() -> int:
             compare_files(
                 ARCHIVE / relative / "handoff.json",
                 regenerated / relative / "handoff.json",
+                generated=False,
             )
         for phase in regenerated_index["phases"]:
-            target = ARCHIVE / phase["href"]
-            if not target.is_file():
+            if not archived(ARCHIVE / phase["href"]):
                 fail(f"broken archive navigation target: {phase['href']}")
             for key in ("previous_href", "next_href"):
-                if phase[key] is not None and not (ARCHIVE / phase[key]).is_file():
+                if phase[key] is not None and not archived(ARCHIVE / phase[key]):
                     fail(f"broken {key}: {phase[key]}")
 
-    html_files = [ARCHIVE / "index.html", *ARCHIVE.glob("????-??-??/phase-*/index.html")]
-    for file_path in html_files:
-        text = file_path.read_text(encoding="utf-8")
+    pending = REGENERATED or {}
+    html_files = {ARCHIVE / "index.html", *ARCHIVE.glob("????-??-??/phase-*/index.html")}
+    html_files |= {file_path for file_path in pending if file_path.suffix == ".html"}
+    for file_path in sorted(html_files):
+        # A file about to be rewritten is judged by the bytes it will hold.
+        text = (
+            pending[file_path].decode("utf-8")
+            if file_path in pending
+            else file_path.read_text(encoding="utf-8")
+        )
         if "Content-Security-Policy" not in text or "connect-src 'none'" not in text:
             fail(f"missing default-deny CSP: {file_path.relative_to(REPO_ROOT)}")
         for pattern in FORBIDDEN_PAYLOAD:
             if pattern.search(text):
                 fail(f"unsafe dashboard HTML: {file_path.relative_to(REPO_ROOT)}")
-    if REGENERATED:
-        print("EXECUTION DASHBOARDS REGENERATED " + " ".join(sorted(REGENERATED)))
+    for destination in sorted(pending):
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(pending[destination])
+    if pending:
+        names = sorted(str(destination.relative_to(REPO_ROOT)) for destination in pending)
+        print("EXECUTION DASHBOARDS REGENERATED " + " ".join(names))
     print(f"EXECUTION DASHBOARDS PASS ({len(payloads)} phases)")
     return 0
 

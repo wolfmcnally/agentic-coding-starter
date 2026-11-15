@@ -722,7 +722,10 @@ def author_document(arguments: argparse.Namespace) -> None:
             quote(relative.removeprefix("docs/"), safe="/-._~") if parts[0] == "docs" else relative
         )
         if re.search(r"\]\(" + re.escape(link) + r"(?:[#)])", original):
-            raise ValueError("document is already registered")
+            # A repeated registration is a finished one: the first caller's label and
+            # placement stand, and a rerun after an interruption has nothing to refuse.
+            print("DOCUMENT ALREADY REGISTERED; nothing written")
+            return
         row = f"- [{label}]({link})\n"
         if catalog == "AGENTS.md":
             zone = supplied.get("zone", "methodology")

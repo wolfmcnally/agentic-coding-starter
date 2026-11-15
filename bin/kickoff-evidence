@@ -876,8 +876,32 @@ def parse_authority_spec(specification: str, root: Path, priority: int) -> dict[
     }
 
 
+def require_consistent_catalogs(root: Path) -> None:
+    """Refuse a run whose live tree already fails the catalog check.
+
+    The check belongs to the checkout the run starts in, so it runs from there and before
+    this run's tools are frozen or its authority is captured. A run started on a stale
+    catalog would otherwise capture that state and meet the refusal only at its final gate.
+    """
+    checker = root / "bin" / "check-catalogs"
+    if not checker.is_file():
+        raise EvidenceError("pre-capture catalog check is missing: bin/check-catalogs")
+    try:
+        consistency = subprocess.run(
+            [str(checker)], cwd=root, capture_output=True, text=True, check=False
+        )
+    except OSError as exc:
+        raise EvidenceError(f"pre-capture catalog check could not run: {exc}") from exc
+    if consistency.returncode:
+        raise EvidenceError(
+            "pre-capture catalog check failed; nothing was captured:\n"
+            + (consistency.stdout + consistency.stderr).strip()
+        )
+
+
 def command_init(arguments: argparse.Namespace) -> None:
     root = git_root(arguments.root.resolve())
+    require_consistent_catalogs(root)
     run_dir = require_persistent_directory(
         arguments.run_dir or root / ".kickoff" / "runs" / os.urandom(16).hex()
     )

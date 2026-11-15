@@ -411,7 +411,7 @@ runtime data. An empty archive is valid before the first completed phase.
 ./bin/check-execution-dashboards --regenerate
 ```
 
-`--regenerate` rewrites any tracked report file that differs from its regeneration, from tracked inputs only, then applies every other check. The plain form never writes.
+`--regenerate` rewrites any tracked report file that differs from its regeneration, from tracked inputs only. It renders every existing report from that report's own accepted trace, handoff and park observations, applies every check to the result, and writes only after the whole archive has validated; a failure leaves every file as it was. It never selects a different accepted trace, never rewrites a handoff and never touches the trace ledger. Run it when a later trace for a phase, such as a cancelled or failed attempt, has changed a report that was already rendered. The plain form never writes.
 
 ### `serve-execution-dashboard` — local report server
 
@@ -702,7 +702,7 @@ An attested continuation starts its own role numbering at 1 if any additional re
 
 ## Durable evidence and interruption
 
-`kickoff-evidence init` defaults to an opaque `.kickoff/runs/` directory and refuses known temporary storage; keep preflight and all required outputs persistent too. Gate artifacts, diagnostics and revision packets are retained by content address and rehashed during validation. See [evidence storage](../policies/orchestration-evidence.md#retained-artifact-validation-and-interrupted-adoption).
+`kickoff-evidence init` first runs the checkout's own `bin/check-catalogs` and refuses, capturing nothing, when it fails. It defaults to an opaque `.kickoff/runs/` directory and refuses known temporary storage; keep preflight and all required outputs persistent too. Gate artifacts, diagnostics and revision packets are retained by content address and rehashed during validation. See [evidence storage](../policies/orchestration-evidence.md#retained-artifact-validation-and-interrupted-adoption).
 
 `execution-telemetry interrupt --trace-id <old> --successor-trace-id <new> --custody-evidence <file>` records a separately checked cross-boot interruption/successor observation without closing or rewriting the old trace. See [clock and custody requirements](../policies/execution-telemetry.md#cross-boot-interruption-observation). It supplies no missing original review evidence or new review allowance.
 

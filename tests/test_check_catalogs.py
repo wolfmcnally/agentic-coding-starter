@@ -192,14 +192,56 @@ def test_tracked_markdown_deleted_from_worktree_is_not_read_as_a_source(
         registered.returncode == 0 and "[Created](briefs/created.md)" in instructions.read_text()
     ), "CATALOG REGISTRATION FAILED: " + registered.stderr
     current = instructions.read_bytes()
+    write_tracked(root, "briefs/second.md", "# Second\n")
+    second = root / "second-input.json"
+    second.write_text(
+        json.dumps({"path": "briefs/second.md", "label": "Second", "zone": "methodology"})
+    )
     refused = subprocess.run(
-        command + ["--register-input", str(supplied), "--expect-sha256", "0" * 64],
+        command + ["--register-input", str(second), "--expect-sha256", "0" * 64],
         capture_output=True,
         text=True,
     )
     assert refused.returncode != 0 and instructions.read_bytes() == current, (
         "CATALOG REFUSAL MUTATED CONSTITUTION"
     )
+
+
+def test_registering_a_registered_document_again_changes_nothing(tmp_path: Path) -> None:
+    """Admission: a rerun after an interrupted delivery refused work that was already done.
+
+    One document is registered, then registered again with a different label and a digest
+    that no longer matches; the oracle is the exit status and the catalog's exact bytes.
+    """
+    root = fixture(tmp_path)
+    instructions = root / "AGENTS.md"
+    instructions.write_text(
+        instructions.read_text().replace(
+            "<!-- METHODOLOGY_CONTRACT_START -->",
+            "<!-- METHODOLOGY_CONTRACT_START -->\n## Methodology briefs\n",
+        )
+    )
+    write_tracked(root, "briefs/kept.md", "# Kept\n")
+    supplied = root / "registration.json"
+    command = [str(CHECKER), "--root", str(root), "--register-input", str(supplied)]
+
+    def register(label: str, digest: str) -> subprocess.CompletedProcess[str]:
+        supplied.write_text(
+            json.dumps({"path": "briefs/kept.md", "label": label, "zone": "methodology"})
+        )
+        return subprocess.run(command + ["--expect-sha256", digest], capture_output=True, text=True)
+
+    first = register("Kept", hashlib.sha256(instructions.read_bytes()).hexdigest())
+    once = instructions.read_bytes()
+    again = register("Renamed", "0" * 64)
+    assert (
+        first.returncode == 0
+        and b"[Kept](briefs/kept.md)" in once
+        and again.returncode == 0
+        and "ALREADY REGISTERED" in again.stdout
+        and instructions.read_bytes() == once
+        and run(root).returncode == 0
+    ), "REPEATED REGISTRATION WAS REFUSED OR REWROTE THE CATALOG: " + first.stderr + again.stderr
 
 
 def _assert_instruction_delivery(root: Path) -> None:
