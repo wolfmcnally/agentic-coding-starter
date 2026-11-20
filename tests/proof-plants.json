@@ -125,24 +125,6 @@
       "with": "        pass\n"
     }
   },
-  "pytest:tests/test_kickoff_config.py::test_cap_hit_continuation_requires_assessment_and_preserves_budget[productive]": {
-    "defect": "Configuration refusals exit successfully",
-    "expect": "failed",
-    "plant": {
-      "path": "bin/kickoff-config",
-      "replace": "    raise SystemExit(2)",
-      "with": "    raise SystemExit(0)"
-    }
-  },
-  "pytest:tests/test_kickoff_config.py::test_cap_hit_continuation_requires_assessment_and_preserves_budget[verdict]": {
-    "defect": "Configuration refusals exit successfully",
-    "expect": "failed",
-    "plant": {
-      "path": "bin/kickoff-config",
-      "replace": "    raise SystemExit(2)",
-      "with": "    raise SystemExit(0)"
-    }
-  },
   "pytest:tests/test_kickoff_config.py::test_preflight_groups_only_identical_readiness_commands": {
     "defect": "Group roles that differ only in effort under one readiness probe",
     "expect": "READINESS PROBE GROUPING LOST",

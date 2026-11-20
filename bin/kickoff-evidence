@@ -124,7 +124,7 @@ ROLE_OPERATIONS = {
     "role.implement": "coder",
     "role.code-review": "critic",
 }
-ROLE_REASONS = {"initial", "revision", "resume", "rescue", "reexecution", "fallback"}
+ROLE_REASONS = {"initial", "revision", "resume", "reexecution", "fallback"}
 ROLE_HARNESSES = {"native", "claude", "codex"}
 REVIEW_LANES = {"full", "light", "one-shot"}
 CLOSURE_OUTCOMES = {"accepted", "parked", "failed"}

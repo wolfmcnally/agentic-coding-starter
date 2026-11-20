@@ -54,15 +54,15 @@ The preflight validates the full upstream path needed by the phase: CLI presence
 
 ### Step 0c: Load per-role execution budgets
 
-For an initial implementation or delegated follow-up, run `./bin/kickoff-config show timeouts` and retain the first-event timeout, each role's hard deadline and idle watchdog, plus its Claude-only `claude_max_turns` circuit breaker from `kickoff.yaml`'s `role_timeouts` section, per [`policies/role-timeouts.md`](../../../policies/role-timeouts.md). A direct follow-up fix skips this step. The three clocks apply to **every invocation or resumed revision round**; the turn value applies only when the delegated venue is Claude, because Codex and native subagents expose no equivalent flag. The shipped seed values are below; when a project has deliberately recalibrated its config, the validated config output governs:
+For an initial implementation or delegated follow-up, run `./bin/kickoff-config show timeouts` and retain the first-event timeout, each role's hard deadline and idle watchdog from `kickoff.yaml`'s `role_timeouts` section, per [`policies/role-timeouts.md`](../../../policies/role-timeouts.md). A direct follow-up fix skips this step. The three clocks apply to **every invocation or resumed revision round**, on every venue. The shipped seed values are below; when a project has deliberately recalibrated its config, the validated config output governs:
 
-- planner — 1,800 s hard / 600 s idle / 100 turns;
-- reviewer — 1,800 s hard / 600 s idle / 100 turns;
-- coder — 7,200 s hard / 1,200 s idle / 200 turns;
-- critic — 2,700 s hard / 600 s idle / 100 turns;
+- planner — 1,800 s hard / 600 s idle;
+- reviewer — 1,800 s hard / 600 s idle;
+- coder — 7,200 s hard / 1,200 s idle;
+- critic — 2,700 s hard / 600 s idle;
 - every role — first structured event within 120 s.
 
-For every external CLI call, including resumes and the one permitted max-turn rescue, invoke the production command through `./bin/kickoff-config watch` with `--role`, resolved `--venue`, `--model`, `--effort`, phase id, and named stdout/stderr/result artifacts. Pass Claude's extracted result path as `--result-file`; pass Codex's `--output-last-message` path as `--required-output-file`. The wrapper closes stdin, verifies routing flags, truncates result paths, streams progress, terminates the process group on first-event/idle/hard timeout, and appends local telemetry. It returns the child status, 124 on timeout, 65 on unrecoverable protocol failure, or 66 (`completed-unverified-protocol`) when a successful child left a fresh artifact but no complete terminal stream.
+For every external CLI call, including resumes, invoke the production command through `./bin/kickoff-config watch` with `--role`, resolved `--venue`, `--model`, `--effort`, phase id, and named stdout/stderr/result artifacts. Pass Claude's extracted result path as `--result-file`; pass Codex's `--output-last-message` path as `--required-output-file`. The wrapper closes stdin, verifies routing flags, truncates result paths, streams progress, terminates the process group on first-event/idle/hard timeout, and appends local telemetry. It returns the child status, 124 on timeout, 65 on unrecoverable protocol failure, or 66 (`completed-unverified-protocol`) when a successful child left a fresh artifact but no complete terminal stream.
 
 Exit 66 is not success. Preserve the artifact and verify the exact role shape, the expected candidate id, and its structured change/finding evidence through `bin/kickoff-evidence`. If all checks pass, continue without rerunning the intelligence work and record `[protocol recovered: terminal stream incomplete]` for Step 10. If any check fails, follow [governed recovery](../../../policies/role-models.md#governed-recovery), retaining the failed evidence and selected model/effort. Codex emits JSONL with `--json`; Claude emits JSONL with `--output-format stream-json --verbose`. Preserve each role's timing record for Step 10.
 

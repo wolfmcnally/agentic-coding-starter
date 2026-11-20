@@ -148,7 +148,7 @@ A delegated call is an ordinary success only when all three hold:
 
 The watchdog records child status, artifact freshness, and stream completeness independently. Exit 66 (`completed-unverified-protocol`) preserves a fresh artifact from a successful child whose terminal stream was incomplete. The orchestrator may use it only after validating the role shape, ingesting and validating any finding/change evidence, and confirming the expected candidate id per [`orchestration-evidence.md`](orchestration-evidence.md). It records the protocol recovery in the END block. Failed verification follows [Governed recovery](#governed-recovery).
 
-After successful preflight, a non-zero child, timeout, network failure, stale or missing artifact, malformed output, candidate mismatch, or unrecoverable protocol error remains a failed attempt under [Governed recovery](#governed-recovery). A Claude review that exhausts its turn cap after completing investigation may resume once only to emit its verdict under the existing timeout policy.
+After successful preflight, a non-zero child, timeout, network failure, stale or missing artifact, malformed output, candidate mismatch, or unrecoverable protocol error remains a failed attempt under [Governed recovery](#governed-recovery).
 
 ## END-block reporting
 

@@ -8,14 +8,14 @@ Every `kickoff` role invocation has three independent guards: **first structured
 
 The human-editable `role_timeouts` section of [`kickoff.yaml`](../kickoff.yaml) is the source of truth. `bin/kickoff-config` validates and consumes it without disturbing `role_models`, comments, or data under `extensions`.
 
-| Role | Hard deadline | Idle watchdog | Claude CLI turn cap |
-|---|---:|---:|---:|
-| Planner | 1,800 s | 600 s | 100 |
-| Plan reviewer | 1,800 s | 600 s | 100 |
-| Coder | 7,200 s | 1,200 s | 200 |
-| Code critic | 2,700 s | 600 s | 100 |
+| Role | Hard deadline | Idle watchdog |
+|---|---:|---:|
+| Planner | 1,800 s | 600 s |
+| Plan reviewer | 1,800 s | 600 s |
+| Coder | 7,200 s | 1,200 s |
+| Code critic | 2,700 s | 600 s |
 
-Every role must produce its first structured event within **120 seconds**. The turn column is deliberately named `claude_max_turns` in configuration: Claude exposes that CLI circuit breaker, while Codex and native subagents do not expose an equivalent per-invocation flag. Their enforceable guards are the three clocks. Authentication preflight has its own 120-second deadline in [`role-models.md`](role-models.md). The 10-cycle convergence backstop remains separate: it limits revision rounds, while this policy limits one round.
+Every role must produce its first structured event within **120 seconds**. The three clocks are the only per-invocation guards, on every venue; no invocation carries a turn quota. Authentication preflight has its own 120-second deadline in [`role-models.md`](role-models.md). The 10-cycle convergence backstop remains separate: it limits revision rounds, while this policy limits one round.
 
 These are hang guards, not performance targets or promises. Planning and review get enough room for repository inspection and reasoning; implementation gets a materially larger envelope; critique sits between them. There is deliberately no whole-phase timeout because phase scope and build gates vary too widely. Every dispatch must use an execution surface that can remain observable for the full configured budget — see [The harness ceiling bounds every budget](#the-harness-ceiling-bounds-every-budget) below.
 
@@ -35,28 +35,6 @@ External CLI roles run through `bin/kickoff-config watch`. The wrapper:
 Codex runs with JSONL events, requires a terminal `turn.completed`, and names its `--output-last-message` path as the watchdog's required output. Claude runs with `--output-format stream-json --verbose`; the wrapper normally extracts the final `result` event and can preserve the last assistant text for exit 66. The role-shape and candidate-bound evidence gates in [`role-models.md`](role-models.md) still apply after the process exits.
 
 Native roles use the same role-specific hard and idle budgets through the orchestrating harness's sub-agent wait/status mechanism. If the harness cannot expose structured progress or an idle watchdog, enforce the hard deadline and report that idle telemetry was unavailable; do not invent activity. The orchestrator remains responsive and gives the user a progress update at least every 60 seconds while it waits.
-
-### Cap-hit assessment and one bounded continuation
-
-Operator-ratified 2026-10-28. A native `error_max_turns` result is a failed invocation and a checkpoint for diagnosis, not evidence that the plan was bad, investigation complete, or reasoning unproductive. Preserve the exact stream, partial artifacts, original plan, registration, dispatch/span records and consumed review claim. Activity, best-effort event/turn counters and visible tool-call counts do not establish productive reasoning, correctness or coverage; do not interchange those measures.
-
-The primary examines permitted retained partial work against the actual assignment, citing concrete discoveries, unresolved checks, repetition and scope drift. Classify it explicitly:
-
-- **Productive unfinished investigation:** retain useful findings, name the bounded remaining investigation and give a concise handoff; a justified same-session continuation may use up to twice the current configured base turn cap.
-- **Completed investigation missing the verdict/report:** only conclude the already completed work and emit its required schema; the finite turn cap may not exceed the current base.
-- **Looping:** hold launch, diagnose repeated work and narrow/correct instructions within authorized scope; only a newly justified assessment can support continuation.
-- **Scope expansion:** hold for the appropriate scope ruling; extra turns do not authorize new work.
-- **Unknown:** hold when the required evidence does not support classification. A summary cannot reconstruct missing native lineage.
-
-Use the normal registered Claude watcher with `--cap-hit-assessment <durable-json>` for the one supported cap continuation. It is still a new invocation: the original failed review remains consumed and the continuation uses the one remaining ordinary advisory pass, with a fresh `reason=rescue` registration and recorded cause. Per-invocation turn capacity is not a review allowance. No chaining from a rescue, third PLAN pass, automatic budget refund, counter reset, automatic launch or native/provider substitution follows from this rule. If allowance is already exhausted, stop under existing review policy rather than relabel the work. Ordinary non-cap revisions keep their own route; never use a bare resume to evade this cap assessment.
-
-The assessment is a primary judgment record, not an authenticator. It contains exactly `source_registration` and `source_stdout` (each an absolute durable `path` plus `sha256` referencing existing canonical bytes), `session_id` (the exact observed native UUID), `classification`, `evidence` (nonempty cited observations), `remaining_work`, `instruction`, `rationale`, `candidate_delta`, `source_candidate_id`, `target_candidate_id`, `max_turns`, `cause` (equal to the new registration cause), and `clock_limits` (`first_event_timeout_seconds`, `idle_timeout_seconds`, `hard_timeout_seconds`, equal to actual invocation limits). A caller must independently verify original capture provenance and current native custody. The complete original source run must survive; no aliases, renamed registrations, manufactured source evidence or reconstructed approval.
-
-Admission verifies the original registration's unique sibling-ledger entry, matching repository/phase/routing, actual opened/terminal dispatch and closed error intelligence/wait joins, unchanged original dispatch candidate, captured native terminal cap error and exact session. For PLAN review, both runs must retain identical actually reviewed plan bytes. The new registered role, cause, current candidate and assessed instruction must agree. Clock overrides may narrow existing guards but cannot widen them. The assessment/source-join receipt is retained in the target run before claim/spawn; normal locked `start-advice` still controls actual allowance and rejects replay or concurrent double spending. Local invocation diagnostics report the effective turn cap and receipt digest, not proof of successful advice. Required report, candidate, authority, security, native-hook, scope and convergence checks remain.
-
-If the old run/trace was closed or failed, preserve it and create a genuine fresh **same-phase** run under current authority. A review without an accepted report supplies no carry-advice approval and no approved-plan/full-cycle exemption: retain the substantive plan, use primary initial/full/full requirements, register the fresh local attempt contiguously and spend the next phase-wide claim through the ordinary watcher. Record original and target candidate identities and the actual authority/tool delta. Never reopen, repin or rewrite closed history to make a continuation look local. If the receiving native hook/binder cannot accept the exact resumed UUID, registration, cwd and OS-session binding with safeguards intact, report that concrete compatibility blocker before dispatch; a failed basename adapter is not permission to bypass it. Requalify both producer and receiver with nonprivate fake-CLI/hook fixtures before any private source dispatch. A second cap hit is preserved and parked for diagnosis, not automatically resumed again.
-
-The shipped planning/review defaults rose from50 to100 turns; coder remains200. The evidence is one bounded review that reached its50-turn circuit breaker after roughly276 seconds while neither idle nor hard guard fired, plus the operator’s explicit request for more planning/review capacity. Doubling gives finite headroom without claiming a calibrated success percentile, productive reasoning, or enough capacity for every workload. All clock values remain unchanged. Reassess from actual workload outcomes instead of raising limits merely because a process stayed active.
 
 ### The harness ceiling bounds every budget
 
