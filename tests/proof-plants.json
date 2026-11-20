@@ -98,6 +98,150 @@
       "with": "        print(\"\\n\".join(sorted(DRIFT)))\n        return 0"
     }
   },
+  "pytest:tests/test_check_release_worktrees.py::test_a_directory_below_the_checkout_top_is_not_a_release_checkout": {
+    "defect": "The root is not compared with the top of the checkout",
+    "expect": "DIRECTORY BELOW THE CHECKOUT TOP PASSED",
+    "plant": {
+      "path": "bin/check-release-worktrees",
+      "replace": "    if toplevel.resolve() != root:\n",
+      "with": "    if False:\n"
+    }
+  },
+  "pytest:tests/test_check_release_worktrees.py::test_a_failed_git_command_is_an_error_and_never_a_pass[status]": {
+    "defect": "A failed git command is read as empty output",
+    "expect": "FAILED GIT COMMAND READ AS A CLEAN RESULT",
+    "plant": {
+      "path": "bin/check-release-worktrees",
+      "replace": "    if result.returncode != 0:\n        detail",
+      "with": "    if False:\n        detail"
+    }
+  },
+  "pytest:tests/test_check_release_worktrees.py::test_a_failed_git_command_is_an_error_and_never_a_pass[worktree]": {
+    "defect": "A failed git command is read as empty output",
+    "expect": "FAILED GIT COMMAND READ AS A CLEAN RESULT",
+    "plant": {
+      "path": "bin/check-release-worktrees",
+      "replace": "    if result.returncode != 0:\n        detail",
+      "with": "    if False:\n        detail"
+    }
+  },
+  "pytest:tests/test_check_release_worktrees.py::test_a_linked_worktree_is_not_a_release_checkout": {
+    "defect": "Other registered worktrees are not reported",
+    "expect": "RELEASE FROM A LINKED WORKTREE PASSED",
+    "plant": {
+      "path": "bin/check-release-worktrees",
+      "replace": "    for other in others:\n",
+      "with": "    for other in []:\n"
+    }
+  },
+  "pytest:tests/test_check_release_worktrees.py::test_a_record_without_its_identity_fields_is_refused[both]": {
+    "defect": "A record's commit and branch-or-detached fields are not required",
+    "expect": "RECORD WITHOUT IDENTITY FIELDS PASSED",
+    "plant": {
+      "path": "bin/check-release-worktrees",
+      "replace": "        if \"bare\" not in registration.attributes:\n",
+      "with": "        if False:\n"
+    }
+  },
+  "pytest:tests/test_check_release_worktrees.py::test_a_record_without_its_identity_fields_is_refused[no-branch-or-detached]": {
+    "defect": "A record's commit and branch-or-detached fields are not required",
+    "expect": "RECORD WITHOUT IDENTITY FIELDS PASSED",
+    "plant": {
+      "path": "bin/check-release-worktrees",
+      "replace": "        if \"bare\" not in registration.attributes:\n",
+      "with": "        if False:\n"
+    }
+  },
+  "pytest:tests/test_check_release_worktrees.py::test_a_record_without_its_identity_fields_is_refused[none]": {
+    "defect": "A record's commit and branch-or-detached fields are not required",
+    "expect": "RECORD WITHOUT IDENTITY FIELDS PASSED",
+    "plant": {
+      "path": "bin/check-release-worktrees",
+      "replace": "        if \"bare\" not in registration.attributes:\n",
+      "with": "        if False:\n"
+    }
+  },
+  "pytest:tests/test_check_release_worktrees.py::test_a_worktree_path_with_a_space_and_a_newline_is_read_exactly": {
+    "defect": "A worktree path is cut at its first newline",
+    "expect": "WORKTREE PATH WAS NOT PARSED EXACTLY",
+    "plant": {
+      "path": "bin/check-release-worktrees",
+      "replace": "        registration = Registration(fields[0][9:])\n",
+      "with": "        registration = Registration(fields[0][9:].split(\"\\n\")[0])\n"
+    }
+  },
+  "pytest:tests/test_check_release_worktrees.py::test_an_extra_registered_worktree_refuses_clean_or_dirty[clean]": {
+    "defect": "Other registered worktrees are not reported",
+    "expect": "EXTRA WORKTREE PASSED OR ITS STATE WAS MISREPORTED",
+    "plant": {
+      "path": "bin/check-release-worktrees",
+      "replace": "    for other in others:\n",
+      "with": "    for other in []:\n"
+    }
+  },
+  "pytest:tests/test_check_release_worktrees.py::test_an_extra_registered_worktree_refuses_clean_or_dirty[dirty]": {
+    "defect": "A dirty extra worktree is described as clean",
+    "expect": "EXTRA WORKTREE PASSED OR ITS STATE WAS MISREPORTED",
+    "plant": {
+      "path": "bin/check-release-worktrees",
+      "replace": "    return f\"dirty, {len(changes)} changed or untracked path(s)\" if changes else \"clean\"",
+      "with": "    return \"clean\""
+    }
+  },
+  "pytest:tests/test_check_release_worktrees.py::test_an_unusable_extra_registration_refuses[locked]": {
+    "defect": "Prunable and locked registrations are not recognized",
+    "expect": "UNUSABLE REGISTRATION PASSED OR WAS MISREPORTED",
+    "plant": {
+      "path": "bin/check-release-worktrees",
+      "replace": "    for flag in (\"bare\", \"prunable\", \"locked\"):\n        if flag in registration.attributes:",
+      "with": "    for flag in (\"bare\",):\n        if flag in registration.attributes:"
+    }
+  },
+  "pytest:tests/test_check_release_worktrees.py::test_an_unusable_extra_registration_refuses[missing]": {
+    "defect": "Prunable and locked registrations are not recognized",
+    "expect": "UNUSABLE REGISTRATION PASSED OR WAS MISREPORTED",
+    "plant": {
+      "path": "bin/check-release-worktrees",
+      "replace": "    for flag in (\"bare\", \"prunable\", \"locked\"):\n        if flag in registration.attributes:",
+      "with": "    for flag in (\"bare\",):\n        if flag in registration.attributes:"
+    }
+  },
+  "pytest:tests/test_check_release_worktrees.py::test_any_change_in_the_release_checkout_refuses[staged]": {
+    "defect": "Changes in the release checkout are read and then ignored",
+    "expect": "DIRTY RELEASE CHECKOUT PASSED",
+    "plant": {
+      "path": "bin/check-release-worktrees",
+      "replace": "        changes = dirt(item.path)\n        if changes:\n",
+      "with": "        changes = dirt(item.path)\n        if False:\n"
+    }
+  },
+  "pytest:tests/test_check_release_worktrees.py::test_any_change_in_the_release_checkout_refuses[tracked]": {
+    "defect": "Changes in the release checkout are read and then ignored",
+    "expect": "DIRTY RELEASE CHECKOUT PASSED",
+    "plant": {
+      "path": "bin/check-release-worktrees",
+      "replace": "        changes = dirt(item.path)\n        if changes:\n",
+      "with": "        changes = dirt(item.path)\n        if False:\n"
+    }
+  },
+  "pytest:tests/test_check_release_worktrees.py::test_any_change_in_the_release_checkout_refuses[untracked]": {
+    "defect": "Untracked files are left out of the status read",
+    "expect": "DIRTY RELEASE CHECKOUT PASSED",
+    "plant": {
+      "path": "bin/check-release-worktrees",
+      "replace": "\"--untracked-files=all\"",
+      "with": "\"--untracked-files=no\""
+    }
+  },
+  "pytest:tests/test_check_release_worktrees.py::test_one_clean_release_checkout_passes": {
+    "defect": "The check refuses a checkout that is registered exactly once",
+    "expect": "SOLE CLEAN RELEASE CHECKOUT REFUSED",
+    "plant": {
+      "path": "bin/check-release-worktrees",
+      "replace": "    if len(current) != 1:\n",
+      "with": "    if len(current) != 0:\n"
+    }
+  },
   "pytest:tests/test_documentation.py::test_setup_installs_exact_versions_locally_without_global_upgrade": {
     "defect": "Documentation tools install without the locked dependency set",
     "expect": "failed",

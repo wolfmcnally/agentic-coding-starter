@@ -56,11 +56,13 @@ families:
   - project/tests/test_cli.py
   - project/pyproject.toml
   covers: *id001
-  contract: The shipped example remains an executable, typed package with stable CLI outcomes.
+  contract: The shipped example remains an executable, typed package with stable CLI
+    outcomes.
   risk_class: example-product
   oracle: Public CLI calls return the documented output and exit status.
   admission: Product behavior remains in the authoritative suite.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -76,7 +78,8 @@ families:
   risk_class: isolation
   oracle: A real socket connection attempt fails through the armed pytest guard.
   admission: Hermeticity is checked with the complete example suite.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -115,7 +118,8 @@ families:
   risk_class: documentation-authority
   oracle: Synthetic repositories report each missing, dangling, or misdirected declaration.
   admission: Broad catalog changes use the authoritative suite.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -130,9 +134,11 @@ families:
   covers: *id005
   contract: Hook installation state is observable and never defaults to reassurance.
   risk_class: hook-custody
-  oracle: Fixture repositories distinguish absent, unconfigured, correct, and conflicting states.
+  oracle: Fixture repositories distinguish absent, unconfigured, correct, and conflicting
+    states.
   admission: Hook custody is verified in the complete policy gate.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -147,9 +153,11 @@ families:
   covers: *id006
   contract: Plans reach review with mechanically resolvable implementation instructions.
   risk_class: planning-evidence
-  oracle: Concrete fixture plans pass and every unresolved proxy fails with a named reason.
+  oracle: Concrete fixture plans pass and every unresolved proxy fails with a named
+    reason.
   admission: Planning mechanics remain full-suite evidence.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -166,7 +174,8 @@ families:
   risk_class: delivery-evidence
   oracle: The checker names every omitted member and distinguishes declared deviations.
   admission: Delivery completeness is checked at its explicit gate.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -180,9 +189,11 @@ families:
   - .githooks/pre-push
   - bin/check
   covers: *id008
-  contract: Only an exact clean candidate with durable successful evidence can reuse a receipt.
+  contract: Only an exact clean candidate with durable successful evidence can reuse
+    a receipt.
   risk_class: release-custody
-  oracle: Candidate, log, runtime, or receipt drift forces the full gate or refuses reuse.
+  oracle: Candidate, log, runtime, or receipt drift forces the full gate or refuses
+    reuse.
   admission: Receipt identity is the sole proof consumed by pre-push.
   nearest_overlap: Atomic-check proves gate execution but not durable reuse custody.
   tier: vital
@@ -198,11 +209,14 @@ families:
   - reports/execution/**
   - tests/test_execution_dashboard.py
   covers: *id009
-  contract: Phase reports are deterministic, local, privacy-safe projections of accepted telemetry.
+  contract: Phase reports are deterministic, local, privacy-safe projections of accepted
+    telemetry.
   risk_class: reporting
-  oracle: Frozen fixtures render byte-identically and malformed or private payloads are rejected.
+  oracle: Frozen fixtures render byte-identically and malformed or private payloads
+    are rejected.
   admission: Reporting changes retain their full fixture matrix.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -217,9 +231,11 @@ families:
   covers: *id010
   contract: Execution telemetry stays exact, append-safe, fail-closed, and candidate-linked.
   risk_class: orchestration-runtime
-  oracle: Behavioral fixtures exercise success, failure, interruption, drift, and recovery paths.
+  oracle: Behavioral fixtures exercise success, failure, interruption, drift, and
+    recovery paths.
   admission: Concurrency and recovery proofs remain a complete family.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -232,11 +248,14 @@ families:
   - tests/test_install_hooks.py
   - .githooks/**
   covers: *id011
-  contract: Cloning never changes Git configuration and opting in never overwrites silently.
+  contract: Cloning never changes Git configuration and opting in never overwrites
+    silently.
   risk_class: local-configuration
-  oracle: Temporary Git repositories expose the resulting core.hooksPath and exit status.
+  oracle: Temporary Git repositories expose the resulting core.hooksPath and exit
+    status.
   admission: Installation behavior runs with the complete hook proofs.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -252,11 +271,13 @@ families:
   - .claude/agents/**
   - .codex/agents/**
   covers: *id012
-  contract: Human configuration remains strict, comment-preserving, and executable on each venue.
+  contract: Human configuration remains strict, comment-preserving, and executable
+    on each venue.
   risk_class: orchestration-configuration
   oracle: Config fixtures validate schemas and exact generated child invocations.
   admission: Configuration interactions retain the full matrix.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -280,11 +301,17 @@ families:
   - lib/agentic_starter/multioperator.py
   - tests/structured_fixtures.py
   covers: *id013
-  contract: Every review and gate remains bound to the exact candidate and declared authority.
+  contract: Every review and gate remains bound to the exact candidate and declared
+    authority.
   risk_class: orchestration-custody
   oracle: Synthetic runs accept only complete internally consistent evidence graphs.
-  admission: The evidence graph is validated as a complete family. It is large because its proofs drive whole synthetic phases through the real evidence tool; one thorough lifecycle carries the general checks and three scenario proofs (primary mode, child marker transitions, a nested parent chain) carry only what distinguishes them.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  admission: The evidence graph is validated as a complete family. It is large because
+    its proofs drive whole synthetic phases through the real evidence tool; one thorough
+    lifecycle carries the general checks and three scenario proofs (primary mode,
+    child marker transitions, a nested parent chain) carry only what distinguishes
+    them.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -298,11 +325,15 @@ families:
   - bin/kickoff-command-zero
   - tests/test_kickoff_control_plane.py
   covers: *id014
-  contract: Expensive kickoff gates run only after an immutable manifest admits their exact command and cheap preflight succeeds.
+  contract: Expensive kickoff gates run only after an immutable manifest admits their
+    exact command and cheap preflight succeeds.
   risk_class: orchestration-custody
-  oracle: Synthetic manifests and commands prove exact admission, ordered preflight, and first-failure stopping.
-  admission: A post-reset retirement funds this direct executable oracle for the new control plane.
-  nearest_overlap: Orchestration-evidence tests bind review artifacts, but did not own executable command authority.
+  oracle: Synthetic manifests and commands prove exact admission, ordered preflight,
+    and first-failure stopping.
+  admission: A post-reset retirement funds this direct executable oracle for the new
+    control plane.
+  nearest_overlap: Orchestration-evidence tests bind review artifacts, but did not
+    own executable command authority.
   tier: changed
   flake_rate: 0.0
   replacement_lineage:
@@ -317,11 +348,15 @@ families:
   - tests/test_log_control_plane.py
   covers:
   - bin/normalize-final-newline
-  contract: Shared final-newline normalization remains executable only for its closed bookkeeping set; active context refuses without mutation.
+  contract: Shared final-newline normalization remains executable only for its closed
+    bookkeeping set; active context refuses without mutation.
   risk_class: chronology-custody
-  oracle: Run actual normalizer on an execution ledger and an independently declared but inadmissible active path.
-  admission: A post-reset retirement funds this direct executable oracle for append-only construction evidence.
-  nearest_overlap: Immutable activity construction is owned by the multioperator family; this proof retains only the shared repair boundary.
+  oracle: Run actual normalizer on an execution ledger and an independently declared
+    but inadmissible active path.
+  admission: A post-reset retirement funds this direct executable oracle for append-only
+    construction evidence.
+  nearest_overlap: Immutable activity construction is owned by the multioperator family;
+    this proof retains only the shared repair boundary.
   tier: changed
   flake_rate: 0.0
   replacement_lineage:
@@ -337,11 +372,14 @@ families:
   - bin/kickoff-tree-id
   - tests/test_kickoff_tree_id.py
   covers: *id015
-  contract: Candidate identity changes for every material live-tree change and fails on unsafe escapes.
+  contract: Candidate identity changes for every material live-tree change and fails
+    on unsafe escapes.
   risk_class: candidate-custody
-  oracle: Fixture worktrees produce stable identities and intentional mutations change them.
+  oracle: Fixture worktrees produce stable identities and intentional mutations change
+    them.
   admission: Identity mode coverage remains intact in full.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -356,11 +394,14 @@ families:
   - lessons-archived/**
   - tests/test_lessons.py
   covers: *id016
-  contract: Process observations stay attributable and only human-ratified lessons graduate.
+  contract: Process observations stay attributable and only human-ratified lessons
+    graduate.
   risk_class: methodology-memory
-  oracle: Valid ledgers round-trip and every malformed state fails with a specific error.
+  oracle: Valid ledgers round-trip and every malformed state fails with a specific
+    error.
   admission: Ledger governance remains in the complete suite.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -381,9 +422,11 @@ families:
   covers: *id017
   contract: Universal machinery travels with every independent contract member named.
   risk_class: methodology-propagation
-  oracle: Cross-document assertions require each authority, tool, test, skill, and mirror together.
+  oracle: Cross-document assertions require each authority, tool, test, skill, and
+    mirror together.
   admission: Transfer completeness is assessed across all authorities.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -402,9 +445,11 @@ families:
   covers: *id018
   contract: Supported harnesses expose one methodology without silent surface drift.
   risk_class: cross-harness
-  oracle: Repository and fixture parity scans report missing, stray, or divergent peers.
+  oracle: Repository and fixture parity scans report missing, stray, or divergent
+    peers.
   admission: Parity is enforced by its dedicated policy gate.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -424,7 +469,8 @@ families:
   risk_class: ledger-identity
   oracle: Generated names satisfy shape and collision fixtures across all ledger roots.
   admission: Slug generation is already a small focused family.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -437,11 +483,14 @@ families:
   - tests/test_pre_commit.py
   - bin/test-governance
   covers: *id020
-  contract: Pre-commit runs parity, caller, and proof-estate structure checks without masking failure.
+  contract: Pre-commit runs parity, caller, and proof-estate structure checks without
+    masking failure.
   risk_class: hook-custody
-  oracle: Stub executables record exact order and a governance refusal reaches Git unchanged.
+  oracle: Stub executables record exact order and a governance refusal reaches Git
+    unchanged.
   admission: The hook proof runs with the complete hook family.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -457,11 +506,14 @@ families:
   - .codex/agents/**
   - tests/test_research_authority.py
   covers: *id021
-  contract: Research is allow-by-default for installed resources without assuming any one exists.
+  contract: Research is allow-by-default for installed resources without assuming
+    any one exists.
   risk_class: external-retrieval
-  oracle: Generated commands and config mutations enforce the declared role authority matrix.
+  oracle: Generated commands and config mutations enforce the declared role authority
+    matrix.
   admission: Research authority uses its complete cross-surface matrix.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -477,9 +529,11 @@ families:
   covers: *id022
   contract: Longitudinal sweeps receive genuine, scoped, nonduplicated review evidence.
   risk_class: review-telemetry
-  oracle: Synthetic trace roots expose inclusion, exclusion, deduplication, and filtering behavior.
+  oracle: Synthetic trace roots expose inclusion, exclusion, deduplication, and filtering
+    behavior.
   admission: Harvest logic retains its cross-harness fixture set.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -497,9 +551,11 @@ families:
   covers: *id023
   contract: A shell syntax error cannot enter the authoritative gate or hook surface.
   risk_class: executable-structure
-  oracle: Shell candidates are parsed by their declared interpreter and syntax errors name the file.
+  oracle: Shell candidates are parsed by their declared interpreter and syntax errors
+    name the file.
   admission: Shell syntax also runs as a direct policy check.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -517,11 +573,14 @@ families:
   - policies/test-suite-governance.md
   - briefs/test-suite-value-governance.md
   covers: *id024
-  contract: Fast feedback exists only when the live local estate and its witness receipts validate.
+  contract: Fast feedback exists only when the live local estate and its witness receipts
+    validate.
   risk_class: proof-governance
-  oracle: Valid fixture estates pass and malformed ownership, runner, baseline, or evidence fails closed.
+  oracle: Valid fixture estates pass and malformed ownership, runner, baseline, or
+    evidence fails closed.
   admission: This family is the direct fail-closed witness for every governed selection.
-  nearest_overlap: Atomic-check dispatches lanes but does not validate their proof ownership.
+  nearest_overlap: Atomic-check dispatches lanes but does not validate their proof
+    ownership.
   tier: vital
   flake_rate: 0.0
   replacement_lineage: []
@@ -534,11 +593,15 @@ families:
   - bin/mutate
   - tests/test_mutation.py
   covers: *id025
-  contract: The mutation survey reports the faults tests miss, in a copy, and never reports a failed or unfinished survey as a clean one.
+  contract: The mutation survey reports the faults tests miss, in a copy, and never
+    reports a failed or unfinished survey as a clean one.
   risk_class: proof-governance
-  oracle: The real mutation tool run over a small fixture repository with one weak and one strong proof.
-  admission: The survey is the only measure of which planted faults the estate misses; its three states and its failure need direct proof.
-  nearest_overlap: The governance manager validates the declaration's shape but never runs a survey.
+  oracle: The real mutation tool run over a small fixture repository with one weak
+    and one strong proof.
+  admission: The survey is the only measure of which planted faults the estate misses;
+    its three states and its failure need direct proof.
+  nearest_overlap: The governance manager validates the declaration's shape but never
+    runs a survey.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -555,11 +618,13 @@ families:
   - plan/**
   - tests/test_toolchain_callers.py
   covers: *id026
-  contract: Dependency-bearing callers cannot silently use an ambient or versioned interpreter.
+  contract: Dependency-bearing callers cannot silently use an ambient or versioned
+    interpreter.
   risk_class: runtime-custody
   oracle: Synthetic caller text distinguishes executable bypasses from allowed descriptions.
   admission: Caller policy also runs as a direct policy gate.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -577,10 +642,12 @@ families:
   - project/pyproject.toml
   - project/uv.lock
   covers: *id027
-  contract: Every dependency-bearing command runs through the repository-selected locked runtime.
+  contract: Every dependency-bearing command runs through the repository-selected
+    locked runtime.
   risk_class: runtime-custody
   oracle: Stubbed uv calls expose exact cwd, project, runtime, and child arguments.
-  admission: This family proves the runtime contract behaviorally from every supported invocation.
+  admission: This family proves the runtime contract behaviorally from every supported
+    invocation.
   nearest_overlap: Toolchain-caller policy scans text but does not execute the entrypoints.
   tier: vital
   flake_rate: 0.0
@@ -595,11 +662,14 @@ families:
   - briefs/**
   - tests/test_treatise.py
   covers: *id028
-  contract: Outward explanations derive from a validated canonical brief and dated editorial record.
+  contract: Outward explanations derive from a validated canonical brief and dated
+    editorial record.
   risk_class: publication-governance
-  oracle: Fixture briefs distinguish valid, missing, malformed, stale, and orphaned editorial state.
+  oracle: Fixture briefs distinguish valid, missing, malformed, stale, and orphaned
+    editorial state.
   admission: Publication governance remains in its complete family.
-  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this local family.
+  nearest_overlap: The whole-estate reset retained the cheapest direct oracle in this
+    local family.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -611,11 +681,15 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -627,11 +701,15 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -643,11 +721,15 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -659,11 +741,15 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -675,11 +761,15 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -691,11 +781,15 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -707,11 +801,15 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -723,11 +821,15 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -739,11 +841,15 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -755,11 +861,14 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The authoritative policy lane refuses historical log rewrites and chronology regressions.
+  contract: The authoritative policy lane refuses historical log rewrites and chronology
+    regressions.
   risk_class: lifecycle-custody
-  oracle: The named gate remains wired into bin/check and propagates the log validator's exit status.
+  oracle: The named gate remains wired into bin/check and propagates the log validator's
+    exit status.
   admission: A post-reset retirement funds the new lifecycle wiring.
-  nearest_overlap: The log-control-plane family proves behavior but not authoritative gate composition.
+  nearest_overlap: The log-control-plane family proves behavior but not authoritative
+    gate composition.
   tier: full
   flake_rate: 0.0
   replacement_lineage:
@@ -772,11 +881,15 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -788,11 +901,15 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -804,11 +921,15 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -820,11 +941,15 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The full gate produces the diagnostic timing report and refuses invalid runtime configuration.
+  contract: The full gate produces the diagnostic timing report and refuses invalid
+    runtime configuration.
   risk_class: lifecycle-custody
-  oracle: The named gate command remains present; slow completed tests are diagnostic and missing timing is explicitly unmeasured.
-  admission: Retained as direct lifecycle wiring for runtime reporting, separate from correctness and hang supervision.
-  nearest_overlap: The timing behavioral proof exercises the judgment; this proof uniquely proves the gate runs it.
+  oracle: The named gate command remains present; slow completed tests are diagnostic
+    and missing timing is explicitly unmeasured.
+  admission: Retained as direct lifecycle wiring for runtime reporting, separate from
+    correctness and hang supervision.
+  nearest_overlap: The timing behavioral proof exercises the judgment; this proof
+    uniquely proves the gate runs it.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -836,11 +961,15 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -852,11 +981,15 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -868,11 +1001,15 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: core-success
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -884,11 +1021,15 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -900,11 +1041,15 @@ families:
   - .githooks/pre-commit
   covers:
   - .githooks/pre-commit
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -916,11 +1061,15 @@ families:
   - .githooks/pre-commit
   covers:
   - .githooks/pre-commit
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -932,11 +1081,14 @@ families:
   - .githooks/pre-commit
   covers:
   - .githooks/pre-commit
-  contract: Commit hook calls structured staged-byte validation, retaining immutable history and real acceptance inputs.
+  contract: Commit hook calls structured staged-byte validation, retaining immutable
+    history and real acceptance inputs.
   risk_class: lifecycle-custody
-  oracle: Tracked hook command and the executable hook-order proof detect omission; real record family tests reject indexed history and acceptance faults.
+  oracle: Tracked hook command and the executable hook-order proof detect omission;
+    real record family tests reject indexed history and acceptance faults.
   admission: A post-reset retirement funds the new lifecycle wiring.
-  nearest_overlap: The policy gate checks working bytes; this proof uniquely covers staged custody.
+  nearest_overlap: The policy gate checks working bytes; this proof uniquely covers
+    staged custody.
   tier: full
   flake_rate: 0.0
   replacement_lineage:
@@ -949,11 +1101,15 @@ families:
   - .githooks/pre-commit
   covers:
   - .githooks/pre-commit
-  contract: The structural proof remains executable in the authoritative repository lifecycle.
+  contract: The structural proof remains executable in the authoritative repository
+    lifecycle.
   risk_class: lifecycle-custody
-  oracle: The named gate or hook command remains present and fails the lifecycle step on error.
-  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral proof.
-  nearest_overlap: Behavioral families prove implementations; this proof uniquely proves lifecycle wiring.
+  oracle: The named gate or hook command remains present and fails the lifecycle step
+    on error.
+  admission: Retained as direct lifecycle wiring rather than a substitute for behavioral
+    proof.
+  nearest_overlap: Behavioral families prove implementations; this proof uniquely
+    proves lifecycle wiring.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -965,11 +1121,13 @@ families:
   - bin/check
   covers:
   - bin/check
-  contract: Every tracked path has an explicit candidate classification and the declaration remains active.
+  contract: Every tracked path has an explicit candidate classification and the declaration
+    remains active.
   risk_class: lifecycle-custody
   oracle: The live gate or staged hook refuses an absent, invalid, or incomplete declaration.
   admission: A post-reset retirement funds the new lifecycle wiring.
-  nearest_overlap: Behavioral identity tests prove matching; this proof establishes lifecycle enforcement.
+  nearest_overlap: Behavioral identity tests prove matching; this proof establishes
+    lifecycle enforcement.
   tier: full
   flake_rate: 0.0
   replacement_lineage:
@@ -982,11 +1140,13 @@ families:
   - .githooks/pre-commit
   covers:
   - .githooks/pre-commit
-  contract: Every tracked path has an explicit candidate classification and the declaration remains active.
+  contract: Every tracked path has an explicit candidate classification and the declaration
+    remains active.
   risk_class: lifecycle-custody
   oracle: The live gate or staged hook refuses an absent, invalid, or incomplete declaration.
   admission: A post-reset retirement funds the new lifecycle wiring.
-  nearest_overlap: Behavioral identity tests prove matching; this proof establishes lifecycle enforcement.
+  nearest_overlap: Behavioral identity tests prove matching; this proof establishes
+    lifecycle enforcement.
   tier: full
   flake_rate: 0.0
   replacement_lineage:
@@ -1003,11 +1163,15 @@ families:
   - manual/**
   - policies/software-documentation.md
   covers: *id029
-  contract: Curated documentation and its deployment stay bound to public input and a validated release candidate.
+  contract: Curated documentation and its deployment stay bound to public input and
+    a validated release candidate.
   risk_class: publication-custody
-  oracle: Violating source/output/release inputs refuse before publication; exact tools install locally and CI identity is checked.
-  admission: Five bounded in-process scenarios; no network, compilation, persistent server or external API use.
-  nearest_overlap: Existing treatise proofs govern editorial authority; no prior proof exercises a rendered manual or Pages dispatch custody.
+  oracle: Violating source/output/release inputs refuse before publication; exact
+    tools install locally and CI identity is checked.
+  admission: Five bounded in-process scenarios; no network, compilation, persistent
+    server or external API use.
+  nearest_overlap: Existing treatise proofs govern editorial authority; no prior proof
+    exercises a rendered manual or Pages dispatch custody.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
@@ -1026,9 +1190,12 @@ families:
   - manual/**
   contract: The repository gate builds and validates its current public manual.
   risk_class: publication-drift
-  oracle: A missing local page makes the real documentation command fail with its broken-link diagnostic.
-  admission: One actual renderer build per full gate; fixture tests cannot prove the live manual renders.
-  nearest_overlap: In-process documentation proofs do not render the real source or run the pinned plugin.
+  oracle: A missing local page makes the real documentation command fail with its
+    broken-link diagnostic.
+  admission: One actual renderer build per full gate; fixture tests cannot prove the
+    live manual renders.
+  nearest_overlap: In-process documentation proofs do not render the real source or
+    run the pinned plugin.
   tier: full
   flake_rate: 0.0
   replacement_lineage: []
@@ -1048,11 +1215,39 @@ families:
   - policies/phase-status.md
   - tests/structured_fixtures.py
   covers: *id030
-  contract: Committed-source transition retains exact history and retires obsolete tools; current maintenance binds immutable chains, coordinated ownership and actual acceptance without fabricating adoption.
+  contract: Committed-source transition retains exact history and retires obsolete
+    tools; current maintenance binds immutable chains, coordinated ownership and actual
+    acceptance without fabricating adoption.
   risk_class: migration-custody
-  oracle: Actual CLI conversion, new records, concurrent writes, staged byte checks and retained acceptance inputs reject falsified history, custody or completion.
-  admission: One committed-tree export and finite local filesystem/Git operations per scenario; no model, network, external lease service or live policy change.
-  nearest_overlap: Shared normalization and actual kickoff acceptance remain separately tested; this family owns conversion and record maintenance, not native instruction loading.
+  oracle: Actual CLI conversion, new records, concurrent writes, staged byte checks
+    and retained acceptance inputs reject falsified history, custody or completion.
+  admission: One committed-tree export and finite local filesystem/Git operations
+    per scenario; no model, network, external lease service or live policy change.
+  nearest_overlap: Shared normalization and actual kickoff acceptance remain separately
+    tested; this family owns conversion and record maintenance, not native instruction
+    loading.
   tier: changed
   flake_rate: 0.0
   replacement_lineage: []
+- admission: Release custody is verified before qualification and again immediately
+    before each tag or publication.
+  contract: A release is refused unless the repository has one registered worktree,
+    the release checkout, and it is clean.
+  covers:
+  - bin/check-release-worktrees
+  - tests/test_check_release_worktrees.py
+  flake_rate: 0.0
+  id: release-worktrees
+  kind: pytest
+  nearest_overlap: The hook-liveness witness is the nearest read-only repository-state
+    check; it inspects no worktree.
+  oracle: Synthetic repositories distinguish a sole clean checkout from dirt, extra,
+    unusable and unreadable registrations.
+  replacement_lineage: []
+  risk_class: release-custody
+  selectors:
+  - tests/test_check_release_worktrees.py
+  source_paths:
+  - bin/check-release-worktrees
+  - tests/test_check_release_worktrees.py
+  tier: changed

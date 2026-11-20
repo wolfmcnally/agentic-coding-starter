@@ -248,6 +248,16 @@ policy lane.
 
 Behavioral coverage lives in `tests/test_check_hooks_installed.py`.
 
+### `check-release-worktrees` — one clean checkout before a release
+
+A release is cut from one checkout, and work left in another registered worktree of the same repository cannot be seen from it. This check passes only when the repository has exactly one registered worktree, the checkout being released, and that checkout has no tracked, staged or untracked change. Any other registered worktree fails it, clean or not; so does a locked, prunable, bare, missing or unreadable registration, a record without its commit and branch-or-detached fields, and a listing that changes while it is read. It reads `git worktree list --porcelain -z` and `git status --porcelain=v1 -z --untracked-files=all`, so a path containing spaces or newlines is read exactly. It only reads: it never removes, prunes, moves, resets or unlocks anything. Exit 0 is a pass, 1 a refusal naming each worktree and its observed state, and 2 a Git failure, which is never read as clean.
+
+```bash
+./bin/check-release-worktrees
+```
+
+Run it at the start of release preparation and again immediately before each tag or publication, per [`policies/human-in-the-loop.md`](../policies/human-in-the-loop.md#before-a-tag-or-publication-one-clean-checkout). It is not part of `./bin/check all`. Behavioral coverage lives in `tests/test_check_release_worktrees.py`.
+
 ### `kickoff-config` — human-editable `kickoff` configuration and enforcement
 
 Validates and safely edits repo-root `kickoff.yaml`, whose `role_models`,

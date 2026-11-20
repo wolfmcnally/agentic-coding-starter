@@ -1,0 +1,204 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""check-release-worktrees — Refuse a release unless one clean checkout is all there is.
+
+A release is cut from one checkout. Work left in any other registered worktree
+of the same repository is invisible from there: the release checkout can be
+clean while a linked worktree holds uncommitted or untracked work that the
+release then silently leaves out. This check makes that state a refusal.
+
+It passes only when the repository has **exactly one** registered worktree,
+that worktree is the checkout being released, it is usable (not bare, locked
+or prunable), and it has no tracked, staged or untracked change. Any other
+registered worktree fails the check, clean or not. A registration that cannot
+be read, a record that cannot be parsed and a listing that changes while the
+check runs all fail; nothing is ever assumed absent or clean.
+
+The check only reads. It never removes, prunes, moves, resets or unlocks
+anything: retiring a worktree is the owner's decision, made with ordinary
+nonforced commands after confirming that no unique work would be lost.
+
+Exit codes:
+    0   exactly one registered worktree, the release checkout, and it is clean
+    1   one or more violations
+    2   the state could not be read (not a Git checkout, git failed)
+
+Usage:
+    bin/check-release-worktrees
+    bin/check-release-worktrees --root <dir>   # used by the tests against fixtures
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import subprocess
+import sys
+from dataclasses import dataclass, field
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+# A caller's Git environment must not redirect the check to another repository.
+REDIRECTING = ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR", "GIT_NAMESPACE")
+ATTRIBUTES = ("HEAD", "branch", "bare", "detached", "locked", "prunable")
+
+
+class GitError(RuntimeError):
+    """Git is unavailable, the root is not a checkout, or a command failed."""
+
+
+class MalformedListing(RuntimeError):
+    """The worktree listing does not have the documented shape."""
+
+
+@dataclass
+class Registration:
+    path: str
+    attributes: dict[str, str] = field(default_factory=dict)
+
+
+def git(directory: Path | str, *arguments: str) -> bytes:
+    """Run one read-only git command; a failure is never read as empty output."""
+    environment = {key: value for key, value in os.environ.items() if key not in REDIRECTING}
+    try:
+        result = subprocess.run(
+            ["git", "--no-optional-locks", "-C", str(directory), *arguments],
+            capture_output=True,
+            check=False,
+            env=environment,
+        )
+    except OSError as exc:
+        raise GitError(f"git is unavailable: {exc}") from exc
+    if result.returncode != 0:
+        detail = os.fsdecode(result.stderr).strip() or f"exit {result.returncode}"
+        raise GitError(f"git {' '.join(arguments[:2])} failed in {directory}: {detail}")
+    return result.stdout
+
+
+def parse_listing(listing: bytes) -> list[Registration]:
+    """Parse `git worktree list --porcelain -z`: NUL-ended fields, an empty field per record."""
+    if not listing:
+        return []
+    if not listing.endswith(b"\0\0"):
+        raise MalformedListing("the listing does not end with a complete record")
+    registrations: list[Registration] = []
+    for record in listing[:-2].split(b"\0\0"):
+        fields = [os.fsdecode(item) for item in record.split(b"\0")]
+        if not fields[0].startswith("worktree ") or not fields[0][9:]:
+            raise MalformedListing(f"a record does not begin with a worktree path: {fields[0]!r}")
+        registration = Registration(fields[0][9:])
+        for item in fields[1:]:
+            name, _, value = item.partition(" ")
+            if name not in ATTRIBUTES or name in registration.attributes:
+                raise MalformedListing(f"unexpected field {item!r} for {registration.path!r}")
+            registration.attributes[name] = value
+        # Git states a checkout's identity outright; an omitted field is never read as fine.
+        if "bare" not in registration.attributes:
+            head = registration.attributes.get("HEAD", "")
+            if len(head) not in (40, 64) or set(head) - set("0123456789abcdef"):
+                raise MalformedListing(f"no commit is recorded for {registration.path!r}")
+            if ("branch" in registration.attributes) == ("detached" in registration.attributes):
+                raise MalformedListing(
+                    f"{registration.path!r} is not recorded as either on a branch or detached"
+                )
+        registrations.append(registration)
+    return registrations
+
+
+def dirt(path: str) -> list[str]:
+    """Every tracked, staged and untracked change in one worktree."""
+    status = git(path, "status", "--porcelain=v1", "-z", "--untracked-files=all")
+    return [os.fsdecode(entry) for entry in status.split(b"\0") if entry]
+
+
+def describe(registration: Registration) -> str:
+    """The observed state of a worktree that must not be registered at release time."""
+    for flag in ("bare", "prunable", "locked"):
+        if flag in registration.attributes:
+            reason = registration.attributes[flag]
+            return flag + (f" ({reason})" if reason else "")
+    if not Path(registration.path).is_dir():
+        return "its directory is missing"
+    try:
+        changes = dirt(registration.path)
+    except GitError as exc:
+        return f"unreadable ({exc})"
+    return f"dirty, {len(changes)} changed or untracked path(s)" if changes else "clean"
+
+
+def violations(root: Path) -> list[str]:
+    toplevel = Path(os.fsdecode(git(root, "rev-parse", "--show-toplevel")).rstrip("\n"))
+    if toplevel.resolve() != root:
+        return [f"{root} is not the top of a checkout (Git reports {toplevel})"]
+    listing = git(root, "worktree", "list", "--porcelain", "-z")
+    try:
+        registrations = parse_listing(listing)
+    except MalformedListing as exc:
+        return [f"the worktree listing could not be parsed, so nothing is assumed: {exc}"]
+    if not registrations:
+        return ["Git lists no registered worktree, so the release checkout is not accounted for"]
+
+    found: list[str] = []
+    current = [item for item in registrations if Path(item.path).resolve() == root]
+    others = [item for item in registrations if item not in current]
+    if len(current) != 1:
+        found.append(f"the release checkout {root} is registered {len(current)} times, not once")
+    for other in others:
+        found.append(f"extra registered worktree {other.path!r}: {describe(other)}")
+    for item in current:
+        for flag in ("bare", "prunable", "locked"):
+            if flag in item.attributes:
+                found.append(f"the release checkout is {flag}")
+        changes = dirt(item.path)
+        if changes:
+            shown = ", ".join(repr(change) for change in changes[:10])
+            more = f" and {len(changes) - 10} more" if len(changes) > 10 else ""
+            found.append(
+                f"the release checkout has {len(changes)} changed or untracked path(s): "
+                f"{shown}{more}"
+            )
+    if git(root, "worktree", "list", "--porcelain", "-z") != listing:
+        found.append("the worktree listing changed while it was being checked; run it again")
+    return found
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="check-release-worktrees", description=__doc__.splitlines()[0]
+    )
+    parser.add_argument(
+        "--root",
+        type=Path,
+        default=REPO_ROOT,
+        help="checkout the release is cut from (default: this repo)",
+    )
+    root = parser.parse_args(argv).root.resolve()
+
+    try:
+        found = violations(root)
+    except GitError as exc:
+        print(f"CHECK-RELEASE-WORKTREES ERROR {exc}", file=sys.stderr)
+        return 2
+    if found:
+        for violation in found:
+            print(f"CHECK-RELEASE-WORKTREES FAIL {violation}", file=sys.stderr)
+        print(
+            "CHECK-RELEASE-WORKTREES REFUSED: a release needs exactly one registered worktree, "
+            "the release checkout, with no tracked, staged or untracked change. Nothing was "
+            "changed. Each worktree's owner delivers or preserves its unique work and retires "
+            "it with ordinary nonforced commands; then run this check again.",
+            file=sys.stderr,
+        )
+        return 1
+    print(
+        f"CHECK-RELEASE-WORKTREES PASS one registered worktree, clean: {root} "
+        "(scanned: every registration Git lists for this repository; tracked, staged and "
+        "untracked paths; ignored files are not examined)"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
