@@ -114,7 +114,6 @@ def run(claude_root: Path, codex_root: Path, *extra: str) -> subprocess.Complete
         ],
         capture_output=True,
         text=True,
-        timeout=120,
         check=False,
     )
 

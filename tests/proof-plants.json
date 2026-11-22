@@ -620,6 +620,15 @@
       "with": "    if False:\n"
     }
   },
+  "pytest:tests/test_test_governance.py::test_captured_output_is_whole_and_an_escaped_holder_of_it_is_named": {
+    "defect": "Output still held by a detached descendant is no longer noticed",
+    "expect": "ESCAPED OUTPUT HOLDER NOT NAMED",
+    "plant": {
+      "path": "lib/agentic_starter/test_runner.py",
+      "replace": "if output.still_open():",
+      "with": "if False:"
+    }
+  },
   "pytest:tests/test_test_governance.py::test_fixture_repositories_never_sign_whatever_the_machine_configures": {
     "defect": "Test setup leaves fixture repositories on the machine's signing configuration",
     "expect": "FIXTURE REPOSITORY SIGNED",
@@ -629,6 +638,105 @@
       "with": ""
     }
   },
+  "pytest:tests/test_test_governance.py::test_governance_allows_nested_supervisor_cleanup": {
+    "defect": "Governance escalates before the nested supervisor can finish its own cleanup",
+    "expect": "outer supervisor killed inner cleanup",
+    "plant": {
+      "path": "lib/agentic_starter/test_governance.py",
+      "replace": "capture=True, cleanup_grace=5)",
+      "with": "capture=True, cleanup_grace=0.05)"
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_outstanding_child_makes_completed_leader_incomplete[0-False]": {
+    "defect": "A leftover member of the process group is no longer detected",
+    "expect": "is incomplete",
+    "plant": {
+      "path": "lib/agentic_starter/test_runner.py",
+      "replace": "elif _group_outstanding(process.pid, cleanup_grace):",
+      "with": "elif False:"
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_outstanding_child_makes_completed_leader_incomplete[0-True]": {
+    "defect": "A leftover member of the process group is no longer detected, so only the held output is reported",
+    "expect": "must be named",
+    "plant": {
+      "path": "lib/agentic_starter/test_runner.py",
+      "replace": "elif _group_outstanding(process.pid, cleanup_grace):",
+      "with": "elif False:"
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_outstanding_child_makes_completed_leader_incomplete[1-False]": {
+    "defect": "A leftover member of the process group is no longer detected",
+    "expect": "is incomplete",
+    "plant": {
+      "path": "lib/agentic_starter/test_runner.py",
+      "replace": "elif _group_outstanding(process.pid, cleanup_grace):",
+      "with": "elif False:"
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_outstanding_child_makes_completed_leader_incomplete[1-True]": {
+    "defect": "A leftover member of the process group is no longer detected, so only the held output is reported",
+    "expect": "must be named",
+    "plant": {
+      "path": "lib/agentic_starter/test_runner.py",
+      "replace": "elif _group_outstanding(process.pid, cleanup_grace):",
+      "with": "elif False:"
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_parallel_pytest_keeps_coverage_isolation_and_failure_truth": {
+    "defect": "Cancellation of a parallel run is reported with the old catch-all reason",
+    "expect": "PARALLEL CANCELLATION PASSED",
+    "plant": {
+      "path": "lib/agentic_starter/test_runner.py",
+      "replace": "reason = f\"cancelled by {name} before the test command finished\"",
+      "with": "reason = \"hang, interruption or outstanding child\""
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_real_supervisor_entrypoint_imposes_no_elapsed_limit_and_handles_signals[completed-error]": {
+    "defect": "A completed command's non-assertion error status is replaced with success",
+    "expect": "keeps its own status",
+    "plant": {
+      "path": "lib/agentic_starter/test_runner.py",
+      "replace": "return subprocess.CompletedProcess(list(command), code, stdout, stderr)",
+      "with": "return subprocess.CompletedProcess(list(command), 0 if code == 2 else code, stdout, stderr)"
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_real_supervisor_entrypoint_imposes_no_elapsed_limit_and_handles_signals[double-term]": {
+    "defect": "Cancellation is reported with the old catch-all reason instead of naming the signal",
+    "expect": "entrypoint must name the cancelling signal",
+    "plant": {
+      "path": "lib/agentic_starter/test_runner.py",
+      "replace": "reason = f\"cancelled by {name} before the test command finished\"",
+      "with": "reason = \"hang, interruption or outstanding child\""
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_real_supervisor_entrypoint_imposes_no_elapsed_limit_and_handles_signals[hup]": {
+    "defect": "Cancellation is reported with the old catch-all reason instead of naming the signal",
+    "expect": "entrypoint must name the cancelling signal",
+    "plant": {
+      "path": "lib/agentic_starter/test_runner.py",
+      "replace": "reason = f\"cancelled by {name} before the test command finished\"",
+      "with": "reason = \"hang, interruption or outstanding child\""
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_real_supervisor_entrypoint_imposes_no_elapsed_limit_and_handles_signals[slow-under-retired-limit]": {
+    "defect": "The entry point ends its command at an elapsed limit again",
+    "expect": "keeps its own status",
+    "plant": {
+      "path": "lib/agentic_starter/test_runner.py",
+      "replace": "result = run_command([sys.executable, *arguments], cwd=root)",
+      "with": "result = subprocess.run([sys.executable, *arguments], cwd=root, timeout=float((root / \"tests/proof-estate.yaml\").read_text().split(\"hang_timeout_seconds:\")[1].split()[0]) if (root / \"tests/proof-estate.yaml\").exists() and \"hang_timeout_seconds:\" in (root / \"tests/proof-estate.yaml\").read_text() else None)"
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_real_supervisor_entrypoint_imposes_no_elapsed_limit_and_handles_signals[term]": {
+    "defect": "Cancellation is reported with the old catch-all reason instead of naming the signal",
+    "expect": "entrypoint must name the cancelling signal",
+    "plant": {
+      "path": "lib/agentic_starter/test_runner.py",
+      "replace": "reason = f\"cancelled by {name} before the test command finished\"",
+      "with": "reason = \"hang, interruption or outstanding child\""
+    }
+  },
   "pytest:tests/test_test_governance.py::test_reuse_runs_only_what_changed_since_a_proven_tree_and_everything_when_unsure": {
     "defect": "Have the reuse lane select no family whatever changed",
     "expect": "REUSE SKIPPED AN AFFECTED FAMILY OR RERAN AN UNAFFECTED ONE",
@@ -636,6 +744,15 @@
       "path": "lib/agentic_starter/test_governance.py",
       "replace": "        return _families_for_changes(root, families, changed, [])\n",
       "with": "        return [], None\n"
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_runtime_is_diagnostic_and_stale_records_are_unmeasured": {
+    "defect": "A manifest that still declares the retired elapsed limit is accepted silently",
+    "expect": "DID NOT RAISE",
+    "plant": {
+      "path": "lib/agentic_starter/test_governance.py",
+      "replace": "if \"hang_timeout_seconds\" in manifest:",
+      "with": "if False:"
     }
   },
   "pytest:tests/test_test_governance.py::test_script_environments_are_prepared_in_the_cache_the_caller_names": {
@@ -654,6 +771,15 @@
       "path": "lib/agentic_starter/test_runner.py",
       "replace": "        prepare_script_environments(root, arguments)\n",
       "with": ""
+    }
+  },
+  "pytest:tests/test_test_governance.py::test_supervision_keeps_failures_and_cancellation_stops_chattering_children": {
+    "defect": "Cancellation is reported with the old catch-all reason instead of being named",
+    "expect": "cancellation must be named as the reason",
+    "plant": {
+      "path": "lib/agentic_starter/test_runner.py",
+      "replace": "reason = f\"cancelled by {name} before the test command finished\"",
+      "with": "reason = \"hang, interruption or outstanding child\""
     }
   },
   "pytest:tests/test_toolchain_entrypoints.py::test_a_declared_native_suite_is_a_second_lane_and_only_both_lanes_prove_the_tree": {

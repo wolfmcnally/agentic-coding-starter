@@ -5,7 +5,6 @@ witness_ledger: reports/test-governance/starter-witnesses.jsonl
 witness_failure_lines: ^E\s
 adoption:
   mode: complete
-hang_timeout_seconds: 1800
 mutation:
   tool: cosmic-ray
   paths:

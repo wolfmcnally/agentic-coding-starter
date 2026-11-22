@@ -381,14 +381,10 @@ def machine_fingerprint() -> str:
 
 def _runtime_errors(manifest: dict[str, Any]) -> list[str]:
     errors: list[str] = []
-    timeout = manifest.get("hang_timeout_seconds")
-    if (
-        isinstance(timeout, bool)
-        or not isinstance(timeout, (int, float))
-        or not math.isfinite(timeout)
-        or timeout <= 0
-    ):
-        errors.append("hang_timeout_seconds must be finite and positive")
+    if "hang_timeout_seconds" in manifest:
+        errors.append(
+            "hang_timeout_seconds is retired: no elapsed limit applies to tests; remove it"
+        )
     adoption = manifest.get("adoption")
     if not isinstance(adoption, dict) or adoption.get("mode") not in {"complete", "bounded"}:
         errors.append("adoption.mode must be complete or bounded")

@@ -105,7 +105,6 @@ def finish_trace(
 def cli(
     *args: str,
     env: dict[str, str] | None = None,
-    timeout: float = 10,
 ) -> subprocess.CompletedProcess[str]:
     command_env = os.environ.copy()
     if env:
@@ -115,7 +114,6 @@ def cli(
         capture_output=True,
         text=True,
         env=command_env,
-        timeout=timeout,
     )
 
 
@@ -492,7 +490,7 @@ def test_concurrent_process_mutations_do_not_lose_spans(engine: Path) -> None:
     ]
     handles = []
     for process in processes:
-        output, _ = process.communicate(timeout=10)
+        output, _ = process.communicate()
         assert process.returncode == 0
         handles.append(json.loads(output))
 
@@ -516,7 +514,7 @@ def test_concurrent_process_mutations_do_not_lose_spans(engine: Path) -> None:
         subprocess.Popen(command, stdout=subprocess.PIPE, text=True) for command in finish_commands
     ]
     for process in processes:
-        process.communicate(timeout=10)
+        process.communicate()
         assert process.returncode == 0
 
     bundle = finish_trace(engine, root)

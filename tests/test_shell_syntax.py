@@ -14,7 +14,6 @@ def run(root: Path) -> subprocess.CompletedProcess[str]:
         [str(CHECKER), "--root", str(root)],
         capture_output=True,
         text=True,
-        timeout=120,
         check=False,
     )
 

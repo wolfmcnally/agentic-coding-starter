@@ -78,7 +78,6 @@ def run(*arguments: str, root: Path) -> subprocess.CompletedProcess[str]:
         [str(TREATISE), "--root", str(root), *arguments],
         capture_output=True,
         text=True,
-        timeout=120,
         check=False,
     )
 
@@ -127,7 +126,6 @@ def test_the_repository_own_treatises_validate(briefs: Path) -> None:
         [str(TREATISE), "validate"],
         capture_output=True,
         text=True,
-        timeout=120,
         check=False,
     )
     assert result.returncode == 0, result.stderr

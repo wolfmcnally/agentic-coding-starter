@@ -2,7 +2,7 @@
 title: Test-Suite Value Governance
 date: 2026-10-12
 status: methodology
-scope: Marginal test value, bounded attempted work, diagnostic timing and qualified hang safety.
+scope: Marginal test value, bounded attempted work, diagnostic timing and truthful completion.
 ---
 
 # Test-Suite Value Governance
@@ -23,13 +23,13 @@ A targeted authoring witness and a mutation-tool survey serve different purposes
 
 Historical reset ledgers and observation receipts remain recoverable evidence. No committed mutant corpus is restored: source-anchored defect patches previously became stale, and apparent detections could arise from unrelated failures. New modifications link their own receipts; an old matching test name does not prove a new assertion. Structural checks verify recorded shape and linkage, while the selected review lane verifies semantic relevance and freshness (primary self-inspection for methodology work).
 
-## Work, elapsed time and hang safety answer different questions
+## Work, elapsed time and completion answer different questions
 
 Concrete attempted-work limits bound the operations that can multiply: input generation, rejects, shrinking, retry attempts, polling, fixture expansion, subprocess calls and teardown. Count transitive work, not only the top-level test body. An opaque operation can still hang or perform unbounded internal work, and a limit on accepted cases may conceal rejected attempts. Name those limitations rather than claiming a stronger bound.
 
 Ordinary elapsed time is diagnostic because hardware, resource contention and the environment can change it without changing test value. Do not fail a correct slow test, rerun a completed suite to beat a budget or move work into a fixture to evade a metric. Explicit product-performance requirements keep controlled performance tests. Comparable trends can inform an owner decision; they do not automatically contain cumulative suite growth.
 
-A separately qualified monotonic deadline stops a hung invocation. Output chatter does not renew it. Timeout and interruption are incomplete evidence, neither a correctness pass nor proof of a product defect. Preserve output, terminate owned children and report the supervised boundary honestly. Runtime startup and independently detached processes need enclosing guards; a process-group supervisor alone does not prove those boundaries. A bounded retry requires a concrete changed condition, and a repeated cause stops the loop.
+No elapsed limit ends a test (as of 2026-11-22). An earlier design stopped any invocation at a declared deadline; in use it ended correct runs that were merely slow on a loaded machine, and its single incomplete status hid whether time, a cancellation or a leftover child was the cause. The operator or the enclosing tool cancels a run that will not finish. Supervision is about truthful completion instead: a completed command keeps its own status, and a cancelled run or one that leaves work behind is incomplete evidence, neither a correctness pass nor proof of a product defect, with the reason named. Preserve output, terminate owned children and report the supervised boundary honestly. Runtime startup and independently detached processes need enclosing guards; a process-group supervisor alone does not prove those boundaries. A bounded retry requires a concrete changed condition, and a repeated cause stops the loop.
 
 ## Adoption preserves useful history
 

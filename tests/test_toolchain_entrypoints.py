@@ -360,8 +360,6 @@ def test_the_native_suite_runs_supervised_with_its_arguments_and_never_signs(
     (tmp_path / "gitconfig").write_text("[commit]\n\tgpgsign = true\n")
     root = tmp_path / "repo"
     (root / "bin").mkdir(parents=True)
-    (root / "tests").mkdir()
-    (root / "tests" / "proof-estate.yaml").write_text("hang_timeout_seconds: 30\n")
     absent = native_suite.main(["--filter", "one"], root)
     seen = tmp_path / "seen.txt"
     _write_executable(

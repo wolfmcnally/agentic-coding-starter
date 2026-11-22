@@ -55,7 +55,6 @@ def run(root: Path, plan: Path, *prior_plans: Path) -> subprocess.CompletedProce
         ],
         capture_output=True,
         text=True,
-        timeout=120,
         check=False,
     )
 

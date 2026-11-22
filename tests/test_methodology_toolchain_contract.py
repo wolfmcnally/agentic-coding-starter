@@ -754,7 +754,6 @@ def test_rust_profile_owns_output_across_checkouts(tmp_path: Path) -> None:
             env=env,
             capture_output=True,
             text=True,
-            timeout=60,
         )
 
     def target(result: subprocess.CompletedProcess[str]) -> Path:
@@ -835,7 +834,6 @@ def test_travelling_migration_proofs_run_without_donor_history(tmp_path: Path) -
         env=env,
         capture_output=True,
         text=True,
-        timeout=180,
     )
     assert child.returncode == 0 and "12 passed" in child.stdout, (
         "FRESH SCAFFOLD MIGRATION PROOFS FAILED: " + child.stdout + child.stderr

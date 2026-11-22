@@ -454,7 +454,6 @@ def test_stale_dashboard_refuses_until_regenerated_from_tracked_inputs(tmp_path:
             [sys.executable, str(mirror / "bin/check-execution-dashboards"), *arguments],
             capture_output=True,
             text=True,
-            timeout=120,
         )
 
     clean = check()
@@ -510,7 +509,6 @@ def test_regeneration_repairs_a_changed_history_whole_or_not_at_all(tmp_path: Pa
             [sys.executable, str(engine / "bin/check-execution-dashboards"), *arguments],
             capture_output=True,
             text=True,
-            timeout=120,
         )
 
     clean = check()

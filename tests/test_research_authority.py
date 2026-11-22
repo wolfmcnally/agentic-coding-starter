@@ -41,7 +41,6 @@ def render(tmp_path: Path, *, role: str, venue: str) -> list[str]:
         capture_output=True,
         text=True,
         check=False,
-        timeout=60,
     )
     assert result.returncode == 0, result.stderr
     return json.loads(result.stdout)
@@ -90,7 +89,6 @@ def test_retrieval_only_roles_reject_originating_search_budget(tmp_path: Path) -
         capture_output=True,
         text=True,
         check=False,
-        timeout=60,
     )
     assert result.returncode == 2
     assert "coder is retrieval-only" in result.stderr

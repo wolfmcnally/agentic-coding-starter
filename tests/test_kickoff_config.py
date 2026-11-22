@@ -85,7 +85,6 @@ def run_manager(
         env=environment,
         capture_output=True,
         text=True,
-        timeout=60,
         check=False,
     )
 
@@ -645,7 +644,6 @@ def test_preflight_still_aborts_on_a_failed_sentinel(tmp_path: Path) -> None:
         env=environment,
         text=True,
         capture_output=True,
-        timeout=10,
     )
     assert invalid_runtime.returncode != 0, invalid_runtime.stdout
     assert "TOOLCHAIN_PYTHON" in invalid_runtime.stderr

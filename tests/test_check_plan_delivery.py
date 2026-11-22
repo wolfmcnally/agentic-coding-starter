@@ -63,7 +63,6 @@ def run(root: Path, plan: Path, *extra: str) -> subprocess.CompletedProcess[str]
         [str(CHECKER), "--plan", str(plan), "--root", str(root), *extra],
         capture_output=True,
         text=True,
-        timeout=120,
         check=False,
     )
 

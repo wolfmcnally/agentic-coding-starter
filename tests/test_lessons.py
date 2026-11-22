@@ -79,7 +79,6 @@ def run(*arguments: str, root: Path) -> subprocess.CompletedProcess[str]:
         [str(LESSONS), "--root", str(root), *arguments],
         capture_output=True,
         text=True,
-        timeout=60,
         check=False,
     )
 

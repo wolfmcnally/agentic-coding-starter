@@ -21,7 +21,6 @@ def run(*arguments: str, cwd: Path | None = None) -> subprocess.CompletedProcess
         cwd=cwd or ROOT,
         capture_output=True,
         text=True,
-        timeout=20,
         check=False,
     )
 

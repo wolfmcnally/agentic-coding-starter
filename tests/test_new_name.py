@@ -37,7 +37,6 @@ def run(*arguments: str, root: Path) -> subprocess.CompletedProcess[str]:
         [str(NEW_NAME), "--root", str(root), *arguments],
         capture_output=True,
         text=True,
-        timeout=120,
         check=False,
     )
 

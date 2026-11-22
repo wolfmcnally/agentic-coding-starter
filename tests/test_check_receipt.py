@@ -111,7 +111,6 @@ def run_receipt(
         input=stdin,
         text=True,
         capture_output=True,
-        timeout=30,
         check=False,
     )
 
@@ -272,7 +271,6 @@ def test_pre_push_hook_skips_only_a_verified_hit(repository: Path) -> None:
         input=push_input(repository),
         text=True,
         capture_output=True,
-        timeout=30,
         check=False,
     )
     assert hit.returncode == 0, hit.stderr
@@ -286,7 +284,6 @@ def test_pre_push_hook_skips_only_a_verified_hit(repository: Path) -> None:
         input=push_input(repository),
         text=True,
         capture_output=True,
-        timeout=30,
         check=False,
     )
     assert miss.returncode == 0, miss.stderr

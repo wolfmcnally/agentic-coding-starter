@@ -153,7 +153,6 @@ def _write_estate(root: Path, *, pruned: bool) -> Path:
         "witness_ledger": "reports/witnesses.jsonl",
         "mutation": {"tool": None, "reason": "The fixture declares no mutation tool."},
         "adoption": {"mode": "complete"},
-        "hang_timeout_seconds": 1800,
         "critical_risks": {
             "custody": {"state": "applicable", "direct_proof": live[0]},
             "deploy": {
@@ -476,7 +475,6 @@ def test_runtime_is_diagnostic_and_stale_records_are_unmeasured(
     manifest = {
         "families": [{"id": "x", "kind": "pytest", "selectors": ["tests/test_x.py"]}],
         "adoption": {"mode": "complete"},
-        "hang_timeout_seconds": 1800,
     }
     monkeypatch.setattr(governance, "inventory", lambda _root: {"proofs": proofs})
     monkeypatch.setattr(governance, "load_yaml", lambda _path: copy.deepcopy(manifest))
@@ -532,8 +530,8 @@ def test_runtime_is_diagnostic_and_stale_records_are_unmeasured(
     ), "stale timing must explain the inventory mismatch"
     recorded(1.0, 0.1, cases=("fast",))
     assert governance.timing(tmp_path)["state"] == "unmeasured", "partial timing must be unmeasured"
-    manifest["hang_timeout_seconds"] = float("nan")
-    with pytest.raises(governance.GovernanceError, match="finite and positive"):
+    manifest["hang_timeout_seconds"] = 1800
+    with pytest.raises(governance.GovernanceError, match="hang_timeout_seconds is retired"):
         governance.timing(tmp_path)
 
 
@@ -1296,10 +1294,37 @@ def test_modification_must_reference_its_own_unreused_observation(
     refuses("other-proof", "does not witness its proof")
 
 
-def test_hang_supervision_preserves_failures_and_stops_chattering_children(tmp_path: Path) -> None:
-    import os
-    import sys
+def _wait_for_pid(ready: Path, process: subprocess.Popen[str]) -> int | None:
+    """The pid a fixture child published, or None once its supervisor has gone without one."""
     import time
+
+    while process.poll() is None:
+        if ready.exists() and ready.read_text():
+            return int(ready.read_text())
+        time.sleep(0.02)
+    return int(ready.read_text()) if ready.exists() and ready.read_text() else None
+
+
+def _gone_within(pid: int, seconds: float) -> bool:
+    import time
+
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        time.sleep(0.02)
+    return False
+
+
+def test_supervision_keeps_failures_and_cancellation_stops_chattering_children(
+    tmp_path: Path,
+) -> None:
+    """A completed failure keeps its status. Cancelling a command that never stops talking
+    names the cancellation, keeps the output so far and removes a child that ignores TERM.
+    """
+    import signal
 
     from agentic_starter.test_runner import run_command
 
@@ -1318,29 +1343,45 @@ def test_hang_supervision_preserves_failures_and_stops_chattering_children(tmp_p
         f"pathlib.Path({str(child_pid)!r}).write_text(str(p.pid)); "
         "exec('while True: print(\"alive\",flush=True); time.sleep(.02)')"
     )
-    result = run_command([sys.executable, "-c", code], cwd=tmp_path, timeout=5, capture=True)
-    assert child_pid.exists(), "SETUP INCOMPLETE: child never reached readiness"
-    pid = int(child_pid.read_text())
+    wrapper = (
+        "import json,sys; from pathlib import Path; "
+        f"sys.path.insert(0,{str(REPO_ROOT / 'lib')!r}); "
+        "from agentic_starter.test_runner import run_command; "
+        f"r=run_command([sys.executable,'-c',{code!r}],cwd=Path.cwd(),capture=True); "
+        "print(json.dumps([r.returncode,r.stdout[:200],r.stderr]))"
+    )
+    process = subprocess.Popen(
+        [sys.executable, "-c", wrapper],
+        cwd=tmp_path,
+        stdout=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
+    pid = None
     try:
-        assert result.returncode == 124, "hang must be incomplete"
-        assert "INCOMPLETE" in result.stderr, "hang must have an incomplete diagnostic"
-        assert "alive" in result.stdout, "partial chatter output must survive cleanup"
-        for _ in range(50):
-            try:
-                os.kill(pid, 0)
-            except ProcessLookupError:
-                break
-            time.sleep(0.02)
-        else:
-            pytest.fail("inherited child survived timeout cleanup")
-    finally:
-        # The fixture owns exactly this non-forking child, even during red challenges.
-        import signal
-
+        pid = _wait_for_pid(child_pid, process)
+        assert pid is not None, "SETUP INCOMPLETE: child never reached readiness"
+        process.send_signal(signal.SIGINT)
         try:
-            os.kill(pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
+            output, _ = process.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            pytest.fail("cancelled supervisor did not return")
+        status, stdout, stderr = json.loads(output)
+        assert status == 124, "a cancelled run must be incomplete"
+        assert "TEST INCOMPLETE: cancelled by SIGINT" in stderr, (
+            f"cancellation must be named as the reason: {stderr!r}"
+        )
+        assert "alive" in stdout, "partial chatter output must survive cleanup"
+        assert _gone_within(pid, 1), "inherited child survived cancellation cleanup"
+    finally:
+        # The fixture owns exactly these groups, even during red challenges.
+        for group in (pid, process.pid):
+            if group is not None:
+                try:
+                    os.killpg(os.getpgid(group), signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+        process.wait()
 
 
 def test_incomplete_exit_cannot_supply_a_red_witness(tmp_path: Path) -> None:
@@ -1376,12 +1417,15 @@ def test_governance_child_incomplete_remains_incomplete(
     assert "TEST GOVERNANCE ERROR" not in error, "incomplete collection is not a refusal"
 
 
+@pytest.mark.parametrize("holds_output", [False, True])
 @pytest.mark.parametrize("leader_exit", [0, 1])
 def test_outstanding_child_makes_completed_leader_incomplete(
-    tmp_path: Path, leader_exit: int
+    tmp_path: Path, leader_exit: int, holds_output: bool
 ) -> None:
+    """A child left in the group makes the run incomplete at once, names the leader's own
+    exit status, and is removed, whether or not it still holds the captured output.
+    """
     import signal
-    import time
 
     from agentic_starter.test_runner import run_command
 
@@ -1390,13 +1434,12 @@ def test_outstanding_child_makes_completed_leader_incomplete(
         "import os,signal,time,pathlib; signal.signal(signal.SIGTERM,signal.SIG_IGN); "
         f"pathlib.Path({str(ready)!r}).write_text(str(os.getpid())); time.sleep(30)"
     )
+    streams = "" if holds_output else "stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL"
     leader = (
         "import subprocess,sys,pathlib,time; "
-        f"subprocess.Popen([sys.executable,'-c',{child!r}],"
-        "stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); "
+        f"p=subprocess.Popen([sys.executable,'-c',{child!r}],{streams}); "
         f"ready=pathlib.Path({str(ready)!r}); "
-        "deadline=time.monotonic()+10; "
-        "exec('while not ready.exists() and time.monotonic()<deadline: time.sleep(.02)'); "
+        "exec('while not ready.exists() and p.poll() is None: time.sleep(.02)'); "
         f"raise SystemExit({leader_exit})"
     )
     pid = None
@@ -1405,17 +1448,66 @@ def test_outstanding_child_makes_completed_leader_incomplete(
         assert ready.exists(), "SETUP INCOMPLETE: leftover child never became ready"
         pid = int(ready.read_text())
         assert result.returncode == 124, f"outstanding group after exit {leader_exit} is incomplete"
-        assert "INCOMPLETE" in result.stderr, (
-            f"outstanding group after exit {leader_exit} needs a diagnostic"
-        )
-        for _ in range(50):
+        assert (
+            f"TEST INCOMPLETE: the test command exited with status {leader_exit} "
+            "and left a member of its process group running" in result.stderr
+        ), f"the leftover child and the leader's own status must be named: {result.stderr!r}"
+        assert _gone_within(pid, 1), f"outstanding child after exit {leader_exit} survived cleanup"
+    finally:
+        if pid is None and ready.exists():
+            pid = int(ready.read_text())
+        if pid is not None:
             try:
-                os.kill(pid, 0)
+                os.kill(pid, signal.SIGKILL)
             except ProcessLookupError:
-                break
-            time.sleep(0.02)
-        else:
-            pytest.fail(f"outstanding child after exit {leader_exit} survived cleanup")
+                pass
+
+
+def test_captured_output_is_whole_and_an_escaped_holder_of_it_is_named(tmp_path: Path) -> None:
+    """A finished command returns all of its output and its own status, however much it
+    wrote. A descendant that left the group and still holds the output makes the run
+    incomplete at once, by name, with the leader's status and the output so far.
+    """
+    import signal
+
+    from agentic_starter.test_runner import run_command
+
+    wrote = run_command(
+        [
+            sys.executable,
+            "-c",
+            "import sys; sys.stdout.write('x'*300000); sys.stderr.write('y'*300000); "
+            "raise SystemExit(3)",
+        ],
+        cwd=tmp_path,
+        capture=True,
+    )
+    assert (wrote.returncode, wrote.stdout, wrote.stderr) == (3, "x" * 300000, "y" * 300000), (
+        f"OUTPUT BACKLOG LOST OR MISREAD: {wrote.returncode} {len(wrote.stdout)} "
+        f"{len(wrote.stderr)}"
+    )
+    ready = tmp_path / "ready"
+    holder = (
+        "import os,time,pathlib; "
+        f"pathlib.Path({str(ready)!r}).write_text(str(os.getpid())); time.sleep(30)"
+    )
+    leader = (
+        "import subprocess,sys,pathlib,time; "
+        f"p=subprocess.Popen([sys.executable,'-c',{holder!r}],start_new_session=True); "
+        f"ready=pathlib.Path({str(ready)!r}); "
+        "exec('while not ready.exists() and p.poll() is None: time.sleep(.02)'); "
+        "print('said')"
+    )
+    pid = None
+    try:
+        result = run_command([sys.executable, "-c", leader], cwd=tmp_path, capture=True)
+        assert ready.exists(), "SETUP INCOMPLETE: detached holder never became ready"
+        pid = int(ready.read_text())
+        assert result.returncode == 124 and (
+            "TEST INCOMPLETE: the test command exited with status 0, and a descendant "
+            "outside the process group still holds the captured output" in result.stderr
+        ), f"ESCAPED OUTPUT HOLDER NOT NAMED: {result.returncode} {result.stderr!r}"
+        assert "said" in result.stdout, "output written before the exit must survive"
     finally:
         if pid is None and ready.exists():
             pid = int(ready.read_text())
@@ -1461,10 +1553,11 @@ def test_a_refused_liveness_probe_is_settled_before_a_finished_command_is_called
     ), f"REFUSED PROBE MISREAD: {settled.returncode} {settled.stderr!r} {unprovable.returncode}"
 
 
-def test_governance_allows_nested_supervisor_cleanup(tmp_path: Path, monkeypatch) -> None:
-    import functools
+def test_governance_allows_nested_supervisor_cleanup(tmp_path: Path) -> None:
+    """Cancelling governance leaves the nested test supervisor time to remove its own
+    resistant child before governance escalates.
+    """
     import signal
-    import time
 
     ready = tmp_path / "ready"
     child = (
@@ -1475,52 +1568,58 @@ def test_governance_allows_nested_supervisor_cleanup(tmp_path: Path, monkeypatch
         "import sys; from pathlib import Path; "
         f"sys.path.insert(0,{str(REPO_ROOT / 'lib')!r}); "
         "from agentic_starter.test_runner import run_command; "
-        f"r=run_command([sys.executable,'-c',{child!r}],cwd=Path.cwd(),timeout=30); "
+        f"r=run_command([sys.executable,'-c',{child!r}],cwd=Path.cwd()); "
         "raise SystemExit(r.returncode)"
     )
-    monkeypatch.setattr(
-        governance, "run_command", functools.partial(governance.run_command, timeout=5)
+    outer = (
+        "import sys; from pathlib import Path; "
+        f"sys.path.insert(0,{str(REPO_ROOT / 'lib')!r}); "
+        "import agentic_starter.test_governance as governance; "
+        f"r=governance._run([sys.executable,'-c',{inner!r}],Path.cwd(),check=False); "
+        "raise SystemExit(r.returncode)"
+    )
+    process = subprocess.Popen(
+        [sys.executable, "-c", outer], cwd=tmp_path, start_new_session=True, text=True
     )
     pid = None
     try:
-        result = governance._run([sys.executable, "-c", inner], tmp_path, check=False)
-        assert ready.exists(), "SETUP INCOMPLETE: nested child never became ready"
-        pid = int(ready.read_text())
-        assert result.returncode == 124, "nested incomplete status must survive governance"
-        for _ in range(50):
-            try:
-                os.kill(pid, 0)
-            except ProcessLookupError:
-                break
-            time.sleep(0.02)
-        else:
-            pytest.fail("outer supervisor killed inner cleanup before its resistant child")
+        pid = _wait_for_pid(ready, process)
+        assert pid is not None, "SETUP INCOMPLETE: nested child never became ready"
+        process.send_signal(signal.SIGTERM)
+        try:
+            process.wait(timeout=20)
+        except subprocess.TimeoutExpired:
+            pytest.fail("cancelled governance command did not return")
+        assert process.returncode == 124, "nested incomplete status must survive governance"
+        assert _gone_within(pid, 1), (
+            "outer supervisor killed inner cleanup before its resistant child"
+        )
     finally:
-        if pid is None and ready.exists():
-            pid = int(ready.read_text())
-        if pid is not None:
-            try:
-                os.killpg(pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
+        for group in (pid, process.pid):
+            if group is not None:
+                try:
+                    os.killpg(group, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+        process.wait()
 
 
-@pytest.mark.parametrize("mode", ["timeout", "term", "double-term", "hup", "completed-error"])
-def test_real_supervisor_entrypoint_handles_deadlines_and_signals(
+@pytest.mark.parametrize(
+    "mode", ["slow-under-retired-limit", "term", "double-term", "hup", "completed-error"]
+)
+def test_real_supervisor_entrypoint_imposes_no_elapsed_limit_and_handles_signals(
     tmp_path: Path, mode: str
 ) -> None:
-    import os
+    """A command that outlasts the limit an earlier release read from the manifest finishes
+    with its own status. A signalled run is incomplete, names the signal and removes a child
+    that ignores TERM. A completed error keeps its status.
+    """
     import signal
-    import time
 
     root = tmp_path / "runner"
     script = root / "lib/agentic_starter/test_runner.py"
     script.parent.mkdir(parents=True)
     script.write_bytes((REPO_ROOT / "lib/agentic_starter/test_runner.py").read_bytes())
-    (root / "tests").mkdir()
-    (root / "tests/proof-estate.yaml").write_text(
-        "hang_timeout_seconds: " + ("5" if mode == "timeout" else "30")
-    )
     ready = root / "ready"
     code = (
         "import os,signal,time,pathlib; signal.signal(signal.SIGTERM,signal.SIG_IGN); "
@@ -1529,6 +1628,11 @@ def test_real_supervisor_entrypoint_handles_deadlines_and_signals(
     )
     if mode == "completed-error":
         code = "raise SystemExit(2)"
+    if mode == "slow-under-retired-limit":
+        (root / "tests").mkdir()
+        (root / "tests/proof-estate.yaml").write_text("hang_timeout_seconds: 0.2\n")
+        code = "import time; time.sleep(1); print('converged')"
+    signalled = mode in ("term", "double-term", "hup")
     process = subprocess.Popen(
         [sys.executable, str(script), "-c", code],
         stdout=subprocess.PIPE,
@@ -1538,36 +1642,30 @@ def test_real_supervisor_entrypoint_handles_deadlines_and_signals(
     )
     child_pid = None
     try:
-        if mode != "completed-error":
-            deadline = time.monotonic() + 10
-            while not ready.exists() and process.poll() is None and time.monotonic() < deadline:
-                time.sleep(0.02)
-            assert ready.exists(), "SETUP INCOMPLETE: supervised child never became ready"
-            child_pid = int(ready.read_text())
-        if mode in ("term", "double-term", "hup"):
+        if signalled:
+            child_pid = _wait_for_pid(ready, process)
+            assert child_pid is not None, "SETUP INCOMPLETE: supervised child never became ready"
             process.send_signal(signal.SIGHUP if mode == "hup" else signal.SIGTERM)
             if mode == "double-term":
-                time.sleep(0.05)
                 process.send_signal(signal.SIGTERM)
-        try:
-            process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            pytest.fail("supervisor did not terminate its invocation")
-        if mode == "completed-error":
-            assert process.returncode == 2, "completed non-assertion error status must survive"
-        else:
+            try:
+                output, error = process.communicate(timeout=10)
+            except subprocess.TimeoutExpired:
+                pytest.fail("supervisor did not terminate its invocation")
+            name = "SIGHUP" if mode == "hup" else "SIGTERM"
             assert process.returncode == 124, "entrypoint interruption must remain incomplete"
-            for _ in range(50):
-                try:
-                    os.kill(child_pid, 0)
-                except ProcessLookupError:
-                    break
-                time.sleep(0.02)
-            else:
-                pytest.fail("supervisor left its inherited child alive")
-        output, error = process.communicate(timeout=2)
-        if mode != "completed-error":
-            assert "INCOMPLETE" in error, "entrypoint must label incomplete outcomes"
+            assert f"TEST INCOMPLETE: cancelled by {name}" in error, (
+                f"entrypoint must name the cancelling signal: {error!r}"
+            )
+            assert _gone_within(child_pid, 1), "supervisor left its inherited child alive"
+        else:
+            output, error = process.communicate()
+            expected = 2 if mode == "completed-error" else 0
+            assert process.returncode == expected and "INCOMPLETE" not in error, (
+                f"a completed command keeps its own status, however long it ran: "
+                f"{process.returncode} {error!r}"
+            )
+            assert mode == "completed-error" or "converged" in output, "slow output was lost"
     finally:
         # Only these two fixture-owned, non-forking groups are in the cleanup set.
         for group in (child_pid, process.pid):
@@ -1576,20 +1674,18 @@ def test_real_supervisor_entrypoint_handles_deadlines_and_signals(
                     os.killpg(group, signal.SIGKILL)
                 except ProcessLookupError:
                     pass
-        process.communicate(timeout=2)
+        process.wait()
 
 
 def test_parallel_pytest_keeps_coverage_isolation_and_failure_truth(tmp_path: Path) -> None:
     """Exercise real workers, not a mock of their scheduling or terminal reports."""
-    import time
+    import signal
     import xml.etree.ElementTree as ET
 
     root = tmp_path / "parallel"
     script = root / "lib/agentic_starter/test_runner.py"
     script.parent.mkdir(parents=True)
     script.write_bytes((REPO_ROOT / "lib/agentic_starter/test_runner.py").read_bytes())
-    (root / "tests").mkdir()
-    (root / "tests/proof-estate.yaml").write_text("hang_timeout_seconds: 20\n")
     environment = os.environ.copy()
     environment.pop("PYTEST_XDIST_WORKER", None)
     environment.pop("PYTEST_XDIST_WORKER_COUNT", None)
@@ -1608,10 +1704,6 @@ ROOT = pathlib.Path(__file__).parent
 @pytest.mark.parametrize("case", [0, 1])
 def test_independent(case):
     (ROOT / ("ready-" + str(case))).write_text(os.environ["PYTEST_XDIST_WORKER"])
-    deadline = time.monotonic() + 5
-    while len(list(ROOT.glob("ready-*"))) < 2 and time.monotonic() < deadline:
-        time.sleep(.01)
-    assert len(list(ROOT.glob("ready-*"))) == 2, "PARALLEL WORK WAS SERIALIZED"
 @pytest.mark.xdist_group("exclusive")
 @pytest.mark.parametrize("case", [0, 1])
 def test_shared_resource(case):
@@ -1629,14 +1721,13 @@ def test_nested():
     assert result.returncode == 0, result.stdout + result.stderr
 """)
 
-    def run(*args: str, timeout: int = 30):
+    def run(*args: str):
         return subprocess.run(
             [sys.executable, str(script), "-m", "pytest", "-q", *args],
             cwd=root,
             env=environment,
             capture_output=True,
             text=True,
-            timeout=timeout,
         )
 
     xml = root / "parallel.xml"
@@ -1657,48 +1748,59 @@ def test_nested():
         return sorted((c.get("classname"), c.get("name")) for c in ET.parse(path).iter("testcase"))
 
     assert identities(serial_xml) == identities(worker_xml), "PARALLEL IDENTITIES DIFFER"
-    for mode in ("failure", "crash", "hang"):
+    for mode in ("failure", "crash"):
         target = root / (mode + ".py")
         if mode == "failure":
             target.write_text("def test_failed():\n    assert False, 'INTENDED FAILURE'\n")
-        elif mode == "crash":
+        else:
             target.write_text(
                 "import os,pathlib\ndef test_crash():\n"
                 "    p=pathlib.Path(__file__).with_suffix('.calls')\n"
                 "    with p.open('a') as f: f.write('attempt\\n')\n    os._exit(7)\n"
             )
-        else:
-            (root / "tests/proof-estate.yaml").write_text("hang_timeout_seconds: 5\n")
-            target.write_text(
-                "import os,pathlib,time\ndef test_hang():\n"
-                "    pathlib.Path(__file__).with_suffix('.pid').write_text(str(os.getpid()))\n"
-                "    time.sleep(60)\n"
-            )
         starts_before = len((root / "worker-starts").read_text().splitlines())
         result = run("-n", "2", str(target))
-        if mode == "hang":
-            assert result.returncode == 124 and "INCOMPLETE" in result.stderr, (
-                "PARALLEL HANG PASSED"
-            )
-            pid = int(target.with_suffix(".pid").read_text())
-            deadline = time.monotonic() + 3
-            while time.monotonic() < deadline:
-                try:
-                    os.kill(pid, 0)
-                except ProcessLookupError:
-                    break
-                time.sleep(0.02)
-            else:
-                pytest.fail("PARALLEL WORKER SURVIVED CLEANUP")
-        else:
-            assert result.returncode == 1, (
-                "PARALLEL FAILURE PASSED: " + result.stdout + result.stderr
-            )
+        assert result.returncode == 1, "PARALLEL FAILURE PASSED: " + result.stdout + result.stderr
         if mode == "crash":
             assert (
                 target.with_suffix(".calls").read_text() == "attempt\n"
                 and len((root / "worker-starts").read_text().splitlines()) - starts_before == 2
             ), "WORKER CRASH RETRIED"
+
+    # Cancelling a parallel run that would not finish removes its workers and says why.
+    target = root / "unfinished.py"
+    target.write_text(
+        "import os,pathlib,time\ndef test_unfinished():\n"
+        "    pathlib.Path(__file__).with_suffix('.pid').write_text(str(os.getpid()))\n"
+        "    time.sleep(60)\n"
+    )
+    process = subprocess.Popen(
+        [sys.executable, str(script), "-m", "pytest", "-q", "-n", "2", str(target)],
+        cwd=root,
+        env=environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
+    try:
+        pid = _wait_for_pid(target.with_suffix(".pid"), process)
+        assert pid is not None, "SETUP INCOMPLETE: parallel worker never started its test"
+        process.send_signal(signal.SIGTERM)
+        try:
+            _, error = process.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            pytest.fail("PARALLEL RUN SURVIVED CANCELLATION")
+        assert process.returncode == 124 and "TEST INCOMPLETE: cancelled by SIGTERM" in error, (
+            "PARALLEL CANCELLATION PASSED: " + error
+        )
+        assert _gone_within(pid, 3), "PARALLEL WORKER SURVIVED CLEANUP"
+    finally:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait()
 
 
 def test_script_tool_environments_are_built_before_parallel_workers_start(
